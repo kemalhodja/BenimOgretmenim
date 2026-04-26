@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: benimogretmenim-db
+    environment:
+      POSTGRES_USER: benim
+      POSTGRES_PASSWORD: benim_dev_change_me
+      POSTGRES_DB: benimogretmenim
+    ports:
+      - "5432:5432"
+    volumes:
+      - benim_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U benim -d benimogretmenim"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  benim_pgdata:

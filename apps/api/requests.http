@@ -1,0 +1,98 @@
+@baseUrl = http://127.0.0.1:3002
+@contentType = application/json
+
+###
+# Health (DB dahil)
+GET {{baseUrl}}/health
+
+###
+# Seed kullanıcı ile login (öğretmen)
+# Parola: DevParola1
+POST {{baseUrl}}/v1/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "teacher_dev@benimogretmenim.local",
+  "password": "DevParola1"
+}
+
+###
+# Aşağıdaki isteklerde Authorization header'a yukarıdaki login yanıtından token'ı yapıştırın:
+# Authorization: Bearer <TOKEN>
+
+###
+# Öğretmen panel: profil + checklist
+GET {{baseUrl}}/v1/teacher/me
+Authorization: Bearer {{token}}
+
+###
+# Öğretmen panel: dashboard özet
+GET {{baseUrl}}/v1/teacher/dashboard
+Authorization: Bearer {{token}}
+
+###
+# Meta: şehirler
+GET {{baseUrl}}/v1/meta/cities
+
+###
+# Meta: branş ağacı
+GET {{baseUrl}}/v1/meta/branches
+
+###
+# Meta: ilçeler (örnek cityId=1 İstanbul; seed ile oluşur)
+GET {{baseUrl}}/v1/meta/districts?cityId=1
+
+###
+# Öğretmen: profil patch (bio + konum + müsaitlik)
+PATCH {{baseUrl}}/v1/teacher/me
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "bioRaw": "10+ yıldır lise matematik ve geometri özel dersi veriyorum. Hedef odaklı ilerlerim.",
+  "cityId": 1,
+  "districtId": 1,
+  "availability": {
+    "pazartesi": ["09:00-12:00"],
+    "carsamba": ["18:00-20:00"]
+  }
+}
+
+###
+# Öğretmen: branşları ayarla (branchId'leri /v1/meta/branches'tan alın)
+PUT {{baseUrl}}/v1/teacher/me/branches
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "branches": [
+    {
+      "branchId": 4,
+      "yearsExperience": 5,
+      "isPrimary": true,
+      "hourlyRateMin": 800,
+      "hourlyRateMax": 1200
+    }
+  ]
+}
+
+###
+# Onboarding: yeni oturum başlat
+POST {{baseUrl}}/v1/onboarding/sessions
+Authorization: Bearer {{token}}
+
+###
+# Onboarding: oturumları listele
+GET {{baseUrl}}/v1/onboarding/sessions
+Authorization: Bearer {{token}}
+
+###
+# Onboarding: oturum durumunu güncelle (sessionId'yi listeden alın)
+PATCH {{baseUrl}}/v1/onboarding/sessions/{{sessionId}}
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "status": "completed"
+}
+
