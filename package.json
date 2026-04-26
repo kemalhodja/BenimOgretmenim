@@ -2,6 +2,9 @@
   "name": "benimogretmenim",
   "private": true,
   "description": "BenimÖğretmenim monorepo kökü — Docker ile veritabanı",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
