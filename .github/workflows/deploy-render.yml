@@ -1,0 +1,59 @@
+# Push sonrası: önce build doğrula, sonra Render deploy hook ile canlı deploy tetikle.
+# Deploy hook: Render → ilgili Web Service → Settings → Deploy Hook → URL kopyala
+# (GET veya POST; https://render.com/docs/deploy-hooks)
+#
+# GitHub → Repo → Settings → Secrets and variables → Actions → New repository secret:
+#   RENDER_DEPLOY_HOOK_API   → API servisinin hook URL'si
+#   RENDER_DEPLOY_HOOK_WEB   → Web (Next) servisinin hook URL'si
+#
+# Render'da aynı repoya "Auto Deploy: On" açıksa, push zaten deploy eder; bu workflow
+# da hook çağırırsa çift deploy olabilir. Ya Auto Deploy'u kapat, ya bu workflow'u
+# sadece hook istediğin senaryoda kullan.
+
+name: Build and deploy (Render)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-render-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build API
+        working-directory: apps/api
+        run: npm ci --include=dev && npm run build
+
+      - name: Build Web
+        working-directory: apps/web
+        run: npm ci --include=dev && npm run build
+
+  deploy:
+    needs: [build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Trigger API deploy (Render hook)
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_API != '' }}
+        run: curl -fsS "${{ secrets.RENDER_DEPLOY_HOOK_API }}"
+
+      - name: Trigger Web deploy (Render hook)
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_WEB != '' }}
+        run: curl -fsS "${{ secrets.RENDER_DEPLOY_HOOK_WEB }}"
+
+      - name: Require at least one deploy hook
+        if: ${{ secrets.RENDER_DEPLOY_HOOK_API == '' && secrets.RENDER_DEPLOY_HOOK_WEB == '' }}
+        run: |
+          echo "::error::GitHub Actions secret eksik: RENDER_DEPLOY_HOOK_API ve/veya RENDER_DEPLOY_HOOK_WEB ekleyin (Render → Service → Settings → Deploy Hook)."
+          exit 1
