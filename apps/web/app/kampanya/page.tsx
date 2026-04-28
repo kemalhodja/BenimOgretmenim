@@ -32,22 +32,18 @@ export default function KampanyaPage() {
             <ul className="mt-2 space-y-1 text-sm">
               <li>
                 <span className="font-semibold">12 ay</span> ·{" "}
-                <span className="font-mono">12.000 TL</span>{" "}
-                <span className="text-brand-900/80">+24 ay hediye (toplam 36 ay)</span>
-                {" · "}
-                <span className="font-mono font-semibold">2500 TL</span>
+                <span className="font-mono text-zinc-500 line-through">12.000 TL</span>{" "}
+                <span className="font-mono font-semibold">2500 TL</span> ·{" "}
                 <span className="text-brand-900/80">
-                  {" "}
+                  +24 ay hediye (toplam 36 ay)
                 </span>
               </li>
               <li>
                 <span className="font-semibold">6 ay</span> ·{" "}
-                <span className="font-mono">7.500 TL</span>{" "}
-                <span className="text-brand-900/80">+12 ay hediye (toplam 18 ay)</span>
-                {" · "}
-                <span className="font-mono font-semibold">1750 TL</span>
+                <span className="font-mono text-zinc-500 line-through">7.500 TL</span>{" "}
+                <span className="font-mono font-semibold">1750 TL</span> ·{" "}
                 <span className="text-brand-900/80">
-                  {" "}
+                  +12 ay hediye (toplam 18 ay)
                 </span>
               </li>
             </ul>
