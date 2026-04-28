@@ -5,11 +5,9 @@ import { LoginNavLink, RegisterNavLink } from "./AuthNavLinks";
 const nav = [
   { href: "/ogretmenler", label: "Öğretmen bul" },
   { href: "/#nasil", label: "Nasıl çalışır?" },
-  { href: "/student/requests", label: "Ders talebi" },
+  { href: "/panel", label: "Panel" },
   { href: "/courses", label: "Kurslar" },
   { href: "/fiyatlar", label: "Fiyatlar" },
-  { href: "/teacher", label: "Öğretmen paneli" },
-  { href: "/guardian", label: "Veli" },
   { href: "/iletisim", label: "İletişim" },
 ];
 
