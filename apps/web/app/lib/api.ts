@@ -24,7 +24,19 @@ export async function apiFetch<T>(
   });
 
   const text = await res.text();
-  const json = text ? (JSON.parse(text) as unknown) : null;
+  const contentType = res.headers.get("content-type") ?? "";
+  let json: unknown = null;
+  if (text) {
+    try {
+      json = JSON.parse(text) as unknown;
+    } catch {
+      const preview = text.slice(0, 80).replace(/\s+/g, " ");
+      throw new Error(
+        `[${res.status}] expected_json_got_${contentType || "unknown"} (${preview}). ` +
+          `API_BASE_URL yanlış olabilir: NEXT_PUBLIC_API_BASE_URL`,
+      );
+    }
+  }
 
   if (!res.ok) {
     const msg =
