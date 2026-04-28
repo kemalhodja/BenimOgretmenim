@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { RegisterNavLink } from "../components/AuthNavLinks";
+import { makeRequestId } from "../lib/requestId";
 
 export const metadata: Metadata = {
   title: "Öğretmen abonelik fiyatları",
@@ -28,6 +29,10 @@ export default async function FiyatlarPage() {
   let loadError: string | null = null;
   try {
     const res = await fetch(`${api}/v1/subscriptions/plans`, {
+      headers: {
+        accept: "application/json",
+        "x-request-id": makeRequestId(),
+      },
       next: { revalidate: 300 },
     });
     if (!res.ok) {

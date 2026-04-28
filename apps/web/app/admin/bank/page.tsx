@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { clearToken, getToken } from "../../lib/auth";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
+import { makeRequestId } from "../../lib/requestId";
 
 async function adminPanelFetch<T>(
   path: "/api/admin/pending-bank-transfers" | "/api/admin/approve-bank-transfer",
@@ -14,6 +15,9 @@ async function adminPanelFetch<T>(
   const headers = new Headers(init?.headers);
   headers.set("accept", "application/json");
   headers.set("authorization", `Bearer ${token}`);
+  if (!headers.has("x-request-id")) {
+    headers.set("x-request-id", makeRequestId());
+  }
   if (init?.body && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }
@@ -22,6 +26,7 @@ async function adminPanelFetch<T>(
     headers,
     cache: "no-store",
   });
+  const responseRequestId = res.headers.get("x-request-id") ?? undefined;
   const text = await res.text();
   const json = text ? (JSON.parse(text) as unknown) : null;
   if (!res.ok) {
@@ -29,8 +34,15 @@ async function adminPanelFetch<T>(
       typeof json === "object" && json && json !== null && "error" in json
         ? (json as { error?: unknown }).error
         : json;
+    const bodyRid =
+      typeof json === "object" && json && json !== null && "requestId" in json
+        ? (json as { requestId?: unknown }).requestId
+        : undefined;
+    const rid =
+      typeof bodyRid === "string" && bodyRid ? bodyRid : responseRequestId;
+    const ridSuffix = rid ? ` (requestId=${rid})` : "";
     throw new Error(
-      `[${res.status}] ${typeof msg === "string" ? msg : "request_failed"}`,
+      `[${res.status}] ${typeof msg === "string" ? msg : "request_failed"}${ridSuffix}`,
     );
   }
   return json as T;

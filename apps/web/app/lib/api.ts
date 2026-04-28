@@ -1,15 +1,9 @@
+import { makeRequestId } from "./requestId";
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3002";
 
 export type ApiError = { error: unknown } | { error: string } | unknown;
-
-function makeRequestId(): string {
-  const c = globalThis.crypto;
-  if (c && "randomUUID" in c && typeof c.randomUUID === "function") {
-    return c.randomUUID();
-  }
-  return `rid_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
 
 export async function apiFetch<T>(
   path: string,
