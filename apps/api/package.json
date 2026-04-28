@@ -18,6 +18,7 @@
     "smoke": "tsx src/scripts/smoke-api.ts",
     "smoke:prod": "tsx src/scripts/smoke-prod.ts",
     "smoke:e2e": "tsx src/scripts/smoke-e2e.ts",
+    "smoke:suite": "tsx src/scripts/smoke-suite.ts",
     "group-lessons:settle": "tsx src/scripts/settle-group-lessons.ts",
     "free-port": "tsx src/scripts/free-port.ts",
     "test": "vitest run"

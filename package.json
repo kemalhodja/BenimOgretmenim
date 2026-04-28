@@ -20,6 +20,7 @@
     "smoke": "npm run smoke --prefix apps/api",
     "smoke:prod": "npm run smoke:prod --prefix apps/api",
     "smoke:e2e": "npm run smoke:e2e --prefix apps/api",
+    "smoke:suite": "npm run smoke:suite --prefix apps/api",
     "test": "npm run test --prefix apps/api",
     "ci:api": "npm ci --include=dev --prefix apps/api && npm run test --prefix apps/api && npm run build --prefix apps/api",
     "ci:web": "npm ci --include=dev --prefix apps/web && npm run build --prefix apps/web",
