@@ -18,6 +18,7 @@
     "web:build": "npm run build --prefix apps/web",
     "web:start": "npm run start --prefix apps/web",
     "smoke": "npm run smoke --prefix apps/api",
+    "smoke:prod": "npm run smoke:prod --prefix apps/api",
     "test": "npm run test --prefix apps/api",
     "ci:api": "npm ci --include=dev --prefix apps/api && npm run test --prefix apps/api && npm run build --prefix apps/api",
     "ci:web": "npm ci --include=dev --prefix apps/web && npm run build --prefix apps/web",
