@@ -24,9 +24,9 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/brand-mark.svg", type: "image/svg+xml" },
-      { url: "/pwa-icon.svg", type: "image/svg+xml" },
+      { url: "/icon", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-icon", type: "image/png" }],
   },
   manifest: "/manifest.webmanifest",
   title: {
