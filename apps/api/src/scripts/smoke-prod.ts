@@ -33,6 +33,10 @@ async function getJson(path: string): Promise<{ status: number; ok: boolean; jso
     throw new Error(`[smoke:prod] ${path} JSON parse edilemedi: ${String(e)}`);
   })) as Json;
 
+  if (!res.ok) {
+    console.error(`[smoke:prod] ${path} hata gövdesi`, json);
+  }
+
   return { status: res.status, ok: res.ok, json };
 }
 

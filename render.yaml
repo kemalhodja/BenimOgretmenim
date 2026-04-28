@@ -3,8 +3,8 @@
 #
 # Oluşan varsayılan adresler (hizmet adları çakışırsa Render hostu değişebilir; o zaman
 # aşağıdaki CORS_ORIGINS ve NEXT_PUBLIC_* değerlerini Dashboard'dan güncelle):
-#   API:  https://benimogretmenim-api.onrender.com
-#   Web: https://benimogretmenim-web.onrender.com
+#   API:  https://benim-ogretmenim.onrender.com
+#   Web: https://benimogretmenim.onrender.com
 
 databases:
   - name: benimogretmenim-db
@@ -47,7 +47,7 @@ services:
       - key: JWT_EXPIRES
         value: "7d"
       - key: CORS_ORIGINS
-        value: https://benimogretmenim-web.onrender.com
+        value: https://benimogretmenim.onrender.com
       - fromGroup: benimogretmenim-shared
 
   - type: cron
@@ -85,9 +85,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://benimogretmenim-api.onrender.com
+        value: https://benim-ogretmenim.onrender.com
       - key: INTERNAL_API_BASE_URL
-        value: https://benimogretmenim-api.onrender.com
+        value: https://benim-ogretmenim.onrender.com
       - key: NEXT_PUBLIC_SITE_URL
-        value: https://benimogretmenim-web.onrender.com
+        value: https://benimogretmenim.onrender.com
       - fromGroup: benimogretmenim-shared

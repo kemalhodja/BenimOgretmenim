@@ -82,6 +82,16 @@ cd ../..
 npm run smoke
 ```
 
+Prod’da hızlı, **salt-okunur** kontrol (kayıt/para işlemi yapmaz):
+
+```bash
+SMOKE_API_URL=https://api.sizin-domain.com npm run smoke:prod
+```
+
+Not: `/health` içindeki `db: true` sadece Postgres’e bağlanabildiğini gösterir. `/v1/meta/*` gibi uçlar
+**500 + `internal_error`** ise çoğunlukla **migration uygulanmamış** (tablolar yok) demektir; Render’da API deploy
+loglarında `preDeployCommand` (`npm run db:migrate`) çıktısını kontrol edin.
+
 ---
 
 ## 4) Önerilen dağıtım modeli (VPS + reverse proxy)
