@@ -20,7 +20,7 @@ import { courses } from "./routes/courses.js";
 import { studentPlatform } from "./routes/studentPlatform.js";
 import { userWallet } from "./routes/userWallet.js";
 import { groupLessons } from "./routes/groupLessons.js";
-import { rateLimit } from "./middleware/rateLimit.js";
+import { requestId } from "./middleware/requestId.js";
 
 export const app = new Hono<{ Variables: AppVariables }>();
 
@@ -29,6 +29,11 @@ function corsAllowedOrigins(): string[] {
   if (raw) {
     return raw.split(",").map((s) => s.trim()).filter(Boolean);
   }
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "[api] CORS_ORIGINS is required in production (comma-separated origins).",
+    );
+  }
   return [
     "http://127.0.0.1:3000",
     "http://localhost:3000",
@@ -36,6 +41,8 @@ function corsAllowedOrigins(): string[] {
     "http://localhost:3001",
   ];
 }
+
+app.use("/*", requestId);
 
 app.use(
   "/*",
@@ -56,14 +63,7 @@ app.use(
     referrerPolicy: "no-referrer",
     xXssProtection: "0",
     strictTransportSecurity: process.env.NODE_ENV === "production",
-    contentSecurityPolicy: false, // API JSON only; CSP not needed here
   }),
-);
-
-// Brute-force protection for auth endpoints.
-app.use(
-  "/v1/auth/*",
-  rateLimit({ name: "auth", limit: 30, windowMs: 60_000 }),
 );
 
 /** Tarayıcıda kök URL — SPA yok; API uçlarını gösterir */
@@ -131,11 +131,13 @@ app.route("/v1/subscriptions", subscriptions);
 app.route("/v1/paytr", paytr);
 
 app.notFound((c) => {
+  const requestId = c.get("requestId");
   return c.json(
     {
       error: "not_found",
       path: c.req.path,
       method: c.req.method,
+      ...(requestId ? { requestId } : {}),
       hint: "GET / veya GET /health deneyin. Kaynaklar /v1/... altında.",
     },
     404,
@@ -146,13 +148,21 @@ app.onError((err, c) => {
   const isProd = process.env.NODE_ENV === "production";
   const name = err instanceof Error ? err.name : "Error";
   const message = err instanceof Error ? err.message : String(err);
+  const requestId = c.get("requestId");
 
   // Keep logs actionable in prod without leaking sensitive details to clients.
-  console.error("[api] unhandled_error", { path: c.req.path, method: c.req.method, name, message });
+  console.error("[api] unhandled_error", {
+    ...(requestId ? { requestId } : {}),
+    path: c.req.path,
+    method: c.req.method,
+    name,
+    message,
+  });
 
   return c.json(
     {
       error: "internal_error",
+      ...(requestId ? { requestId } : {}),
       ...(isProd ? {} : { details: message }),
     },
     500,

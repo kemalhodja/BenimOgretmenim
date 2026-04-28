@@ -5,6 +5,7 @@ import { pool } from "../db.js";
 import { signAccessToken } from "../auth/jwt.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { rateLimit } from "../middleware/rateLimit.js";
 
 const registerSchema = z.object({
   email: z.string().email().max(320),
@@ -19,6 +20,11 @@ const loginSchema = z.object({
 });
 
 export const auth = new Hono<{ Variables: AppVariables }>();
+
+// Brute-force protection: tighter limits for credential-bearing endpoints.
+auth.use("/register", rateLimit({ name: "auth_register", limit: 15, windowMs: 60_000 }));
+auth.use("/login", rateLimit({ name: "auth_login", limit: 10, windowMs: 60_000 }));
+auth.use("*", rateLimit({ name: "auth_other", limit: 60, windowMs: 60_000 }));
 
 auth.post("/register", async (c) => {
   const parsed = registerSchema.safeParse(await c.req.json());

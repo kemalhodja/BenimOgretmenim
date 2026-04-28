@@ -1,4 +1,6 @@
+import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
+import type { AppVariables } from "../types.js";
 
 type RateLimitOptions = {
   /** Logical bucket name (included in key) */
@@ -8,7 +10,7 @@ type RateLimitOptions = {
   /** Window size in milliseconds */
   windowMs: number;
   /** Optional extra key factor (e.g. user agent) */
-  keySuffix?: (c: Parameters<ReturnType<typeof createMiddleware>>[0]) => string;
+  keySuffix?: (c: Context<{ Variables: AppVariables }>) => string;
 };
 
 type Bucket = { resetAt: number; count: number };
@@ -19,7 +21,7 @@ function nowMs() {
   return Date.now();
 }
 
-function clientIp(c: any): string {
+function clientIp(c: Context<{ Variables: AppVariables }>): string {
   // Render/Cloudflare/Proxies: prefer explicit IP headers.
   const cf = c.req.header("cf-connecting-ip");
   if (cf) return cf.trim();
@@ -35,7 +37,7 @@ function clientIp(c: any): string {
 }
 
 export function rateLimit(opts: RateLimitOptions) {
-  return createMiddleware(async (c, next) => {
+  return createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
     const ip = clientIp(c);
     const suffix = opts.keySuffix ? `:${opts.keySuffix(c)}` : "";
     const key = `${opts.name}:${ip}${suffix}`;
@@ -54,8 +56,9 @@ export function rateLimit(opts: RateLimitOptions) {
     if (existing.count > opts.limit) {
       const retryAfterSec = Math.max(1, Math.ceil((existing.resetAt - t) / 1000));
       c.header("retry-after", String(retryAfterSec));
+      const requestId = c.get("requestId");
       return c.json(
-        { error: "rate_limited", retryAfterSec },
+        { error: "rate_limited", retryAfterSec, ...(requestId ? { requestId } : {}) },
         429,
       );
     }
