@@ -37,9 +37,9 @@ jobs:
         working-directory: apps/api
         run: npm ci --include=dev && npm run test && npm run build
 
-      - name: Web — install, build
+      - name: Web — install, lint, build
         working-directory: apps/web
-        run: npm ci --include=dev && npm run build
+        run: npm ci --include=dev && npm run lint && npm run build
 
   deploy:
     needs: [build]
@@ -55,8 +55,9 @@ jobs:
         if: ${{ secrets.RENDER_DEPLOY_HOOK_WEB != '' }}
         run: curl -fsS "${{ secrets.RENDER_DEPLOY_HOOK_WEB }}"
 
-      - name: Require at least one deploy hook
+      - name: Skip deploy hooks (optional secrets)
         if: ${{ secrets.RENDER_DEPLOY_HOOK_API == '' && secrets.RENDER_DEPLOY_HOOK_WEB == '' }}
         run: |
-          echo "::error::GitHub Actions secret eksik: RENDER_DEPLOY_HOOK_API ve/veya RENDER_DEPLOY_HOOK_WEB ekleyin (Render → Service → Settings → Deploy Hook)."
-          exit 1
+          echo "::notice::Render deploy hook secret'ları tanımlı değil; bu job deploy tetiklemeden tamamlandı."
+          echo "İsterseniz Render → Service → Settings → Deploy Hook URL'lerini GitHub Secrets olarak ekleyin:"
+          echo "  RENDER_DEPLOY_HOOK_API, RENDER_DEPLOY_HOOK_WEB"

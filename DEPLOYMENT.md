@@ -141,3 +141,11 @@ npm run group-lessons:settle
 Cron örneği:
 - `*/10 * * * * cd /srv/benimogretmenim/apps/api && npm run -s group-lessons:settle`
 
+### Render (Blueprint / Dashboard)
+
+Repo kökündeki `render.yaml` içinde **`type: cron`** ile aynı iş planlanır: `apps/api` altında
+`npm run -s group-lessons:settle` ve `DATABASE_URL` Postgres instance’dan gelir.
+
+Blueprint’i daha önce manuel servislerle oluşturduysanız, yeni Cron servisini Render’da
+**Blueprint Sync** ile ekleyin veya Dashboard’dan Cron Job oluşturup komutu birebir verin.
+
