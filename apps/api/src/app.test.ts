@@ -18,4 +18,17 @@ describe("API app", () => {
       expect(body.details).toBe("boom");
     }
   });
+
+  it("rate limits /v1/auth/* after burst", async () => {
+    const headers = { "x-forwarded-for": "203.0.113.10" };
+    let lastStatus = 0;
+
+    for (let i = 0; i < 40; i++) {
+      const r = await app.request("http://localhost/v1/auth/me", { headers });
+      lastStatus = r.status;
+      if (r.status === 429) break;
+    }
+
+    expect(lastStatus).toBe(429);
+  });
 });

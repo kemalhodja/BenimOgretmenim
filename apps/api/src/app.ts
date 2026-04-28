@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { secureHeaders } from "hono/secure-headers";
 import { pool } from "./db.js";
 import type { AppVariables } from "./types.js";
 import { auth } from "./routes/auth.js";
@@ -19,6 +20,7 @@ import { courses } from "./routes/courses.js";
 import { studentPlatform } from "./routes/studentPlatform.js";
 import { userWallet } from "./routes/userWallet.js";
 import { groupLessons } from "./routes/groupLessons.js";
+import { rateLimit } from "./middleware/rateLimit.js";
 
 export const app = new Hono<{ Variables: AppVariables }>();
 
@@ -44,6 +46,24 @@ app.use(
     exposeHeaders: [],
     maxAge: 86400,
   }),
+);
+
+app.use(
+  "/*",
+  secureHeaders({
+    xFrameOptions: "DENY",
+    xContentTypeOptions: "nosniff",
+    referrerPolicy: "no-referrer",
+    xXssProtection: "0",
+    strictTransportSecurity: process.env.NODE_ENV === "production",
+    contentSecurityPolicy: false, // API JSON only; CSP not needed here
+  }),
+);
+
+// Brute-force protection for auth endpoints.
+app.use(
+  "/v1/auth/*",
+  rateLimit({ name: "auth", limit: 30, windowMs: 60_000 }),
 );
 
 /** Tarayıcıda kök URL — SPA yok; API uçlarını gösterir */
