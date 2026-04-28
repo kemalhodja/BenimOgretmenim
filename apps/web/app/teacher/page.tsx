@@ -18,10 +18,6 @@ type SubMe = {
   };
 };
 
-type PurchaseResponse =
-  | { payment: { id: string }; next: { checkout: string } }
-  | { payment: { id: string }; instructions: Record<string, unknown> };
-
 type TeacherMe = {
   teacher: {
     id: string;

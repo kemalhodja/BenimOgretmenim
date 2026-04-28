@@ -49,8 +49,13 @@ app.use(
   cors({
     origin: corsAllowedOrigins(),
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization", "X-Admin-Secret"],
-    exposeHeaders: [],
+    allowHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Admin-Secret",
+      "X-Request-Id",
+    ],
+    exposeHeaders: ["x-request-id"],
     maxAge: 86400,
   }),
 );
