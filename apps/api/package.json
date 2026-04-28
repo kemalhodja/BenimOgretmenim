@@ -27,15 +27,16 @@
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.10",
     "bcryptjs": "^2.4.3",
+    "benimogretmenim": "file:../..",
     "dotenv": "^16.4.5",
     "hono": "^4.6.0",
     "jose": "^5.9.6",
     "pg": "^8.13.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "tsx": "^4.19.2",
     "vitest": "^3.0.5"
   }
 }

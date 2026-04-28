@@ -28,7 +28,8 @@ services:
     region: frankfurt
     branch: main
     rootDir: apps/api
-    # --include=dev: db:migrate tsx ile çalışır; üretimde varsayılan npm ci dev'i atlayabilir.
+    # db:migrate tsx ile çalışır; tsx prod dependencies içinde tutulur (Render preDeploy ortamında
+    # devDependencies her zaman gelmeyebilir).
     buildCommand: npm ci --include=dev && npm run build
     preDeployCommand: npm run db:migrate
     startCommand: npm run start
