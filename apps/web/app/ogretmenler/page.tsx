@@ -25,6 +25,7 @@ export default function OgretmenlerPage() {
   const [cityId, setCityId] = useState<number | "">("");
   const [rows, setRows] = useState<TeacherRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [metaLoading, setMetaLoading] = useState(true);
   const [metaReady, setMetaReady] = useState(false);
   const [listLoading, setListLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
@@ -36,28 +37,30 @@ export default function OgretmenlerPage() {
     return branches.filter((b) => !hasChild.has(b.id));
   }, [branches]);
 
+  async function loadMeta(signal?: AbortSignal) {
+    setError(null);
+    setMetaLoading(true);
+    try {
+      const [b, c] = await Promise.all([
+        apiFetch<{ branches: Branch[] }>("/v1/meta/branches", { signal }),
+        apiFetch<{ cities: City[] }>("/v1/meta/cities", { signal }),
+      ]);
+      setBranches(b.branches);
+      setCities(c.cities);
+      setMetaReady(true);
+    } catch (e) {
+      if (signal?.aborted) return;
+      setMetaReady(false);
+      setError(e instanceof Error ? e.message : "meta_load_failed");
+    } finally {
+      if (!signal?.aborted) setMetaLoading(false);
+    }
+  }
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setError(null);
-      try {
-        const [b, c] = await Promise.all([
-          apiFetch<{ branches: Branch[] }>("/v1/meta/branches"),
-          apiFetch<{ cities: City[] }>("/v1/meta/cities"),
-        ]);
-        if (cancelled) return;
-        setBranches(b.branches);
-        setCities(c.cities);
-        setMetaReady(true);
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "load_failed");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    const ac = new AbortController();
+    loadMeta(ac.signal);
+    return () => ac.abort();
   }, []);
 
   useEffect(() => {
@@ -156,41 +159,77 @@ export default function OgretmenlerPage() {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <label className="block flex-1">
-            <div className="mb-1 text-xs font-medium text-zinc-600">Branş</div>
-            <select
-              value={branchId}
-              onChange={(e) =>
-                setBranchId(e.target.value ? Number(e.target.value) : "")
-              }
-              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400"
-            >
-              <option value="">Tümü</option>
-              {leafBranches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
+        <div className="sticky top-16 z-10 -mx-6 mt-6 border-y border-zinc-200 bg-zinc-50/95 px-6 py-3 backdrop-blur">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <label className="block flex-1">
+              <div className="mb-1 text-xs font-medium text-zinc-600">Branş</div>
+              <select
+                value={branchId}
+                onChange={(e) =>
+                  setBranchId(e.target.value ? Number(e.target.value) : "")
+                }
+                disabled={!metaReady || metaLoading}
+                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-400"
+              >
+                <option value="">
+                  {metaLoading ? "Yükleniyor…" : metaReady ? "Tümü" : "Filtreler yok"}
                 </option>
-              ))}
-            </select>
-          </label>
-          <label className="block flex-1">
-            <div className="mb-1 text-xs font-medium text-zinc-600">Şehir</div>
-            <select
-              value={cityId}
-              onChange={(e) =>
-                setCityId(e.target.value ? Number(e.target.value) : "")
-              }
-              className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400"
-            >
-              <option value="">Tümü</option>
-              {cities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
+                {leafBranches.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block flex-1">
+              <div className="mb-1 text-xs font-medium text-zinc-600">Şehir</div>
+              <select
+                value={cityId}
+                onChange={(e) =>
+                  setCityId(e.target.value ? Number(e.target.value) : "")
+                }
+                disabled={!metaReady || metaLoading}
+                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-400"
+              >
+                <option value="">
+                  {metaLoading ? "Yükleniyor…" : metaReady ? "Tümü" : "Filtreler yok"}
                 </option>
-              ))}
-            </select>
-          </label>
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="flex gap-2 sm:justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setBranchId("");
+                  setCityId("");
+                  setSearchApply("");
+                  setSearchInput("");
+                }}
+                className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 sm:flex-none"
+              >
+                Sıfırla
+              </button>
+              <button
+                type="button"
+                onClick={() => loadMeta()}
+                className="flex-1 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white sm:flex-none"
+              >
+                Yenile
+              </button>
+            </div>
+          </div>
+          {!metaReady && !metaLoading && (
+            <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Filtreler yüklenemedi. Bu genelde API/CORS veya veritabanı kurulumundan kaynaklanır.
+              <span className="font-mono"> /v1/meta/branches</span> ve{" "}
+              <span className="font-mono">/v1/meta/cities</span> uçlarını kontrol edin.
+            </div>
+          )}
         </div>
 
         {error && (
@@ -200,9 +239,7 @@ export default function OgretmenlerPage() {
         )}
 
         <div className="mt-8 space-y-2">
-          {!metaReady ? (
-            <div className="text-sm text-zinc-500">Filtreler yükleniyor…</div>
-          ) : listLoading && rows.length === 0 ? (
+          {listLoading && rows.length === 0 ? (
             <div className="text-sm text-zinc-500">Liste yükleniyor…</div>
           ) : rows.length === 0 ? (
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
