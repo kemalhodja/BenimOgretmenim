@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
+import { PwaRegister } from "./components/PwaRegister";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,8 +22,13 @@ const siteUrl =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   icons: {
-    icon: [{ url: "/brand-mark.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/brand-mark.svg", type: "image/svg+xml" },
+      { url: "/pwa-icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [{ url: "/apple-touch-icon.svg", type: "image/svg+xml" }],
   },
+  manifest: "/manifest.webmanifest",
   title: {
     default: "BenimÖğretmenim — özel ders ve öğretmen eşleşmesi",
     template: "%s · BenimÖğretmenim",
@@ -53,6 +59,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-paper-50 font-sans text-paper-900">
+        <PwaRegister />
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
