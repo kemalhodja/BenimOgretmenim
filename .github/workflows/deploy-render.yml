@@ -39,6 +39,9 @@ jobs:
 
       - name: Web — install, lint, build
         working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_BASE_URL: https://benim-ogretmenim.onrender.com
+          NEXT_PUBLIC_SITE_URL: https://benimogretmenim.onrender.com
         run: npm ci --include=dev && npm run lint && npm run build
 
   deploy:
