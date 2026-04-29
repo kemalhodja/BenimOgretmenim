@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
+import { getClientIp } from "../lib/clientIp.js";
 import type { AppVariables } from "../types.js";
 
 type RateLimitOptions = {
@@ -23,21 +24,6 @@ function nowMs() {
   return Date.now();
 }
 
-function clientIp(c: Context<{ Variables: AppVariables }>): string {
-  // Render/Cloudflare/Proxies: prefer explicit IP headers.
-  const cf = c.req.header("cf-connecting-ip");
-  if (cf) return cf.trim();
-
-  const xff = c.req.header("x-forwarded-for");
-  if (xff) return xff.split(",")[0]?.trim() || "unknown";
-
-  const xrip = c.req.header("x-real-ip");
-  if (xrip) return xrip.trim();
-
-  // Fallback: no reliable socket info in Fetch API here.
-  return "unknown";
-}
-
 export function rateLimit(opts: RateLimitOptions) {
   return createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
     if (opts.skip?.(c)) {
@@ -45,7 +31,7 @@ export function rateLimit(opts: RateLimitOptions) {
       return;
     }
 
-    const ip = clientIp(c);
+    const ip = getClientIp(c);
     const suffix = opts.keySuffix ? `:${opts.keySuffix(c)}` : "";
     const key = `${opts.name}:${ip}${suffix}`;
 

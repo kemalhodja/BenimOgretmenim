@@ -21,6 +21,7 @@ import { studentPlatform } from "./routes/studentPlatform.js";
 import { userWallet } from "./routes/userWallet.js";
 import { groupLessons } from "./routes/groupLessons.js";
 import { requestId } from "./middleware/requestId.js";
+import { requestLog } from "./middleware/requestLog.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 
 export const app = new Hono<{ Variables: AppVariables }>();
@@ -59,6 +60,7 @@ function corsAllowedOrigins(): string[] {
 }
 
 app.use("/*", requestId);
+app.use("/*", requestLog);
 
 app.use(
   "/*",

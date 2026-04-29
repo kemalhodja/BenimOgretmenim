@@ -9,6 +9,9 @@
 # API (isteğe bağlı): API_GLOBAL_RATE_LIMIT = IP başına penceredeki maks. istek (varsayılan 800);
 #   pencere ms: API_GLOBAL_RATE_WINDOW_MS (varsayılan 60000). Kapatmak için "0".
 #   Hariç: GET /health, POST /v1/paytr/callback. Vitest / NODE_ENV=test otomatik devre dışı.
+#
+# API (isteğe bağlı): API_REQUEST_LOG — üretimde varsayılan açık (tek satır JSON http logu).
+#   Kapatmak için "0"; geliştirmede açmak için "1". GET /health ve 200 ise log yazılmaz (gürültü).
 
 databases:
   - name: benimogretmenim-db
