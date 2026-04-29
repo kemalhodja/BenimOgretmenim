@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
             ...base,
             {
               key: "Strict-Transport-Security",
-              value: "max-age=15552000; includeSubDomains; preload",
+              value: "max-age=63072000; includeSubDomains",
             },
           ]
         : [...base];
