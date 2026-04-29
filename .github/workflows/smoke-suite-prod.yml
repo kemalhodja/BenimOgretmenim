@@ -1,0 +1,66 @@
+# Üretim API’ye karşı `smoke:suite` (prod-safe; ödeme / PayTR callback POST yok).
+#
+# Tetikleme:
+#   - Her gün 02:00 UTC (cron)
+#   - Actions → Bu workflow → Run workflow (isteğe bağlı api_url)
+#
+# Hedef URL önceliği:
+#   1) workflow_dispatch ile verilen api_url
+#   2) Repository secret: SMOKE_API_URL (boş değilse)
+#   3) Varsayılan: https://benim-ogretmenim.onrender.com
+#
+# GitHub → Settings → Secrets and variables → Actions:
+#   SMOKE_API_URL  (isteğe bağlı; staging veya farklı API hostu için)
+
+name: Smoke suite (prod API)
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: "API kök URL (sonunda / olmasın)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: smoke-suite-prod
+  cancel-in-progress: false
+
+jobs:
+  smoke-suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: npm ci --include=dev
+
+      - name: Run smoke suite
+        working-directory: apps/api
+        env:
+          SMOKE_API_URL_SECRET: ${{ secrets.SMOKE_API_URL }}
+        run: |
+          set -euo pipefail
+          DISPATCH_URL="${{ github.event.inputs.api_url }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "$DISPATCH_URL" ]; then
+            export SMOKE_API_URL="$DISPATCH_URL"
+          elif [ -n "${SMOKE_API_URL_SECRET:-}" ]; then
+            export SMOKE_API_URL="${SMOKE_API_URL_SECRET}"
+          else
+            export SMOKE_API_URL="https://benim-ogretmenim.onrender.com"
+          fi
+          echo "::notice::SMOKE_API_URL=${SMOKE_API_URL}"
+          npm run smoke:suite
