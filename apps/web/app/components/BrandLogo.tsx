@@ -17,7 +17,7 @@ type Props = {
 };
 
 /**
- * Marka: açık kitap + indigo gradient — küçük boyutta okunaklı, tek tip palet.
+ * Marka: “katmanlı öğrenme” — izometrik kağıt yığını, sıcak köşe katlaması, küçük vurgu noktası.
  */
 export function BrandLogo({
   className = "",
