@@ -23,7 +23,7 @@
     "smoke:suite": "npm run smoke:suite --prefix apps/api",
     "test": "npm run test --prefix apps/api",
     "ci:api": "npm ci --include=dev --prefix apps/api && npm run test --prefix apps/api && npm run build --prefix apps/api",
-    "ci:web": "npm ci --include=dev --prefix apps/web && npm run build --prefix apps/web",
+    "ci:web": "node scripts/ci-web.mjs",
     "ci": "npm run ci:api && npm run ci:web",
     "migrate": "npm run db:migrate",
     "seed": "npm run db:seed",
