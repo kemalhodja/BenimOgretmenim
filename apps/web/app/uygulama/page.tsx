@@ -76,8 +76,17 @@ export default function UygulamaPage() {
             <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">
               /.well-known/assetlinks.json
             </code>{" "}
-            dosyası ile uygulama imzası eşleştirilir. Repoda şablon dosya vardır; yayın öncesi
-            Play Console’daki paket adı ve SHA-256 parmak iziyle doldurulmalıdır.
+            dosyası ile uygulama imzası eşleştirilir. Geliştirici şablonu: repoda{" "}
+            <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">
+              apps/twa-android/assetlinks.template.json
+            </code>{" "}
+            ve adım listesi{" "}
+            <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">
+              apps/twa-android/BUILD.txt
+            </code>
+            . Canlı sitede şimdilik boş{" "}
+            <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">[]</code> bırakıldı;
+            TWA yayınından önce gerçek JSON ile değiştirin.
           </li>
           <li>
             <strong>App Store:</strong> WebView veya Capacitor benzeri bir{" "}

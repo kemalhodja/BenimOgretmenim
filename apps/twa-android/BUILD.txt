@@ -1,0 +1,28 @@
+BenimÖğretmenim — Google Play (TWA) hazırlığı
+============================================
+
+1) Android uygulaması (TWA kabuğu)
+   - Öneri: Bubblewrap ile üretim (Google’ın resmi aracı):
+     npx @bubblewrap/cli@latest init
+     (manifest URL olarak canlı sitenizin /manifest.webmanifest adresini verin.)
+   - Alternatif: Android Studio + "Trusted Web Activity" örnek şablonları.
+
+2) Play Console
+   - Uygulama kimliği (applicationId / package name) sabitlenir.
+   - İmzalama: "App signing by Google Play" açıksa Play’in gösterdiği SHA-256 parmak izini kullanın.
+   - Yerel debug için ayrıca upload key / debug SHA eklemeniz gerekebilir.
+
+3) Digital Asset Links
+   - Bu repodaki şablon: apps/twa-android/assetlinks.template.json
+   - Doldurulmuş içeriği web kökünde şuraya koyun:
+     apps/web/public/.well-known/assetlinks.json
+   - Şu an canlıda boş dizi [] bırakıldı (yanlış doğrulama riski yok).
+   - Yayın öncesi: şablondaki package_name ve sha256_cert_fingerprints gerçek değerlerle değiştirin.
+
+4) Doğrulama
+   - https://developers.google.com/digital-asset-links/tools/generator
+   - veya "Statement List Generator and Tester" ile test.
+
+5) Site kökü
+   - TWA hedef URL, manifest start_url ile uyumlu HTTPS kök olmalı.
+   - Render’da özel alan adı kullanıyorsanız assetlinks ve manifest URL’lerini güncelleyin.

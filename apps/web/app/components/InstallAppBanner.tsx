@@ -33,7 +33,7 @@ function detectAndroid(): boolean {
 
 export function InstallAppBanner() {
   const [mounted, setMounted] = useState(false);
-  const [dismissed, setDismissed] = useState(true);
+  const [dismissed, setDismissed] = useState(false);
   const [standalone, setStandalone] = useState(false);
   const [ios, setIos] = useState(false);
   const [android, setAndroid] = useState(false);
@@ -42,9 +42,9 @@ export function InstallAppBanner() {
   useEffect(() => {
     setMounted(true);
     try {
-      setDismissed(localStorage.getItem(STORAGE_KEY) === "1");
+      if (localStorage.getItem(STORAGE_KEY) === "1") setDismissed(true);
     } catch {
-      setDismissed(false);
+      /* ignore */
     }
     setStandalone(isStandalone());
     setIos(detectIos());
