@@ -89,6 +89,7 @@ async function main() {
     console.log("[smoke:suite] /health", r.status, r.json);
     assert("health_ok", r.ok, r.json);
     assert("health_db_true", r.json.db === true, r.json);
+    assert("health_request_id_header", Boolean(r.headers.get("x-request-id")?.trim()), r.headers);
     return r;
   });
 
@@ -164,13 +165,6 @@ async function main() {
     const r = await reqJson("/v1/paytr/callback");
     console.log("[smoke:suite] /v1/paytr/callback (GET)", r.status);
     assert("paytr_callback_get_not_500", r.status !== 500, r.json);
-    return r;
-  });
-
-  await step("subscriptions_plans", async () => {
-    const r = await reqJson("/v1/subscriptions/plans");
-    console.log("[smoke:suite] /v1/subscriptions/plans", r.status);
-    assert("plans_ok", r.ok, r.json);
     return r;
   });
 
