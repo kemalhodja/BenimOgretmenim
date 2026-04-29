@@ -11,6 +11,8 @@ type RateLimitOptions = {
   windowMs: number;
   /** Optional extra key factor (e.g. user agent) */
   keySuffix?: (c: Context<{ Variables: AppVariables }>) => string;
+  /** When true, this request does not consume the bucket */
+  skip?: (c: Context<{ Variables: AppVariables }>) => boolean;
 };
 
 type Bucket = { resetAt: number; count: number };
@@ -38,6 +40,11 @@ function clientIp(c: Context<{ Variables: AppVariables }>): string {
 
 export function rateLimit(opts: RateLimitOptions) {
   return createMiddleware<{ Variables: AppVariables }>(async (c, next) => {
+    if (opts.skip?.(c)) {
+      await next();
+      return;
+    }
+
     const ip = clientIp(c);
     const suffix = opts.keySuffix ? `:${opts.keySuffix(c)}` : "";
     const key = `${opts.name}:${ip}${suffix}`;

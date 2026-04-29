@@ -21,8 +21,24 @@ import { studentPlatform } from "./routes/studentPlatform.js";
 import { userWallet } from "./routes/userWallet.js";
 import { groupLessons } from "./routes/groupLessons.js";
 import { requestId } from "./middleware/requestId.js";
+import { rateLimit } from "./middleware/rateLimit.js";
 
 export const app = new Hono<{ Variables: AppVariables }>();
+
+function parsePositiveInt(raw: string | undefined, fallback: number): number {
+  const v = raw?.trim();
+  if (!v) return fallback;
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 1) return fallback;
+  return Math.floor(n);
+}
+
+function globalRateLimitEnabled(): boolean {
+  if (process.env.VITEST === "true") return false;
+  if (process.env.NODE_ENV === "test") return false;
+  if (process.env.API_GLOBAL_RATE_LIMIT?.trim() === "0") return false;
+  return true;
+}
 
 function corsAllowedOrigins(): string[] {
   const raw = process.env.CORS_ORIGINS?.trim();
@@ -59,6 +75,22 @@ app.use(
     maxAge: 86400,
   }),
 );
+
+if (globalRateLimitEnabled()) {
+  const limit = parsePositiveInt(process.env.API_GLOBAL_RATE_LIMIT, 800);
+  const windowMs = parsePositiveInt(process.env.API_GLOBAL_RATE_WINDOW_MS, 60_000);
+  app.use(
+    "/*",
+    rateLimit({
+      name: "global",
+      limit,
+      windowMs,
+      skip: (c) =>
+        c.req.path === "/health" ||
+        (c.req.path === "/v1/paytr/callback" && c.req.method === "POST"),
+    }),
+  );
+}
 
 app.use(
   "/*",

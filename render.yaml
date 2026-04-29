@@ -5,6 +5,10 @@
 # aşağıdaki CORS_ORIGINS ve NEXT_PUBLIC_* değerlerini Dashboard'dan güncelle):
 #   API:  https://benim-ogretmenim.onrender.com
 #   Web: https://benimogretmenim.onrender.com
+#
+# API (isteğe bağlı): API_GLOBAL_RATE_LIMIT = IP başına penceredeki maks. istek (varsayılan 800);
+#   pencere ms: API_GLOBAL_RATE_WINDOW_MS (varsayılan 60000). Kapatmak için "0".
+#   Hariç: GET /health, POST /v1/paytr/callback. Vitest / NODE_ENV=test otomatik devre dışı.
 
 databases:
   - name: benimogretmenim-db
