@@ -1,11 +1,18 @@
 BenimÖğretmenim — Google Play (TWA) hazırlığı
 ============================================
 
+0) Gradle iskeleti (bu repoda)
+   - Klasör: apps/twa-android
+   - Android Studio → File → Open → apps/twa-android
+   - İlk açılışta Gradle sync; ardından Run ile cihazda/emülatörde dene.
+   - applicationId: com.benimogretmenim.twa (assetlinks ile aynı olmalı)
+   - Varsayılan site: strings.xml içindeki twa_default_url + AndroidManifest VIEW host
+
 1) Android uygulaması (TWA kabuğu)
    - Öneri: Bubblewrap ile üretim (Google’ın resmi aracı):
      npx @bubblewrap/cli@latest init
      (manifest URL olarak canlı sitenizin /manifest.webmanifest adresini verin.)
-   - Alternatif: Android Studio + "Trusted Web Activity" örnek şablonları.
+   - Alternatif: Bu repodaki apps/twa-android iskeletini özelleştir veya Android Studio örnekleri.
 
 2) Play Console
    - Uygulama kimliği (applicationId / package name) sabitlenir.

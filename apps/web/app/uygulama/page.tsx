@@ -86,7 +86,13 @@ export default function UygulamaPage() {
             </code>
             . Canlı sitede şimdilik boş{" "}
             <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">[]</code> bırakıldı;
-            TWA yayınından önce gerçek JSON ile değiştirin.
+            TWA yayınından önce gerçek JSON ile değiştirin. Android Studio ile açılabilir{" "}
+            <strong>Gradle TWA iskeleti</strong> repoda{" "}
+            <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">apps/twa-android</code>{" "}
+            klasöründedir (<code className="rounded bg-paper-200/80 px-1 font-mono text-xs">
+              com.benimogretmenim.twa
+            </code>
+            ).
           </li>
           <li>
             <strong>App Store:</strong> WebView veya Capacitor benzeri bir{" "}

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BenimÖğretmenim</string>
+    <!-- TWA açılış adresi: özel alan adına geçince burayı ve AndroidManifest içindeki host’u güncelleyin -->
+    <string name="twa_default_url">https://benimogretmenim.onrender.com/</string>
+</resources>
