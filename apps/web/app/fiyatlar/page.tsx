@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { RegisterNavLink } from "../components/AuthNavLinks";
 import { makeRequestId } from "../lib/requestId";
 
@@ -28,10 +29,14 @@ export default async function FiyatlarPage() {
   let plans: PlanRow[] = [];
   let loadError: string | null = null;
   try {
+    const h = await headers();
+    const incomingRid = h.get("x-request-id")?.trim();
+    const requestId = incomingRid && incomingRid.length > 0 ? incomingRid : makeRequestId();
+
     const res = await fetch(`${api}/v1/subscriptions/plans`, {
       headers: {
         accept: "application/json",
-        "x-request-id": makeRequestId(),
+        "x-request-id": requestId,
       },
       next: { revalidate: 300 },
     });
