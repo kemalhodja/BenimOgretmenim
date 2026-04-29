@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { InstallAppBanner } from "./components/InstallAppBanner";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
 import { PwaRegister } from "./components/PwaRegister";
@@ -19,14 +20,31 @@ const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
   "http://localhost:3000";
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#335096",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  applicationName: "BenimÖğretmenim",
+  appleWebApp: {
+    capable: true,
+    title: "BenimÖğretmenim",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: "/brand-mark.svg", type: "image/svg+xml" },
-      { url: "/icon", type: "image/png" },
+      { url: "/icon-192", sizes: "192x192", type: "image/png" },
+      { url: "/icon", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-icon", type: "image/png" }],
+    apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
   },
   manifest: "/manifest.webmanifest",
   title: {
@@ -63,6 +81,7 @@ export default function RootLayout({
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
+        <InstallAppBanner />
       </body>
     </html>
   );

@@ -30,6 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/teacher/requests",
     "/guardian",
     "/fiyatlar",
+    "/uygulama",
     "/yardim",
     "/iletisim",
     "/gizlilik",

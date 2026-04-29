@@ -128,6 +128,11 @@ export function SiteFooter() {
             </div>
             <ul className="mt-3 space-y-2 text-sm text-paper-800/90">
               <li>
+                <Link href="/uygulama" className="hover:underline">
+                  Telefona ekle (PWA)
+                </Link>
+              </li>
+              <li>
                 <Link href="/yardim" className="hover:underline">
                   Yardım
                 </Link>

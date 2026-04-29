@@ -1,8 +1,14 @@
 /* Minimal service worker for basic offline + faster repeat visits. */
-const CACHE_NAME = "benimogretmenim-pwa-v1";
+const CACHE_NAME = "benimogretmenim-pwa-v3";
 
 // Keep this list small; Next will handle most assets with hashed filenames.
-const PRECACHE_URLS = ["/", "/manifest.webmanifest", "/pwa-icon.svg"];
+const PRECACHE_URLS = [
+  "/",
+  "/manifest.webmanifest",
+  "/uygulama",
+  "/brand-mark.svg",
+  "/icon-192",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
