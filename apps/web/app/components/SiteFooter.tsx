@@ -29,6 +29,16 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/student/odev-sor" className="hover:underline">
+                  Soru / ödev gönder
+                </Link>
+              </li>
+              <li>
+                <Link href="/student/odev-sor/gonderiler" className="hover:underline">
+                  Soru gönderilerim
+                </Link>
+              </li>
+              <li>
                 <Link href="/student/dogrudan-dersler" className="hover:underline">
                   Doğrudan ders anlaşmaları
                 </Link>

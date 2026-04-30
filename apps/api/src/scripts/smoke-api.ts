@@ -200,6 +200,29 @@ async function main() {
   });
   console.log("[smoke] PUT /v1/teacher/me/branches", putBr.status, await putBr.json());
 
+  const hwClaims = await fetch(`${base}/v1/student-platform/homework-posts/teacher/claims`, {
+    headers: auth,
+  });
+  const hwClaimsBody = (await hwClaims.json()) as { posts?: unknown[] };
+  console.log("[smoke] GET /v1/student-platform/homework-posts/teacher/claims", hwClaims.status);
+  if (!hwClaims.ok || !Array.isArray(hwClaimsBody.posts)) {
+    console.error(hwClaimsBody);
+    process.exitCode = 1;
+    return;
+  }
+
+  const hwFeed = await fetch(
+    `${base}/v1/student-platform/homework-posts/teacher/feed?branchId=${matematik.id}`,
+    { headers: auth },
+  );
+  const hwFeedBody = (await hwFeed.json()) as { posts?: unknown[] };
+  console.log("[smoke] GET /v1/student-platform/homework-posts/teacher/feed", hwFeed.status);
+  if (!hwFeed.ok || !Array.isArray(hwFeedBody.posts)) {
+    console.error(hwFeedBody);
+    process.exitCode = 1;
+    return;
+  }
+
   const sess = await fetch(`${base}/v1/onboarding/sessions`, {
     method: "POST",
     headers: auth,

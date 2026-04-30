@@ -191,7 +191,10 @@ export default function StudentRequestsPage() {
               <Link className="underline" href="/student/odev-sor">
                 Ödev sorusu
               </Link>{" "}
-              ekranından.
+              ekranından.{" "}
+              <Link className="underline" href="/student/odev-sor/gonderiler">
+                Gönderilerim
+              </Link>
             </p>
             <div className="mt-4 space-y-4">
               <label className="block">

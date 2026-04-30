@@ -52,6 +52,7 @@ export default function OdevHavuzuPage() {
   const [claimBusy, setClaimBusy] = useState<string | null>(null);
   const [answerBusy, setAnswerBusy] = useState<string | null>(null);
   const [answerDraft, setAnswerDraft] = useState<Record<string, string>>({});
+  const [answerImagesByPost, setAnswerImagesByPost] = useState<Record<string, string[]>>({});
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -164,13 +165,19 @@ export default function OdevHavuzuPage() {
     }
     setAnswerBusy(id);
     setError(null);
+    const imgs = answerImagesByPost[id] ?? [];
     try {
       await apiFetch(`/v1/student-platform/homework-posts/${id}/answer`, {
         method: "POST",
         token,
-        body: JSON.stringify({ answerText: text, answerImageUrls: [] }),
+        body: JSON.stringify({ answerText: text, answerImageUrls: imgs }),
       });
       setAnswerDraft((d) => ({ ...d, [id]: "" }));
+      setAnswerImagesByPost((d) => {
+        const next = { ...d };
+        delete next[id];
+        return next;
+      });
       await loadClaims(token);
       if (branchId !== "") await loadPool(token, Number(branchId));
     } catch (e) {
@@ -358,6 +365,65 @@ export default function OdevHavuzuPage() {
                           }))
                         }
                       />
+                      <label className="block text-xs text-zinc-600">
+                        Cevap görselleri (isteğe, en fazla 4, ~350 KB)
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          multiple
+                          className="mt-1 block w-full text-xs file:mr-2 file:rounded file:border file:border-zinc-200 file:bg-white file:px-2 file:py-0.5"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files ?? []).slice(0, 4);
+                            if (files.length === 0) return;
+                            void Promise.all(
+                              files.map(
+                                (file) =>
+                                  new Promise<string>((resolve, reject) => {
+                                    if (file.size > 350_000) {
+                                      reject(
+                                        new Error("Dosya çok büyük; sıkıştırın veya daha küçük görsel seçin."),
+                                      );
+                                      return;
+                                    }
+                                    const fr = new FileReader();
+                                    fr.onload = () => resolve(String(fr.result ?? ""));
+                                    fr.onerror = () => reject(new Error("okuma"));
+                                    fr.readAsDataURL(file);
+                                  }),
+                              ),
+                            )
+                              .then((urls) => {
+                                setAnswerImagesByPost((prev) => ({
+                                  ...prev,
+                                  [p.id]: [...(prev[p.id] ?? []), ...urls].slice(0, 4),
+                                }));
+                                setError(null);
+                              })
+                              .catch((err) => {
+                                setError(err instanceof Error ? err.message : "Görsel eklenemedi");
+                              });
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                      {(answerImagesByPost[p.id] ?? []).length > 0 ? (
+                        <p className="text-xs text-zinc-500">
+                          {answerImagesByPost[p.id]!.length} görsel eklendi.
+                          <button
+                            type="button"
+                            className="ml-2 text-brand-800 underline"
+                            onClick={() =>
+                              setAnswerImagesByPost((prev) => {
+                                const n = { ...prev };
+                                delete n[p.id];
+                                return n;
+                              })
+                            }
+                          >
+                            Temizle
+                          </button>
+                        </p>
+                      ) : null}
                       <button
                         type="button"
                         disabled={answerBusy === p.id}
