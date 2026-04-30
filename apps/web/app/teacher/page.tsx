@@ -65,6 +65,24 @@ type InAppNotification = {
   payload_jsonb?: unknown;
 };
 
+function tryYoutubeEmbed(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.hostname === "youtu.be") {
+      const id = u.pathname.replace("/", "").trim();
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (u.hostname.endsWith("youtube.com")) {
+      const id = u.searchParams.get("v")?.trim();
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function homeworkNotifHref(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const o = payload as { kind?: string };
@@ -389,6 +407,61 @@ export default function TeacherHomePage() {
             </ul>
           </div>
         )}
+
+        <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-zinc-900">
+              Örnek ders anlatım videosu
+            </h2>
+            <Link
+              href="/teacher/edit?focus=video"
+              className="text-sm font-medium text-brand-800 underline"
+            >
+              {me?.teacher.videoUrl ? "Düzenle" : "Video ekle"}
+            </Link>
+          </div>
+          <p className="mt-1 text-xs text-zinc-500">
+            YouTube/Loom gibi bir link ekleyin. Bu video herkese açık öğretmen profilinizde de gösterilir.
+          </p>
+
+          {me?.teacher.videoUrl ? (
+            <div className="mt-4">
+              {(() => {
+                const embed = tryYoutubeEmbed(me.teacher.videoUrl);
+                if (embed) {
+                  return (
+                    <div className="aspect-video w-full overflow-hidden rounded-xl border border-zinc-200 bg-black">
+                      <iframe
+                        src={embed}
+                        className="h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        title="Örnek ders videosu"
+                      />
+                    </div>
+                  );
+                }
+                return (
+                  <a
+                    href={me.teacher.videoUrl}
+                    className="inline-block rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-800 underline"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Videoyu aç
+                  </a>
+                );
+              })()}
+              <div className="mt-2 text-xs text-zinc-500">
+                URL: <span className="font-mono">{me.teacher.videoUrl}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50 p-4 text-sm text-zinc-700">
+              Henüz video eklenmedi. Profilinizin dönüşümü için önerilir.
+            </div>
+          )}
+        </div>
 
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:col-span-2">
