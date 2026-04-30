@@ -19,16 +19,25 @@ type TeacherRow = {
   created_at: string;
 };
 
+function parseListFilterParam(raw: string | null): number | "" {
+  if (raw == null || raw === "") return "";
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 1 || !Number.isInteger(n)) return "";
+  return n;
+}
+
 function OgretmenlerPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const initialQ = searchParams.get("q")?.trim() ?? "";
+  const initialBranch = parseListFilterParam(searchParams.get("branchId"));
+  const initialCity = parseListFilterParam(searchParams.get("cityId"));
 
   const [branches, setBranches] = useState<Branch[]>([]);
   const [cities, setCities] = useState<City[]>([]);
-  const [branchId, setBranchId] = useState<number | "">("");
-  const [cityId, setCityId] = useState<number | "">("");
+  const [branchId, setBranchId] = useState<number | "">(initialBranch);
+  const [cityId, setCityId] = useState<number | "">(initialCity);
   const [rows, setRows] = useState<TeacherRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [metaLoading, setMetaLoading] = useState(true);
@@ -37,11 +46,19 @@ function OgretmenlerPageInner() {
   const [searchInput, setSearchInput] = useState(initialQ);
   const [searchApply, setSearchApply] = useState(initialQ);
 
-  function replaceQueryPreservingParams(nextQ: string) {
-    const p = new URLSearchParams(searchParams.toString());
-    const t = nextQ.trim();
-    if (t) p.set("q", t);
-    else p.delete("q");
+  function replaceAllFilters(opts?: {
+    q?: string;
+    branchId?: number | "";
+    cityId?: number | "";
+  }) {
+    const q = (opts?.q !== undefined ? opts.q : searchApply).trim();
+    const br = opts?.branchId !== undefined ? opts.branchId : branchId;
+    const ci = opts?.cityId !== undefined ? opts.cityId : cityId;
+
+    const p = new URLSearchParams();
+    if (q) p.set("q", q);
+    if (br !== "") p.set("branchId", String(br));
+    if (ci !== "") p.set("cityId", String(ci));
     const qs = p.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
@@ -49,13 +66,15 @@ function OgretmenlerPageInner() {
   function commitTextSearch() {
     const t = searchInput.trim();
     setSearchApply(t);
-    replaceQueryPreservingParams(t);
+    replaceAllFilters({ q: t });
   }
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim() ?? "";
     setSearchInput(q);
     setSearchApply(q);
+    setBranchId(parseListFilterParam(searchParams.get("branchId")));
+    setCityId(parseListFilterParam(searchParams.get("cityId")));
   }, [searchParams]);
 
   const leafBranches = useMemo(() => {
@@ -177,7 +196,7 @@ function OgretmenlerPageInner() {
                 onClick={() => {
                   setSearchApply("");
                   setSearchInput("");
-                  replaceQueryPreservingParams("");
+                  replaceAllFilters({ q: "" });
                 }}
                 className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700"
               >
@@ -193,9 +212,11 @@ function OgretmenlerPageInner() {
               <div className="mb-1 text-xs font-medium text-zinc-600">Branş</div>
               <select
                 value={branchId}
-                onChange={(e) =>
-                  setBranchId(e.target.value ? Number(e.target.value) : "")
-                }
+                onChange={(e) => {
+                  const v = e.target.value ? Number(e.target.value) : "";
+                  setBranchId(v);
+                  replaceAllFilters({ branchId: v });
+                }}
                 disabled={!metaReady || metaLoading}
                 className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-400"
               >
@@ -213,9 +234,11 @@ function OgretmenlerPageInner() {
               <div className="mb-1 text-xs font-medium text-zinc-600">Şehir</div>
               <select
                 value={cityId}
-                onChange={(e) =>
-                  setCityId(e.target.value ? Number(e.target.value) : "")
-                }
+                onChange={(e) => {
+                  const v = e.target.value ? Number(e.target.value) : "";
+                  setCityId(v);
+                  replaceAllFilters({ cityId: v });
+                }}
                 disabled={!metaReady || metaLoading}
                 className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-400"
               >
