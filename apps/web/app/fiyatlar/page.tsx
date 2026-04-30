@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { RegisterNavLink } from "../components/AuthNavLinks";
+import { getServerApiBaseUrl } from "../lib/api";
 import { makeRequestId } from "../lib/requestId";
 
 export const metadata: Metadata = {
@@ -23,8 +24,7 @@ function minorToTl(n: number): string {
 }
 
 export default async function FiyatlarPage() {
-  const api =
-    process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || "http://127.0.0.1:3002";
+  const api = getServerApiBaseUrl();
 
   let plans: PlanRow[] = [];
   let loadError: string | null = null;

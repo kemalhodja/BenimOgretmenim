@@ -17,6 +17,7 @@ if (!env.NEXT_PUBLIC_API_BASE_URL?.trim() || !env.NEXT_PUBLIC_SITE_URL?.trim()) 
         "Örnek (PowerShell):\n" +
         '  $env:NEXT_PUBLIC_API_BASE_URL="https://benim-ogretmenim.onrender.com"\n' +
         '  $env:NEXT_PUBLIC_SITE_URL="https://benimogretmenim.onrender.com"\n' +
+        '  $env:INTERNAL_API_BASE_URL="https://benim-ogretmenim.onrender.com"\n' +
         "  npm run ci:web\n",
     );
     process.exit(1);
@@ -25,6 +26,8 @@ if (!env.NEXT_PUBLIC_API_BASE_URL?.trim() || !env.NEXT_PUBLIC_SITE_URL?.trim()) 
   // GitHub Actions / CI: keep defaults aligned with deploy-render workflow.
   env.NEXT_PUBLIC_API_BASE_URL =
     env.NEXT_PUBLIC_API_BASE_URL?.trim() || "https://benim-ogretmenim.onrender.com";
+  env.INTERNAL_API_BASE_URL =
+    env.INTERNAL_API_BASE_URL?.trim() || "https://benim-ogretmenim.onrender.com";
   env.NEXT_PUBLIC_SITE_URL =
     env.NEXT_PUBLIC_SITE_URL?.trim() || "https://benimogretmenim.onrender.com";
 }

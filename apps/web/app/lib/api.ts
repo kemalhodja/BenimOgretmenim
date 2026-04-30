@@ -3,13 +3,32 @@ import { makeRequestId } from "./requestId";
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3002";
 
+/** Sunucu tarafı `fetch` ve tam URL gerektiren yerler için (SSR, `fiyatlar` vb.). */
+export function getServerApiBaseUrl(): string {
+  return (
+    process.env.INTERNAL_API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_BASE_URL ??
+    "http://127.0.0.1:3002"
+  ).replace(/\/$/, "");
+}
+
+function resolveApiFetchUrl(path: string): string {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const upstream = getServerApiBaseUrl();
+
+  if (typeof window !== "undefined" && p.startsWith("/v1")) {
+    return p;
+  }
+  return `${upstream}${p}`;
+}
+
 export type ApiError = { error: unknown } | { error: string } | unknown;
 
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit & { token?: string | null },
 ): Promise<T> {
-  const url = `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+  const url = resolveApiFetchUrl(path);
   const headers = new Headers(init?.headers);
   headers.set("accept", "application/json");
   if (!headers.has("x-request-id")) {
@@ -41,7 +60,8 @@ export async function apiFetch<T>(
       const ridSuffix = responseRequestId ? ` (requestId=${responseRequestId})` : "";
       throw new Error(
         `[${res.status}] expected_json_got_${contentType || "unknown"} (${preview}). ` +
-          `API_BASE_URL yanlış olabilir: NEXT_PUBLIC_API_BASE_URL${ridSuffix}`,
+          `API uçlarına yanlış adres gidiyor olabilir: Render Web'de NEXT_PUBLIC_API_BASE_URL gerçek API kökü olmalı; ` +
+          `aynı site köküne işaret ediyorsa Next.js HTML döner. INTERNAL_API_BASE_URL ve /v1 rewrite ile de düzeltilebilir.${ridSuffix}`,
       );
     }
   }

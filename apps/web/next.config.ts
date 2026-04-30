@@ -2,6 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async rewrites() {
+    const internal =
+      process.env.INTERNAL_API_BASE_URL?.trim() ||
+      process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+    if (!internal) return [];
+    const base = internal.replace(/\/$/, "");
+    return [{ source: "/v1/:path*", destination: `${base}/v1/:path*` }];
+  },
   images: {
     remotePatterns: [
       {

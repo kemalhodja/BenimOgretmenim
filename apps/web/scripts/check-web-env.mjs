@@ -39,4 +39,30 @@ if (!allowHttp) {
   }
 }
 
-console.log("[web:env] OK", { api: apiUrl.origin, site: siteUrl.origin, allowHttp });
+let internalUrl = null;
+const internalRaw = process.env.INTERNAL_API_BASE_URL?.trim();
+if (internalRaw) {
+  try {
+    internalUrl = new URL(internalRaw);
+  } catch {
+    fail(`INTERNAL_API_BASE_URL is not a valid URL: ${internalRaw}`);
+  }
+}
+
+if (!allowHttp && apiUrl.origin === siteUrl.origin) {
+  const internalOk = internalUrl && internalUrl.origin !== siteUrl.origin;
+  if (!internalOk) {
+    fail(
+      "NEXT_PUBLIC_API_BASE_URL ile NEXT_PUBLIC_SITE_URL aynı köke işaret ediyor; " +
+        "tarayıcıdaki /v1 istekleri Next.js 404 HTML döner. Çözüm: API için ayrı kök kullanın " +
+        "(ör. Render API servis URL'si) veya INTERNAL_API_BASE_URL'i gerçek API köküne ayarlayıp yeniden derleyin.",
+    );
+  }
+}
+
+console.log("[web:env] OK", {
+  api: apiUrl.origin,
+  site: siteUrl.origin,
+  internal: internalUrl?.origin ?? null,
+  allowHttp,
+});
