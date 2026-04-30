@@ -1,6 +1,13 @@
+import Image from "next/image";
 import Link from "next/link";
 import { RegisterNavLink } from "./components/AuthNavLinks";
 import { HeroArt } from "./components/HeroArt";
+
+/** Ana sayfa hero — Unsplash (ücretsiz kullanım; altta atıf) */
+const HERO_PHOTO =
+  "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=960&q=80";
+
+const quickSubjects = ["Matematik", "İngilizce", "Fizik", "YKS", "Kodlama"] as const;
 
 const homeHighlights: {
   title: string;
@@ -74,6 +81,8 @@ export default function Home() {
       <section className="relative overflow-hidden border-b border-paper-200/60 bg-gradient-to-b from-warm-50/40 via-paper-50 to-white">
         <HeroArt />
         <div className="relative z-0 mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_min(44%,min(440px,100%))] lg:items-center lg:gap-14">
+            <div className="max-lg:order-2 lg:order-none">
           <p className="inline-flex items-center gap-2 rounded-full border border-paper-200/80 bg-white/85 px-3 py-1 text-sm font-medium text-brand-800 shadow-sm ring-1 ring-warm-100/60 backdrop-blur-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-warm-500" />
             Özel ders · Online & yüz yüze
@@ -108,7 +117,37 @@ export default function Home() {
               Öğretmen olarak kayıt ol →
             </RegisterNavLink>
           </div>
-          <dl className="mt-14 grid grid-cols-2 gap-4 border-t border-brand-100/80 pt-10 sm:grid-cols-4 sm:gap-5">
+          <div className="mt-8">
+            <p className="text-xs font-medium uppercase tracking-wide text-paper-800/55">
+              Hızlı başlangıç
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {quickSubjects.map((label) => (
+                <Link
+                  key={label}
+                  href="/ogretmenler"
+                  className="rounded-full border border-paper-200/90 bg-white/90 px-3.5 py-1.5 text-xs font-medium text-paper-800 shadow-sm ring-1 ring-paper-100/80 transition hover:border-brand-200 hover:text-brand-900"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
+          </div>
+          <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 border-t border-paper-200/60 pt-8 text-xs font-medium text-paper-800/80">
+            <li className="inline-flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/90" aria-hidden />
+              Şeffaf teklif süreci
+            </li>
+            <li className="inline-flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/90" aria-hidden />
+              Veli gelişim özeti
+            </li>
+            <li className="inline-flex items-center gap-2">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/90" aria-hidden />
+              Öğretmen aboneliği
+            </li>
+          </ul>
+          <dl className="mt-10 grid grid-cols-2 gap-4 border-t border-brand-100/80 pt-10 sm:grid-cols-4 sm:gap-5">
             {homeHighlights.map((item) => (
               <div
                 key={item.title}
@@ -126,6 +165,42 @@ export default function Home() {
               </div>
             ))}
           </dl>
+            </div>
+
+            <figure className="order-first mx-auto w-full max-w-md lg:order-none lg:mx-0 lg:max-w-none">
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl bg-paper-200 shadow-[0_20px_50px_-12px_rgba(22,34,51,0.25)] ring-1 ring-paper-300/60">
+                <Image
+                  src={HERO_PHOTO}
+                  alt="Grup ders çalışması: öğrenciler birlikte not tutuyor"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 440px"
+                  priority
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-paper-950/25 via-transparent to-transparent" />
+              </div>
+              <figcaption className="mt-2 text-center text-[0.65rem] leading-snug text-paper-800/55 lg:text-left">
+                Fotoğraf:{" "}
+                <a
+                  href="https://unsplash.com/@brookecagle?utm_source=benimogretmenim&utm_medium=referral"
+                  className="underline decoration-paper-400/80 underline-offset-2 hover:text-brand-800"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Brooke Cagle
+                </a>{" "}
+                /{" "}
+                <a
+                  href="https://unsplash.com/license?utm_source=benimogretmenim&utm_medium=referral"
+                  className="underline decoration-paper-400/80 underline-offset-2 hover:text-brand-800"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Unsplash Lisansı
+                </a>
+              </figcaption>
+            </figure>
+          </div>
         </div>
       </section>
 
