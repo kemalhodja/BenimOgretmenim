@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../lib/api";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
@@ -18,7 +19,12 @@ type TeacherRow = {
   created_at: string;
 };
 
-export default function OgretmenlerPage() {
+function OgretmenlerPageInner() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const initialQ = searchParams.get("q")?.trim() ?? "";
+
   const [branches, setBranches] = useState<Branch[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [branchId, setBranchId] = useState<number | "">("");
@@ -28,8 +34,29 @@ export default function OgretmenlerPage() {
   const [metaLoading, setMetaLoading] = useState(true);
   const [metaReady, setMetaReady] = useState(false);
   const [listLoading, setListLoading] = useState(true);
-  const [searchInput, setSearchInput] = useState("");
-  const [searchApply, setSearchApply] = useState("");
+  const [searchInput, setSearchInput] = useState(initialQ);
+  const [searchApply, setSearchApply] = useState(initialQ);
+
+  function replaceQueryPreservingParams(nextQ: string) {
+    const p = new URLSearchParams(searchParams.toString());
+    const t = nextQ.trim();
+    if (t) p.set("q", t);
+    else p.delete("q");
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }
+
+  function commitTextSearch() {
+    const t = searchInput.trim();
+    setSearchApply(t);
+    replaceQueryPreservingParams(t);
+  }
+
+  useEffect(() => {
+    const q = searchParams.get("q")?.trim() ?? "";
+    setSearchInput(q);
+    setSearchApply(q);
+  }, [searchParams]);
 
   const leafBranches = useMemo(() => {
     const hasChild = new Set<number>();
@@ -130,7 +157,7 @@ export default function OgretmenlerPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
-                  setSearchApply(searchInput.trim());
+                  commitTextSearch();
                 }
               }}
               placeholder="Örn: matematik, deneyimli…"
@@ -139,7 +166,7 @@ export default function OgretmenlerPage() {
             />
             <button
               type="button"
-              onClick={() => setSearchApply(searchInput.trim())}
+              onClick={() => commitTextSearch()}
               className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
             >
               Ara
@@ -150,6 +177,7 @@ export default function OgretmenlerPage() {
                 onClick={() => {
                   setSearchApply("");
                   setSearchInput("");
+                  replaceQueryPreservingParams("");
                 }}
                 className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700"
               >
@@ -209,6 +237,7 @@ export default function OgretmenlerPage() {
                   setCityId("");
                   setSearchApply("");
                   setSearchInput("");
+                  router.replace(pathname, { scroll: false });
                 }}
                 className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 sm:flex-none"
               >
@@ -277,5 +306,23 @@ export default function OgretmenlerPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OgretmenlerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[50vh] bg-zinc-50 px-6 py-16">
+          <div className="mx-auto max-w-4xl animate-pulse space-y-4">
+            <div className="h-8 w-56 rounded-lg bg-zinc-200" />
+            <div className="h-28 rounded-2xl bg-zinc-200" />
+            <div className="h-40 rounded-2xl bg-zinc-200" />
+          </div>
+        </div>
+      }
+    >
+      <OgretmenlerPageInner />
+    </Suspense>
   );
 }

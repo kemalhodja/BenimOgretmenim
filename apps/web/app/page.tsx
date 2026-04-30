@@ -125,7 +125,7 @@ export default function Home() {
               {quickSubjects.map((label) => (
                 <Link
                   key={label}
-                  href="/ogretmenler"
+                  href={`/ogretmenler?q=${encodeURIComponent(label)}`}
                   className="rounded-full border border-paper-200/90 bg-white/90 px-3.5 py-1.5 text-xs font-medium text-paper-800 shadow-sm ring-1 ring-paper-100/80 transition hover:border-brand-200 hover:text-brand-900"
                 >
                   {label}
