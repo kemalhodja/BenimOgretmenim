@@ -62,7 +62,15 @@ type InAppNotification = {
   body: string;
   sent_at: string | null;
   read_at: string | null;
+  payload_jsonb?: unknown;
 };
+
+function homeworkNotifHref(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") return null;
+  const o = payload as { kind?: string };
+  if (o.kind === "homework_rewarded") return "/teacher/odev-havuzu";
+  return null;
+}
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
@@ -282,11 +290,12 @@ export default function TeacherHomePage() {
           <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
             <p className="mt-1 text-xs text-zinc-500">
-              Öğrenci yorumları ve veli bildirimleri burada listelenir.
+              Öğrenci yorumları, ödev onayları ve veli bildirimleri burada listelenir.
             </p>
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;
+                const hwHref = homeworkNotifHref(n.payload_jsonb);
                 return (
                   <li
                     key={n.id}
@@ -298,6 +307,14 @@ export default function TeacherHomePage() {
                   >
                     <div className="font-medium text-zinc-900">{n.title}</div>
                     <p className="mt-1 text-zinc-700">{n.body}</p>
+                    {hwHref ? (
+                      <Link
+                        href={hwHref}
+                        className="mt-2 inline-block text-xs font-medium text-brand-800 underline"
+                      >
+                        Ödev havuzuna git
+                      </Link>
+                    ) : null}
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
                       <span>
                         {n.sent_at

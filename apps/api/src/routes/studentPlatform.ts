@@ -583,7 +583,7 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
        and claimed_by_teacher_id = $4
        and status = 'claimed'
        and (resolve_deadline_at is null or resolve_deadline_at > now())
-     returning id, status, answered_at`,
+     returning id, status, answered_at, student_id, topic`,
     [
       postId,
       parsed.data.answerText.trim(),
@@ -593,6 +593,26 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
   );
   if (!r.rowCount) {
     return c.json({ error: "not_claimed_by_you_or_expired_or_not_claimed" }, 409);
+  }
+  const answered = r.rows[0] as { student_id: string; topic: string };
+  const su = await pool.query(`select user_id from students where id = $1`, [answered.student_id]);
+  if (su.rowCount) {
+    const recipientUserId = su.rows[0].user_id as string;
+    const topicShort =
+      answered.topic.length > 120 ? `${answered.topic.slice(0, 117)}…` : answered.topic;
+    await pool.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        recipientUserId,
+        answered.student_id,
+        "Ödev sorunuza cevap geldi",
+        `"${topicShort}" konusunda öğretmen cevabını gönderdi. Gönderilerim sayfasından inceleyip onaylayabilirsiniz.`,
+        JSON.stringify({ kind: "homework_answered", homeworkPostId: postId }),
+      ],
+    );
   }
   return c.json({ post: r.rows[0] });
 });
@@ -615,7 +635,7 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
   try {
     await cpool.query("begin");
     const pq = await cpool.query(
-      `select h.id, h.claimed_by_teacher_id, t.user_id as teacher_user_id
+      `select h.id, h.claimed_by_teacher_id, h.topic, t.user_id as teacher_user_id
        from student_homework_posts h
        join teachers t on t.id = h.claimed_by_teacher_id
        where h.id = $1
@@ -629,7 +649,7 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
       await cpool.query("rollback");
       return c.json({ error: "not_answered_or_already_rewarded_or_not_owner" }, 409);
     }
-    const row = pq.rows[0] as { teacher_user_id: string };
+    const row = pq.rows[0] as { teacher_user_id: string; topic: string };
 
     const wq = await cpool.query(
       `select balance_minor::text from user_wallets where user_id = $1 for update`,
@@ -677,6 +697,22 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
            updated_at = now()
        where id = $1`,
       [postId, rewardMinor],
+    );
+
+    const tl = (rewardMinor / 100).toFixed(2);
+    const topicShort = row.topic.length > 100 ? `${row.topic.slice(0, 97)}…` : row.topic;
+    await cpool.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        row.teacher_user_id,
+        studentRowId,
+        "Ödev cevabınız onaylandı",
+        `Öğrenci "${topicShort}" sorusunda cevabınızı yeterli buldu. ${tl} TL cüzdanınıza aktarıldı.`,
+        JSON.stringify({ kind: "homework_rewarded", homeworkPostId: postId, rewardMinor }),
+      ],
     );
 
     await cpool.query("commit");

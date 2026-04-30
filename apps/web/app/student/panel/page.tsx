@@ -25,6 +25,15 @@ type LedgerEntry = {
   created_at: string;
 };
 
+type InAppNotification = {
+  id: string;
+  title: string;
+  body: string;
+  sent_at: string | null;
+  read_at: string | null;
+  payload_jsonb?: unknown;
+};
+
 type HoldsResponse = {
   holds?: Array<{
     id: string;
@@ -63,6 +72,8 @@ export default function StudentPanelPage() {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [notifications, setNotifications] = useState<InAppNotification[]>([]);
+  const [notifBusyId, setNotifBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = getToken();
@@ -74,18 +85,46 @@ export default function StudentPanelPage() {
   }, [router, pathname]);
 
   const load = useCallback(async (t: string) => {
-    const [s, w, l, h] = await Promise.all([
+    const [s, w, l, h, n] = await Promise.all([
       apiFetch<SubMe>("/v1/student-platform/subscription/me", { token: t }),
       apiFetch<Wallet>("/v1/wallet/me", { token: t }),
       apiFetch<{ entries: LedgerEntry[] }>("/v1/wallet/ledger?limit=25", { token: t }),
       apiFetch<HoldsResponse>("/v1/wallet/holds?limit=50", { token: t }),
+      apiFetch<{ notifications: InAppNotification[] }>("/v1/notifications?limit=8", { token: t }).catch(
+        () => ({ notifications: [] as InAppNotification[] }),
+      ),
     ]);
     setSub(s);
     setWallet(w);
     setLedger(l.entries);
     setActiveHoldMinor(h.activeHoldMinor ?? 0);
     setHolds(h.holds ?? []);
+    setNotifications(n.notifications);
   }, []);
+
+  async function markNotificationRead(id: string) {
+    if (!token) return;
+    setNotifBusyId(id);
+    try {
+      await apiFetch(`/v1/notifications/${id}/read`, { method: "PATCH", token });
+      setNotifications((prev) =>
+        prev.map((x) =>
+          x.id === id ? { ...x, read_at: x.read_at ?? new Date().toISOString() } : x,
+        ),
+      );
+    } catch {
+      /* yoksay */
+    } finally {
+      setNotifBusyId(null);
+    }
+  }
+
+  function homeworkAnswerHref(payload: unknown): string | null {
+    if (!payload || typeof payload !== "object") return null;
+    const o = payload as { kind?: string; homeworkPostId?: string };
+    if (o.kind !== "homework_answered" || !o.homeworkPostId) return null;
+    return `/student/odev-sor/${o.homeworkPostId}`;
+  }
 
   useEffect(() => {
     if (!token) return;
@@ -222,6 +261,50 @@ export default function StudentPanelPage() {
         {ok && (
           <div className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
             {ok}
+          </div>
+        )}
+
+        {notifications.length > 0 && (
+          <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
+            <p className="mt-1 text-xs text-zinc-500">Ödev cevapları ve diğer güncellemeler.</p>
+            <ul className="mt-4 space-y-3">
+              {notifications.map((n) => {
+                const unread = n.read_at == null;
+                const href = homeworkAnswerHref(n.payload_jsonb);
+                return (
+                  <li
+                    key={n.id}
+                    className={`rounded-xl border px-3 py-2 text-sm ${
+                      unread ? "border-brand-200 bg-brand-50/60" : "border-zinc-100 bg-zinc-50"
+                    }`}
+                  >
+                    <div className="font-medium text-zinc-900">{n.title}</div>
+                    <p className="mt-1 text-zinc-700">{n.body}</p>
+                    {href ? (
+                      <Link href={href} className="mt-2 inline-block text-xs font-medium text-brand-800 underline">
+                        Soruya git
+                      </Link>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+                      <span>
+                        {n.sent_at ? new Date(n.sent_at).toLocaleString("tr-TR") : "—"}
+                      </span>
+                      {unread && (
+                        <button
+                          type="button"
+                          disabled={notifBusyId === n.id}
+                          onClick={() => void markNotificationRead(n.id)}
+                          className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-50"
+                        >
+                          {notifBusyId === n.id ? "…" : "Okundu"}
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
 

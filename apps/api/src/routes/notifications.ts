@@ -14,7 +14,7 @@ notifications.get("/", requireAuth, async (c) => {
   );
 
   const r = await pool.query(
-    `select id, student_id, snapshot_id, channel, title, body,
+    `select id, student_id, snapshot_id, channel, title, body, payload_jsonb,
             delivery_status, sent_at, read_at, created_at
      from parent_notifications
      where recipient_user_id = $1
