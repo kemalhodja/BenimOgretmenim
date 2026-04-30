@@ -3,9 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   async rewrites() {
-    const internal =
-      process.env.INTERNAL_API_BASE_URL?.trim() ||
-      process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+    const { inferInternalApiUrlIfNeeded } = await import(
+      "./scripts/infer-internal-api-url.mjs"
+    );
+    const site = process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? "";
+    const pub = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ?? "";
+    let internal = process.env.INTERNAL_API_BASE_URL?.trim();
+    if (!internal) {
+      const inferred = inferInternalApiUrlIfNeeded(site, pub, "");
+      if (inferred) internal = inferred;
+    }
+    if (!internal) internal = pub;
     if (!internal) return [];
     const base = internal.replace(/\/$/, "");
     return [{ source: "/v1/:path*", destination: `${base}/v1/:path*` }];

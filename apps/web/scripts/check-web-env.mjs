@@ -1,3 +1,11 @@
+import { spawnSync } from "node:child_process";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { inferInternalApiUrlIfNeeded } from "./infer-internal-api-url.mjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const webRoot = path.resolve(__dirname, "..");
+
 function fail(msg) {
   console.error(`[web:env] ${msg}`);
   process.exit(1);
@@ -49,15 +57,31 @@ if (internalRaw) {
   }
 }
 
+let effectiveInternal = internalRaw;
+
 if (!allowHttp && apiUrl.origin === siteUrl.origin) {
   const internalOk = internalUrl && internalUrl.origin !== siteUrl.origin;
   if (!internalOk) {
-    fail(
-      "NEXT_PUBLIC_API_BASE_URL ile NEXT_PUBLIC_SITE_URL aynı köke işaret ediyor; " +
-        "tarayıcıdaki /v1 istekleri Next.js 404 HTML döner. Çözüm: API için ayrı kök kullanın " +
-        "(ör. Render API servis URL'si) veya INTERNAL_API_BASE_URL'i gerçek API köküne ayarlayıp yeniden derleyin.",
+    const inferred = inferInternalApiUrlIfNeeded(site, api, effectiveInternal);
+    if (!inferred) {
+      fail(
+        "NEXT_PUBLIC_API_BASE_URL ile NEXT_PUBLIC_SITE_URL aynı köke işaret ediyor; " +
+          "INTERNAL_API_BASE_URL yok veya site ile aynı. Render Web ortamına gerçek API kökünü " +
+          "INTERNAL_API_BASE_URL olarak ekleyin veya NEXT_PUBLIC_API_BASE_URL'i API servis URL'si yapın.",
+      );
+    }
+    console.warn(
+      `[web:env] INTERNAL_API_BASE_URL yoktu; bilinen prod eşlemesi kullanılıyor: ${inferred} ` +
+        "(Kalıcı çözüm: Render Dashboard'da INTERNAL_API_BASE_URL tanımlayın.)",
     );
+    effectiveInternal = inferred;
+    internalUrl = new URL(inferred);
   }
+}
+
+const buildEnv = { ...process.env };
+if (effectiveInternal?.trim()) {
+  buildEnv.INTERNAL_API_BASE_URL = effectiveInternal.trim();
 }
 
 console.log("[web:env] OK", {
@@ -66,3 +90,19 @@ console.log("[web:env] OK", {
   internal: internalUrl?.origin ?? null,
   allowHttp,
 });
+
+const isCheckOnly = process.argv.includes("--check-only");
+if (isCheckOnly) {
+  process.exit(0);
+}
+
+const r = spawnSync("npx", ["next", "build"], {
+  cwd: webRoot,
+  stdio: "inherit",
+  env: buildEnv,
+  shell: process.platform === "win32",
+});
+
+if (r.status !== 0) {
+  process.exit(r.status ?? 1);
+}
