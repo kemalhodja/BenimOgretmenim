@@ -25,6 +25,7 @@ type NotifRow = {
   delivery_status: string;
   read_at: string | null;
   created_at: string;
+  payload_jsonb?: unknown;
 };
 
 export default function GuardianPage() {
@@ -152,7 +153,8 @@ export default function GuardianPage() {
         <section className="mt-10">
           <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            Ders sonu gelişim özeti gönderildiğinde burada görünür.
+            Ders sonu gelişim özeti ve öğrenci ödev bildirimleri burada görünür. Ödeme/onay öğrenci hesabından
+            yapılır.
           </p>
           <div className="mt-3 space-y-2">
             {notifications.length === 0 ? (
@@ -177,6 +179,22 @@ export default function GuardianPage() {
                   <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800">
                     {n.body}
                   </p>
+                  {(() => {
+                    const p = n.payload_jsonb;
+                    if (!p || typeof p !== "object") return null;
+                    const k = (p as { kind?: string }).kind;
+                    if (
+                      k === "homework_answered_guardian" ||
+                      k === "homework_rewarded_guardian"
+                    ) {
+                      return (
+                        <p className="mt-2 text-xs text-zinc-500">
+                          Detay ve onay öğrenci hesabında (öğrenci paneli / ödev gönderileri).
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                   {!n.read_at && (
                     <button
                       type="button"

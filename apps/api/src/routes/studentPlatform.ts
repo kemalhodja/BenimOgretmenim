@@ -613,6 +613,32 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
         JSON.stringify({ kind: "homework_answered", homeworkPostId: postId }),
       ],
     );
+
+    const guardians = await pool.query(
+      `select guardian_user_id from student_guardians where student_id = $1`,
+      [answered.student_id],
+    );
+    for (const g of guardians.rows) {
+      const gid = g.guardian_user_id as string;
+      if (gid === recipientUserId) continue;
+      await pool.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          gid,
+          answered.student_id,
+          "Öğrencinizin ödev sorusuna cevap",
+          `Bağlı öğrencinizin "${topicShort}" sorusuna öğretmen cevap gönderdi. Öğrenci hesabından onay ve ödeme yapılabilir.`,
+          JSON.stringify({
+            kind: "homework_answered_guardian",
+            homeworkPostId: postId,
+            studentId: answered.student_id,
+          }),
+        ],
+      );
+    }
   }
   return c.json({ post: r.rows[0] });
 });
@@ -714,6 +740,50 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
         JSON.stringify({ kind: "homework_rewarded", homeworkPostId: postId, rewardMinor }),
       ],
     );
+
+    const gRows = await cpool.query(
+      `select guardian_user_id from student_guardians where student_id = $1`,
+      [studentRowId],
+    );
+    const studentUid = await cpool.query(`select user_id from students where id = $1`, [studentRowId]);
+    const stuUid = studentUid.rowCount ? (studentUid.rows[0].user_id as string) : null;
+    for (const g of gRows.rows) {
+      const gid = g.guardian_user_id as string;
+      if (stuUid && gid === stuUid) continue;
+      await cpool.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          gid,
+          studentRowId,
+          "Öğrenci ödev ödemesini onayladı",
+          `Bağlı öğrenciniz "${topicShort}" ödev cevabını onayladı; öğretmene ${tl} TL öğrenci cüzdanından aktarıldı.`,
+          JSON.stringify({
+            kind: "homework_rewarded_guardian",
+            homeworkPostId: postId,
+            rewardMinor,
+          }),
+        ],
+      );
+    }
+
+    if (stuUid) {
+      await cpool.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          stuUid,
+          studentRowId,
+          "Ödev ödemesi tamamlandı",
+          `"${topicShort}" için öğretmene ${tl} TL cüzdanınızdan aktarıldı; işlem tamam.`,
+          JSON.stringify({ kind: "homework_rewarded_student", homeworkPostId: postId, rewardMinor }),
+        ],
+      );
+    }
 
     await cpool.query("commit");
     return c.json({ ok: true, rewardMinor, status: "closed" });

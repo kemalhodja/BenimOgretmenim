@@ -119,11 +119,14 @@ export default function StudentPanelPage() {
     }
   }
 
-  function homeworkAnswerHref(payload: unknown): string | null {
+  function homeworkNotifHref(payload: unknown): string | null {
     if (!payload || typeof payload !== "object") return null;
     const o = payload as { kind?: string; homeworkPostId?: string };
-    if (o.kind !== "homework_answered" || !o.homeworkPostId) return null;
-    return `/student/odev-sor/${o.homeworkPostId}`;
+    if (!o.homeworkPostId) return null;
+    if (o.kind === "homework_answered" || o.kind === "homework_rewarded_student") {
+      return `/student/odev-sor/${o.homeworkPostId}`;
+    }
+    return null;
   }
 
   useEffect(() => {
@@ -267,11 +270,13 @@ export default function StudentPanelPage() {
         {notifications.length > 0 && (
           <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
-            <p className="mt-1 text-xs text-zinc-500">Ödev cevapları ve diğer güncellemeler.</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Ödev cevapları, ödeme onayı özeti ve diğer güncellemeler.
+            </p>
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;
-                const href = homeworkAnswerHref(n.payload_jsonb);
+                const href = homeworkNotifHref(n.payload_jsonb);
                 return (
                   <li
                     key={n.id}
@@ -283,7 +288,7 @@ export default function StudentPanelPage() {
                     <p className="mt-1 text-zinc-700">{n.body}</p>
                     {href ? (
                       <Link href={href} className="mt-2 inline-block text-xs font-medium text-brand-800 underline">
-                        Soruya git
+                        Ödev kaydına git
                       </Link>
                     ) : null}
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
