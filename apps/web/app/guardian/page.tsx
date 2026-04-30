@@ -184,8 +184,10 @@ export default function GuardianPage() {
                     if (!p || typeof p !== "object") return null;
                     const k = (p as { kind?: string }).kind;
                     if (
+                      k === "homework_claimed_guardian" ||
                       k === "homework_answered_guardian" ||
-                      k === "homework_rewarded_guardian"
+                      k === "homework_rewarded_guardian" ||
+                      k === "homework_answer_rejected_guardian"
                     ) {
                       return (
                         <p className="mt-2 text-xs text-zinc-500">

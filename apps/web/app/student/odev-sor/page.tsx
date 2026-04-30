@@ -118,7 +118,9 @@ export default function OdevSorPage() {
         <h1 className="text-2xl font-semibold text-zinc-900">Soru / ödev yardım</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Branş havuzuna düşer; bir öğretmen üstlenir (varsayılan 20 dk içinde cevaplamalı). Cevabı onaylarsanız
-          öğretmen cüzdanına 5,00 TL aktarılır (sizin cüzdanınızdan). Aktif abonelik gerekir.
+          öğretmen cüzdanına 5,00 TL aktarılır (sizin cüzdanınızdan).           Onaylamadan önce cevabı yeterli bulmazsanız
+          soruyu tekrar havuza iade edebilirsiniz (ödeme yapılmaz). Henüz kimse üstlenmediyse gönderiyi
+          tamamen iptal edebilirsiniz. Aktif abonelik gerekir.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link href="/student/odev-sor/gonderiler" className="font-medium text-brand-800 underline">

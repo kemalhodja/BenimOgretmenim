@@ -144,6 +144,7 @@ studentPlatform.get("/homework-posts/mine", requireAuth, async (c) => {
             h.help_text, h.image_urls_jsonb, h.audio_url,
             h.claimed_at, h.resolve_deadline_at, h.answered_at, h.answer_text, h.answer_image_urls_jsonb,
             h.student_satisfied_at, h.homework_reward_minor, h.homework_reward_applied_at,
+            h.last_answer_rejected_at,
             tu.display_name as teacher_display_name
      from student_homework_posts h
      left join branches b on b.id = h.branch_id
@@ -534,15 +535,76 @@ studentPlatform.post("/homework-posts/:postId/claim", requireAuth, async (c) => 
          claimed_by_teacher_id = $1,
          claimed_at = now(),
          resolve_deadline_at = now() + ($3::int * interval '1 minute'),
+         last_answer_rejected_at = null,
          updated_at = now()
      where id = $2
        and status = 'open'
-     returning id, status, claimed_at, resolve_deadline_at`,
+     returning id, status, claimed_at, resolve_deadline_at, student_id, topic`,
     [teacherId, postId, resolveMin],
   );
   if (!r.rowCount) {
     return c.json({ error: "not_open_or_taken" }, 409);
   }
+  const claimed = r.rows[0] as {
+    student_id: string;
+    topic: string;
+  };
+  const tn = await pool.query(
+    `select u.display_name from teachers t join users u on u.id = t.user_id where t.id = $1`,
+    [teacherId],
+  );
+  const teacherName = tn.rowCount ? String(tn.rows[0].display_name ?? "Öğretmen") : "Öğretmen";
+  const topicShort =
+    claimed.topic.length > 100 ? `${claimed.topic.slice(0, 97)}…` : claimed.topic;
+
+  const su = await pool.query(`select user_id from students where id = $1`, [claimed.student_id]);
+  if (su.rowCount) {
+    const studentUserId = su.rows[0].user_id as string;
+    await pool.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        studentUserId,
+        claimed.student_id,
+        "Ödev sorunuz üstlenildi",
+        `${teacherName} "${topicShort}" sorunuzu üstlendi; yaklaşık ${resolveMin} dakika içinde cevap beklenir.`,
+        JSON.stringify({
+          kind: "homework_claimed",
+          homeworkPostId: postId,
+          resolveMinutes: resolveMin,
+        }),
+      ],
+    );
+
+    const guardians = await pool.query(
+      `select guardian_user_id from student_guardians where student_id = $1`,
+      [claimed.student_id],
+    );
+    for (const g of guardians.rows) {
+      const gid = g.guardian_user_id as string;
+      if (gid === studentUserId) continue;
+      await pool.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          gid,
+          claimed.student_id,
+          "Öğrencinizin ödevi üstlenildi",
+          `${teacherName}, bağlı öğrencinizin "${topicShort}" sorusunu üstlendi (yaklaşık ${resolveMin} dk içinde cevap beklenir).`,
+          JSON.stringify({
+            kind: "homework_claimed_guardian",
+            homeworkPostId: postId,
+            resolveMinutes: resolveMin,
+          }),
+        ],
+      );
+    }
+  }
+
   return c.json({ post: r.rows[0], resolveMinutes: resolveMin });
 });
 
@@ -578,6 +640,7 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
          answer_text = $2,
          answer_image_urls_jsonb = $3::jsonb,
          answered_at = now(),
+         last_answer_rejected_at = null,
          updated_at = now()
      where id = $1
        and claimed_by_teacher_id = $4
@@ -797,4 +860,174 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
   } finally {
     cpool.release();
   }
+});
+
+const rejectHomeworkAnswerSchema = z.object({
+  note: z.string().max(500).optional(),
+});
+
+/** Öğrenci: ödeme öncesi cevabı yeterli bulmazsa soruyu tekrar havuza açar (cevap temizlenir). */
+studentPlatform.post("/homework-posts/:postId/reject-answer", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+
+  const postId = c.req.param("postId");
+  if (!z.string().uuid().safeParse(postId).success) return c.json({ error: "invalid_post_id" }, 400);
+
+  let raw: unknown = {};
+  try {
+    raw = await c.req.json();
+  } catch {
+    /* empty body */
+  }
+  const parsed = rejectHomeworkAnswerSchema.safeParse(raw);
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  await releaseExpiredHomeworkClaims(pool);
+
+  const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
+  if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
+  const studentRowId = sr.rows[0].id as string;
+
+  const noteTrim = parsed.data.note?.trim() ?? "";
+  const noteForNotif = noteTrim.length > 280 ? `${noteTrim.slice(0, 277)}…` : noteTrim;
+
+  const cpool = await pool.connect();
+  try {
+    await cpool.query("begin");
+    const pq = await cpool.query(
+      `select h.id, h.topic, h.claimed_by_teacher_id, t.user_id as teacher_user_id
+       from student_homework_posts h
+       left join teachers t on t.id = h.claimed_by_teacher_id
+       where h.id = $1
+         and h.student_id = $2
+         and h.status = 'answered'
+         and h.homework_reward_applied_at is null
+       for update`,
+      [postId, studentRowId],
+    );
+    if (!pq.rowCount) {
+      await cpool.query("rollback");
+      return c.json(
+        {
+          error: "not_rejectable",
+          hint: "Yalnızca cevaplanmış ve henüz ödeme onayı verilmemiş gönderiler iade edilebilir.",
+        },
+        409,
+      );
+    }
+    const row = pq.rows[0] as { topic: string; teacher_user_id: string | null };
+    const topicShort = row.topic.length > 100 ? `${row.topic.slice(0, 97)}…` : row.topic;
+
+    await cpool.query(
+      `update student_homework_posts
+       set status = 'open',
+           claimed_by_teacher_id = null,
+           claimed_at = null,
+           resolve_deadline_at = null,
+           answer_text = null,
+           answer_image_urls_jsonb = '[]'::jsonb,
+           answered_at = null,
+           last_answer_rejected_at = now(),
+           updated_at = now()
+       where id = $1`,
+      [postId],
+    );
+
+    if (row.teacher_user_id) {
+      const teacherBody = noteForNotif
+        ? `Öğrenci "${topicShort}" için cevabınızı yeterli bulmadı; soru tekrar havuza düştü. Öğrenci notu: ${noteForNotif}`
+        : `Öğrenci "${topicShort}" için cevabınızı yeterli bulmadı; soru tekrar havuza düştü.`;
+
+      await cpool.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          row.teacher_user_id,
+          studentRowId,
+          "Ödev cevabı iade edildi",
+          teacherBody,
+          JSON.stringify({ kind: "homework_answer_rejected", homeworkPostId: postId }),
+        ],
+      );
+    }
+
+    const gRows = await cpool.query(
+      `select guardian_user_id from student_guardians where student_id = $1`,
+      [studentRowId],
+    );
+    const stuUidRow = await cpool.query(`select user_id from students where id = $1`, [studentRowId]);
+    const stuUid = stuUidRow.rowCount ? (stuUidRow.rows[0].user_id as string) : null;
+    const guardianBody = noteForNotif
+      ? `Bağlı öğrenciniz "${topicShort}" ödev cevabını yeterli bulmadı; soru tekrar öğretmen havuzuna düştü. Not: ${noteForNotif}`
+      : `Bağlı öğrenciniz "${topicShort}" ödev cevabını yeterli bulmadı; soru tekrar öğretmen havuzuna düştü.`;
+
+    for (const g of gRows.rows) {
+      const gid = g.guardian_user_id as string;
+      if (stuUid && gid === stuUid) continue;
+      await cpool.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          gid,
+          studentRowId,
+          "Öğrenci ödev cevabını iade etti",
+          guardianBody,
+          JSON.stringify({ kind: "homework_answer_rejected_guardian", homeworkPostId: postId }),
+        ],
+      );
+    }
+
+    await cpool.query("commit");
+    return c.json({ ok: true, status: "open" });
+  } catch (e) {
+    await cpool.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    cpool.release();
+  }
+});
+
+/** Öğrenci: yalnızca havuzda (open) iken gönderiyi iptal eder; öğretmen üstlenmişse kullanılamaz. */
+studentPlatform.post("/homework-posts/:postId/cancel", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+
+  const postId = c.req.param("postId");
+  if (!z.string().uuid().safeParse(postId).success) return c.json({ error: "invalid_post_id" }, 400);
+
+  await releaseExpiredHomeworkClaims(pool);
+
+  const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
+  if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
+  const studentRowId = sr.rows[0].id as string;
+
+  const r = await pool.query(
+    `update student_homework_posts
+     set status = 'cancelled',
+         claimed_by_teacher_id = null,
+         claimed_at = null,
+         resolve_deadline_at = null,
+         last_answer_rejected_at = null,
+         updated_at = now()
+     where id = $1
+       and student_id = $2
+       and status = 'open'
+     returning id`,
+    [postId, studentRowId],
+  );
+  if (!r.rowCount) {
+    return c.json(
+      {
+        error: "not_cancellable",
+        hint: "Yalnızca havuzda bekleyen (henüz öğretmen üstlenmemiş) gönderiler iptal edilir.",
+      },
+      409,
+    );
+  }
+  return c.json({ ok: true, status: "cancelled" });
 });

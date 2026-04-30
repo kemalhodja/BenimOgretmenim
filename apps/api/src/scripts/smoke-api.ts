@@ -7,9 +7,13 @@
  *   SMOKE_ADMIN_EMAIL, SMOKE_ADMIN_PASSWORD
  *   SMOKE_GUARDIAN_EMAIL, SMOKE_GUARDIAN_PASSWORD (varsayılan seed veli)
  * API'de ADMIN_API_SECRET tanımlıysa smoke sürecinde de aynı env ile çalıştırın.
+ *
+ * Ödev akışı (gönder → üstlen → cevap → iade → havuz): seed öğrenciye DB üzerinden aktif
+ * platform aboneliği eklenir; `017_homework_last_answer_rejected_at` migration uygulanmış olmalı.
  */
 
 import { spawnSync } from "node:child_process";
+import { pool } from "../db.js";
 
 const defaultPort = process.env.PORT ?? "3002";
 const base =
@@ -24,7 +28,30 @@ function smokeAdminHeaders(token: string): Record<string, string> {
   return h;
 }
 
+/** Yerel smoke: öğrenci platform aboneliği olmadan homework-posts açılmaz; DB’de aktif satır garanti eder. */
+async function ensureActiveStudentPlatformSubscription(userId: string): Promise<void> {
+  const r = await pool.query(
+    `select 1 from student_subscriptions
+     where user_id = $1
+       and lifecycle = 'active'
+       and expires_at is not null
+       and expires_at > now()
+     limit 1`,
+    [userId],
+  );
+  if (r.rowCount) return;
+  const price = 100_000;
+  await pool.query(
+    `insert into student_subscriptions (
+       user_id, months_count, price_per_month_minor, price_total_minor,
+       lifecycle, starts_at, expires_at
+     ) values ($1, 1, $2, $2, 'active', now(), now() + interval '400 days')`,
+    [userId, price],
+  );
+}
+
 async function main() {
+  try {
   const health = await fetch(`${base}/health`);
   const hBody = (await health.json()) as { status?: string; db?: boolean };
   console.log("[smoke] GET /health", health.status, hBody);
@@ -257,14 +284,116 @@ async function main() {
       password: "DevParola1",
     }),
   });
-  const studentLoginBody = (await studentLogin.json()) as { token?: string };
+  const studentLoginBody = (await studentLogin.json()) as {
+    token?: string;
+    user?: { id: string };
+  };
   console.log("[smoke] POST /v1/auth/login (seed student)", studentLogin.status);
-  if (!studentLogin.ok || !studentLoginBody.token) {
+  if (!studentLogin.ok || !studentLoginBody.token || !studentLoginBody.user?.id) {
     console.error(studentLoginBody);
     process.exitCode = 1;
     return;
   }
   const studentAuth = { Authorization: `Bearer ${studentLoginBody.token}` };
+
+  await ensureActiveStudentPlatformSubscription(studentLoginBody.user.id);
+
+  // Ödev: gönder → üstlen → cevapla → iade → havuzda tekrar görünsün (017 migration: last_answer_rejected_at)
+  const hwCreate = await fetch(`${base}/v1/student-platform/homework-posts`, {
+    method: "POST",
+    headers: { ...studentAuth, "content-type": "application/json" },
+    body: JSON.stringify({
+      branchId: matematik.id,
+      topic: `Smoke ödev ${Date.now()}`,
+      helpText: "Smoke test: integral ile ilgili kısa bir açıklama bekleniyor (en az beş).",
+      imageUrls: [] as string[],
+      audioUrl: null,
+    }),
+  });
+  const hwCreateBody = (await hwCreate.json()) as { post?: { id: string }; error?: string };
+  console.log("[smoke] POST /v1/student-platform/homework-posts", hwCreate.status);
+  if (!hwCreate.ok || !hwCreateBody.post?.id) {
+    console.error(hwCreateBody);
+    process.exitCode = 1;
+    return;
+  }
+  const smokeHwPostId = hwCreateBody.post.id;
+
+  const hwClaim = await fetch(`${base}/v1/student-platform/homework-posts/${smokeHwPostId}/claim`, {
+    method: "POST",
+    headers: { ...auth, "content-type": "application/json" },
+  });
+  console.log("[smoke] POST homework claim", hwClaim.status);
+  if (!hwClaim.ok) {
+    console.error(await hwClaim.json().catch(() => ({})));
+    process.exitCode = 1;
+    return;
+  }
+
+  const hwAns = await fetch(`${base}/v1/student-platform/homework-posts/${smokeHwPostId}/answer`, {
+    method: "POST",
+    headers: { ...auth, "content-type": "application/json" },
+    body: JSON.stringify({
+      answerText: "Smoke öğretmen cevabı: temel integral kuralları ve örnek adımlar burada açıklanmıştır.",
+      answerImageUrls: [] as string[],
+    }),
+  });
+  console.log("[smoke] POST homework answer", hwAns.status);
+  if (!hwAns.ok) {
+    console.error(await hwAns.json().catch(() => ({})));
+    process.exitCode = 1;
+    return;
+  }
+
+  const hwReject = await fetch(`${base}/v1/student-platform/homework-posts/${smokeHwPostId}/reject-answer`, {
+    method: "POST",
+    headers: { ...studentAuth, "content-type": "application/json" },
+    body: JSON.stringify({ note: "smoke: iade" }),
+  });
+  console.log("[smoke] POST homework reject-answer", hwReject.status);
+  if (!hwReject.ok) {
+    console.error(await hwReject.json().catch(() => ({})));
+    process.exitCode = 1;
+    return;
+  }
+
+  const hwFeedAfter = await fetch(
+    `${base}/v1/student-platform/homework-posts/teacher/feed?branchId=${matematik.id}`,
+    { headers: auth },
+  );
+  const hwFeedAfterBody = (await hwFeedAfter.json()) as { posts?: { id: string }[] };
+  console.log("[smoke] GET homework teacher/feed (after reject)", hwFeedAfter.status);
+  if (!hwFeedAfter.ok || !Array.isArray(hwFeedAfterBody.posts)) {
+    console.error(hwFeedAfterBody);
+    process.exitCode = 1;
+    return;
+  }
+  if (!hwFeedAfterBody.posts.some((p) => p.id === smokeHwPostId)) {
+    console.error("[smoke] homework post not back in pool after reject", smokeHwPostId);
+    process.exitCode = 1;
+    return;
+  }
+
+  const hwViewAfter = await fetch(
+    `${base}/v1/student-platform/homework-posts/view/${smokeHwPostId}`,
+    { headers: studentAuth },
+  );
+  const hwViewAfterBody = (await hwViewAfter.json()) as {
+    post?: { status?: string; last_answer_rejected_at?: string | null };
+  };
+  console.log("[smoke] GET homework view (after reject)", hwViewAfter.status);
+  if (
+    !hwViewAfter.ok ||
+    hwViewAfterBody.post?.status !== "open" ||
+    !hwViewAfterBody.post?.last_answer_rejected_at
+  ) {
+    console.error(
+      "[smoke] view after reject: beklenen open + last_answer_rejected_at (017 migration uygulandı mı?)",
+      hwViewAfterBody,
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   const reviewableEmpty = await fetch(`${base}/v1/lesson-sessions/reviewable`, {
     headers: studentAuth,
@@ -541,6 +670,9 @@ async function main() {
   }
 
   console.log("[smoke] Tamam. Kayıtlı kullanıcı:", email);
+  } finally {
+    await pool.end().catch(() => {});
+  }
 }
 
 main().catch((e) => {

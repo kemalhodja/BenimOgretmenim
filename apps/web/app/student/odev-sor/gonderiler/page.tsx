@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
 import { loginHrefWithReturn } from "../../../lib/authRedirect";
 import { clearToken, getToken } from "../../../lib/auth";
+import { homeworkPostStatusLabelTr } from "../../../lib/homeworkStatusLabel";
 
 type PostRow = {
   id: string;
@@ -15,6 +16,7 @@ type PostRow = {
   branch_name: string | null;
   answered_at: string | null;
   homework_reward_applied_at: string | null;
+  last_answer_rejected_at?: string | null;
 };
 
 export default function OdevGonderilerPage() {
@@ -85,9 +87,14 @@ export default function OdevGonderilerPage() {
                 >
                   <div className="font-medium text-zinc-900">{p.topic}</div>
                   <div className="mt-1 text-xs text-zinc-500">
-                    {p.branch_name ?? "—"} · {p.status} ·{" "}
+                    {p.branch_name ?? "—"} · {homeworkPostStatusLabelTr(p.status)} ·{" "}
                     {new Date(p.created_at).toLocaleString("tr-TR")}
                   </div>
+                  {p.status === "open" && p.last_answer_rejected_at ? (
+                    <div className="mt-2 text-xs font-medium text-amber-900">
+                      Cevap iade edildi — tekrar havuzda, öğretmen bekleniyor
+                    </div>
+                  ) : null}
                   {p.answered_at && !p.homework_reward_applied_at ? (
                     <div className="mt-2 text-xs font-medium text-amber-800">
                       Cevap geldi — onay ve ödeme için tıklayın

@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
+import { homeworkPostStatusLabelTr } from "../../lib/homeworkStatusLabel";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 type PoolPost = {
@@ -200,7 +201,8 @@ export default function OdevHavuzuPage() {
         <p className="mt-1 text-sm text-zinc-600">
           Üstlenince soru {resolveMinutes} dakika yalnızca size aittir; sürede cevaplamazsanız tekrar havuza
           düşer. Öğrenci cevabı onaylarsa öğretmen cüzdanına <strong>{rewardTl} TL</strong> aktarılır (öğrenci
-          cüzdanından).
+          cüzdanından). Öğrenci, ödeme öncesi cevabı yeterli bulmazsa soruyu tekrar havuza iade edebilir; bu
+          durumda bildirim alırsınız.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
@@ -281,7 +283,8 @@ export default function OdevHavuzuPage() {
                     </div>
                     <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-zinc-700">{p.help_text}</p>
                     <div className="mt-1 text-xs text-zinc-500">
-                      {p.status} · {new Date(p.created_at).toLocaleString("tr-TR")}
+                      {homeworkPostStatusLabelTr(p.status)} ·{" "}
+                      {new Date(p.created_at).toLocaleString("tr-TR")}
                     </div>
                     {Array.isArray(p.image_urls_jsonb) && (p.image_urls_jsonb as string[]).length > 0 && (
                       <ul className="mt-2 text-xs text-blue-700">
@@ -334,7 +337,7 @@ export default function OdevHavuzuPage() {
                     {p.topic} <span className="text-xs text-zinc-500">· {p.student_display_name}</span>
                   </div>
                   <div className="mt-1 text-xs text-zinc-500">
-                    {p.status}
+                    {homeworkPostStatusLabelTr(p.status)}
                     {p.status === "claimed" && p.resolve_deadline_at ? (
                       <> · Kalan: {formatRemaining(p.resolve_deadline_at)}</>
                     ) : null}

@@ -123,7 +123,11 @@ export default function StudentPanelPage() {
     if (!payload || typeof payload !== "object") return null;
     const o = payload as { kind?: string; homeworkPostId?: string };
     if (!o.homeworkPostId) return null;
-    if (o.kind === "homework_answered" || o.kind === "homework_rewarded_student") {
+    if (
+      o.kind === "homework_claimed" ||
+      o.kind === "homework_answered" ||
+      o.kind === "homework_rewarded_student"
+    ) {
       return `/student/odev-sor/${o.homeworkPostId}`;
     }
     return null;

@@ -68,7 +68,9 @@ type InAppNotification = {
 function homeworkNotifHref(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
   const o = payload as { kind?: string };
-  if (o.kind === "homework_rewarded") return "/teacher/odev-havuzu";
+  if (o.kind === "homework_rewarded" || o.kind === "homework_answer_rejected") {
+    return "/teacher/odev-havuzu";
+  }
   return null;
 }
 
