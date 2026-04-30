@@ -1,9 +1,8 @@
 @import "tailwindcss";
 
-/* Güven: akademik mavi. Samimiyet: sıcak terrakota. Eğitim: kağıt tonu. */
+/* Güven: akademik mavi. Samimiyet: sıcak terrakota. Eğitim: nötr tuval (mavi-gri). */
 :root {
-  /* Daha az “sarı”, daha temiz kağıt */
-  --background: #f7f4ee;
+  --background: #f2f5fb;
   --foreground: #162233;
 }
 
@@ -13,10 +12,10 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  --color-paper-50: #f7f4ee;
-  --color-paper-100: #f0eadf;
-  --color-paper-200: #e4dacc;
-  --color-paper-300: #d2c3b0;
+  --color-paper-50: #f2f5fb;
+  --color-paper-100: #e8ecf4;
+  --color-paper-200: #dce3ee;
+  --color-paper-300: #c5cedd;
   --color-paper-800: #2c2520;
   --color-paper-900: #1c1814;
   --color-paper-950: #0f0d0b;
