@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { PoolClient } from "pg";
 import { pool } from "../db.js";
 import { formatDbConnectError } from "../lib/dbErrors.js";
+import { seedTurkeyGeoIfNeeded } from "../lib/trGeoSeed.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,6 +51,9 @@ async function main() {
       await client.query("insert into schema_migrations (filename) values ($1)", [file]);
       console.log("applied", file);
     }
+
+    // Referans geo veri (TR): idempotent seed (81 il + tüm ilçeler).
+    await seedTurkeyGeoIfNeeded(client);
   } finally {
     client.release();
     await pool.end();
