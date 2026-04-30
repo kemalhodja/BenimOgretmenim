@@ -4,6 +4,11 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import {
+  homeworkResolveMinutes,
+  homeworkSatisfactionRewardMinor,
+  releaseExpiredHomeworkClaims,
+} from "../lib/homeworkPosts.js";
 import { applyWalletDelta, teacherPayoutFromGross } from "../lib/wallet.js";
 import { getActiveStudentSubscription, getStudentSubPriceConfig } from "../lib/studentSub.js";
 
@@ -67,9 +72,15 @@ const createHomeworkSchema = z.object({
   branchId: z.number().int().positive(),
   topic: z.string().min(2).max(200),
   helpText: z.string().min(5).max(8000),
-  imageUrls: z.array(z.string().min(1).max(2000)).max(8).optional().default([]),
+  imageUrls: z.array(z.string().min(1).max(450_000)).max(4).optional().default([]),
   audioUrl: z.string().min(1).max(2000).optional().nullable(),
 });
+
+function isAllowedHomeworkImageUrl(u: string): boolean {
+  if (u.length > 400_000) return false;
+  if (/^https?:\/\//i.test(u)) return true;
+  return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(u);
+}
 
 /** Branş havuzuna: foto + açıklama; aktif abonelik gerekir */
 studentPlatform.post("/homework-posts", requireAuth, async (c) => {
@@ -89,6 +100,14 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
 
   const parsed = createHomeworkSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  for (const u of parsed.data.imageUrls ?? []) {
+    if (!isAllowedHomeworkImageUrl(u)) {
+      return c.json(
+        { error: "invalid_image_url", hint: "Görsel: https URL veya data:image/jpeg|png|webp;base64,..." },
+        400,
+      );
+    }
+  }
 
   const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
   if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
@@ -116,12 +135,20 @@ studentPlatform.get("/homework-posts/mine", requireAuth, async (c) => {
   const userId = c.get("userId");
   if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
 
+  await releaseExpiredHomeworkClaims(pool);
+
   const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
   if (!sr.rowCount) return c.json({ posts: [] });
   const r = await pool.query(
-    `select h.id, h.branch_id, b.name as branch_name, h.topic, h.status, h.created_at
+    `select h.id, h.branch_id, b.name as branch_name, h.topic, h.status, h.created_at,
+            h.help_text, h.image_urls_jsonb, h.audio_url,
+            h.claimed_at, h.resolve_deadline_at, h.answered_at, h.answer_text, h.answer_image_urls_jsonb,
+            h.student_satisfied_at, h.homework_reward_minor, h.homework_reward_applied_at,
+            tu.display_name as teacher_display_name
      from student_homework_posts h
      left join branches b on b.id = h.branch_id
+     left join teachers t on t.id = h.claimed_by_teacher_id
+     left join users tu on tu.id = t.user_id
      where h.student_id = $1
      order by h.created_at desc
      limit 100`,
@@ -358,12 +385,14 @@ studentPlatform.post("/direct-bookings/:bookingId/complete", requireAuth, async 
   }
 });
 
-/** Öğretmen: branş havuzundaki açık ödev/soru gönderileri */
+/** Öğretmen: branş havuzundaki açık ödev/soru gönderileri (üstlenilmiş süre dolana kadar havuzda görünmez) */
 studentPlatform.get("/homework-posts/teacher/feed", requireAuth, async (c) => {
   const userId = c.get("userId");
   if (c.get("userRole") !== "teacher") {
     return c.json({ error: "forbidden_teachers_only" }, 403);
   }
+
+  await releaseExpiredHomeworkClaims(pool);
 
   const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
   if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
@@ -382,8 +411,9 @@ studentPlatform.get("/homework-posts/teacher/feed", requireAuth, async (c) => {
     return c.json({ error: "forbidden_not_your_branch" }, 403);
   }
 
+  const resolveMin = homeworkResolveMinutes();
   const r = await pool.query(
-    `select h.id, h.topic, h.status, h.created_at, h.image_urls_jsonb, h.audio_url,
+    `select h.id, h.topic, h.status, h.created_at, h.help_text, h.image_urls_jsonb, h.audio_url,
             u.display_name as student_display_name
      from student_homework_posts h
      join students s on s.id = h.student_id
@@ -393,7 +423,93 @@ studentPlatform.get("/homework-posts/teacher/feed", requireAuth, async (c) => {
      limit 50`,
     [bid],
   );
-  return c.json({ posts: r.rows });
+  return c.json({
+    posts: r.rows,
+    resolveMinutes: resolveMin,
+    satisfactionRewardMinor: homeworkSatisfactionRewardMinor(),
+  });
+});
+
+/** Öğretmen: üstlendiğim / cevapladığım gönderiler */
+studentPlatform.get("/homework-posts/teacher/claims", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "teacher") {
+    return c.json({ error: "forbidden_teachers_only" }, 403);
+  }
+
+  await releaseExpiredHomeworkClaims(pool);
+
+  const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
+  if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
+  const teacherId = tr.rows[0].id as string;
+
+  const resolveMin = homeworkResolveMinutes();
+  const r = await pool.query(
+    `select h.id, h.branch_id, h.topic, h.status, h.created_at, h.help_text, h.image_urls_jsonb, h.audio_url,
+            h.claimed_at, h.resolve_deadline_at, h.answered_at, h.answer_text, h.answer_image_urls_jsonb,
+            u.display_name as student_display_name
+     from student_homework_posts h
+     join students s on s.id = h.student_id
+     join users u on u.id = s.user_id
+     where h.claimed_by_teacher_id = $1
+       and h.status in ('claimed', 'answered')
+     order by h.updated_at desc
+     limit 50`,
+    [teacherId],
+  );
+  return c.json({
+    posts: r.rows,
+    resolveMinutes: resolveMin,
+    satisfactionRewardMinor: homeworkSatisfactionRewardMinor(),
+  });
+});
+
+/** Öğrenci (sahip) veya üstlenen öğretmen: tek kayıt */
+studentPlatform.get("/homework-posts/view/:postId", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  const postId = c.req.param("postId");
+  if (!z.string().uuid().safeParse(postId).success) return c.json({ error: "invalid_post_id" }, 400);
+
+  await releaseExpiredHomeworkClaims(pool);
+
+  const r = await pool.query(
+    `select h.*, b.name as branch_name,
+            su.display_name as student_display_name,
+            tu.display_name as teacher_display_name
+     from student_homework_posts h
+     left join branches b on b.id = h.branch_id
+     join students s on s.id = h.student_id
+     join users su on su.id = s.user_id
+     left join teachers t on t.id = h.claimed_by_teacher_id
+     left join users tu on tu.id = t.user_id
+     where h.id = $1`,
+    [postId],
+  );
+  if (!r.rowCount) return c.json({ error: "not_found" }, 404);
+  const row = r.rows[0] as { student_id: string; claimed_by_teacher_id: string | null };
+  const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
+  const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
+  const studentRowId = sr.rowCount ? (sr.rows[0].id as string) : null;
+  const teacherRowId = tr.rowCount ? (tr.rows[0].id as string) : null;
+
+  const isStudentOwner = role === "student" && studentRowId === row.student_id;
+  const isClaimingTeacher =
+    role === "teacher" && teacherRowId && row.claimed_by_teacher_id === teacherRowId;
+  if (!isStudentOwner && !isClaimingTeacher) {
+    return c.json({ error: "forbidden" }, 403);
+  }
+
+  return c.json({
+    post: r.rows[0],
+    resolveMinutes: homeworkResolveMinutes(),
+    satisfactionRewardMinor: homeworkSatisfactionRewardMinor(),
+  });
+});
+
+const answerHomeworkSchema = z.object({
+  answerText: z.string().min(10).max(16_000),
+  answerImageUrls: z.array(z.string().min(1).max(450_000)).max(4).optional().default([]),
 });
 
 studentPlatform.post("/homework-posts/:postId/claim", requireAuth, async (c) => {
@@ -405,23 +521,174 @@ studentPlatform.post("/homework-posts/:postId/claim", requireAuth, async (c) => 
   const postId = c.req.param("postId");
   if (!z.string().uuid().safeParse(postId).success) return c.json({ error: "invalid_post_id" }, 400);
 
+  await releaseExpiredHomeworkClaims(pool);
+
+  const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
+  if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
+  const teacherId = tr.rows[0].id as string;
+
+  const resolveMin = homeworkResolveMinutes();
+  const r = await pool.query(
+    `update student_homework_posts
+     set status = 'claimed',
+         claimed_by_teacher_id = $1,
+         claimed_at = now(),
+         resolve_deadline_at = now() + ($3::int * interval '1 minute'),
+         updated_at = now()
+     where id = $2
+       and status = 'open'
+     returning id, status, claimed_at, resolve_deadline_at`,
+    [teacherId, postId, resolveMin],
+  );
+  if (!r.rowCount) {
+    return c.json({ error: "not_open_or_taken" }, 409);
+  }
+  return c.json({ post: r.rows[0], resolveMinutes: resolveMin });
+});
+
+studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "teacher") {
+    return c.json({ error: "forbidden_teachers_only" }, 403);
+  }
+
+  const postId = c.req.param("postId");
+  if (!z.string().uuid().safeParse(postId).success) return c.json({ error: "invalid_post_id" }, 400);
+
+  const parsed = answerHomeworkSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  for (const u of parsed.data.answerImageUrls ?? []) {
+    if (!isAllowedHomeworkImageUrl(u)) {
+      return c.json(
+        { error: "invalid_image_url", hint: "Görsel: https URL veya data:image/jpeg|png|webp;base64,..." },
+        400,
+      );
+    }
+  }
+
+  await releaseExpiredHomeworkClaims(pool);
+
   const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
   if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
   const teacherId = tr.rows[0].id as string;
 
   const r = await pool.query(
     `update student_homework_posts
-     set status = 'claimed',
-         claimed_by_teacher_id = $1,
-         claimed_at = now(),
+     set status = 'answered',
+         answer_text = $2,
+         answer_image_urls_jsonb = $3::jsonb,
+         answered_at = now(),
          updated_at = now()
-     where id = $2
-       and status = 'open'
-     returning id, status`,
-    [teacherId, postId],
+     where id = $1
+       and claimed_by_teacher_id = $4
+       and status = 'claimed'
+       and (resolve_deadline_at is null or resolve_deadline_at > now())
+     returning id, status, answered_at`,
+    [
+      postId,
+      parsed.data.answerText.trim(),
+      JSON.stringify(parsed.data.answerImageUrls ?? []),
+      teacherId,
+    ],
   );
   if (!r.rowCount) {
-    return c.json({ error: "not_open_or_taken" }, 409);
+    return c.json({ error: "not_claimed_by_you_or_expired_or_not_claimed" }, 409);
   }
   return c.json({ post: r.rows[0] });
+});
+
+studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+
+  const postId = c.req.param("postId");
+  if (!z.string().uuid().safeParse(postId).success) return c.json({ error: "invalid_post_id" }, 400);
+
+  await releaseExpiredHomeworkClaims(pool);
+
+  const rewardMinor = homeworkSatisfactionRewardMinor();
+  const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
+  if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
+  const studentRowId = sr.rows[0].id as string;
+
+  const cpool = await pool.connect();
+  try {
+    await cpool.query("begin");
+    const pq = await cpool.query(
+      `select h.id, h.claimed_by_teacher_id, t.user_id as teacher_user_id
+       from student_homework_posts h
+       join teachers t on t.id = h.claimed_by_teacher_id
+       where h.id = $1
+         and h.student_id = $2
+         and h.status = 'answered'
+         and h.homework_reward_applied_at is null
+       for update`,
+      [postId, studentRowId],
+    );
+    if (!pq.rowCount) {
+      await cpool.query("rollback");
+      return c.json({ error: "not_answered_or_already_rewarded_or_not_owner" }, 409);
+    }
+    const row = pq.rows[0] as { teacher_user_id: string };
+
+    const wq = await cpool.query(
+      `select balance_minor::text from user_wallets where user_id = $1 for update`,
+      [userId],
+    );
+    const bal = wq.rowCount ? BigInt(String(wq.rows[0].balance_minor)) : 0n;
+    if (bal < BigInt(rewardMinor)) {
+      await cpool.query("rollback");
+      return c.json(
+        {
+          error: "insufficient_wallet_balance",
+          requiredMinor: rewardMinor,
+          balanceMinor: Number(bal),
+          hint: "Cüzdanınızda öğretmene aktarılacak tutar yok. Önce cüzdan yükleyin.",
+        },
+        409,
+      );
+    }
+
+    await applyWalletDelta({
+      userId,
+      deltaMinor: -rewardMinor,
+      kind: "homework_satisfaction_debit",
+      refType: "student_homework_posts",
+      refId: postId,
+      client: cpool,
+      metadata: { teacher_user_id: row.teacher_user_id },
+    });
+    await applyWalletDelta({
+      userId: row.teacher_user_id,
+      deltaMinor: rewardMinor,
+      kind: "homework_satisfaction_reward",
+      refType: "student_homework_posts",
+      refId: postId,
+      client: cpool,
+      metadata: { student_user_id: userId },
+    });
+
+    await cpool.query(
+      `update student_homework_posts
+       set status = 'closed',
+           student_satisfied_at = now(),
+           homework_reward_minor = $2,
+           homework_reward_applied_at = now(),
+           updated_at = now()
+       where id = $1`,
+      [postId, rewardMinor],
+    );
+
+    await cpool.query("commit");
+    return c.json({ ok: true, rewardMinor, status: "closed" });
+  } catch (e) {
+    await cpool.query("rollback").catch(() => {});
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg.includes("insufficient_balance")) {
+      return c.json({ error: "insufficient_wallet_balance", requiredMinor: rewardMinor }, 409);
+    }
+    throw e;
+  } finally {
+    cpool.release();
+  }
 });

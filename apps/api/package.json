@@ -20,6 +20,7 @@
     "smoke:e2e": "tsx src/scripts/smoke-e2e.ts",
     "smoke:suite": "tsx src/scripts/smoke-suite.ts",
     "group-lessons:settle": "tsx src/scripts/settle-group-lessons.ts",
+    "homework:release-expired": "tsx src/scripts/release-expired-homework.ts",
     "free-port": "tsx src/scripts/free-port.ts",
     "test": "vitest run"
   },

@@ -183,6 +183,12 @@ export default function StudentPanelPage() {
             Foto + ödev sorusu gönder
           </Link>
           <Link
+            href="/student/odev-sor/gonderiler"
+            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
+          >
+            Soru gönderilerim
+          </Link>
+          <Link
             href="/student/requests"
             className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm"
           >

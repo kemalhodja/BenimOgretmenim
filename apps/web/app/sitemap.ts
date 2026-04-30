@@ -17,6 +17,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/student/dogrudan-dersler",
     "/student/grup-dersler",
     "/student/odev-sor",
+    "/student/odev-sor/gonderiler",
     "/courses",
     "/teacher",
     "/teacher/cuzdan",

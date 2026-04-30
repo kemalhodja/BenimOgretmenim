@@ -17,7 +17,7 @@ export default function OdevSorPage() {
   const [branchId, setBranchId] = useState<number | "">("");
   const [topic, setTopic] = useState("");
   const [helpText, setHelpText] = useState("");
-  const [imageUrls, setImageUrls] = useState(""); // satır satır veya virgüllü URL
+  const [imageUrls, setImageUrls] = useState(""); // URL satırları + dosyadan eklenen data URL'ler
   const [audioUrl, setAudioUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -117,9 +117,13 @@ export default function OdevSorPage() {
         <div className="text-sm text-zinc-500">Öğrenci · branş havuzuna</div>
         <h1 className="text-2xl font-semibold text-zinc-900">Soru / ödev yardım</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Fotoğraflar (URL) ve açıklama. Ses için ses dosyası URL’i. Aktif abonelik gerekir.
+          Branş havuzuna düşer; bir öğretmen üstlenir (varsayılan 20 dk içinde cevaplamalı). Cevabı onaylarsanız
+          öğretmen cüzdanına 5,00 TL aktarılır (sizin cüzdanınızdan). Aktif abonelik gerekir.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <Link href="/student/odev-sor/gonderiler" className="font-medium text-brand-800 underline">
+            Gönderilerim
+          </Link>
           <Link
             href="/student/panel"
             className="font-medium text-brand-800 underline"
@@ -180,10 +184,45 @@ export default function OdevSorPage() {
             />
           </label>
           <label className="block text-sm">
-            <span className="font-medium text-zinc-700">Görsel linkleri (isteğe, satır veya virgül)</span>
+            <span className="font-medium text-zinc-700">Görseller (en fazla 4, küçük dosya)</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="mt-1 block w-full text-xs text-zinc-600 file:mr-2 file:rounded-lg file:border file:border-zinc-200 file:bg-white file:px-2 file:py-1"
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []).slice(0, 4);
+                if (files.length === 0) return;
+                const readers = files.map(
+                  (file) =>
+                    new Promise<string>((resolve, reject) => {
+                      if (file.size > 350_000) {
+                        reject(new Error("Dosya çok büyük (≈350 KB üstü); sıkıştırın veya URL kullanın."));
+                        return;
+                      }
+                      const fr = new FileReader();
+                      fr.onload = () => resolve(String(fr.result ?? ""));
+                      fr.onerror = () => reject(new Error("okuma"));
+                      fr.readAsDataURL(file);
+                    }),
+                );
+                void Promise.all(readers)
+                  .then((dataUrls) => {
+                    const merged = [...imageUrls.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean), ...dataUrls]
+                      .filter(Boolean)
+                      .slice(0, 4);
+                    setImageUrls(merged.join("\n"));
+                    setError(null);
+                  })
+                  .catch((err) => {
+                    setError(err instanceof Error ? err.message : "Görsel eklenemedi");
+                  });
+                e.target.value = "";
+              }}
+            />
             <textarea
-              className="mt-1 w-full min-h-20 font-mono text-xs rounded-xl border border-zinc-200 px-3 py-2"
-              placeholder="https://..."
+              className="mt-2 w-full min-h-20 font-mono text-xs rounded-xl border border-zinc-200 px-3 py-2"
+              placeholder="İsteğe: https://... veya yukarıdan foto (data URL eklenir)"
               value={imageUrls}
               onChange={(e) => setImageUrls(e.target.value)}
             />

@@ -130,7 +130,7 @@ app.get("/", (c) => {
       courses:
         "/v1/courses (public list), /:id (detail+cohorts), teacher: POST /, GET /mine, PATCH /:id/status, POST /:id/cohorts; student: GET /student/mine, POST /:id/cohorts/:cohortId/enroll",
       studentPlatform:
-        "/v1/student-platform/subscription, /homework-posts, /direct-bookings (mine, fund, complete; öğretmen: teacher-mine, complete); öğretmen: /homework-posts/teacher/feed",
+        "/v1/student-platform/subscription, /homework-posts (mine, view/:id, mark-satisfied; öğretmen: teacher/feed, teacher/claims, :id/claim|answer), /direct-bookings …",
       wallet: "/v1/wallet/me, GET /v1/wallet/ledger, POST /v1/wallet/topup; PayTR /v1/paytr/wallet-topup-checkout",
       subscriptions:
         "/v1/subscriptions/plans, /me, POST /purchase; admin: GET /admin/pending-bank-transfers, POST /admin/approve-bank-transfer",
