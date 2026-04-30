@@ -128,6 +128,39 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
     ],
   );
 
+  // Aynı branştaki öğretmenlere bildirim (in-app). Not: öğretmen profiline bu branş ekli olanlar.
+  const created = ins.rows[0] as { id: string };
+  const topicShort =
+    parsed.data.topic.trim().length > 120
+      ? `${parsed.data.topic.trim().slice(0, 117)}…`
+      : parsed.data.topic.trim();
+  await pool.query(
+    `insert into parent_notifications (
+       recipient_user_id, student_id, snapshot_id, channel,
+       title, body, payload_jsonb, delivery_status, sent_at
+     )
+     select u.id, $2::uuid, null, 'in_app',
+            $3, $4, $5::jsonb, 'sent', now()
+     from teacher_branches tb
+     join teachers t on t.id = tb.teacher_id
+     join users u on u.id = t.user_id
+     where tb.branch_id = $1
+       and u.role = 'teacher'
+     order by tb.created_at desc nulls last
+     limit 200`,
+    [
+      parsed.data.branchId,
+      studentId,
+      "Yeni soru/ödev",
+      `"${topicShort}" için branş havuzunda yeni bir soru var. İlk üstlenen 20 dk boyunca çözebilir.`,
+      JSON.stringify({
+        kind: "homework_new_post",
+        homeworkPostId: created.id,
+        branchId: parsed.data.branchId,
+      }),
+    ],
+  );
+
   return c.json({ post: ins.rows[0] }, 201);
 });
 
@@ -606,6 +639,87 @@ studentPlatform.post("/homework-posts/:postId/claim", requireAuth, async (c) => 
   }
 
   return c.json({ post: r.rows[0], resolveMinutes: resolveMin });
+});
+
+/** Öğretmen: üstlendiğim soruyu iade et (havuz açılır; ödeme yok) */
+studentPlatform.post("/homework-posts/:postId/teacher-return", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
+
+  const postId = c.req.param("postId");
+  if (!z.string().uuid().safeParse(postId).success) return c.json({ error: "invalid_post_id" }, 400);
+
+  await releaseExpiredHomeworkClaims(pool);
+
+  const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
+  if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
+  const teacherId = tr.rows[0].id as string;
+
+  const r = await pool.query(
+    `update student_homework_posts
+     set status = 'open',
+         claimed_by_teacher_id = null,
+         claimed_at = null,
+         resolve_deadline_at = null,
+         last_answer_rejected_at = null,
+         updated_at = now()
+     where id = $1
+       and status = 'claimed'
+       and claimed_by_teacher_id = $2
+       and answered_at is null
+     returning id, student_id, topic, branch_id`,
+    [postId, teacherId],
+  );
+  if (!r.rowCount) return c.json({ error: "not_claimed_by_you_or_not_claimed" }, 409);
+
+  const row = r.rows[0] as { student_id: string; topic: string; branch_id: number };
+  const topicShort = row.topic.length > 120 ? `${row.topic.slice(0, 117)}…` : row.topic;
+
+  const su = await pool.query(`select user_id from students where id = $1`, [row.student_id]);
+  if (su.rowCount) {
+    const studentUserId = su.rows[0].user_id as string;
+    await pool.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        studentUserId,
+        row.student_id,
+        "Ödev sorusu iade edildi",
+        `"${topicShort}" için öğretmen soruyu iade etti; soru tekrar branş havuzunda.`,
+        JSON.stringify({ kind: "homework_teacher_returned", homeworkPostId: postId, branchId: row.branch_id }),
+      ],
+    );
+
+    const guardians = await pool.query(
+      `select guardian_user_id from student_guardians where student_id = $1`,
+      [row.student_id],
+    );
+    for (const g of guardians.rows) {
+      const gid = g.guardian_user_id as string;
+      if (gid === studentUserId) continue;
+      await pool.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          gid,
+          row.student_id,
+          "Öğrencinizin ödevi iade edildi",
+          `Bağlı öğrencinizin "${topicShort}" sorusu öğretmen tarafından iade edildi; soru tekrar havuzda.`,
+          JSON.stringify({
+            kind: "homework_teacher_returned_guardian",
+            homeworkPostId: postId,
+            branchId: row.branch_id,
+          }),
+        ],
+      );
+    }
+  }
+
+  return c.json({ ok: true, status: "open" });
 });
 
 studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) => {

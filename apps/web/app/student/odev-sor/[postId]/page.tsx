@@ -291,9 +291,9 @@ export default function OdevDetayPage() {
                         onClick={() => void markSatisfied()}
                         className="w-full rounded-xl bg-brand-700 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:flex-1"
                       >
-                        {busy
-                          ? "…"
-                          : `Cevabı yeterli buldum — öğretmene ${((data?.satisfactionRewardMinor ?? 500) / 100).toFixed(2)} TL`}
+                    {busy
+                      ? "…"
+                      : `Cevabı yeterli buldum — öğretmene ${((data?.satisfactionRewardMinor ?? 1000) / 100).toFixed(2)} TL`}
                       </button>
                     </div>
                   </div>

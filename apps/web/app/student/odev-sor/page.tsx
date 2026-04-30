@@ -118,7 +118,7 @@ export default function OdevSorPage() {
         <h1 className="text-2xl font-semibold text-zinc-900">Soru / ödev yardım</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Branş havuzuna düşer; bir öğretmen üstlenir (varsayılan 20 dk içinde cevaplamalı). Cevabı onaylarsanız
-          öğretmen cüzdanına 5,00 TL aktarılır (sizin cüzdanınızdan).           Onaylamadan önce cevabı yeterli bulmazsanız
+          öğretmen cüzdanına 10,00 TL aktarılır (sizin cüzdanınızdan). Onaylamadan önce cevabı yeterli bulmazsanız
           soruyu tekrar havuza iade edebilirsiniz (ödeme yapılmaz). Henüz kimse üstlenmediyse gönderiyi
           tamamen iptal edebilirsiniz. Aktif abonelik gerekir.
         </p>
@@ -187,6 +187,45 @@ export default function OdevSorPage() {
           </label>
           <label className="block text-sm">
             <span className="font-medium text-zinc-700">Görseller (en fazla 4, küçük dosya)</span>
+            <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+              <label className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-900 shadow-sm">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []).slice(0, 1);
+                    if (files.length === 0) return;
+                    const file = files[0];
+                    if (file.size > 350_000) {
+                      setError("Foto çok büyük (≈350 KB üstü); sıkıştırın veya daha küçük çekin.");
+                      e.target.value = "";
+                      return;
+                    }
+                    const fr = new FileReader();
+                    fr.onload = () => {
+                      const dataUrl = String(fr.result ?? "");
+                      const merged = [
+                        ...imageUrls.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean),
+                        dataUrl,
+                      ]
+                        .filter(Boolean)
+                        .slice(0, 4);
+                      setImageUrls(merged.join("\n"));
+                      setError(null);
+                    };
+                    fr.onerror = () => setError("Foto okunamadı");
+                    fr.readAsDataURL(file);
+                    e.target.value = "";
+                  }}
+                />
+                Kamerayla çek
+              </label>
+              <span className="text-xs text-zinc-500 sm:self-center">
+                (Telefonlarda kamera açılır)
+              </span>
+            </div>
             <input
               type="file"
               accept="image/jpeg,image/png,image/webp"

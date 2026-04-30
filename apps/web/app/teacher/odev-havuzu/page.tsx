@@ -48,10 +48,11 @@ export default function OdevHavuzuPage() {
   const [posts, setPosts] = useState<PoolPost[]>([]);
   const [claims, setClaims] = useState<ClaimPost[]>([]);
   const [resolveMinutes, setResolveMinutes] = useState(20);
-  const [rewardMinor, setRewardMinor] = useState(500);
+  const [rewardMinor, setRewardMinor] = useState(1000);
   const [error, setError] = useState<string | null>(null);
   const [claimBusy, setClaimBusy] = useState<string | null>(null);
   const [answerBusy, setAnswerBusy] = useState<string | null>(null);
+  const [returnBusy, setReturnBusy] = useState<string | null>(null);
   const [answerDraft, setAnswerDraft] = useState<Record<string, string>>({});
   const [answerImagesByPost, setAnswerImagesByPost] = useState<Record<string, string[]>>({});
   const [tick, setTick] = useState(0);
@@ -189,6 +190,26 @@ export default function OdevHavuzuPage() {
     }
   }
 
+  async function teacherReturn(id: string) {
+    if (!token) return;
+    if (!window.confirm("Bu soruyu iade edince tekrar branş havuzuna düşer. Devam edilsin mi?")) return;
+    setReturnBusy(id);
+    setError(null);
+    try {
+      await apiFetch(`/v1/student-platform/homework-posts/${id}/teacher-return`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({}),
+      });
+      await loadClaims(token);
+      if (branchId !== "") await loadPool(token, Number(branchId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "iade edilemedi");
+    } finally {
+      setReturnBusy(null);
+    }
+  }
+
   if (!token) return null;
 
   const rewardTl = (rewardMinor / 100).toFixed(2);
@@ -202,7 +223,7 @@ export default function OdevHavuzuPage() {
           Üstlenince soru {resolveMinutes} dakika yalnızca size aittir; sürede cevaplamazsanız tekrar havuza
           düşer. Öğrenci cevabı onaylarsa öğretmen cüzdanına <strong>{rewardTl} TL</strong> aktarılır (öğrenci
           cüzdanından). Öğrenci, ödeme öncesi cevabı yeterli bulmazsa soruyu tekrar havuza iade edebilir; bu
-          durumda bildirim alırsınız.
+          durumda bildirim alırsınız. Ayrıca siz de çözmeden soruyu iade edebilirsiniz (ödeme olmaz).
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
@@ -434,6 +455,14 @@ export default function OdevHavuzuPage() {
                         className="rounded-lg bg-brand-700 px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
                       >
                         {answerBusy === p.id ? "…" : "Cevabı öğrenciye gönder"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={returnBusy === p.id || answerBusy === p.id}
+                        onClick={() => void teacherReturn(p.id)}
+                        className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                      >
+                        {returnBusy === p.id ? "…" : "İade et (havuz)"}
                       </button>
                     </div>
                   ) : (

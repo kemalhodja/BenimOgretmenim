@@ -7,8 +7,9 @@ export function homeworkResolveMinutes(): number {
 }
 
 export function homeworkSatisfactionRewardMinor(): number {
-  const n = Number(process.env.HOMEWORK_SATISFACTION_REWARD_MINOR ?? "500");
-  if (!Number.isFinite(n) || n < 1 || n > 1_000_000) return 500;
+  // Varsayılan: 10,00 TL
+  const n = Number(process.env.HOMEWORK_SATISFACTION_REWARD_MINOR ?? "1000");
+  if (!Number.isFinite(n) || n < 1 || n > 1_000_000) return 1000;
   return Math.floor(n);
 }
 
