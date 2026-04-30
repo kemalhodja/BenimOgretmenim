@@ -60,20 +60,30 @@ if (internalRaw) {
 let effectiveInternal = internalRaw;
 
 if (!allowHttp && apiUrl.origin === siteUrl.origin) {
-  const internalOk = internalUrl && internalUrl.origin !== siteUrl.origin;
-  if (!internalOk) {
-    const inferred = inferInternalApiUrlIfNeeded(site, api, effectiveInternal);
+  const internalUseful =
+    Boolean(internalUrl) && internalUrl.origin !== siteUrl.origin;
+  if (!internalUseful) {
+    const hadBadInternal = Boolean(internalRaw);
+    const inferred = inferInternalApiUrlIfNeeded(site, api, "");
     if (!inferred) {
       fail(
         "NEXT_PUBLIC_API_BASE_URL ile NEXT_PUBLIC_SITE_URL aynı köke işaret ediyor; " +
-          "INTERNAL_API_BASE_URL yok veya site ile aynı. Render Web ortamına gerçek API kökünü " +
-          "INTERNAL_API_BASE_URL olarak ekleyin veya NEXT_PUBLIC_API_BASE_URL'i API servis URL'si yapın.",
+          "geçerli bir API kökü bulunamadı. Render Web ortamında INTERNAL_API_BASE_URL'i " +
+          "gerçek API URL'sine ayarlayın veya NEXT_PUBLIC_API_BASE_URL'i API servis kökü yapın. " +
+          "Özel domainde INFER_INTERNAL_API_FALLBACK_URL=https://... kullanın.",
       );
     }
-    console.warn(
-      `[web:env] INTERNAL_API_BASE_URL yoktu; bilinen prod eşlemesi kullanılıyor: ${inferred} ` +
-        "(Kalıcı çözüm: Render Dashboard'da INTERNAL_API_BASE_URL tanımlayın.)",
-    );
+    if (hadBadInternal) {
+      console.warn(
+        `[web:env] INTERNAL_API_BASE_URL site ile aynı kökteydi (yanlış); ` +
+          `yerine kullanılıyor: ${inferred}`,
+      );
+    } else {
+      console.warn(
+        `[web:env] INTERNAL_API_BASE_URL yoktu; bilinen prod eşlemesi kullanılıyor: ${inferred} ` +
+          "(Kalıcı çözüm: Render'da INTERNAL_API_BASE_URL veya doğru NEXT_PUBLIC_API_BASE_URL.)",
+      );
+    }
     effectiveInternal = inferred;
     internalUrl = new URL(inferred);
   }

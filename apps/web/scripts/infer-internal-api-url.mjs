@@ -1,7 +1,9 @@
 /**
  * Web ve NEXT_PUBLIC_API aynı kökte kaldığında (Render’da sık yapılan hata),
- * INTERNAL_API_BASE_URL yoksa bu repodaki varsayılan API hostunu dene.
- * Başka domainlerde null döner; o zaman Dashboard’da INTERNAL zorunludur.
+ * INTERNAL yoksa veya site ile aynı kökteyse bu repodaki varsayılan API kökünü dene.
+ *
+ * Bilinmeyen host için Render Web’e şunu ekleyebilirsiniz:
+ *   INFER_INTERNAL_API_FALLBACK_URL=https://api-sizin-host.onrender.com
  */
 export function inferInternalApiUrlIfNeeded(siteRaw, publicApiRaw, existingInternalRaw) {
   if (existingInternalRaw?.trim()) return null;
@@ -14,6 +16,15 @@ export function inferInternalApiUrlIfNeeded(siteRaw, publicApiRaw, existingInter
     return null;
   }
   if (siteUrl.origin !== apiUrl.origin) return null;
+
+  const forced = process.env.INFER_INTERNAL_API_FALLBACK_URL?.trim();
+  if (forced) {
+    try {
+      return new URL(forced).origin;
+    } catch {
+      return null;
+    }
+  }
 
   if (siteUrl.hostname === "benimogretmenim.onrender.com") {
     return "https://benim-ogretmenim.onrender.com";

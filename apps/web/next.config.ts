@@ -9,6 +9,13 @@ const nextConfig: NextConfig = {
     const site = process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? "";
     const pub = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() ?? "";
     let internal = process.env.INTERNAL_API_BASE_URL?.trim();
+    try {
+      if (internal && site) {
+        if (new URL(internal).origin === new URL(site).origin) internal = "";
+      }
+    } catch {
+      internal = "";
+    }
     if (!internal) {
       const inferred = inferInternalApiUrlIfNeeded(site, pub, "");
       if (inferred) internal = inferred;
