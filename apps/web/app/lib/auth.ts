@@ -13,7 +13,7 @@ export function clearToken() {
   window.localStorage.removeItem(TOKEN_KEY);
 }
 
-type UserRole = "student" | "teacher" | "guardian";
+type UserRole = "student" | "teacher" | "guardian" | "admin";
 
 function base64UrlToJson(input: string): unknown | null {
   try {
@@ -35,11 +35,13 @@ export function getRoleFromToken(token: string | null): UserRole | null {
     typeof payload === "object" && payload && "role" in payload
       ? (payload as { role?: unknown }).role
       : null;
-  if (role === "teacher" || role === "student" || role === "guardian") return role;
+  if (role === "teacher" || role === "student" || role === "guardian" || role === "admin") return role;
   return null;
 }
 
 export function panelPathForRole(role: UserRole): string {
+  // Not: admin paneli ayrı sayfada.
+  if (role === "admin") return "/admin";
   if (role === "teacher") return "/teacher";
   if (role === "guardian") return "/guardian";
   return "/student/requests";
