@@ -1,0 +1,47 @@
+# Next build + Playwright (ana sayfa, giriş). API build sırasında üretim URL’sine istek atar (ci:web ile aynı).
+
+name: Web Playwright
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: web-playwright-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci --include=dev
+
+      - name: Build Next.js
+        working-directory: apps/web
+        env:
+          CI: "true"
+          NEXT_PUBLIC_API_BASE_URL: https://benim-ogretmenim.onrender.com
+          INTERNAL_API_BASE_URL: https://benim-ogretmenim.onrender.com
+          NEXT_PUBLIC_SITE_URL: https://benimogretmenim.onrender.com
+        run: npm run build
+
+      - name: Install Playwright Chromium
+        working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright
+        working-directory: apps/web
+        env:
+          CI: "true"
+        run: npm run test:e2e

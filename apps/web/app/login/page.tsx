@@ -69,12 +69,9 @@ function LoginForm() {
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
             Giriş
           </h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Rolünüze göre yönlendirilirsiniz. Öğretmen:{" "}
-            <span className="font-mono">teacher_dev@…</span> · Öğrenci:{" "}
-            <span className="font-mono">student_dev@…</span> · Veli:{" "}
-            <span className="font-mono">guardian_dev@…</span> — parola{" "}
-            <span className="font-mono">DevParola1</span>
+          <p className="mt-1 text-xs text-zinc-500">
+            Yerel deneme: <span className="font-mono text-zinc-600">teacher_dev / student_dev / guardian_dev</span>
+            @benimogretmenim.local · <span className="font-mono">DevParola1</span>
           </p>
           {returnUrl && (
             <p className="mt-2 text-xs text-zinc-500">
@@ -86,7 +83,7 @@ function LoginForm() {
               href={returnUrl ? registerHrefWithReturn(returnUrl) : "/kayit"}
               className="font-medium text-brand-800 underline"
             >
-              Yeni hesap oluştur →
+              Kayıt ol
             </Link>
           </p>
         </div>

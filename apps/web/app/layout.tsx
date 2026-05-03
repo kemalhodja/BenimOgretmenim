@@ -48,11 +48,11 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.webmanifest",
   title: {
-    default: "BenimÖğretmenim — özel ders ve öğretmen eşleşmesi",
+    default: "BenimÖğretmenim — özel ders",
     template: "%s · BenimÖğretmenim",
   },
   description:
-    "Branş ve şehre göre öğretmen bulun; talep açın, teklifleri karşılaştırın, güvenle eşleşin. Öğretmenler için abonelik ve veli gelişim özeti.",
+    "Öğretmen arayın, talep açın, teklifleri karşılaştırın. Öğretmen aboneliği ve veli özeti.",
   openGraph: {
     type: "website",
     locale: "tr_TR",
@@ -61,8 +61,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "BenimÖğretmenim",
-    description:
-      "Öğretmen bul, ders talebi oluştur, teklifleri karşılaştır; online veya yüz yüze.",
+    description: "Öğretmen bul, talep aç, teklifleri karşılaştır.",
   },
 };
 

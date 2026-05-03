@@ -126,7 +126,8 @@ export default function StudentPanelPage() {
     if (
       o.kind === "homework_claimed" ||
       o.kind === "homework_answered" ||
-      o.kind === "homework_rewarded_student"
+      o.kind === "homework_rewarded_student" ||
+      o.kind === "homework_teacher_returned"
     ) {
       return `/student/odev-sor/${o.homeworkPostId}`;
     }
@@ -193,7 +194,7 @@ export default function StudentPanelPage() {
       });
       const ck = await apiFetch<{ iframeUrl: string }>(r.next.checkout, { token });
       window.open(ck.iframeUrl, "_blank", "noopener,noreferrer");
-      setOk("Ödeme penceresi açıldı. Tamamlanınca bu sayfayı yenileyin.");
+      setOk("Ödeme penceresi açıldı. Bitince sayfayı yenileyin.");
       await load(token);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "purchase_failed";
@@ -218,15 +219,15 @@ export default function StudentPanelPage() {
         <div className="text-sm font-medium text-zinc-500">Öğrenci</div>
         <h1 className="mt-1 text-2xl font-semibold text-zinc-900">Abonelik & cüzdan</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Ders ilanı, ödev sorusu ve belirli özellikler için aylık platform aboneliği. Tutar: varsayılan{" "}
-          {sub ? `${tl(sub.pricePerMonthMinor)} TL/ay` : "1000,00 TL/ay"} (kuruş: `STUDENT_SUB_PRICE_MINOR`).
+          Ders talebi ve ödev gibi özellikler için aylık abonelik gerekir. Güncel tutar:{" "}
+          {sub ? `${tl(sub.pricePerMonthMinor)} TL/ay` : "—"}.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href="/student/odev-sor"
             className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
           >
-            Foto + ödev sorusu gönder
+            Ödev / soru gönder
           </Link>
           <Link
             href="/student/odev-sor/gonderiler"
@@ -274,9 +275,7 @@ export default function StudentPanelPage() {
         {notifications.length > 0 && (
           <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
-            <p className="mt-1 text-xs text-zinc-500">
-              Ödev cevapları, ödeme onayı özeti ve diğer güncellemeler.
-            </p>
+            <p className="mt-1 text-xs text-zinc-500">Ödev ve hesap güncellemeleri.</p>
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;
@@ -341,7 +340,7 @@ export default function StudentPanelPage() {
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="text-sm">
-              <span className="text-zinc-600">Yükle (kuruş, min 10000)</span>
+              <span className="text-zinc-600">Tutar (kuruş, en az 10.000)</span>
               <input
                 type="number"
                 min={10000}
@@ -365,8 +364,7 @@ export default function StudentPanelPage() {
         <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-zinc-900">Blokajlar</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            Grup ders katılımı gibi işlemlerde tutar bloke edilir; bazı blokajlar ders bitimine kadar
-            kalkmayabilir.
+            Grup ders vb. için tutar bloke olabilir; ders bitene kadar sürebilir.
           </p>
           <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-100">
             {holds.length === 0 ? (

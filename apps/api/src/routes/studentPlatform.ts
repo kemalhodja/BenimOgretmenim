@@ -161,6 +161,35 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
     ],
   );
 
+  const stuUidRow = await pool.query(`select user_id from students where id = $1`, [studentId]);
+  const studentUserIdForGuard = stuUidRow.rowCount ? (stuUidRow.rows[0].user_id as string) : null;
+  const gNewRows = await pool.query(
+    `select guardian_user_id from student_guardians where student_id = $1`,
+    [studentId],
+  );
+  const gNewPayload = JSON.stringify({
+    kind: "homework_new_post_guardian",
+    homeworkPostId: created.id,
+    branchId: parsed.data.branchId,
+  });
+  for (const g of gNewRows.rows) {
+    const gid = g.guardian_user_id as string;
+    if (studentUserIdForGuard && gid === studentUserIdForGuard) continue;
+    await pool.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        gid,
+        studentId,
+        "Öğrenci ödev gönderdi",
+        `"${topicShort}" konusunda branş havuzuna soru/ödev eklendi.`,
+        gNewPayload,
+      ],
+    );
+  }
+
   return c.json({ post: ins.rows[0] }, 201);
 });
 

@@ -1,0 +1,86 @@
+# PostgreSQL + migrate + seed + API + smoke:roles-deep (öğretmen/öğrenci/veli ödev + cüzdan).
+# PR ve main push’ta çalışır; tam entegrasyon regresyonu için.
+
+name: API E2E (roles deep)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: api-e2e-roles-deep-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  roles-deep:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: benim
+          POSTGRES_PASSWORD: benim_dev_change_me
+          POSTGRES_DB: benimogretmenim
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U benim -d benimogretmenim"
+          --health-interval 4s
+          --health-timeout 5s
+          --health-retries 30
+
+    env:
+      DATABASE_URL: postgres://benim:benim_dev_change_me@127.0.0.1:5432/benimogretmenim
+      JWT_SECRET: ci-jwt-secret-must-be-at-least-32-characters-long
+      NODE_ENV: development
+      PORT: "3002"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: npm ci --include=dev
+
+      - name: DB migrate
+        working-directory: apps/api
+        run: npm run db:migrate
+
+      - name: DB seed
+        working-directory: apps/api
+        run: npm run db:seed
+
+      - name: Build API
+        working-directory: apps/api
+        run: npm run build
+
+      - name: Start API and wait for health
+        working-directory: apps/api
+        run: |
+          set -euo pipefail
+          node dist/index.js &
+          echo "API_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 90); do
+            if curl -fsS "http://127.0.0.1:3002/health" | grep -qE '"db"\s*:\s*true'; then
+              echo "API healthy (db=true)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::API health timeout"
+          exit 1
+
+      - name: Run smoke:roles-deep
+        working-directory: apps/api
+        env:
+          SMOKE_API_URL: http://127.0.0.1:3002
+        run: npm run smoke:roles-deep

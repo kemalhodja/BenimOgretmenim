@@ -3,7 +3,7 @@ import { BrandLockup } from "./BrandLockup";
 import { LoginNavLink, RegisterNavLink } from "./AuthNavLinks";
 
 const nav = [
-  { href: "/ogretmenler", label: "Öğretmen bul" },
+  { href: "/ogretmenler", label: "Öğretmen ara" },
   { href: "/#nasil", label: "Nasıl çalışır?" },
   { href: "/panel", label: "Panel" },
   { href: "/courses", label: "Kurslar" },
@@ -32,7 +32,7 @@ export function SiteHeader() {
             href="/kampanya"
             className="hidden rounded-full border border-warm-200/90 bg-warm-50/90 px-3 py-1.5 text-xs font-semibold text-warm-900 shadow-sm transition hover:border-warm-300 hover:bg-warm-100/90 sm:inline-flex"
           >
-            Erken erişim teklifi
+            Kampanya
           </Link>
           <LoginNavLink className="rounded-lg px-3 py-1.5 text-sm font-medium text-paper-800/80 hover:bg-paper-100/80">
             Giriş

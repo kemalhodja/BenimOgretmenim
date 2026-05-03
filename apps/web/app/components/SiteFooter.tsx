@@ -25,7 +25,7 @@ export function SiteFooter() {
               </li>
               <li>
                 <Link href="/student/panel" className="hover:underline">
-                  Abonelik (öğrenci)
+                  Abonelik
                 </Link>
               </li>
               <li>

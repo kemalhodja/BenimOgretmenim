@@ -3,9 +3,8 @@ import Link from "next/link";
 import { registerHrefWithReturn } from "../lib/authRedirect";
 
 export const metadata: Metadata = {
-  title: "Erken erişim kampanyası",
-  description:
-    "Erken erişime özel, sınırlı sayıda kullanıcıya özel teklif kampanyası.",
+  title: "Kampanya",
+  description: "Öğretmen aboneliği kampanya fiyatları.",
 };
 
 export default function KampanyaPage() {
@@ -13,21 +12,19 @@ export default function KampanyaPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-2xl px-6 py-12">
-        <div className="rounded-2xl border border-brand-200 bg-brand-50 p-5 text-sm text-brand-950">
+        <div className="rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-6 text-sm text-brand-950 shadow-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-brand-800">
-            Erken erişim
+            Kampanya
           </div>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-            Size özel teklif hazır
+            Abonelik fiyatları
           </h1>
-          <p className="mt-3 leading-relaxed text-brand-900/90">
-            Erken erişime özel sizin için oluşturulan teklifi görmek için kayıt
-            olduktan sonra abonelik sayfası açılacaktır. Bu kampanya sınırlı
-            sayıda kullanıcıya özel olarak yapılmıştır.
+          <p className="mt-3 text-brand-900/90">
+            Kayıt sonrası öğretmen panelinde abonelik adımından kampanyayı görebilirsiniz.
           </p>
           <div className="mt-4 rounded-xl border border-brand-200 bg-white/70 p-4 text-brand-950">
             <div className="text-xs font-semibold uppercase tracking-wide text-brand-800">
-              Kampanya fiyatları
+              Paketler
             </div>
             <ul className="mt-2 space-y-1 text-sm">
               <li>
@@ -53,7 +50,7 @@ export default function KampanyaPage() {
               href={subscribeAfterRegisterHref}
               className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-brand-800"
             >
-              Kayıt ol ve teklifi gör
+              Kayıt ol
             </Link>
             <Link
               href="/login"

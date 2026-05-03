@@ -12,10 +12,8 @@ export default function IletisimPage() {
       <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
         İletişim
       </h1>
-      <p className="mt-4 text-sm leading-relaxed text-zinc-600">
-        Operasyonel destek ve iş birliği için e-posta ve telefon bilgilerinizi
-        buraya ekleyin. Şu an MVP aşamasında yalnızca bilgilendirme metni
-        gösterilmektedir.
+      <p className="mt-4 text-sm text-zinc-600">
+        Destek ve iş birliği için aşağıdaki kanalları kullanın.
       </p>
       <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <dl className="space-y-4 text-sm">
@@ -23,7 +21,7 @@ export default function IletisimPage() {
             <dt className="font-medium text-zinc-900">E-posta</dt>
             <dd className="mt-1 text-zinc-600">
               <span className="font-mono text-zinc-500">destek@benimogretmenim.com</span>{" "}
-              <span className="text-xs">(örnek — kendi alan adınızla değiştirin)</span>
+              <span className="text-xs text-zinc-500">(örnek adres)</span>
             </dd>
           </div>
           <div>

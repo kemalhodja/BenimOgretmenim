@@ -313,9 +313,7 @@ export default function TeacherHomePage() {
         {notifications.length > 0 && (
           <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
-            <p className="mt-1 text-xs text-zinc-500">
-              Öğrenci yorumları, ödev onayları ve veli bildirimleri burada listelenir.
-            </p>
+            <p className="mt-1 text-xs text-zinc-500">Ödev, yorum ve bildirimler.</p>
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;

@@ -108,13 +108,8 @@ export default function GuardianPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-sm font-medium text-zinc-500">Veli</div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Öğrencilerim ve gelişim
-            </h1>
-            <p className="mt-1 text-xs text-zinc-500">
-              Demo: <span className="font-mono">guardian_dev@benimogretmenim.local</span> /{" "}
-              <span className="font-mono">DevParola1</span>
-            </p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Veli paneli</h1>
+            <p className="mt-1 text-xs text-zinc-500">Öğrenci hesabı sizi veli olarak ekler.</p>
           </div>
           <Link
             href="/"
@@ -135,7 +130,7 @@ export default function GuardianPage() {
           <div className="mt-3 space-y-2">
             {students.length === 0 ? (
               <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
-                Henüz bağlı öğrenci yok. Öğrenci hesabı veli kullanıcısını bağlayabilir.
+                Bağlı öğrenci yok. Öğrenci, veli hesabını bağlamalıdır.
               </div>
             ) : (
               students.map((s) => (
@@ -152,10 +147,7 @@ export default function GuardianPage() {
 
         <section className="mt-10">
           <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
-          <p className="mt-1 text-xs text-zinc-500">
-            Ders sonu gelişim özeti ve öğrenci ödev bildirimleri burada görünür. Ödeme/onay öğrenci hesabından
-            yapılır.
-          </p>
+          <p className="mt-1 text-xs text-zinc-500">Ders özeti ve ödev bildirimleri. Ödeme öğrenci hesabından.</p>
           <div className="mt-3 space-y-2">
             {notifications.length === 0 ? (
               <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
@@ -184,15 +176,15 @@ export default function GuardianPage() {
                     if (!p || typeof p !== "object") return null;
                     const k = (p as { kind?: string }).kind;
                     if (
+                      k === "homework_new_post_guardian" ||
                       k === "homework_claimed_guardian" ||
                       k === "homework_answered_guardian" ||
                       k === "homework_rewarded_guardian" ||
-                      k === "homework_answer_rejected_guardian"
+                      k === "homework_answer_rejected_guardian" ||
+                      k === "homework_teacher_returned_guardian"
                     ) {
                       return (
-                        <p className="mt-2 text-xs text-zinc-500">
-                          Detay ve onay öğrenci hesabında (öğrenci paneli / ödev gönderileri).
-                        </p>
+                        <p className="mt-2 text-xs text-zinc-500">Detaylar öğrenci panelinde.</p>
                       );
                     }
                     return null;
@@ -214,12 +206,8 @@ export default function GuardianPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-base font-semibold text-zinc-900">
-            Son ders özeti (öğretmen değerlendirmesi)
-          </h2>
-          <p className="mt-1 text-xs text-zinc-500">
-            Öğretmen ders sonu formu doldurduğunda burada listelenir.
-          </p>
+          <h2 className="text-base font-semibold text-zinc-900">Ders özeti</h2>
+          <p className="mt-1 text-xs text-zinc-500">Öğretmen ders sonu notu burada görünür.</p>
           <div className="mt-3 space-y-3">
             {progress.length === 0 ? (
               <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">

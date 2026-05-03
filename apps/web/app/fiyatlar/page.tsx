@@ -7,8 +7,7 @@ import { makeRequestId } from "../lib/requestId";
 
 export const metadata: Metadata = {
   title: "Öğretmen abonelik fiyatları",
-  description:
-    "BenimÖğretmenim öğretmen abonelik planları: süre, fiyat ve sınırsız teklif avantajı.",
+  description: "Öğretmen abonelik planları ve güncel fiyatlar.",
 };
 
 type PlanRow = {
@@ -47,8 +46,7 @@ export default async function FiyatlarPage() {
       plans = body.plans ?? [];
     }
   } catch {
-    loadError =
-      "Fiyat listesi şu an alınamadı (API erişilemiyor olabilir). Sayfayı daha sonra yenileyin veya öğretmen panelinden abonelik adımına geçin.";
+    loadError = "Planlar yüklenemedi. Sayfayı yenileyin veya öğretmen panelinden deneyin.";
   }
 
   return (
@@ -58,10 +56,8 @@ export default async function FiyatlarPage() {
         <h1 className="mt-1 text-3xl font-semibold tracking-tight text-zinc-900">
           Abonelik fiyatları
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-          Ücretsiz hesapla sınırlı sayıda talebe teklif verebilirsiniz; abonelikle
-          sınırsız teklif ve daha görünür profil avantajlarına erişirsiniz. Güncel
-          tutarlar aşağıdadır; ödeme adımları için panele giriş yapın.
+        <p className="mt-3 text-sm text-zinc-600">
+          Ücretsiz hesapta sınırlı teklif; abonelikte sınırsız teklif. Ödeme için öğretmen paneli.
         </p>
 
         {loadError && (
@@ -99,7 +95,7 @@ export default async function FiyatlarPage() {
 
         <div className="mt-10 flex flex-wrap gap-3">
           <RegisterNavLink className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-zinc-800">
-            Öğretmen olarak kayıt ol
+            Öğretmen kaydı
           </RegisterNavLink>
           <Link
             href="/teacher"

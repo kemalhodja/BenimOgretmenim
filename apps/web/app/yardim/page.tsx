@@ -3,27 +3,27 @@ import Link from "next/link";
 const faq = [
   {
     q: "Öğretmen nasıl seçilir?",
-    a: "Öğretmen bul sayfasından branş ve şehir filtreleyin; profili ve yorumları inceleyin. Ders talebi oluşturduğunuzda uygun öğretmenler size teklif gönderir.",
+    a: "Branş ve şehir filtreleyin; profili okuyun. Talep açınca öğretmenler teklif gönderir.",
   },
   {
-    q: "Teklif ve eşleşme nasıl işler?",
-    a: "Talebiniz açıkken birden fazla öğretmen teklif verebilir. Mesajlar bölümünden iletişim kurup uygun teklifi kabul edebilirsiniz.",
+    q: "Teklif ve eşleşme",
+    a: "Açık talebe birden fazla teklif gelir. Mesajlaşın, uygun olanı kabul edin.",
   },
   {
-    q: "Doğrudan ders anlaşması ve cüzdan nedir?",
-    a: "Öğretmen profilinde toplam tutar üzerinden anlaşma kurabilirsiniz; ödeme öğrenci cüzdanından bloke edilir, dersi öğretmen tamamlayınca öğretmene aktarılır. Bakiye ve hareketler öğrenci panelindeki cüzdan bölümünden izlenir.",
+    q: "Doğrudan ders ve cüzdan",
+    a: "Profilde anlaşma kurarsınız. Tutar cüzdandan bloke olur; ders bitince öğretmene geçer. Hareketler öğrenci panelinde.",
   },
   {
-    q: "Online kurslar (dershane) nasıl çalışır?",
-    a: "Yayınlanmış kurslar herkese açık listede yer alır. Kursa kayıt olduktan sonra grubunuz (cohort) için planlanan canlı oturumlara katılım linkleri öğrenci kurs sayfasında görünür; öğretmen tarafında kurs ve oturum yönetimi panelden yapılır.",
+    q: "Online kurslar",
+    a: "Kurs listesinden kayıt olun. Canlı oturum linkleri öğrenci kurs sayfasında; yönetim öğretmen panelinde.",
   },
   {
-    q: "Öğretmen aboneliği neden var?",
-    a: "Belirli süre içinde sınırlı teklif hakkı vardır; abonelik ile daha fazla talebe erişim ve platform özellikleri açılır. Ödeme PayTR veya havale ile yapılabilir.",
+    q: "Öğretmen aboneliği",
+    a: "Ücretsiz planda sınırlı teklif vardır. Abonelikle sınırsız teklif. Ödeme: kart veya havale.",
   },
   {
-    q: "Veli ne görür?",
-    a: "Öğrencinizle ilişkilendirildiğinizde gelişim özetleri ve ders sonu bildirimleri veli panelinde listelenir.",
+    q: "Veli paneli",
+    a: "Bağlandığınız öğrenci için özet ve bildirimler listelenir.",
   },
 ];
 
@@ -33,10 +33,7 @@ export default function YardimPage() {
       <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
         Yardım
       </h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        Sık sorulan sorular. Destek talepleri için iletişim kanalınızı
-        yapılandırınca buraya ekleyebilirsiniz.
-      </p>
+      <p className="mt-2 text-sm text-zinc-600">Sık sorulan sorular.</p>
       <ul className="mt-10 space-y-8">
         {faq.map((item) => (
           <li key={item.q} className="border-b border-zinc-200 pb-8 last:border-0">
@@ -68,7 +65,7 @@ export default function YardimPage() {
           href="/student/dogrudan-dersler"
           className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-800"
         >
-          Doğrudan ders anlaşmalarım
+          Doğrudan dersler
         </Link>
         <Link
           href="/iletisim"
