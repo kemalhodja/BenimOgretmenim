@@ -19,6 +19,27 @@ function defaultDestForRole(role: string): string {
   return "/";
 }
 
+function parseRegisterApiError(err: unknown): { message: string; emailTaken: boolean } {
+  const raw = err instanceof Error ? err.message : "register_failed";
+  const emailTaken = /email_already_registered/.test(raw);
+  const noRid = raw.replace(/\s*\(requestId=[^)]+\)\s*$/i, "").trim();
+  if (emailTaken) {
+    return {
+      message: "Bu e-posta adresi zaten kayıtlı. Giriş yapın veya farklı bir adres kullanın.",
+      emailTaken: true,
+    };
+  }
+  if (noRid.startsWith("[400]") && noRid.includes("validation:")) {
+    const parts = noRid.replace(/^\[400\]\s*/, "").split(":");
+    const hint = parts.length >= 3 ? parts.slice(2).join(":") : "";
+    return {
+      message: hint ? `Geçersiz bilgi: ${hint}` : "Bilgileri kontrol edin (e-posta, parola, görünen ad).",
+      emailTaken: false,
+    };
+  }
+  return { message: noRid, emailTaken: false };
+}
+
 function KayitForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,6 +50,7 @@ function KayitForm() {
     "student",
   );
   const [error, setError] = useState<string | null>(null);
+  const [emailTaken, setEmailTaken] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const returnUrl = useMemo(
@@ -52,6 +74,7 @@ function KayitForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setEmailTaken(false);
     setLoading(true);
     try {
       const r = await apiFetch<RegResponse>("/v1/auth/register", {
@@ -67,7 +90,9 @@ function KayitForm() {
       const dest = returnUrl ?? defaultDestForRole(r.user.role);
       router.push(dest);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "register_failed");
+      const parsed = parseRegisterApiError(err);
+      setError(parsed.message);
+      setEmailTaken(parsed.emailTaken);
     } finally {
       setLoading(false);
     }
@@ -149,7 +174,14 @@ function KayitForm() {
 
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
+              <p>{error}</p>
+              {emailTaken ? (
+                <p className="mt-2">
+                  <Link href={loginHref} className="font-semibold text-brand-900 underline">
+                    Giriş sayfasına git
+                  </Link>
+                </p>
+              ) : null}
             </div>
           )}
 

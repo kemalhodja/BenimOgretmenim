@@ -24,6 +24,28 @@ function resolveApiFetchUrl(path: string): string {
 
 export type ApiError = { error: unknown } | { error: string } | unknown;
 
+/** API `error` alanı string değilse (ör. Zod flatten) kısa metin üretir. */
+function errorDetailForThrow(msg: unknown): string {
+  if (typeof msg === "string") return msg;
+  if (msg && typeof msg === "object") {
+    const o = msg as { fieldErrors?: Record<string, unknown> };
+    if (o.fieldErrors && typeof o.fieldErrors === "object") {
+      for (const [key, val] of Object.entries(o.fieldErrors)) {
+        if (Array.isArray(val) && val.length) {
+          const first = val[0];
+          if (typeof first === "string") return `validation:${key}:${first}`;
+        }
+      }
+    }
+    try {
+      return JSON.stringify(msg).slice(0, 400);
+    } catch {
+      return "request_failed";
+    }
+  }
+  return "request_failed";
+}
+
 export async function apiFetch<T>(
   path: string,
   init?: RequestInit & { token?: string | null },
@@ -80,9 +102,8 @@ export async function apiFetch<T>(
         ? bodyRid
         : responseRequestId;
     const ridSuffix = rid ? ` (requestId=${rid})` : "";
-    throw new Error(
-      `[${res.status}] ${typeof msg === "string" ? msg : "request_failed"}${ridSuffix}`,
-    );
+    const detail = errorDetailForThrow(msg);
+    throw new Error(`[${res.status}] ${detail}${ridSuffix}`);
   }
 
   return json as T;

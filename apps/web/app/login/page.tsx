@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import { registerHrefWithReturn, safeInternalPath } from "../lib/authRedirect";
@@ -16,17 +16,51 @@ function defaultDestForRole(role: string): string {
   if (role === "teacher") return "/teacher";
   if (role === "student") return "/student/requests";
   if (role === "guardian") return "/guardian";
-  if (role === "admin") return "/admin/bank";
+  if (role === "admin") return "/admin";
   return "/";
 }
+
+function parseLoginApiError(err: unknown): { message: string; showRegisterHint: boolean } {
+  const raw = err instanceof Error ? err.message : "login_failed";
+  const noRid = raw.replace(/\s*\(requestId=[^)]+\)\s*$/i, "").trim();
+  if (noRid.includes("invalid_credentials")) {
+    return {
+      message: "E-posta veya parola hatalı. Büyük/küçük harf ve boşluklara dikkat edin.",
+      showRegisterHint: true,
+    };
+  }
+  if (noRid.startsWith("[400]") && noRid.includes("validation:")) {
+    return { message: "E-posta biçimi geçersiz.", showRegisterHint: false };
+  }
+  return { message: noRid, showRegisterHint: false };
+}
+
+/** `npm run db:seed` ile gelen yerel hesaplar (apps/api/src/scripts/seed-dev.ts). */
+const SEED_PASSWORD = "DevParola1";
+const SEED_ROLE_PRESETS = [
+  { label: "Admin", email: "seed_dev@benimogretmenim.local" },
+  { label: "Öğretmen", email: "teacher_dev@benimogretmenim.local" },
+  { label: "Öğrenci", email: "student_dev@benimogretmenim.local" },
+  { label: "Veli", email: "guardian_dev@benimogretmenim.local" },
+] as const;
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("teacher_dev@benimogretmenim.local");
-  const [password, setPassword] = useState("DevParola1");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [showRegisterHint, setShowRegisterHint] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showRolePresets, setShowRolePresets] = useState(false);
+
+  useEffect(() => {
+    const envOn = process.env.NEXT_PUBLIC_DEV_LOGIN_PRESETS === "1";
+    const h = typeof window !== "undefined" ? window.location.hostname : "";
+    const local =
+      h === "localhost" || h === "127.0.0.1" || h.endsWith(".local");
+    setShowRolePresets(envOn || local);
+  }, []);
 
   const returnUrl = useMemo(
     () =>
@@ -43,6 +77,7 @@ function LoginForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setShowRegisterHint(false);
     setLoading(true);
     try {
       const r = await apiFetch<LoginResponse>("/v1/auth/login", {
@@ -53,7 +88,9 @@ function LoginForm() {
       const dest = returnUrl ?? defaultDestForRole(r.user.role);
       router.push(dest);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "login_failed");
+      const parsed = parseLoginApiError(err);
+      setError(parsed.message);
+      setShowRegisterHint(parsed.showRegisterHint);
     } finally {
       setLoading(false);
     }
@@ -69,10 +106,36 @@ function LoginForm() {
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
             Giriş
           </h1>
-          <p className="mt-1 text-xs text-zinc-500">
-            Yerel deneme: <span className="font-mono text-zinc-600">teacher_dev / student_dev / guardian_dev</span>
-            @benimogretmenim.local · <span className="font-mono">DevParola1</span>
-          </p>
+          {showRolePresets ? (
+            <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3">
+              <p className="text-xs font-medium text-zinc-600">Hızlı doldur (seed · parola aynı)</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {SEED_ROLE_PRESETS.map((p) => (
+                  <button
+                    key={p.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(p.email);
+                      setPassword(SEED_PASSWORD);
+                      setError(null);
+                      setShowRegisterHint(false);
+                    }}
+                    className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:border-brand-300 hover:text-brand-900"
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 font-mono text-[0.65rem] leading-snug text-zinc-500">
+                {SEED_PASSWORD}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs text-zinc-500">
+              Seed hesap düğmeleri için yerelde açın veya{" "}
+              <span className="font-mono">NEXT_PUBLIC_DEV_LOGIN_PRESETS=1</span> ayarlayın.
+            </p>
+          )}
           {returnUrl && (
             <p className="mt-2 text-xs text-zinc-500">
               Girişten sonra: <span className="font-mono text-zinc-700">{returnUrl}</span>
@@ -113,7 +176,20 @@ function LoginForm() {
 
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-              {error}
+              <p>{error}</p>
+              {showRegisterHint ? (
+                <p className="mt-2 text-red-800/90">
+                  Hesabınız yoksa{" "}
+                  <Link
+                    href={returnUrl ? registerHrefWithReturn(returnUrl) : "/kayit"}
+                    className="font-semibold text-brand-900 underline"
+                  >
+                    kayıt olun
+                  </Link>
+                  . Canlı ortamda örnek <span className="font-mono">*_dev@benimogretmenim.local</span> hesapları
+                  yalnızca veritabanına seed uygulandıysa vardır.
+                </p>
+              ) : null}
             </div>
           )}
 
