@@ -3,7 +3,7 @@
  *
  * Önkoşullar: `docker compose up -d`, `npm run db:migrate`, `npm run db:seed`,
  * API ayakta (`npm run dev`). Admin: `SMOKE_ADMIN_EMAIL` / `SMOKE_ADMIN_PASSWORD`
- * (varsayılan seed_dev@benimogretmenim.local / DevParola1).
+ * (varsayılan admin@benimogretmenim.local / BenimAdmin2026! — `npm run db:seed:admin`).
  *
  *   npm run smoke:roles-deep --prefix apps/api
  */
@@ -82,8 +82,8 @@ async function main() {
     return;
   }
 
-  const adminEmail = process.env.SMOKE_ADMIN_EMAIL ?? "seed_dev@benimogretmenim.local";
-  const adminPassword = process.env.SMOKE_ADMIN_PASSWORD ?? "DevParola1";
+  const adminEmail = process.env.SMOKE_ADMIN_EMAIL ?? "admin@benimogretmenim.local";
+  const adminPassword = process.env.SMOKE_ADMIN_PASSWORD ?? "BenimAdmin2026!";
   const adminLogin = await fetch(`${base}/v1/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },

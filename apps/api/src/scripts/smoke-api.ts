@@ -2,8 +2,8 @@
  * Yerel API duman testi: API çalışırken (örn. npm run dev) ve PostgreSQL ayaktayken çalıştırın.
  *   npm run smoke
  *
- * Abonelik onayı için admin kullanıcı gerekir (varsayılan: `npm run db:seed` ile gelen
- * seed_dev@benimogretmenim.local / DevParola1). Özelleştirmek için:
+ * Abonelik onayı için admin kullanıcı gerekir (`npm run db:seed:admin` — varsayılan
+ * admin@benimogretmenim.local / BenimAdmin2026!). Özelleştirmek için:
  *   SMOKE_ADMIN_EMAIL, SMOKE_ADMIN_PASSWORD
  *   SMOKE_GUARDIAN_EMAIL, SMOKE_GUARDIAN_PASSWORD (varsayılan seed veli)
  * API'de ADMIN_API_SECRET tanımlıysa smoke sürecinde de aynı env ile çalıştırın.
@@ -89,8 +89,8 @@ async function main() {
 
   // Admin login (wallet grant + ops)
   const adminEmail =
-    process.env.SMOKE_ADMIN_EMAIL ?? "seed_dev@benimogretmenim.local";
-  const adminPassword = process.env.SMOKE_ADMIN_PASSWORD ?? "DevParola1";
+    process.env.SMOKE_ADMIN_EMAIL ?? "admin@benimogretmenim.local";
+  const adminPassword = process.env.SMOKE_ADMIN_PASSWORD ?? "BenimAdmin2026!";
   const adminLogin = await fetch(`${base}/v1/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -100,7 +100,7 @@ async function main() {
   console.log("[smoke] POST /v1/auth/login (admin)", adminLogin.status);
   if (!adminLogin.ok || !adminLoginBody.token) {
     console.error(
-      "[smoke] Admin girişi başarısız; `npm run db:seed` ile seed_dev kullanıcısı oluşturun veya SMOKE_ADMIN_EMAIL / SMOKE_ADMIN_PASSWORD ayarlayın.",
+      "[smoke] Admin girişi başarısız; `npm run db:seed:admin` ile bootstrap admin oluşturun veya SMOKE_ADMIN_EMAIL / SMOKE_ADMIN_PASSWORD ayarlayın.",
       adminLoginBody,
     );
     process.exitCode = 1;

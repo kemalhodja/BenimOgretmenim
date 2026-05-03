@@ -12,6 +12,7 @@
     "db:check": "npm run db:check --prefix apps/api",
     "db:migrate": "npm run db:migrate --prefix apps/api",
     "db:seed": "npm run db:seed --prefix apps/api",
+    "db:seed:admin": "npm run db:seed:admin --prefix apps/api",
     "setup": "npm run setup --prefix apps/api",
     "dev": "npm run dev --prefix apps/api",
     "web:dev": "npm run dev --prefix apps/web",

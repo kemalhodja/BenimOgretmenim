@@ -14,8 +14,8 @@ export default function OdemeHataPage() {
         <div className="text-lg font-semibold text-red-800">Ödeme tamamlanamadı</div>
         <p className="mt-3 text-sm text-zinc-600">
           İşlem iptal edildi veya banka / kart doğrulaması başarısız oldu.
-          Farklı bir kart deneyebilir veya havale / EFT seçeneğini
-          kullanabilirsiniz.
+          PayTR ile farklı bir kart deneyebilir veya öğretmen aboneliğinde doğrudan
+          havale / EFT seçeneğini kullanabilirsiniz.
         </p>
         {reason && (
           <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">

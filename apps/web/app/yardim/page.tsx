@@ -19,7 +19,7 @@ const faq = [
   },
   {
     q: "Öğretmen aboneliği",
-    a: "Ücretsiz planda sınırlı teklif vardır. Abonelikle sınırsız teklif. Ödeme: kart veya havale.",
+    a: "Ücretsiz planda sınırlı teklif vardır. Abonelikle sınırsız teklif. Ödeme: PayTR (kart) veya doğrudan havale/EFT; havalede admin onayı sonrası abonelik açılır.",
   },
   {
     q: "Veli paneli",

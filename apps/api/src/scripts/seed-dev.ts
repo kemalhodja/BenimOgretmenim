@@ -11,6 +11,7 @@ async function main() {
     );
     if (marker.rowCount) {
       console.log("seed already applied (seed_dev@benimogretmenim.local exists)");
+      console.log("İpucu: ayrı bootstrap admin için kökten `npm run db:seed:admin` çalıştırın.");
       await pool.end();
       return;
     }

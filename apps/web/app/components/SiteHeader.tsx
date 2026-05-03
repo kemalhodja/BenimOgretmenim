@@ -1,15 +1,7 @@
 import Link from "next/link";
 import { BrandLockup } from "./BrandLockup";
-import { LoginNavLink, RegisterNavLink } from "./AuthNavLinks";
-
-const nav = [
-  { href: "/ogretmenler", label: "Öğretmen ara" },
-  { href: "/#nasil", label: "Nasıl çalışır?" },
-  { href: "/panel", label: "Panel" },
-  { href: "/courses", label: "Kurslar" },
-  { href: "/fiyatlar", label: "Fiyatlar" },
-  { href: "/iletisim", label: "İletişim" },
-];
+import { HeaderAuthActions } from "./HeaderAuthActions";
+import { SiteNavLinks } from "./SiteNavLinks";
 
 export function SiteHeader() {
   return (
@@ -17,15 +9,7 @@ export function SiteHeader() {
       <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
         <BrandLockup className="max-sm:max-w-[min(70vw,16rem)]" />
         <nav className="hidden items-center gap-1 md:flex">
-          {nav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-paper-800/75 transition hover:bg-paper-100/80 hover:text-paper-900"
-            >
-              {item.label}
-            </Link>
-          ))}
+          <SiteNavLinks variant="desktop" />
         </nav>
         <div className="flex items-center gap-2">
           <Link
@@ -34,12 +18,7 @@ export function SiteHeader() {
           >
             Kampanya
           </Link>
-          <LoginNavLink className="rounded-lg px-3 py-1.5 text-sm font-medium text-paper-800/80 hover:bg-paper-100/80">
-            Giriş
-          </LoginNavLink>
-          <RegisterNavLink className="rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-800">
-            Kayıt ol
-          </RegisterNavLink>
+          <HeaderAuthActions />
         </div>
       </div>
       <nav className="flex border-t border-paper-200/70 px-2 py-1.5 md:hidden">
@@ -50,15 +29,7 @@ export function SiteHeader() {
           >
             Kampanya
           </Link>
-          {nav.slice(0, 6).map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="shrink-0 rounded-md px-2 py-1 text-paper-800/80 hover:bg-paper-100/80"
-            >
-              {item.label}
-            </Link>
-          ))}
+          <SiteNavLinks variant="mobile" />
         </div>
       </nav>
     </header>

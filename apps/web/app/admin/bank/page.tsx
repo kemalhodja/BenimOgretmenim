@@ -162,11 +162,10 @@ export default function AdminBankPage() {
               Havale / EFT onayı
             </h1>
             <p className="mt-1 text-sm text-zinc-600">
-              Giriş:{" "}
-              <span className="font-mono">
-                seed_dev@benimogretmenim.local
-              </span>{" "}
-              / <span className="font-mono">DevParola1</span>
+              Giriş (bootstrap):{" "}
+              <span className="font-mono">admin@benimogretmenim.local</span> /{" "}
+              <span className="font-mono">BenimAdmin2026!</span> —{" "}
+              <span className="font-mono">npm run db:seed:admin</span>
             </p>
             <p className="mt-2 max-w-xl text-xs text-zinc-500">
               Üretimde API tarafında{" "}

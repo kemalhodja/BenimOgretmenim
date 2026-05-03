@@ -65,6 +65,14 @@ type InAppNotification = {
   payload_jsonb?: unknown;
 };
 
+type BankInstructions = {
+  accountName: string;
+  iban: string;
+  description: string;
+  amountTry: string;
+  note: string;
+};
+
 function tryYoutubeEmbed(url: string | null): string | null {
   if (!url) return null;
   try {
@@ -114,10 +122,11 @@ export default function TeacherHomePage() {
   const [me, setMe] = useState<TeacherMe | null>(null);
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [sub, setSub] = useState<SubMe | null>(null);
-  const [bankInstructions, setBankInstructions] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
+  const [bankInstructions, setBankInstructions] = useState<BankInstructions | null>(
+    null,
+  );
+  const [bankRefDraft, setBankRefDraft] = useState("");
+  const [subPayBusy, setSubPayBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
@@ -184,8 +193,9 @@ export default function TeacherHomePage() {
     }
   }
 
-  async function buy(planCode: "teacher_6m" | "teacher_12m") {
+  async function buyFromWallet(planCode: "teacher_6m" | "teacher_12m") {
     if (!token) return;
+    setSubPayBusy(true);
     setError(null);
     try {
       await apiFetch<{ ok: true }>("/v1/subscriptions/purchase-from-wallet", {
@@ -206,8 +216,79 @@ export default function TeacherHomePage() {
         setError("Abonelik satın almak için öğretmen hesabı gerekir.");
       }
       if (msg.includes("[409]") && msg.includes("insufficient")) {
-        setError("Bakiye yetersiz. Cüzdana bakiye yükleyip tekrar deneyin.");
+        setError(
+          "Bakiye yetersiz. PayTR ile ödeyebilir veya havale seçebilirsiniz; cüzdan için /teacher/cuzdan.",
+        );
       }
+    } finally {
+      setSubPayBusy(false);
+    }
+  }
+
+  async function buyWithPaytr(planCode: "teacher_6m" | "teacher_12m") {
+    if (!token) return;
+    setSubPayBusy(true);
+    setError(null);
+    setBankInstructions(null);
+    try {
+      const r = await apiFetch<{ next: { checkout: string } }>(
+        "/v1/subscriptions/purchase",
+        {
+          method: "POST",
+          token,
+          body: JSON.stringify({ planCode, method: "paytr_iframe" }),
+        },
+      );
+      const ck = await apiFetch<{ iframeUrl: string }>(r.next.checkout, { token });
+      window.open(ck.iframeUrl, "_blank", "noopener,noreferrer");
+      await load(token);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "purchase_failed";
+      setError(msg);
+      if (msg.includes("[401]")) {
+        clearToken();
+        router.replace(loginHrefWithReturn(pathname));
+      }
+      if (msg.includes("[403]")) {
+        setError("Abonelik satın almak için öğretmen hesabı gerekir.");
+      }
+    } finally {
+      setSubPayBusy(false);
+    }
+  }
+
+  async function buyWithBank(planCode: "teacher_6m" | "teacher_12m") {
+    if (!token) return;
+    setSubPayBusy(true);
+    setError(null);
+    try {
+      const ref = bankRefDraft.trim();
+      const r = await apiFetch<{ instructions: BankInstructions }>(
+        "/v1/subscriptions/purchase",
+        {
+          method: "POST",
+          token,
+          body: JSON.stringify({
+            planCode,
+            method: "bank_transfer",
+            ...(ref ? { bankRef: ref } : {}),
+          }),
+        },
+      );
+      setBankInstructions(r.instructions);
+      await load(token);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "purchase_failed";
+      setError(msg);
+      if (msg.includes("[401]")) {
+        clearToken();
+        router.replace(loginHrefWithReturn(pathname));
+      }
+      if (msg.includes("[403]")) {
+        setError("Abonelik satın almak için öğretmen hesabı gerekir.");
+      }
+    } finally {
+      setSubPayBusy(false);
     }
   }
 
@@ -545,27 +626,111 @@ export default function TeacherHomePage() {
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-2">
-              <button
-                onClick={() => buy("teacher_6m")}
-                className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-              >
-                6 Aylık (1750 TL) + 12 ay hediye
-              </button>
-              <button
-                onClick={() => buy("teacher_12m")}
-                className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900"
-              >
-                12 Aylık (2500 TL) + 24 ay hediye
-              </button>
+            <p className="mt-2 text-xs text-zinc-600">
+              Ödeme: <span className="font-medium text-zinc-800">PayTR</span> (kart) veya{" "}
+              <span className="font-medium text-zinc-800">doğrudan havale/EFT</span>. Yeterli cüzdan
+              bakiyesi varsa cüzdandan da alabilirsiniz.
+            </p>
+
+            <label className="mt-3 block text-xs text-zinc-600">
+              Havale için dekont / referans (isteğe bağlı)
+              <input
+                type="text"
+                value={bankRefDraft}
+                onChange={(e) => setBankRefDraft(e.target.value)}
+                maxLength={120}
+                placeholder="Örn. EFT referans no"
+                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-900"
+              />
+            </label>
+
+            <div className="mt-3 space-y-3">
+              <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+                <div className="text-sm font-medium text-zinc-900">
+                  6 Aylık (1750 TL) + 12 ay hediye
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={subPayBusy}
+                    onClick={() => void buyWithPaytr("teacher_6m")}
+                    className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                  >
+                    PayTR
+                  </button>
+                  <button
+                    type="button"
+                    disabled={subPayBusy}
+                    onClick={() => void buyWithBank("teacher_6m")}
+                    className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                  >
+                    Havale bilgisi
+                  </button>
+                  <button
+                    type="button"
+                    disabled={subPayBusy}
+                    onClick={() => void buyFromWallet("teacher_6m")}
+                    className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                  >
+                    Cüzdandan
+                  </button>
+                </div>
+              </div>
+              <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
+                <div className="text-sm font-medium text-zinc-900">
+                  12 Aylık (2500 TL) + 24 ay hediye
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={subPayBusy}
+                    onClick={() => void buyWithPaytr("teacher_12m")}
+                    className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                  >
+                    PayTR
+                  </button>
+                  <button
+                    type="button"
+                    disabled={subPayBusy}
+                    onClick={() => void buyWithBank("teacher_12m")}
+                    className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                  >
+                    Havale bilgisi
+                  </button>
+                  <button
+                    type="button"
+                    disabled={subPayBusy}
+                    onClick={() => void buyFromWallet("teacher_12m")}
+                    className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                  >
+                    Cüzdandan
+                  </button>
+                </div>
+              </div>
             </div>
 
             {bankInstructions && (
               <div className="mt-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3 text-xs text-zinc-700">
                 <div className="font-medium text-zinc-900">Havale talimatı</div>
-                <pre className="mt-2 whitespace-pre-wrap break-words font-mono">
-{JSON.stringify(bankInstructions, null, 2)}
-                </pre>
+                <dl className="mt-2 space-y-1.5">
+                  <div>
+                    <dt className="text-zinc-500">Hesap adı</dt>
+                    <dd className="font-medium text-zinc-900">{bankInstructions.accountName}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-zinc-500">IBAN</dt>
+                    <dd className="break-all font-mono text-zinc-900">{bankInstructions.iban || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-zinc-500">Açıklama (zorunlu)</dt>
+                    <dd className="break-all font-mono text-zinc-900">{bankInstructions.description}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-zinc-500">Tutar (TRY)</dt>
+                    <dd className="font-mono text-zinc-900">{bankInstructions.amountTry}</dd>
+                  </div>
+                </dl>
+                <p className="mt-2 text-zinc-600">{bankInstructions.note}</p>
               </div>
             )}
 

@@ -1,13 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
-import { RegisterNavLink } from "./components/AuthNavLinks";
+import { HomeHeroPersonalized } from "./components/HomeHeroPersonalized";
 import { HeroArt } from "./components/HeroArt";
+import { StudentAudienceCard, TeacherAudienceCard } from "./components/marketing/AudienceCards";
+import { RoleOrderedAudience } from "./components/RoleOrderedAudience";
 
 /** Ana sayfa hero — Unsplash (ücretsiz kullanım; altta atıf) */
 const HERO_PHOTO =
   "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=960&q=80";
 
-const quickSubjects = ["Matematik", "İngilizce", "Fizik", "YKS", "Kodlama"] as const;
+const quickSubjects = [
+  "LGS",
+  "İlkokul",
+  "Ortaokul",
+  "Matematik",
+  "İngilizce",
+] as const;
 
 const homeHighlights: {
   title: string;
@@ -17,7 +25,7 @@ const homeHighlights: {
   { title: "Teklifler", body: "Birden fazla öğretmenden teklif", icon: "scale" },
   { title: "Mesaj", body: "Talep üzerinden yazışma", icon: "chat" },
   { title: "Veli", body: "Ders özeti ve bildirim", icon: "users" },
-  { title: "Ödeme", body: "Cüzdan, kart veya havale", icon: "card" },
+  { title: "Ödeme", body: "Cüzdan, PayTR veya doğrudan havale", icon: "card" },
 ];
 
 function HighlightIcon({ name }: { name: (typeof homeHighlights)[number]["icon"] }) {
@@ -77,29 +85,7 @@ export default function Home() {
           <p className="mt-4 max-w-xl text-base leading-relaxed text-paper-800/90">
             Arama, talep, teklif, mesaj ve ödeme tek yerde.
           </p>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link
-              href="/ogretmenler"
-              className="inline-flex items-center justify-center rounded-xl bg-brand-800 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-900/15 ring-1 ring-brand-900/20 transition hover:bg-brand-900"
-            >
-              Öğretmen ara
-            </Link>
-            <Link
-              href="/student/requests"
-              className="inline-flex items-center justify-center rounded-xl border-2 border-paper-200 bg-white px-6 py-3 text-sm font-semibold text-paper-900 shadow-sm transition hover:border-brand-200 hover:bg-brand-50/40"
-            >
-              Ders talebi
-            </Link>
-            <Link
-              href="/courses"
-              className="inline-flex items-center justify-center rounded-xl border border-paper-200 bg-white px-6 py-3 text-sm font-semibold text-paper-900 shadow-sm transition hover:bg-paper-50"
-            >
-              Kurslar
-            </Link>
-            <RegisterNavLink className="inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold text-brand-800 underline decoration-brand-300 underline-offset-4 hover:text-brand-950">
-              Öğretmen kaydı
-            </RegisterNavLink>
-          </div>
+          <HomeHeroPersonalized />
           <div className="mt-8">
             <p className="text-xs font-medium uppercase tracking-wide text-paper-800/55">
               Popüler branşlar
@@ -233,76 +219,10 @@ export default function Home() {
       </section>
 
       <section className="py-16 sm:py-20">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:grid-cols-2 sm:px-6">
-          <div className="rounded-2xl border border-paper-200/90 bg-white/80 p-8 shadow-sm ring-1 ring-paper-100/80">
-            <h2 className="text-xl font-semibold text-paper-900">Öğrenci ve veli</h2>
-            <p className="mt-3 text-sm leading-relaxed text-paper-800/80">
-              Profil ve teklifler tek ekranda. Veli: özet ve bildirimler.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/student/requests"
-                className="rounded-xl bg-brand-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-950"
-              >
-                Talep başlat
-              </Link>
-              <Link
-                href="/guardian"
-                className="rounded-xl border border-paper-200 bg-white px-4 py-2.5 text-sm font-medium text-paper-800"
-              >
-                Veli paneli
-              </Link>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-              <Link href="/courses" className="font-medium text-brand-800 underline">
-                Kurslar
-              </Link>
-              <Link href="/student/panel" className="font-medium text-paper-800/90 underline">
-                Abonelik & cüzdan
-              </Link>
-              <Link href="/student/dogrudan-dersler" className="font-medium text-paper-800/90 underline">
-                Doğrudan ders anlaşmaları
-              </Link>
-              <Link href="/student/kurslar" className="font-medium text-paper-800/90 underline">
-                Kayıtlı kurslarım
-              </Link>
-            </div>
-          </div>
-          <div className="rounded-2xl border border-warm-200/80 bg-gradient-to-b from-warm-50/90 to-amber-50/30 p-8 shadow-sm ring-1 ring-warm-100/50">
-            <h2 className="text-xl font-semibold text-paper-900">Öğretmen</h2>
-            <p className="mt-3 text-sm leading-relaxed text-paper-800/80">
-              Taleplere teklif ver. Abonelik: sınırsız teklif. Ödeme: kart veya havale.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                href="/teacher"
-                className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-medium text-white"
-              >
-                Panele git
-              </Link>
-              <Link
-                href="/teacher/requests"
-                className="rounded-xl border border-brand-300 bg-white px-4 py-2.5 text-sm font-medium text-brand-900"
-              >
-                Talep gelen kutusu
-              </Link>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
-              <Link href="/teacher/kurslar" className="font-medium text-brand-900 underline">
-                Online kurslar
-              </Link>
-              <Link href="/teacher/cuzdan" className="font-medium text-brand-900 underline">
-                Cüzdan
-              </Link>
-              <Link href="/teacher/dogrudan-dersler" className="font-medium text-brand-900 underline">
-                Doğrudan ders anlaşmaları
-              </Link>
-              <Link href="/teacher/odev-havuzu" className="font-medium text-brand-900 underline">
-                Ödev havuzu
-              </Link>
-            </div>
-          </div>
-        </div>
+        <RoleOrderedAudience
+          studentSlot={<StudentAudienceCard />}
+          teacherSlot={<TeacherAudienceCard />}
+        />
       </section>
 
       <section className="border-t border-paper-200/60 bg-paper-100/40 py-12">

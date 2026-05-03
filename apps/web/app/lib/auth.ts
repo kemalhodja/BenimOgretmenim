@@ -5,15 +5,22 @@ export function getToken(): string | null {
   return window.localStorage.getItem(TOKEN_KEY);
 }
 
+function notifyAuthChanged() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event("bo:auth-changed"));
+}
+
 export function setToken(token: string) {
   window.localStorage.setItem(TOKEN_KEY, token);
+  notifyAuthChanged();
 }
 
 export function clearToken() {
   window.localStorage.removeItem(TOKEN_KEY);
+  notifyAuthChanged();
 }
 
-type UserRole = "student" | "teacher" | "guardian" | "admin";
+export type UserRole = "student" | "teacher" | "guardian" | "admin";
 
 function base64UrlToJson(input: string): unknown | null {
   try {
@@ -45,5 +52,13 @@ export function panelPathForRole(role: UserRole): string {
   if (role === "teacher") return "/teacher";
   if (role === "guardian") return "/guardian";
   return "/student/requests";
+}
+
+/** Üst menü / CTA kısa etiketleri */
+export function panelNavLabel(role: UserRole): string {
+  if (role === "admin") return "Yönetim";
+  if (role === "teacher") return "Öğretmen paneli";
+  if (role === "guardian") return "Veli paneli";
+  return "Öğrenci paneli";
 }
 

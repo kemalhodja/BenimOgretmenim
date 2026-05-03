@@ -35,14 +35,34 @@ function parseLoginApiError(err: unknown): { message: string; showRegisterHint: 
   return { message: noRid, showRegisterHint: false };
 }
 
-/** `npm run db:seed` ile gelen yerel hesaplar (apps/api/src/scripts/seed-dev.ts). */
+/**
+ * Tam seed (`npm run db:seed`) — apps/api/src/scripts/seed-dev.ts
+ * Bootstrap admin (`npm run db:seed:admin`) — apps/api/src/scripts/seed-admin.ts
+ * (web’deki varsayılanlar script ile aynı olmalı).
+ */
 const SEED_PASSWORD = "DevParola1";
-const SEED_ROLE_PRESETS = [
-  { label: "Admin", email: "seed_dev@benimogretmenim.local" },
-  { label: "Öğretmen", email: "teacher_dev@benimogretmenim.local" },
-  { label: "Öğrenci", email: "student_dev@benimogretmenim.local" },
-  { label: "Veli", email: "guardian_dev@benimogretmenim.local" },
-] as const;
+/** Giriş “kullanıcı adı” = e-posta */
+const BOOTSTRAP_ADMIN_EMAIL = "admin@benimogretmenim.local";
+const BOOTSTRAP_ADMIN_PASSWORD = "BenimAdmin2026!";
+
+type SeedPreset = {
+  label: string;
+  email: string;
+  password: string;
+  hint?: string;
+};
+
+const SEED_ROLE_PRESETS: readonly SeedPreset[] = [
+  {
+    label: "Admin",
+    email: BOOTSTRAP_ADMIN_EMAIL,
+    password: BOOTSTRAP_ADMIN_PASSWORD,
+    hint: "→ /admin",
+  },
+  { label: "Öğretmen", email: "teacher_dev@benimogretmenim.local", password: SEED_PASSWORD },
+  { label: "Öğrenci", email: "student_dev@benimogretmenim.local", password: SEED_PASSWORD },
+  { label: "Veli", email: "guardian_dev@benimogretmenim.local", password: SEED_PASSWORD },
+];
 
 function LoginForm() {
   const router = useRouter();
@@ -56,10 +76,14 @@ function LoginForm() {
 
   useEffect(() => {
     const envOn = process.env.NEXT_PUBLIC_DEV_LOGIN_PRESETS === "1";
+    const isDev = process.env.NODE_ENV === "development";
     const h = typeof window !== "undefined" ? window.location.hostname : "";
     const local =
-      h === "localhost" || h === "127.0.0.1" || h.endsWith(".local");
-    setShowRolePresets(envOn || local);
+      h === "localhost" ||
+      h === "127.0.0.1" ||
+      h === "[::1]" ||
+      h.endsWith(".local");
+    setShowRolePresets(envOn || isDev || local);
   }, []);
 
   const returnUrl = useMemo(
@@ -108,7 +132,11 @@ function LoginForm() {
           </h1>
           {showRolePresets ? (
             <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3">
-              <p className="text-xs font-medium text-zinc-600">Hızlı doldur (seed · parola aynı)</p>
+              <p className="text-xs font-medium text-zinc-600">
+                Hızlı doldur — API’de{" "}
+                <span className="font-mono">npm run db:seed:admin</span> (admin) ve{" "}
+                <span className="font-mono">npm run db:seed</span> (diğer roller)
+              </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {SEED_ROLE_PRESETS.map((p) => (
                   <button
@@ -116,25 +144,49 @@ function LoginForm() {
                     type="button"
                     onClick={() => {
                       setEmail(p.email);
-                      setPassword(SEED_PASSWORD);
+                      setPassword(p.password);
                       setError(null);
                       setShowRegisterHint(false);
                     }}
                     className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:border-brand-300 hover:text-brand-900"
                   >
                     {p.label}
+                    {"hint" in p && p.hint ? (
+                      <span className="ml-1 font-normal text-zinc-500">{p.hint}</span>
+                    ) : null}
                   </button>
                 ))}
               </div>
               <p className="mt-2 font-mono text-[0.65rem] leading-snug text-zinc-500">
-                {SEED_PASSWORD}
+                Admin parola: <span className="select-all">{BOOTSTRAP_ADMIN_PASSWORD}</span>
+                <br />
+                Tam seed (öğretmen/öğrenci/veli): <span className="select-all">{SEED_PASSWORD}</span>
+              </p>
+              <p className="mt-2 text-[0.65rem] leading-snug text-zinc-600">
+                <strong className="text-zinc-800">Admin:</strong> kayıt formunda admin yoktur.{" "}
+                <span className="font-mono">npm run db:seed:admin</span> ile{" "}
+                <span className="font-mono">{BOOTSTRAP_ADMIN_EMAIL}</span> oluşturulur veya parolası yenilenir.
+                Girişten sonra <Link href="/admin" className="font-medium text-brand-800 underline">/admin</Link>;
+                havale proxy için <span className="font-mono">ADMIN_API_SECRET</span>.
               </p>
             </div>
           ) : (
-            <p className="mt-1 text-xs text-zinc-500">
-              Seed hesap düğmeleri için yerelde açın veya{" "}
-              <span className="font-mono">NEXT_PUBLIC_DEV_LOGIN_PRESETS=1</span> ayarlayın.
-            </p>
+            <div className="mt-2 space-y-1 text-xs text-zinc-500">
+              <p>
+                Seed / hızlı giriş: yerelde açın,{" "}
+                <span className="font-mono">NEXT_PUBLIC_DEV_LOGIN_PRESETS=1</span> veya{" "}
+                <span className="font-mono">next dev</span> kullanın.
+              </p>
+              <p>
+                <strong className="text-zinc-700">Admin girişi:</strong> üretimde{" "}
+                <span className="font-mono">role = admin</span> kullanıcı DB ile tanımlanır. Yerelde:{" "}
+                <span className="font-mono">npm run db:seed:admin</span> →{" "}
+                <span className="font-mono">{BOOTSTRAP_ADMIN_EMAIL}</span> /{" "}
+                <span className="font-mono">{BOOTSTRAP_ADMIN_PASSWORD}</span>. Eski tam seed admin:{" "}
+                <span className="font-mono">seed_dev@benimogretmenim.local</span> /{" "}
+                <span className="font-mono">{SEED_PASSWORD}</span>.
+              </p>
+            </div>
           )}
           {returnUrl && (
             <p className="mt-2 text-xs text-zinc-500">
