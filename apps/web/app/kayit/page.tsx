@@ -102,10 +102,9 @@ function KayitForm() {
     <div className="flex min-h-[60vh] items-center justify-center px-4 py-12">
       <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="mb-6">
-          <div className="text-sm font-medium text-zinc-500">Hesap oluştur</div>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-            Kayıt ol
-          </h1>
+          <p className="text-sm font-medium text-zinc-500">Hesap</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Kayıt ol</h1>
+          <p className="mt-1 text-xs text-zinc-500">Yeni hesap oluştur</p>
           <p className="mt-1 text-sm text-zinc-600">
             Zaten hesabın var mı?{" "}
             <Link href={loginHref} className="font-medium text-brand-800 underline">

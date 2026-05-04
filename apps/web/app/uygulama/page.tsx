@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 export default function UygulamaPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-      <p className="text-xs font-semibold uppercase tracking-wide text-brand-800">Uygulama</p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-paper-950 sm:text-3xl">
+      <p className="text-sm font-medium text-zinc-500">Site</p>
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-950 sm:text-3xl">
         Telefona ekle ve tam ekran kullan
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-paper-800/90">

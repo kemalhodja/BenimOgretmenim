@@ -10,9 +10,8 @@ export const metadata: Metadata = {
 export default function KullanimKosullariPage() {
   return (
     <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-        Kullanım koşulları
-      </h1>
+      <p className="text-sm font-medium text-zinc-500">Site</p>
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Kullanım koşulları</h1>
       <p className="mt-2 text-sm text-zinc-600">
         Aşağıdaki metin yasal nihai sözleşme yerine geçmez; yayına çıkmadan önce
         hukuk danışmanlığı ile güncellenmelidir.

@@ -114,7 +114,7 @@ export default function StudentDogrudanDerslerPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <div className="text-sm font-medium text-zinc-500">Öğrenci</div>
+        <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
           Doğrudan ders anlaşmaları
         </h1>

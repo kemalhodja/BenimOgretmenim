@@ -271,7 +271,7 @@ export default function TeacherEditPage() {
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-sm font-medium text-zinc-500">Öğretmen</div>
+            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
               Profil düzenle
             </h1>

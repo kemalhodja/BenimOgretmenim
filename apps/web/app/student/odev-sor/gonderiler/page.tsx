@@ -60,8 +60,8 @@ export default function OdevGonderilerPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
-        <div className="text-sm text-zinc-500">Öğrenci</div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Gönderdiğim sorular</h1>
+        <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Gönderdiğim sorular</h1>
         <div className="mt-3 flex flex-wrap gap-2 text-sm">
           <Link className="font-medium text-brand-800 underline" href="/student/odev-sor">
             Yeni soru

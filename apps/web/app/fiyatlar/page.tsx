@@ -52,7 +52,7 @@ export default async function FiyatlarPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <div className="text-sm font-medium text-zinc-500">Öğretmenler için</div>
+        <p className="text-sm font-medium text-zinc-500">Site</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight text-zinc-900">
           Abonelik fiyatları
         </h1>

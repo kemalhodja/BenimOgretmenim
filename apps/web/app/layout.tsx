@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ConditionalSiteChrome } from "./components/ConditionalSiteChrome";
 import { InstallAppBanner } from "./components/InstallAppBanner";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
 import { PwaRegister } from "./components/PwaRegister";
+import { SupportWidget } from "./components/SupportWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -77,10 +79,14 @@ export default function RootLayout({
     >
       <body className="flex min-h-full flex-col bg-paper-50 font-sans text-paper-900">
         <PwaRegister />
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
+        <ConditionalSiteChrome
+          marketingHeader={<SiteHeader />}
+          marketingFooter={<SiteFooter />}
+        >
+          <main className="flex-1">{children}</main>
+        </ConditionalSiteChrome>
         <InstallAppBanner />
+        <SupportWidget />
       </body>
     </html>
   );

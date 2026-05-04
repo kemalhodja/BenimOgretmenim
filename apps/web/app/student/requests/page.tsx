@@ -124,52 +124,17 @@ export default function StudentRequestsPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-4xl px-6 py-8">
-        <div className="flex items-center justify-between">
+        <header className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="text-sm font-medium text-zinc-500">Öğrenci</div>
+            <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
               Ders taleplerim
             </h1>
+            <p className="mt-1 text-xs text-zinc-500">
+              Üst menüden diğer öğrenci sayfalarına geçebilirsiniz.
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/student/panel"
-              className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 shadow-sm"
-            >
-              Abonelik & cüzdan
-            </Link>
-            <Link
-              href="/student/dogrudan-dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Doğrudan ders
-            </Link>
-            <Link
-              href="/ogretmenler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Öğretmen ara
-            </Link>
-            <Link
-              href="/student/dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Ders yorumu
-            </Link>
-            <Link
-              href="/student/kurslar"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Kurslarım
-            </Link>
-            <Link
-              href="/teacher"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Öğretmen paneline git
-            </Link>
-          </div>
-        </div>
+        </header>
 
         {(error || ok) && (
           <div

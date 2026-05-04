@@ -49,7 +49,7 @@ export default function CoursesPage() {
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-medium text-zinc-500">Online dershane</div>
+            <p className="text-sm font-medium text-zinc-500">Site</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
               Kurslar
             </h1>
@@ -59,28 +59,16 @@ export default function CoursesPage() {
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             <Link
-              href="/student/panel"
+              href="/panel"
               className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 shadow-sm"
             >
-              Öğrenci paneli
+              Panele git
             </Link>
             <Link
-              href="/student/kurslar"
+              href="/"
               className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
             >
-              Kurslarım
-            </Link>
-            <Link
-              href="/student/requests"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Ders talebi
-            </Link>
-            <Link
-              href="/teacher"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Öğretmen paneli
+              Ana sayfa
             </Link>
           </div>
         </div>

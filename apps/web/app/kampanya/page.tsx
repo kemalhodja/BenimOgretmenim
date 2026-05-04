@@ -13,12 +13,8 @@ export default function KampanyaPage() {
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-2xl px-6 py-12">
         <div className="rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-6 text-sm text-brand-950 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-wide text-brand-800">
-            Kampanya
-          </div>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-            Abonelik fiyatları
-          </h1>
+          <p className="text-sm font-medium text-brand-900/70">Site</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Abonelik fiyatları</h1>
           <p className="mt-3 text-brand-900/90">
             Kayıt sonrası öğretmen panelinde abonelik adımından kampanyayı görebilirsiniz.
           </p>

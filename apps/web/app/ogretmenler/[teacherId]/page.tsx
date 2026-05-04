@@ -333,7 +333,8 @@ export default function OgretmenDetayPage() {
       {teacher && (
         <>
           <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
+            <p className="text-sm font-medium text-zinc-500">Site</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
               {teacher.display_name}
             </h1>
             <div className="mt-2 text-sm text-zinc-600">

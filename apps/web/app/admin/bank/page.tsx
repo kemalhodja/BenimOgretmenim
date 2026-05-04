@@ -157,9 +157,9 @@ export default function AdminBankPage() {
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="text-sm font-medium text-zinc-500">Admin</div>
+            <p className="text-sm font-medium text-zinc-500">Yönetim</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Havale / EFT onayı
+              Havale ve EFT onayı
             </h1>
             <p className="mt-1 text-sm text-zinc-600">
               Giriş (bootstrap):{" "}

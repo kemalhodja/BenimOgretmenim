@@ -149,7 +149,7 @@ export default function TeacherRequestsPage() {
       <div className="mx-auto max-w-5xl px-6 py-8">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm font-medium text-zinc-500">Öğretmen</div>
+            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
               Açık ders talepleri
             </h1>
@@ -306,13 +306,10 @@ export default function TeacherRequestsPage() {
           )}
         </div>
 
-        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 text-xs text-zinc-600">
-          Öğrenci talebi oluşturmak için:{" "}
-          <Link className="underline" href="/student/requests">
-            /student/requests
-          </Link>{" "}
-          (student hesabıyla).
-        </div>
+        <p className="mt-6 text-xs text-zinc-500">
+          Liste: öğrencilerin açtığı açık talepler. Talep oluşturma bu panelde yoktur; yalnızca teklif
+          verirsiniz.
+        </p>
       </div>
     </div>
   );

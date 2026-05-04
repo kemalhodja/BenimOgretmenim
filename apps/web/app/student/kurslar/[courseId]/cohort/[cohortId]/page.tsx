@@ -88,7 +88,7 @@ export default function StudentCohortSessionsPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
-        <div className="text-sm font-medium text-zinc-500">Öğrenci · Grup oturumları</div>
+        <p className="text-sm font-medium text-zinc-500">Öğrenci · grup oturumları</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
           {cohortTitle || "Grup"}
         </h1>

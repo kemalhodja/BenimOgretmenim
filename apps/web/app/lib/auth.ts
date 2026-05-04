@@ -46,6 +46,19 @@ export function getRoleFromToken(token: string | null): UserRole | null {
   return null;
 }
 
+/** JWT `sub` — oturumdaki kullanıcı kimliği (admin işlemlerinde kendi satırını ayırt etmek için). */
+export function getUserIdFromToken(token: string | null): string | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  const payload = base64UrlToJson(parts[1]);
+  const sub =
+    typeof payload === "object" && payload && "sub" in payload
+      ? (payload as { sub?: unknown }).sub
+      : null;
+  return typeof sub === "string" && sub.length > 0 ? sub : null;
+}
+
 export function panelPathForRole(role: UserRole): string {
   // Not: admin paneli ayrı sayfada.
   if (role === "admin") return "/admin";

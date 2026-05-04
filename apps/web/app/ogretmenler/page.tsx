@@ -142,7 +142,7 @@ function OgretmenlerPageInner() {
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="text-sm font-medium text-zinc-500">Öğretmen arama</div>
+            <p className="text-sm font-medium text-zinc-500">Site</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
               Öğretmenler
             </h1>
@@ -153,10 +153,10 @@ function OgretmenlerPageInner() {
           </div>
           <div className="flex shrink-0 flex-wrap justify-end gap-2">
             <Link
-              href="/student/dogrudan-dersler"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 shadow-sm hover:bg-zinc-50"
+              href="/panel"
+              className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-950 shadow-sm hover:bg-amber-100"
             >
-              Doğrudan ders anlaşmalarım
+              Panele git
             </Link>
             <Link
               href="/student/requests"

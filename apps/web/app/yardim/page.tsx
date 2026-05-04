@@ -30,9 +30,8 @@ const faq = [
 export default function YardimPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-        Yardım
-      </h1>
+      <p className="text-sm font-medium text-zinc-500">Site</p>
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Yardım</h1>
       <p className="mt-2 text-sm text-zinc-600">Sık sorulan sorular.</p>
       <ul className="mt-10 space-y-8">
         {faq.map((item) => (

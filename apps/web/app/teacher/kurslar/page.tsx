@@ -97,7 +97,7 @@ export default function TeacherKurslarPage() {
       <div className="mx-auto max-w-5xl px-6 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-medium text-zinc-500">Öğretmen</div>
+            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
               Kurslar (online dershane)
             </h1>

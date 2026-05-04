@@ -14,12 +14,14 @@ import { curriculum } from "./routes/curriculum.js";
 import { teacherMe } from "./routes/teacherMe.js";
 import { lessonRequests } from "./routes/lessonRequests.js";
 import { subscriptions } from "./routes/subscriptions.js";
+import { admin } from "./routes/admin.js";
 import { paytr } from "./routes/paytr.js";
 import { packages } from "./routes/packages.js";
 import { courses } from "./routes/courses.js";
 import { studentPlatform } from "./routes/studentPlatform.js";
 import { userWallet } from "./routes/userWallet.js";
 import { groupLessons } from "./routes/groupLessons.js";
+import { support } from "./routes/support.js";
 import { requestId } from "./middleware/requestId.js";
 import { requestLog } from "./middleware/requestLog.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -134,6 +136,10 @@ app.get("/", (c) => {
       wallet: "/v1/wallet/me, GET /v1/wallet/ledger, POST /v1/wallet/topup; PayTR /v1/paytr/wallet-topup-checkout",
       subscriptions:
         "/v1/subscriptions/plans, /me, POST /purchase; admin: GET /admin/pending-bank-transfers, POST /admin/approve-bank-transfer",
+      support:
+        "/v1/support/me (GET; ?pagePath=), POST /v1/support/me/messages — girişli kullanıcı destek mesajı",
+      admin:
+        "/v1/admin/* — overview, users(+role,wallet), teachers(+PATCH verification), courses(+PATCH status), lesson-requests(+PATCH cancel), subscription-payments, group-lesson-requests(+PATCH status), wallet-ledger, homework(+PATCH cancel), direct-bookings(+PATCH cancel), lesson-packages, teacher-subscriptions, wallet-topups, student-sub-payments, course-enrollments, parent-notifications, support-threads(+messages)",
       paytr:
         "/v1/paytr/checkout, /course-checkout, /student-sub-checkout, /wallet-topup-checkout, /callback",
       guardians: "/v1/guardians/overview (GET veli), POST /v1/guardians/link (öğrenci)",
@@ -166,7 +172,9 @@ app.route("/v1/courses", courses);
 app.route("/v1/student-platform", studentPlatform);
 app.route("/v1/wallet", userWallet);
 app.route("/v1/group-lessons", groupLessons);
+app.route("/v1/support", support);
 app.route("/v1/subscriptions", subscriptions);
+app.route("/v1/admin", admin);
 app.route("/v1/paytr", paytr);
 
 app.notFound((c) => {

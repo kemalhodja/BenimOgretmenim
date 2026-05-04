@@ -189,6 +189,10 @@ export default function OdevDetayPage() {
           <p className="mt-6 text-sm text-zinc-500">Yükleniyor…</p>
         ) : (
           <div className="mt-6 space-y-6">
+            <header>
+              <p className="text-sm font-medium text-zinc-500">Öğrenci · soru / ödev</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Gönderi detayı</h1>
+            </header>
             {post.status === "open" && post.last_answer_rejected_at ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-950">
                 Son öğretmen cevabını havuza iade ettiniz; soru branş havuzunda tekrar görünür. Başka bir
@@ -200,8 +204,10 @@ export default function OdevDetayPage() {
                 Bu gönderiyi iptal ettiniz; öğretmen havuzunda listelenmez.
               </div>
             ) : null}
-            <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-              <h1 className="text-xl font-semibold text-zinc-900">{post.topic}</h1>
+            <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm" aria-labelledby="homework-topic">
+              <h2 id="homework-topic" className="text-xl font-semibold text-zinc-900">
+                {post.topic}
+              </h2>
               <p className="mt-1 text-xs text-zinc-500">
                 {post.branch_name ?? "—"} · {homeworkPostStatusLabelTr(post.status)} ·{" "}
                 {post.teacher_display_name ? `Öğretmen: ${post.teacher_display_name}` : null}

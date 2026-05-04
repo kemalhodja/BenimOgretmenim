@@ -124,12 +124,9 @@ function LoginForm() {
     <div className="flex min-h-[calc(100vh-1px)] items-center justify-center bg-zinc-50 px-6 py-10">
       <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="mb-6">
-          <div className="text-sm font-medium text-zinc-500">
-            BenimÖğretmenim
-          </div>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-            Giriş
-          </h1>
+          <p className="text-sm font-medium text-zinc-500">Hesap</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Giriş</h1>
+          <p className="mt-1 text-xs text-zinc-500">BenimÖğretmenim</p>
           {showRolePresets ? (
             <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3">
               <p className="text-xs font-medium text-zinc-600">

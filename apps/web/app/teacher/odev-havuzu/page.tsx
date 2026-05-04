@@ -217,8 +217,8 @@ export default function OdevHavuzuPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <div className="text-sm text-zinc-500">Öğretmen</div>
-        <h1 className="text-2xl font-semibold text-zinc-900">Soru / ödev havuzu</h1>
+        <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Soru / ödev havuzu</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Üstlenince soru {resolveMinutes} dakika yalnızca size aittir; sürede cevaplamazsanız tekrar havuza
           düşer. Öğrenci cevabı onaylarsa öğretmen cüzdanına <strong>{rewardTl} TL</strong> aktarılır (öğrenci

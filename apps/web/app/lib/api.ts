@@ -16,7 +16,10 @@ function resolveApiFetchUrl(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
   const upstream = getServerApiBaseUrl();
 
-  if (typeof window !== "undefined" && p.startsWith("/v1")) {
+  if (
+    typeof window !== "undefined" &&
+    (p.startsWith("/v1") || p.startsWith("/api/admin"))
+  ) {
     return p;
   }
   return `${upstream}${p}`;

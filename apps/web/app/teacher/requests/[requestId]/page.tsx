@@ -96,9 +96,8 @@ export default function TeacherRequestChatPage() {
           </div>
         </div>
 
-        <h1 className="mt-6 text-2xl font-semibold tracking-tight text-zinc-900">
-          Talep sohbeti
-        </h1>
+        <p className="mt-6 text-sm font-medium text-zinc-500">Öğretmen</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Talep sohbeti</h1>
         <p className="mt-1 font-mono text-xs text-zinc-500">{requestId}</p>
 
         {error && (

@@ -1,26 +1,13 @@
 import { Hono } from "hono";
-import type { Context } from "hono";
 import { z } from "zod";
 import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
+import { assertAdminApiSecret } from "../lib/adminSecret.js";
 
 export const subscriptions = new Hono<{ Variables: AppVariables }>();
-
-type Ctx = Context<{ Variables: AppVariables }>;
-
-/** Üretimde ADMIN_API_SECRET tanımlıysa admin uçları ek başlık ister (tarayıcıda Next proxy kullanın). */
-function assertAdminApiSecret(c: Ctx): Response | undefined {
-  const want = process.env.ADMIN_API_SECRET?.trim();
-  if (!want) return undefined;
-  const got = c.req.header("x-admin-secret")?.trim();
-  if (got !== want) {
-    return c.json({ error: "forbidden_admin_secret" }, 403);
-  }
-  return undefined;
-}
 
 subscriptions.get("/plans", async (c) => {
   const r = await pool.query(

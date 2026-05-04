@@ -216,8 +216,8 @@ export default function StudentPanelPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
-        <div className="text-sm font-medium text-zinc-500">Öğrenci</div>
-        <h1 className="mt-1 text-2xl font-semibold text-zinc-900">Abonelik & cüzdan</h1>
+        <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Abonelik ve cüzdan</h1>
         <p className="mt-1 text-sm text-zinc-600">
           Ders talebi ve ödev gibi özellikler için aylık abonelik gerekir. Güncel tutar:{" "}
           {sub ? `${tl(sub.pricePerMonthMinor)} TL/ay` : "—"}.

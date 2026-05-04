@@ -198,7 +198,7 @@ export default function StudentRequestDetailPage() {
       <div className="mx-auto max-w-3xl px-6 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-medium text-zinc-500">Öğrenci</div>
+            <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
               Talep ve teklifler
             </h1>

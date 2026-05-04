@@ -336,12 +336,9 @@ export default function TeacherHomePage() {
       <div className="mx-auto max-w-6xl px-6 py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="text-sm font-medium text-zinc-500">
-              Öğretmen paneli
-            </div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              {me?.teacher.displayName ?? "—"}
-            </h1>
+            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Panel özeti</h1>
+            <p className="mt-1 text-lg font-medium text-zinc-800">{me?.teacher.displayName ?? "—"}</p>
             <div className="mt-1 text-sm text-zinc-600">
               Doğrulama:{" "}
               <span className="font-medium text-zinc-900">
@@ -463,7 +460,7 @@ export default function TeacherHomePage() {
               )}
             </div>
             <p className="mt-1 text-xs text-zinc-500">
-              Öğrenci adları gizlilik için kısaltılır; yıldızlar herkese açık profilde de görünür.
+              Yorumdaki adlar gizlilik için kısaltılır; puan herkese açık profilde de görünür.
             </p>
             <ul className="mt-4 space-y-3">
               {(dash?.recentReviews ?? []).map((rv) => (

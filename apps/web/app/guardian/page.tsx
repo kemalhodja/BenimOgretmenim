@@ -107,7 +107,7 @@ export default function GuardianPage() {
       <div className="mx-auto max-w-3xl px-6 py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-medium text-zinc-500">Veli</div>
+            <p className="text-sm font-medium text-zinc-500">Veli</p>
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Veli paneli</h1>
             <p className="mt-1 text-xs text-zinc-500">Öğrenci hesabı sizi veli olarak ekler.</p>
           </div>
