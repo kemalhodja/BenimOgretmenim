@@ -9,6 +9,9 @@
 # Render'da aynı repoya "Auto Deploy: On" açıksa, push zaten deploy eder; bu workflow
 # da hook çağırırsa çift deploy olabilir. Ya Auto Deploy'u kapat, ya bu workflow'u
 # sadece hook istediğin senaryoda kullan.
+#
+# Not: secrets.* ifadesi adım düzeyinde `if:` içinde kullanılamaz (workflow invalid).
+# Hook koşulu env + shell ile yapılır.
 
 name: Build and deploy (Render)
 
@@ -24,7 +27,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build-api:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,15 +40,6 @@ jobs:
         working-directory: apps/api
         run: npm ci --include=dev && npm run test && npm run build
 
-  build-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       - name: Web — install, lint, build
         working-directory: apps/web
         env:
@@ -57,12 +51,11 @@ jobs:
         run: npm ci --include=dev && npm run lint && npm run build
 
   deploy:
-    needs: [build-api, build-web]
+    needs: [build]
     runs-on: ubuntu-latest
     # PR'larda sadece build; deploy yalnızca main push veya manuel tetikleme
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
-      # secrets.* adım if'inde kullanılamıyor (workflow invalid); env + shell ile koşullu curl.
       - name: Trigger Render deploy hooks
         env:
           HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
