@@ -19,12 +19,15 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-render-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  build:
+  build-api:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,10 +35,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
 
       - name: API — install, test, build
         working-directory: apps/api
         run: npm ci --include=dev && npm run test && npm run build
+
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
 
       - name: Web — install, lint, build
         working-directory: apps/web
@@ -44,10 +60,11 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: https://benim-ogretmenim.onrender.com
           INTERNAL_API_BASE_URL: https://benim-ogretmenim.onrender.com
           NEXT_PUBLIC_SITE_URL: https://benimogretmenim.onrender.com
+          NEXT_TELEMETRY_DISABLED: "1"
         run: npm ci --include=dev && npm run lint && npm run build
 
   deploy:
-    needs: [build]
+    needs: [build-api, build-web]
     runs-on: ubuntu-latest
     # PR'larda sadece build; deploy yalnızca main push veya manuel tetikleme
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
