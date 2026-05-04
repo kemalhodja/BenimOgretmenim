@@ -18,6 +18,16 @@ export function AdminPanelFooter() {
             </Link>
           </li>
           <li>
+            <Link href="/admin/merkez" className="hover:underline">
+              Merkez
+            </Link>
+          </li>
+          <li>
+            <Link href="/admin/support" className="hover:underline">
+              Canlı destek
+            </Link>
+          </li>
+          <li>
             <Link href="/admin/bank" className="hover:underline">
               Havale onayı
             </Link>
