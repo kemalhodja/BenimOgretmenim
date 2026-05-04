@@ -19,11 +19,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  # setup-node `cache: npm` için (yalnızca contents: read bırakılırsa job anında düşer)
-  actions: write
-
 concurrency:
   group: deploy-render-${{ github.ref }}
   cancel-in-progress: false
@@ -37,8 +32,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: apps/api/package-lock.json
 
       - name: API — install, test, build
         working-directory: apps/api
@@ -52,8 +45,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: apps/web/package-lock.json
 
       - name: Web — install, lint, build
         working-directory: apps/web
