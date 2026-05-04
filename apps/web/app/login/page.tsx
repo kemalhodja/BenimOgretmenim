@@ -59,6 +59,12 @@ const SEED_ROLE_PRESETS: readonly SeedPreset[] = [
     password: BOOTSTRAP_ADMIN_PASSWORD,
     hint: "→ /admin",
   },
+  {
+    label: "Admin (ilk seed)",
+    email: "seed_dev@benimogretmenim.local",
+    password: SEED_PASSWORD,
+    hint: "db:seed sonrası",
+  },
   { label: "Öğretmen", email: "teacher_dev@benimogretmenim.local", password: SEED_PASSWORD },
   { label: "Öğrenci", email: "student_dev@benimogretmenim.local", password: SEED_PASSWORD },
   { label: "Veli", email: "guardian_dev@benimogretmenim.local", password: SEED_PASSWORD },
@@ -163,6 +169,11 @@ function LoginForm() {
                 <strong className="text-zinc-800">Admin:</strong> kayıt formunda admin yoktur.{" "}
                 <span className="font-mono">npm run db:seed:admin</span> ile{" "}
                 <span className="font-mono">{BOOTSTRAP_ADMIN_EMAIL}</span> oluşturulur veya parolası yenilenir.
+                Sadece <span className="font-mono">db:seed</span> çalıştıysa admin girişi:{" "}
+                <span className="font-mono">seed_dev@benimogretmenim.local</span> /{" "}
+                <span className="font-mono">{SEED_PASSWORD}</span>. Canlıda API deploy{" "}
+                <span className="font-mono">bootstrap-admin-if-missing</span> ile{" "}
+                <span className="font-mono">{BOOTSTRAP_ADMIN_EMAIL}</span> eklenir.
                 Girişten sonra <Link href="/admin" className="font-medium text-brand-800 underline">/admin</Link>;
                 havale proxy için <span className="font-mono">ADMIN_API_SECRET</span>.
               </p>

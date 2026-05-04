@@ -38,10 +38,10 @@ export function TeacherPanelHeader() {
   const linkMob = "shrink-0 rounded-md px-2 py-1 text-paper-800/85 hover:bg-paper-100/80";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-paper-200/80 bg-paper-50/95 shadow-[0_1px_0_0_rgb(0_0_0/0.04)] backdrop-blur-md">
-      <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
+    <header className="sticky top-0 z-40 border-b border-brand-200/35 bg-paper-50/90 shadow-[0_8px_32px_-8px_rgb(42_157_143/0.14),0_1px_0_0_rgb(231_111_81/0.08)] backdrop-blur-md">
+      <div className="mx-auto flex min-h-20 max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <Link href="/teacher" className="min-w-0 shrink no-underline" title="Öğretmen özeti">
-          <BrandLockup asLink={false} className="max-sm:max-w-[min(70vw,16rem)]" />
+          <BrandLockup asLink={false} className="max-sm:max-w-[min(90vw,22rem)]" />
         </Link>
         <nav className="hidden flex-1 items-center justify-center gap-0.5 lg:flex">
           <NavLinks className={linkDesk} />

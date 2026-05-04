@@ -15,10 +15,10 @@ export function BrandLockup({ asLink = true, className = "" }: Props) {
     <Image
       src="/logo-marketing.png"
       alt={`Benim Öğretmenim — ${TAGLINE}`}
-      width={320}
-      height={120}
-      sizes="(max-width: 640px) 200px, 260px"
-      className="h-9 w-auto max-w-[min(220px,72vw)] shrink-0 object-contain object-left sm:h-11 sm:max-w-[min(280px,40vw)]"
+      width={400}
+      height={150}
+      sizes="(max-width: 640px) 280px, 360px"
+      className="h-12 w-auto max-w-[min(280px,88vw)] shrink-0 object-contain object-left sm:h-16 sm:max-w-[min(380px,52vw)]"
       priority
     />
   );

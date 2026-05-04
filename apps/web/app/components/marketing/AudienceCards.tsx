@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function StudentAudienceCard() {
   return (
-    <div className="rounded-2xl border border-paper-200/90 bg-white/80 p-8 shadow-sm ring-1 ring-paper-100/80">
+    <div className="rounded-2xl border border-brand-200/50 bg-gradient-to-b from-white to-brand-50/15 p-8 shadow-lg shadow-brand-900/6 ring-1 ring-brand-100/70">
       <h2 className="text-xl font-semibold text-paper-900">Öğrenci ve veli</h2>
       <p className="mt-3 text-sm leading-relaxed text-paper-800/80">
         Profil ve teklifler tek ekranda. Veli: özet ve bildirimler.
@@ -10,7 +10,7 @@ export function StudentAudienceCard() {
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
           href="/student/requests"
-          className="rounded-xl bg-brand-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-950"
+          className="rounded-xl bg-gradient-to-r from-brand-800 to-brand-700 px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-brand-900/25 transition hover:from-brand-900 hover:to-brand-800"
         >
           Talep başlat
         </Link>
@@ -41,7 +41,7 @@ export function StudentAudienceCard() {
 
 export function TeacherAudienceCard() {
   return (
-    <div className="rounded-2xl border border-warm-200/80 bg-gradient-to-b from-warm-50/90 to-amber-50/30 p-8 shadow-sm ring-1 ring-warm-100/50">
+    <div className="rounded-2xl border border-warm-300/55 bg-gradient-to-br from-warm-50 via-white to-brand-50/30 p-8 shadow-lg shadow-warm-600/10 ring-1 ring-warm-200/60">
       <h2 className="text-xl font-semibold text-paper-900">Öğretmen</h2>
       <p className="mt-3 text-sm leading-relaxed text-paper-800/80">
         Taleplere teklif ver. Abonelik: sınırsız teklif. Ödeme: PayTR veya doğrudan havale.
@@ -49,7 +49,7 @@ export function TeacherAudienceCard() {
       <div className="mt-6 flex flex-wrap gap-3">
         <Link
           href="/teacher"
-          className="rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-medium text-white"
+          className="rounded-xl bg-gradient-to-r from-brand-700 to-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition hover:from-brand-800 hover:to-brand-700"
         >
           Panele git
         </Link>

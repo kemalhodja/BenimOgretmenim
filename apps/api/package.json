@@ -15,6 +15,7 @@
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:seed": "tsx src/scripts/seed-dev.ts",
     "db:seed:admin": "tsx src/scripts/seed-admin.ts",
+    "db:seed:bootstrap-admin-if-missing": "tsx src/scripts/seed-bootstrap-admin-if-missing.ts",
     "setup": "tsx src/scripts/setup.ts",
     "smoke": "tsx src/scripts/smoke-api.ts",
     "smoke:prod": "tsx src/scripts/smoke-prod.ts",

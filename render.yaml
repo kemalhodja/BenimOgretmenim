@@ -38,7 +38,8 @@ services:
     # db:migrate tsx ile çalışır; tsx prod dependencies içinde tutulur (Render preDeploy ortamında
     # devDependencies her zaman gelmeyebilir).
     buildCommand: npm ci --include=dev && npm run build
-    preDeployCommand: npm run db:migrate
+    # migrate + ilk kurulumda admin@... yoksa oluştur (seed_dev admininden ayrı)
+    preDeployCommand: npm run db:migrate && npm run db:seed:bootstrap-admin-if-missing
     startCommand: npm run start
     healthCheckPath: /health
     envVars:
