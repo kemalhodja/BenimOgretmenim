@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../lib/api";
 import { useRequireAdmin } from "../useRequireAdmin";
 
@@ -41,6 +41,20 @@ const DATASETS: Record<string, Cfg> = {
 };
 
 export default function AdminVeriPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center bg-zinc-50 text-sm text-zinc-500">
+          Yükleniyor…
+        </div>
+      }
+    >
+      <AdminVeriInner />
+    </Suspense>
+  );
+}
+
+function AdminVeriInner() {
   const token = useRequireAdmin();
   const sp = useSearchParams();
   const key = sp.get("k") ?? "ledger";
