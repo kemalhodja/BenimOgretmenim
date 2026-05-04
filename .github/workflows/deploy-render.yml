@@ -21,6 +21,8 @@ on:
 
 permissions:
   contents: read
+  # setup-node `cache: npm` için (yalnızca contents: read bırakılırsa job anında düşer)
+  actions: write
 
 concurrency:
   group: deploy-render-${{ github.ref }}
