@@ -62,17 +62,21 @@ jobs:
     # PR'larda sadece build; deploy yalnızca main push veya manuel tetikleme
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
-      - name: Trigger API deploy (Render hook)
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_API != '' }}
-        run: curl -fsS "${{ secrets.RENDER_DEPLOY_HOOK_API }}"
-
-      - name: Trigger Web deploy (Render hook)
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_WEB != '' }}
-        run: curl -fsS "${{ secrets.RENDER_DEPLOY_HOOK_WEB }}"
-
-      - name: Skip deploy hooks (optional secrets)
-        if: ${{ secrets.RENDER_DEPLOY_HOOK_API == '' && secrets.RENDER_DEPLOY_HOOK_WEB == '' }}
+      # secrets.* adım if'inde kullanılamıyor (workflow invalid); env + shell ile koşullu curl.
+      - name: Trigger Render deploy hooks
+        env:
+          HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+          HOOK_WEB: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
         run: |
-          echo "::notice::Render deploy hook secret'ları tanımlı değil; bu job deploy tetiklemeden tamamlandı."
-          echo "İsterseniz Render → Service → Settings → Deploy Hook URL'lerini GitHub Secrets olarak ekleyin:"
-          echo "  RENDER_DEPLOY_HOOK_API, RENDER_DEPLOY_HOOK_WEB"
+          set -euo pipefail
+          if [ -z "${HOOK_API:-}" ] && [ -z "${HOOK_WEB:-}" ]; then
+            echo "::notice::Render deploy hook secret'ları tanımlı değil; hook atlandı."
+            echo "İsterseniz GitHub Secrets: RENDER_DEPLOY_HOOK_API, RENDER_DEPLOY_HOOK_WEB"
+            exit 0
+          fi
+          if [ -n "${HOOK_API:-}" ]; then
+            curl -fsS "$HOOK_API"
+          fi
+          if [ -n "${HOOK_WEB:-}" ]; then
+            curl -fsS "$HOOK_WEB"
+          fi
