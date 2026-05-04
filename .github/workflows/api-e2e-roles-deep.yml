@@ -59,6 +59,10 @@ jobs:
         working-directory: apps/api
         run: npm run db:seed
 
+      - name: DB seed admin (smoke:roles-deep admin login)
+        working-directory: apps/api
+        run: npm run db:seed:admin
+
       - name: Build API
         working-directory: apps/api
         run: npm run build
