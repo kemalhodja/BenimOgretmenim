@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { publicSiteUrl } from "../lib/siteUrl";
+
+const kkUrl = `${publicSiteUrl()}/kullanim-kosullari`;
 
 export const metadata: Metadata = {
   title: "Kullanım koşulları",
   description:
     "BenimÖğretmenim platformunu kullanım kuralları — özet çerçeve metni.",
+  alternates: { canonical: kkUrl },
+  openGraph: {
+    type: "website",
+    title: "Kullanım koşulları · BenimÖğretmenim",
+    description: "Platform kullanım kuralları özeti.",
+    url: kkUrl,
+    locale: "tr_TR",
+  },
 };
 
 export default function KullanimKosullariPage() {

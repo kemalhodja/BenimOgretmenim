@@ -5,6 +5,7 @@ export const metadata: Metadata = {
     default: "Yönetim",
     template: "%s · Yönetim · BenimÖğretmenim",
   },
+  robots: { index: false, follow: false },
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

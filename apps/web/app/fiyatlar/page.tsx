@@ -4,10 +4,21 @@ import { headers } from "next/headers";
 import { RegisterNavLink } from "../components/AuthNavLinks";
 import { getServerApiBaseUrl } from "../lib/api";
 import { makeRequestId } from "../lib/requestId";
+import { publicSiteUrl } from "../lib/siteUrl";
+
+const fiyatlarUrl = `${publicSiteUrl()}/fiyatlar`;
 
 export const metadata: Metadata = {
   title: "Öğretmen abonelik fiyatları",
   description: "Öğretmen abonelik planları ve güncel fiyatlar.",
+  alternates: { canonical: fiyatlarUrl },
+  openGraph: {
+    title: "Öğretmen abonelik fiyatları · BenimÖğretmenim",
+    description: "Plan süreleri, güncel tutarlar ve ödeme seçenekleri.",
+    url: fiyatlarUrl,
+    locale: "tr_TR",
+    type: "website",
+  },
 };
 
 type PlanRow = {

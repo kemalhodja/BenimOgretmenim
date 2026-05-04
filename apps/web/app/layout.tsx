@@ -6,7 +6,9 @@ import { InstallAppBanner } from "./components/InstallAppBanner";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
 import { PwaRegister } from "./components/PwaRegister";
+import { SiteWideJsonLd } from "./components/SiteWideJsonLd";
 import { SupportWidget } from "./components/SupportWidget";
+import { publicSiteUrl } from "./lib/siteUrl";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,9 +20,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-  "http://localhost:3000";
+const siteUrl = publicSiteUrl();
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -59,6 +59,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "tr_TR",
     siteName: "BenimÖğretmenim",
+    url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
@@ -78,6 +79,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col bg-paper-50 font-sans text-paper-900">
+        <SiteWideJsonLd />
         <PwaRegister />
         <ConditionalSiteChrome
           marketingHeader={<SiteHeader />}

@@ -74,6 +74,7 @@ app.use(
       "Authorization",
       "X-Admin-Secret",
       "X-Request-Id",
+      "X-Support-Guest-Token",
     ],
     exposeHeaders: ["x-request-id"],
     maxAge: 86400,
@@ -137,7 +138,7 @@ app.get("/", (c) => {
       subscriptions:
         "/v1/subscriptions/plans, /me, POST /purchase; admin: GET /admin/pending-bank-transfers, POST /admin/approve-bank-transfer",
       support:
-        "/v1/support/me (GET; ?pagePath=), POST /v1/support/me/messages — girişli kullanıcı destek mesajı",
+        "/v1/support/me (GET), POST /me/messages (girişli); POST /guest/session, GET /guest/me, POST /guest/messages (X-Support-Guest-Token; misafir)",
       admin:
         "/v1/admin/* — overview, users(+role,wallet), teachers(+PATCH verification), courses(+PATCH status), lesson-requests(+PATCH cancel), subscription-payments, group-lesson-requests(+PATCH status), wallet-ledger, homework(+PATCH cancel), direct-bookings(+PATCH cancel), lesson-packages, teacher-subscriptions, wallet-topups, student-sub-payments, course-enrollments, parent-notifications, support-threads(+messages)",
       paytr:

@@ -48,18 +48,49 @@ teachersPublic.get("/", async (c) => {
     params.push(cityId);
     i++;
   }
+  let patIdx = 0;
+  let exactIdx = 0;
+  let prefixIdx = 0;
   if (qTrim.length > 0) {
     const pat = `%${escapeLikePattern(qTrim)}%`;
+    const prefix = `${escapeLikePattern(qTrim)}%`;
     where += ` and (
       u.display_name ilike $${i} escape '\\'
       or coalesce(t.bio_raw, '') ilike $${i} escape '\\'
     )`;
     params.push(pat);
+    patIdx = i;
+    i++;
+    params.push(qTrim);
+    exactIdx = i;
+    i++;
+    params.push(prefix);
+    prefixIdx = i;
     i++;
   }
   const limitPh = `$${i}`;
   const offsetPh = `$${i + 1}`;
   params.push(limit, offset);
+
+  /** Tek yıldızlı 5.0 gibi gürültüyü azaltmak için Bayesian ortalama (öncül 3.5, ağırlık 4). */
+  const bayesExpr = `(coalesce(t.rating_count,0)::numeric * coalesce(t.rating_avg,0)::numeric + 14.0)
+    / (coalesce(t.rating_count,0)::numeric + 4.0)`;
+  const verifiedExpr = `(case when t.verification_status = 'verified' then 1 else 0 end)`;
+
+  const orderBy =
+    qTrim.length > 0
+      ? `order by
+      case
+        when lower(btrim(u.display_name)) = lower(btrim($${exactIdx}::text)) then 40
+        when u.display_name ilike $${prefixIdx} escape '\\' then 30
+        when u.display_name ilike $${patIdx} escape '\\' then 20
+        when coalesce(t.bio_raw, '') ilike $${patIdx} escape '\\' then 10
+        else 0
+      end desc,
+      ${bayesExpr} desc,
+      ${verifiedExpr} desc,
+      t.created_at desc`
+      : `order by ${bayesExpr} desc, ${verifiedExpr} desc, t.created_at desc`;
 
   const sql = `
     select t.id,
@@ -74,7 +105,7 @@ teachersPublic.get("/", async (c) => {
     join users u on u.id = t.user_id
     left join cities c on c.id = t.city_id
     ${where}
-    order by t.rating_avg desc nulls last, t.created_at desc
+    ${orderBy}
     limit ${limitPh} offset ${offsetPh}
   `;
 

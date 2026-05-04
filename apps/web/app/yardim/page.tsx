@@ -1,4 +1,22 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { publicSiteUrl } from "../lib/siteUrl";
+
+const yardimUrl = `${publicSiteUrl()}/yardim`;
+
+export const metadata: Metadata = {
+  title: "Yardım ve sık sorulan sorular",
+  description:
+    "Öğretmen seçimi, teklifler, doğrudan ders ve cüzdan, kurslar, abonelik ve veli paneli hakkında kısa yanıtlar.",
+  alternates: { canonical: yardimUrl },
+  openGraph: {
+    title: "Yardım · BenimÖğretmenim",
+    description: "Öğretmen, talep, ders ve ödeme süreçleri hakkında SSS.",
+    url: yardimUrl,
+    locale: "tr_TR",
+    type: "website",
+  },
+};
 
 const faq = [
   {
@@ -27,9 +45,28 @@ const faq = [
   },
 ];
 
+function yardimFaqJsonLd(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faq.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.a,
+      },
+    })),
+  };
+}
+
 export default function YardimPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(yardimFaqJsonLd()) }}
+      />
       <p className="text-sm font-medium text-zinc-500">Site</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Yardım</h1>
       <p className="mt-2 text-sm text-zinc-600">Sık sorulan sorular.</p>

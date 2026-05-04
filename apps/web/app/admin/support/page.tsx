@@ -7,14 +7,25 @@ import { useRequireAdmin } from "../useRequireAdmin";
 
 type ThreadRow = {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  visitor_email: string | null;
   context_path: string;
   status: string;
   created_at: string;
   updated_at: string;
-  user_email: string;
+  user_email: string | null;
   user_display_name: string | null;
 };
+
+function threadListTitle(t: ThreadRow): string {
+  if (t.user_id) return t.user_display_name ?? t.user_email ?? "Kullanıcı";
+  return t.visitor_email ? `Misafir · ${t.visitor_email}` : "Misafir";
+}
+
+function threadListSubtitle(t: ThreadRow): string {
+  if (t.user_id) return t.user_email ?? "—";
+  return t.visitor_email ?? "E-posta yok";
+}
 
 type MessageRow = {
   id: string;
@@ -145,10 +156,8 @@ export default function AdminSupportPage() {
                           selectedId === t.id ? "bg-brand-50" : ""
                         }`}
                       >
-                        <div className="font-medium text-zinc-900">
-                          {t.user_display_name ?? t.user_email}
-                        </div>
-                        <div className="mt-0.5 truncate text-xs text-zinc-500">{t.user_email}</div>
+                        <div className="font-medium text-zinc-900">{threadListTitle(t)}</div>
+                        <div className="mt-0.5 truncate text-xs text-zinc-500">{threadListSubtitle(t)}</div>
                         <div className="mt-1 truncate text-xs text-zinc-400">
                           {t.context_path ? `Sayfa: ${t.context_path}` : "Sayfa bilgisi yok"}
                         </div>
@@ -168,7 +177,11 @@ export default function AdminSupportPage() {
               <p className="text-sm font-semibold text-zinc-800">Mesajlar</p>
               {threadMeta ? (
                 <p className="mt-1 text-xs text-zinc-500">
-                  {threadMeta.user_email}
+                  {threadMeta.user_id
+                    ? threadMeta.user_email
+                    : threadMeta.visitor_email
+                      ? `Misafir: ${threadMeta.visitor_email}`
+                      : "Misafir"}
                   {threadMeta.context_path ? ` · ${threadMeta.context_path}` : ""}
                 </p>
               ) : (
@@ -191,7 +204,7 @@ export default function AdminSupportPage() {
                     }`}
                   >
                     <p className="text-[10px] font-medium uppercase text-zinc-500">
-                      {m.sender === "staff" ? "Yönetim" : "Kullanıcı"}
+                      {m.sender === "staff" ? "Yönetim" : threadMeta?.user_id ? "Kullanıcı" : "Misafir"}
                     </p>
                     <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
                   </div>

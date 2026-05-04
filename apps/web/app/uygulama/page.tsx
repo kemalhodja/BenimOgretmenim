@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { publicSiteUrl } from "../lib/siteUrl";
+
+const uygulamaUrl = `${publicSiteUrl()}/uygulama`;
 
 export const metadata: Metadata = {
   title: "Telefona ekle",
   description:
-    "BenimÖğretmenim’i ana ekrana ekleyin (PWA). Android’de tek tık; iPhone’da Safari ile. Google Play ve App Store yayını için gerekenler.",
+    "BenimÖğretmenim'i ana ekrana ekleyin (PWA). Android'de tek tık; iPhone'da Safari ile. Google Play ve App Store yayını için gerekenler.",
+  alternates: { canonical: uygulamaUrl },
+  openGraph: {
+    type: "website",
+    title: "PWA — telefona ekle · BenimÖğretmenim",
+    description: "Ana ekrana ekleme ve tam ekran kullanım.",
+    url: uygulamaUrl,
+    locale: "tr_TR",
+  },
 };
 
 export default function UygulamaPage() {

@@ -459,10 +459,10 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
     const countR = await pool.query(`select count(*)::int as c from support_threads`);
     const total = (countR.rows[0] as { c: number }).c;
     const list = await pool.query(
-      `select t.id, t.user_id, t.context_path, t.status::text as status, t.created_at, t.updated_at,
+      `select t.id, t.user_id, t.visitor_email, t.context_path, t.status::text as status, t.created_at, t.updated_at,
               u.email as user_email, u.display_name as user_display_name
        from support_threads t
-       join users u on u.id = t.user_id
+       left join users u on u.id = t.user_id
        order by t.updated_at desc
        limit $1 offset $2`,
       [limit, offset],
@@ -478,10 +478,10 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
       return c.json({ error: "invalid_thread_id" }, 400);
     }
     const th = await pool.query(
-      `select t.id, t.user_id, t.context_path, t.status::text as status, t.created_at, t.updated_at,
+      `select t.id, t.user_id, t.visitor_email, t.context_path, t.status::text as status, t.created_at, t.updated_at,
               u.email as user_email, u.display_name as user_display_name
        from support_threads t
-       join users u on u.id = t.user_id
+       left join users u on u.id = t.user_id
        where t.id = $1`,
       [threadId],
     );

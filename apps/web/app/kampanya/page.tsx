@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { registerHrefWithReturn } from "../lib/authRedirect";
+import { publicSiteUrl } from "../lib/siteUrl";
+
+const kampanyaUrl = `${publicSiteUrl()}/kampanya`;
 
 export const metadata: Metadata = {
   title: "Kampanya",
   description: "Öğretmen aboneliği kampanya fiyatları.",
+  alternates: { canonical: kampanyaUrl },
+  openGraph: {
+    type: "website",
+    title: "Abonelik kampanyası · BenimÖğretmenim",
+    description: "Öğretmen aboneliği kampanya paketleri ve kayıt sonrası adımlar.",
+    url: kampanyaUrl,
+    locale: "tr_TR",
+  },
 };
 
 export default function KampanyaPage() {

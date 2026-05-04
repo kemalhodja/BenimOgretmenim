@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { publicSiteUrl } from "../lib/siteUrl";
+
+const gizlilikUrl = `${publicSiteUrl()}/gizlilik`;
 
 export const metadata: Metadata = {
   title: "Gizlilik ve KVKK",
   description:
     "Kişisel verilerin işlenmesi, saklanması ve haklarınız hakkında özet bilgilendirme.",
+  alternates: { canonical: gizlilikUrl },
+  openGraph: {
+    type: "website",
+    title: "Gizlilik ve KVKK · BenimÖğretmenim",
+    description: "Kişisel veriler ve haklarınız hakkında özet.",
+    url: gizlilikUrl,
+    locale: "tr_TR",
+  },
 };
 
 export default function GizlilikPage() {

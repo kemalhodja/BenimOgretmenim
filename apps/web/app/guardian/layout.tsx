@@ -5,6 +5,7 @@ export const metadata: Metadata = {
     default: "Veli paneli",
     template: "%s · Veli · BenimÖğretmenim",
   },
+  robots: { index: false, follow: false },
 };
 
 export default function GuardianLayout({ children }: { children: React.ReactNode }) {

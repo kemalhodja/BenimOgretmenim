@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
+import { publicSiteUrl } from "./lib/siteUrl";
 
 export default function manifest(): MetadataRoute.Manifest {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:3000";
+  const base = publicSiteUrl();
 
   return {
     id: `${base}/`,

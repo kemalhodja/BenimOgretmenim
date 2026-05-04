@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Ödeme",
+  title: "Panel",
   robots: { index: false, follow: false },
 };
 
-export default function OdemeLayout({ children }: { children: React.ReactNode }) {
+export default function PanelLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

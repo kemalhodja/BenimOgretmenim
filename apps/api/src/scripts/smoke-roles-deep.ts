@@ -6,10 +6,13 @@
  * (varsayılan admin@benimogretmenim.local / BenimAdmin2026! — `npm run db:seed:admin`).
  *
  *   npm run smoke:roles-deep --prefix apps/api
+ *
+ * Misafir destek: `022_support_guest_threads` migration uygulanmış olmalı.
  */
 
 import { pool } from "../db.js";
 import { homeworkSatisfactionRewardMinor } from "../lib/homeworkPosts.js";
+import { runGuestSupportSmokeSteps } from "./smokeSupportGuestFlow.js";
 
 const defaultPort = process.env.PORT ?? "3002";
 const base = (process.env.SMOKE_API_URL ?? `http://127.0.0.1:${defaultPort}`).replace(/\/+$/, "");
@@ -413,7 +416,18 @@ async function main() {
     return;
   }
 
-  console.log("[smoke:roles-deep] OK — öğretmen/öğrenci/veli ödev + cüzdan + bildirim senaryoları geçti.");
+  const guestSmoke = await runGuestSupportSmokeSteps({
+    base,
+    adminHeaders: adminAuth,
+    logPrefix: "[smoke:roles-deep]",
+  });
+  if (!guestSmoke.ok) {
+    console.error(guestSmoke.detail);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log("[smoke:roles-deep] OK — öğretmen/öğrenci/veli ödev + cüzdan + bildirim + misafir destek geçti.");
 }
 
 main()

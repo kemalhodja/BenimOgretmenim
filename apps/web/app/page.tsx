@@ -1,13 +1,41 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { HomeHeroPersonalized } from "./components/HomeHeroPersonalized";
 import { HeroArt } from "./components/HeroArt";
 import { StudentAudienceCard, TeacherAudienceCard } from "./components/marketing/AudienceCards";
 import { RoleOrderedAudience } from "./components/RoleOrderedAudience";
+import { publicSiteUrl } from "./lib/siteUrl";
 
 /** Ana sayfa hero — Unsplash (ücretsiz kullanım; altta atıf) */
 const HERO_PHOTO =
   "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=960&q=80";
+
+const HOME_OG_DESCRIPTION =
+  "Öğretmen arayın, talep açın, teklifleri karşılaştırın. Kurslar, doğrudan ders, cüzdan ve veli özeti.";
+
+export const metadata: Metadata = {
+  alternates: { canonical: `${publicSiteUrl()}/` },
+  openGraph: {
+    type: "website",
+    url: publicSiteUrl(),
+    title: "BenimÖğretmenim — özel ders",
+    description: HOME_OG_DESCRIPTION,
+    images: [
+      {
+        url: HERO_PHOTO,
+        width: 960,
+        height: 640,
+        alt: "Öğretmen ve öğrenciler",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BenimÖğretmenim",
+    description: HOME_OG_DESCRIPTION,
+  },
+};
 
 const quickSubjects = [
   "LGS",

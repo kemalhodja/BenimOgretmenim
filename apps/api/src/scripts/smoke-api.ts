@@ -10,10 +10,13 @@
  *
  * Ödev akışı (gönder → üstlen → cevap → iade → havuz): seed öğrenciye DB üzerinden aktif
  * platform aboneliği eklenir; `017_homework_last_answer_rejected_at` migration uygulanmış olmalı.
+ *
+ * Misafir destek: `022_support_guest_threads` migration uygulanmış olmalı.
  */
 
 import { spawnSync } from "node:child_process";
 import { pool } from "../db.js";
+import { runGuestSupportSmokeSteps } from "./smokeSupportGuestFlow.js";
 
 const defaultPort = process.env.PORT ?? "3002";
 const base =
@@ -592,6 +595,17 @@ async function main() {
   const notifsBody = await notifs.json();
   console.log("[smoke] GET /v1/notifications (guardian)", notifs.status, notifsBody);
   if (!notifs.ok) {
+    process.exitCode = 1;
+    return;
+  }
+
+  const guestSmoke = await runGuestSupportSmokeSteps({
+    base,
+    adminHeaders: adminBaseHeaders,
+    logPrefix: "[smoke]",
+  });
+  if (!guestSmoke.ok) {
+    console.error(guestSmoke.detail);
     process.exitCode = 1;
     return;
   }

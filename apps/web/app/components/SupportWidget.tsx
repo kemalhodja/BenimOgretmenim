@@ -7,6 +7,8 @@ import { apiFetch } from "../lib/api";
 import { clearToken, getToken } from "../lib/auth";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 
+const GUEST_TOKEN_KEY = "benimog_support_guest_token_v1";
+
 type SupportMessage = {
   id: string;
   sender: "user" | "staff";
@@ -25,11 +27,47 @@ type MeResponse = {
   messages: SupportMessage[];
 };
 
+type GuestSessionResponse = {
+  guestToken: string;
+  thread: MeResponse["thread"];
+  visitorEmail: string;
+  messages: SupportMessage[];
+};
+
+type GuestMeResponse = {
+  thread: MeResponse["thread"];
+  visitorEmail: string;
+  messages: SupportMessage[];
+};
+
+function readGuestToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const v = localStorage.getItem(GUEST_TOKEN_KEY)?.trim();
+    return v && v.length > 0 ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeGuestToken(token: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (token) localStorage.setItem(GUEST_TOKEN_KEY, token);
+    else localStorage.removeItem(GUEST_TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function SupportWidget() {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [guestToken, setGuestToken] = useState<string | null>(null);
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestBootstrapping, setGuestBootstrapping] = useState(false);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -39,12 +77,19 @@ export function SupportWidget() {
   const hidden = pathname.startsWith("/admin");
 
   useEffect(() => {
-    setToken(getToken());
+    const a = getToken();
+    setAuthToken(a);
+    if (a) {
+      writeGuestToken(null);
+      setGuestToken(null);
+    } else {
+      setGuestToken(readGuestToken());
+    }
   }, [open, pathname]);
 
   const pagePath = useMemo(() => pathname.slice(0, 500), [pathname]);
 
-  const refresh = useCallback(async () => {
+  const refreshAuth = useCallback(async () => {
     const t = getToken();
     if (!t) return;
     setError(null);
@@ -54,10 +99,28 @@ export function SupportWidget() {
     setMessages(r.messages);
   }, [pagePath]);
 
+  const refreshGuest = useCallback(async () => {
+    const g = readGuestToken();
+    if (!g) return;
+    setError(null);
+    const sp = new URLSearchParams();
+    if (pagePath) sp.set("pagePath", pagePath);
+    const r = await apiFetch<GuestMeResponse>(`/v1/support/guest/me?${sp.toString()}`, {
+      supportGuestToken: g,
+    });
+    setMessages(r.messages);
+  }, [pagePath]);
+
+  const refresh = useCallback(async () => {
+    if (getToken()) await refreshAuth();
+    else if (readGuestToken()) await refreshGuest();
+  }, [refreshAuth, refreshGuest]);
+
   useEffect(() => {
     if (!open || hidden) return;
-    const t = getToken();
-    if (!t) return;
+    const hasAuth = !!getToken();
+    const hasGuest = !!readGuestToken();
+    if (!hasAuth && !hasGuest) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -67,9 +130,15 @@ export function SupportWidget() {
         if (!cancelled) {
           const msg = e instanceof Error ? e.message : "destek_yüklenemedi";
           if (msg.includes("[401]")) {
-            clearToken();
-            setToken(null);
-            router.replace(loginHrefWithReturn(pathname));
+            if (hasAuth) {
+              clearToken();
+              setAuthToken(null);
+              router.replace(loginHrefWithReturn(pathname));
+              return;
+            }
+            writeGuestToken(null);
+            setGuestToken(null);
+            setError("Misafir oturumu süresi doldu veya geçersiz. E-postanızla yeniden başlayın.");
             return;
           }
           setError(msg);
@@ -84,34 +153,72 @@ export function SupportWidget() {
   }, [open, hidden, refresh, router, pathname]);
 
   useEffect(() => {
-    if (!open || hidden || !getToken()) return;
+    if (!open || hidden) return;
+    if (!getToken() && !readGuestToken()) return;
     const id = window.setInterval(() => {
       void refresh().catch(() => {});
     }, 10_000);
     return () => window.clearInterval(id);
   }, [open, hidden, refresh]);
 
+  async function startGuestSession() {
+    const email = guestEmail.trim();
+    if (!email) return;
+    setGuestBootstrapping(true);
+    setError(null);
+    try {
+      const r = await apiFetch<GuestSessionResponse>("/v1/support/guest/session", {
+        method: "POST",
+        body: JSON.stringify({ email, pagePath }),
+      });
+      writeGuestToken(r.guestToken);
+      setGuestToken(r.guestToken);
+      setMessages(r.messages);
+      setGuestEmail("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "başlatılamadı");
+    } finally {
+      setGuestBootstrapping(false);
+    }
+  }
+
   async function send() {
     const trimmed = text.trim();
     if (!trimmed) return;
     const t = getToken();
-    if (!t) return;
+    const g = readGuestToken();
     setSending(true);
     setError(null);
     try {
-      const r = await apiFetch<MeResponse>("/v1/support/me/messages", {
-        method: "POST",
-        token: t,
-        body: JSON.stringify({ content: trimmed, pagePath }),
-      });
-      setText("");
-      setMessages(r.messages);
+      if (t) {
+        const r = await apiFetch<MeResponse>("/v1/support/me/messages", {
+          method: "POST",
+          token: t,
+          body: JSON.stringify({ content: trimmed, pagePath }),
+        });
+        setText("");
+        setMessages(r.messages);
+      } else if (g) {
+        const r = await apiFetch<GuestMeResponse>("/v1/support/guest/messages", {
+          method: "POST",
+          supportGuestToken: g,
+          body: JSON.stringify({ content: trimmed, pagePath }),
+        });
+        setText("");
+        setMessages(r.messages);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "gönderilemedi";
       if (msg.includes("[401]")) {
-        clearToken();
-        setToken(null);
-        router.replace(loginHrefWithReturn(pathname));
+        if (t) {
+          clearToken();
+          setAuthToken(null);
+          router.replace(loginHrefWithReturn(pathname));
+          return;
+        }
+        writeGuestToken(null);
+        setGuestToken(null);
+        setError("Misafir oturumu geçersiz. Lütfen e-postanızla yeniden başlayın.");
         return;
       }
       setError(msg);
@@ -120,7 +227,16 @@ export function SupportWidget() {
     }
   }
 
+  function clearGuest() {
+    writeGuestToken(null);
+    setGuestToken(null);
+    setMessages([]);
+  }
+
   if (hidden) return null;
+
+  const loggedIn = !!authToken;
+  const guestActive = !loggedIn && !!guestToken;
 
   return (
     <>
@@ -163,18 +279,50 @@ export function SupportWidget() {
               </button>
             </div>
 
-            {!token ? (
-              <div className="space-y-3 px-4 py-6 text-sm text-zinc-700">
-                <p>Destek mesajı göndermek için giriş yapmanız gerekir.</p>
-                <Link
-                  href={loginHrefWithReturn(pathname)}
-                  className="inline-flex rounded-xl bg-brand-800 px-4 py-2 font-medium text-white hover:bg-brand-900"
-                >
-                  Giriş yap
-                </Link>
+            {!loggedIn && !guestActive ? (
+              <div className="space-y-4 px-4 py-6 text-sm text-zinc-700">
+                <p className="font-medium text-zinc-900">Nasıl devam etmek istersiniz?</p>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                  <p className="text-xs text-zinc-600">Hesabınız varsa giriş yapın (taleplerinizle ilişkilendirilir).</p>
+                  <Link
+                    href={loginHrefWithReturn(pathname)}
+                    className="mt-2 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900"
+                  >
+                    Giriş yap
+                  </Link>
+                </div>
+                <div className="rounded-xl border border-zinc-200 p-3">
+                  <p className="text-xs text-zinc-600">Misafir olarak e-postanızı verin; aynı tarayıcıda konuşmaya devam edebilirsiniz.</p>
+                  <label className="mt-2 block text-xs font-medium text-zinc-700">E-posta</label>
+                  <input
+                    type="email"
+                    autoComplete="email"
+                    value={guestEmail}
+                    onChange={(e) => setGuestEmail(e.target.value)}
+                    placeholder="ornek@posta.com"
+                    className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+                  />
+                  <button
+                    type="button"
+                    disabled={guestBootstrapping || !guestEmail.includes("@")}
+                    onClick={() => void startGuestSession()}
+                    className="mt-3 w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {guestBootstrapping ? "Başlatılıyor…" : "Misafir olarak devam et"}
+                  </button>
+                </div>
               </div>
             ) : (
               <>
+                {guestActive ? (
+                  <div className="flex items-center justify-between border-b border-zinc-50 px-4 py-2 text-xs text-zinc-500">
+                    <span>Misafir oturumu</span>
+                    <button type="button" onClick={clearGuest} className="text-brand-800 underline">
+                      Sıfırla
+                    </button>
+                  </div>
+                ) : null}
+
                 {error ? (
                   <div className="mx-4 mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
                     {error}

@@ -5,6 +5,7 @@ export const metadata: Metadata = {
     default: "Öğretmen paneli",
     template: "%s · Öğretmen · BenimÖğretmenim",
   },
+  robots: { index: false, follow: false },
 };
 
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {

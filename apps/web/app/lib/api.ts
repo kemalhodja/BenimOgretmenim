@@ -51,7 +51,7 @@ function errorDetailForThrow(msg: unknown): string {
 
 export async function apiFetch<T>(
   path: string,
-  init?: RequestInit & { token?: string | null },
+  init?: RequestInit & { token?: string | null; supportGuestToken?: string | null },
 ): Promise<T> {
   const url = resolveApiFetchUrl(path);
   const headers = new Headers(init?.headers);
@@ -64,6 +64,10 @@ export async function apiFetch<T>(
   }
   if (init?.token) {
     headers.set("authorization", `Bearer ${init.token}`);
+  }
+  const g = init?.supportGuestToken?.trim();
+  if (g) {
+    headers.set("x-support-guest-token", g);
   }
 
   const res = await fetch(url, {

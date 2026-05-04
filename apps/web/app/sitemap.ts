@@ -1,35 +1,18 @@
 import type { MetadataRoute } from "next";
+import { getServerApiBaseUrl } from "./lib/api";
+import { publicSiteUrl } from "./lib/siteUrl";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-    "http://localhost:3000";
+const MAX_TEACHER_SITEMAP_URLS = 2_000;
+const MAX_COURSE_SITEMAP_URLS = 2_000;
 
-  const paths: MetadataRoute.Sitemap = [
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const base = publicSiteUrl();
+
+  /* Giriş, panel ve ödeme uçları robots + noindex ile kapalı; sitemap yalnızca kamu pazarlama URL’leri. */
+  const staticPaths: MetadataRoute.Sitemap = [
     "/",
     "/ogretmenler",
-    "/login",
-    "/kayit",
-    "/student/requests",
-    "/student/dersler",
-    "/student/kurslar",
-    "/student/panel",
-    "/student/dogrudan-dersler",
-    "/student/grup-dersler",
-    "/student/odev-sor",
-    "/student/odev-sor/gonderiler",
     "/courses",
-    "/teacher",
-    "/teacher/cuzdan",
-    "/teacher/dogrudan-dersler",
-    "/teacher/dersler",
-    "/teacher/grup-dersler",
-    "/teacher/odev-havuzu",
-    "/teacher/kurslar",
-    "/teacher/kurslar/yeni",
-    "/teacher/edit",
-    "/teacher/requests",
-    "/guardian",
     "/fiyatlar",
     "/uygulama",
     "/yardim",
@@ -37,15 +20,70 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/gizlilik",
     "/kullanim-kosullari",
     "/kampanya",
-    "/teacher/teklifler",
-    "/odeme/ok",
-    "/odeme/hata",
   ].map((path) => ({
     url: `${base}${path}`,
     lastModified: new Date(),
-    changeFrequency: "weekly",
+    changeFrequency: "weekly" as const,
     priority: path === "/" ? 1 : 0.7,
   }));
 
-  return paths;
+  const teacherEntries: MetadataRoute.Sitemap = [];
+  try {
+    const api = getServerApiBaseUrl();
+    const pageSize = 100;
+    for (let offset = 0; offset < MAX_TEACHER_SITEMAP_URLS; offset += pageSize) {
+      const res = await fetch(
+        `${api}/v1/teachers?limit=${pageSize}&offset=${offset}`,
+        { headers: { accept: "application/json" }, next: { revalidate: 3600 } },
+      );
+      if (!res.ok) break;
+      const body = (await res.json()) as {
+        teachers?: Array<{ id: string; created_at?: string }>;
+      };
+      const rows = body.teachers ?? [];
+      if (rows.length === 0) break;
+      for (const t of rows) {
+        teacherEntries.push({
+          url: `${base}/ogretmenler/${t.id}`,
+          lastModified: t.created_at ? new Date(t.created_at) : new Date(),
+          changeFrequency: "weekly",
+          priority: 0.65,
+        });
+      }
+      if (rows.length < pageSize) break;
+    }
+  } catch {
+    // API yoksa veya build anında erişilemiyorsa yalnızca statik URL’ler döner.
+  }
+
+  const courseEntries: MetadataRoute.Sitemap = [];
+  try {
+    const api = getServerApiBaseUrl();
+    const pageSize = 50;
+    for (let offset = 0; offset < MAX_COURSE_SITEMAP_URLS; offset += pageSize) {
+      const res = await fetch(
+        `${api}/v1/courses?limit=${pageSize}&offset=${offset}`,
+        { headers: { accept: "application/json" }, next: { revalidate: 3600 } },
+      );
+      if (!res.ok) break;
+      const body = (await res.json()) as {
+        courses?: Array<{ id: string; created_at?: string }>;
+      };
+      const rows = body.courses ?? [];
+      if (rows.length === 0) break;
+      for (const c of rows) {
+        courseEntries.push({
+          url: `${base}/courses/${c.id}`,
+          lastModified: c.created_at ? new Date(c.created_at) : new Date(),
+          changeFrequency: "weekly",
+          priority: 0.62,
+        });
+      }
+      if (rows.length < pageSize) break;
+    }
+  } catch {
+    // yukarıdakiyle aynı: API yoksa atlanır
+  }
+
+  return [...staticPaths, ...teacherEntries, ...courseEntries];
 }
