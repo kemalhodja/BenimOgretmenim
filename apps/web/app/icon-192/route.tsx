@@ -16,7 +16,7 @@ export async function GET() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(160deg, #eef3fb 0%, #dbe6f6 45%, #b9cdf0 100%)",
+          background: "linear-gradient(160deg, #ecf8f6 0%, #a3d9d0 42%, #2a9d8f 100%)",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}

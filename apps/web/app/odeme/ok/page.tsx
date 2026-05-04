@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function OdemeOkPage() {
+function OdemeOkInner() {
   const sp = useSearchParams();
   const oid = sp.get("merchant_oid");
 
@@ -37,5 +38,21 @@ export default function OdemeOkPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OdemeOkPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-zinc-50 px-6 py-16">
+          <div className="mx-auto max-w-md rounded-2xl border border-brand-200/80 bg-white p-8 text-center shadow-sm">
+            <p className="text-sm text-zinc-500">Yükleniyor…</p>
+          </div>
+        </div>
+      }
+    >
+      <OdemeOkInner />
+    </Suspense>
   );
 }

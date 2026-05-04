@@ -1,8 +1,7 @@
+import Image from "next/image";
 import Link from "next/link";
-import { brandTaglineFont } from "../lib/brandFont";
-import { BrandLogo } from "./BrandLogo";
 
-const TAGLINE = "Dijital Online Özel Ders Merkezi";
+const TAGLINE = "Online Akademi";
 
 type Props = {
   /** Ana sayfaya yönlendir; header’da true */
@@ -10,38 +9,22 @@ type Props = {
   className?: string;
 };
 
-/**
- * Amblem + iki satırlı tipografi: büyük renkli isim, altında ince slogan.
- */
+/** Şeffaf arka planlı tam logo: `public/logo-marketing.png` (`npm run logo:strip-bg`). */
 export function BrandLockup({ asLink = true, className = "" }: Props) {
   const inner = (
-    <>
-      <BrandLogo
-        className="shrink-0 self-start sm:self-center sm:pt-0.5"
-        size="md"
-      />
-      <div className="min-w-0 text-left">
-        <p className="m-0 text-base font-extrabold leading-tight tracking-[-0.02em] sm:text-lg">
-          <span className="inline-block bg-gradient-to-r from-brand-800 via-brand-500 to-warm-500 bg-clip-text text-transparent">
-            Benim Öğretmenim
-          </span>
-        </p>
-        <p
-          className={[
-            brandTaglineFont.className,
-            "mt-0.5 text-[0.6rem] leading-relaxed text-paper-800/75 sm:text-[0.7rem] sm:tracking-wide",
-            "line-clamp-2 sm:line-clamp-1",
-          ].join(" ")}
-        >
-          {TAGLINE}
-        </p>
-      </div>
-    </>
+    <Image
+      src="/logo-marketing.png"
+      alt={`Benim Öğretmenim — ${TAGLINE}`}
+      width={320}
+      height={120}
+      sizes="(max-width: 640px) 200px, 260px"
+      className="h-9 w-auto max-w-[min(220px,72vw)] shrink-0 object-contain object-left sm:h-11 sm:max-w-[min(280px,40vw)]"
+      priority
+    />
   );
 
   const base =
-    "group flex min-w-0 items-start gap-2.5 transition hover:opacity-[0.98] sm:items-center sm:gap-3 " +
-    className;
+    "group flex min-w-0 items-center transition hover:opacity-[0.98] " + className;
 
   if (asLink) {
     return (

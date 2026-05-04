@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function OdemeHataPage() {
+function OdemeHataInner() {
   const sp = useSearchParams();
   const reason =
     sp.get("failed_reason_msg") ?? sp.get("reason") ?? undefined;
@@ -38,5 +39,21 @@ export default function OdemeHataPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OdemeHataPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-zinc-50 px-6 py-16">
+          <div className="mx-auto max-w-md rounded-2xl border border-red-200/80 bg-white p-8 text-center shadow-sm">
+            <p className="text-sm text-zinc-500">Yükleniyor…</p>
+          </div>
+        </div>
+      }
+    >
+      <OdemeHataInner />
+    </Suspense>
   );
 }

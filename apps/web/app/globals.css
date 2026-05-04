@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-/* Güven: akademik mavi. Samimiyet: sıcak terrakota. Eğitim: nötr tuval (mavi-gri). */
+/* Marka: logo teal (b) + uğur böceği mercanı (ö). Tuval: hafif mint-beyaz. */
 :root {
-  --background: #f2f5fb;
-  --foreground: #162233;
+  --background: #f4faf9;
+  --foreground: #142422;
 }
 
 @theme inline {
@@ -12,39 +12,39 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  --color-paper-50: #f2f5fb;
-  --color-paper-100: #e8ecf4;
-  --color-paper-200: #dce3ee;
-  --color-paper-300: #c5cedd;
-  --color-paper-800: #2c2520;
-  --color-paper-900: #1c1814;
-  --color-paper-950: #0f0d0b;
+  --color-paper-50: #f4faf9;
+  --color-paper-100: #e6f2f0;
+  --color-paper-200: #d5e8e5;
+  --color-paper-300: #b8d5d0;
+  --color-paper-800: #1e2d2b;
+  --color-paper-900: #121c1b;
+  --color-paper-950: #0a1010;
 
-  /* Akademik indigo: daha dengeli kontrast */
-  --color-brand-50: #eef3fb;
-  --color-brand-100: #dbe6f6;
-  --color-brand-200: #b9cdf0;
-  --color-brand-300: #8fb0e4;
-  --color-brand-400: #6b93d6;
-  --color-brand-500: #4e76c8;
-  --color-brand-600: #3f62b2;
-  --color-brand-700: #335096;
-  --color-brand-800: #2a427a;
-  --color-brand-900: #213461;
-  --color-brand-950: #141f3b;
+  /* Logo “b”: teal ölçeği (#2A9D8F çekirdek) */
+  --color-brand-50: #ecf8f6;
+  --color-brand-100: #d0ebe7;
+  --color-brand-200: #a3d9d0;
+  --color-brand-300: #75c5b8;
+  --color-brand-400: #4aad9e;
+  --color-brand-500: #30988a;
+  --color-brand-600: #2a9d8f;
+  --color-brand-700: #237f73;
+  --color-brand-800: #1d665c;
+  --color-brand-900: #164f47;
+  --color-brand-950: #0d2e2a;
 
-  /* Terrakota: samimi ama “bağırmayan” */
-  --color-warm-50: #fdf4f0;
-  --color-warm-100: #fae2d7;
-  --color-warm-200: #f4c6b2;
-  --color-warm-300: #eaa186;
-  --color-warm-400: #d87959;
-  --color-warm-500: #c35f3f;
-  --color-warm-600: #a64f35;
-  --color-warm-700: #883f2d;
-  --color-warm-800: #703425;
-  --color-warm-900: #5b2a1f;
-  --color-warm-950: #331610;
+  /* Logo “ö” / uğur böceği: mercan–kırmızıturuncu (#E76F51 çekirdek) */
+  --color-warm-50: #fef6f3;
+  --color-warm-100: #fde8e0;
+  --color-warm-200: #f9cfc0;
+  --color-warm-300: #f3a894;
+  --color-warm-400: #ec8a6e;
+  --color-warm-500: #e76f51;
+  --color-warm-600: #d45a3c;
+  --color-warm-700: #b24530;
+  --color-warm-800: #8f3626;
+  --color-warm-900: #6f2a1f;
+  --color-warm-950: #3d1712;
 
   /**
    * Uyum katmanı: eski sayfalarda kalan zinc-* sınıfları,
@@ -63,8 +63,8 @@
 }
 
 ::selection {
-  background-color: rgb(250 220 200 / 0.55);
-  color: #162233;
+  background-color: rgb(42 157 143 / 0.22);
+  color: #0d2e2a;
 }
 
 body {
