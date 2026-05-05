@@ -466,7 +466,7 @@ export default function OdevHavuzuPage() {
                       </button>
                     </div>
                   ) : (
-                    <p className="mt-2 text-xs font-medium text-emerald-800">
+                    <p className="mt-2 text-xs font-medium text-brand-800">
                       Cevap gönderildi. Öğrenci onayı ve {rewardTl} TL için bekleniyor.
                     </p>
                   )}

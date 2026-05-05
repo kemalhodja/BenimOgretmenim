@@ -168,7 +168,7 @@ export default function Home() {
             </div>
 
             <figure className="order-first mx-auto w-full max-w-md lg:order-none lg:mx-0 lg:max-w-none">
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-brand-100/80 to-warm-100/50 p-[3px] shadow-[0_28px_64px_-12px_rgb(42_157_143/0.28),0_12px_36px_-8px_rgb(231_111_81/0.15)] ring-1 ring-brand-200/40">
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl bg-gradient-to-br from-brand-100/80 to-warm-100/50 p-[3px] shadow-[0_28px_64px_-12px_rgb(14_184_212/0.28),0_12px_36px_-8px_rgb(242_100_58/0.16)] ring-1 ring-brand-200/40">
                 <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[1.35rem] bg-paper-200">
                   <Image
                     src={HERO_PHOTO}

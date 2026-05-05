@@ -199,7 +199,7 @@ export default function AdminSupportPage() {
                     key={m.id}
                     className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm ${
                       m.sender === "staff"
-                        ? "ml-auto bg-emerald-50 text-emerald-950"
+                        ? "ml-auto bg-brand-50 text-brand-950"
                         : "mr-auto border border-zinc-100 bg-zinc-50"
                     }`}
                   >

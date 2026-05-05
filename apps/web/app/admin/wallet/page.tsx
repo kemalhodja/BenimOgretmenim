@@ -75,7 +75,7 @@ export default function AdminWalletPage() {
           <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         ) : null}
         {ok ? (
-          <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">{ok}</div>
+          <div className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">{ok}</div>
         ) : null}
 
         <section className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">

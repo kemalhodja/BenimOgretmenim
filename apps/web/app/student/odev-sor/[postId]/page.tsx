@@ -305,7 +305,7 @@ export default function OdevDetayPage() {
                   </div>
                 ) : null}
                 {post.homework_reward_applied_at ? (
-                  <p className="mt-3 text-sm font-medium text-emerald-800">
+                  <p className="mt-3 text-sm font-medium text-brand-800">
                     Teşekkürünüz kaydedildi; ödeme öğretmen cüzdanına aktarıldı.
                   </p>
                 ) : null}
