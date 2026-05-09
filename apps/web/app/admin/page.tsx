@@ -44,11 +44,11 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50/80"
+      className="rounded-xl border border-paper-200 bg-white p-4 transition hover:border-brand-200 hover:bg-paper-50/60"
     >
-      <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">{value}</div>
-      {hint ? <div className="mt-1 text-xs text-zinc-500">{hint}</div> : null}
+      <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tabular-nums text-paper-900">{value}</div>
+      {hint ? <div className="mt-1 text-xs text-paper-800/55">{hint}</div> : null}
     </Link>
   );
 }
@@ -81,25 +81,27 @@ export default function AdminDashboardPage() {
   const roles = data?.usersByRole ?? {};
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <p className="text-sm font-medium text-zinc-500">Yönetim</p>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Özet</h1>
-          <Link href="/admin/merkez" className="text-sm font-medium text-brand-800 underline">
-            Tüm modüller (merkez)
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Özet</h1>
+          <Link
+            href="/admin/merkez"
+            className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+          >
+            Kontrol merkezi
           </Link>
         </div>
-        <p className="mt-2 max-w-2xl text-sm text-zinc-600">
+        <p className="mt-2 max-w-2xl text-sm text-paper-800/75">
           Kullanıcılar, içerik ve operasyon metrikleri. Tam liste ve aksiyonlar için kontrol merkezini açın.
         </p>
 
         {error ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         ) : null}
 
         {!data && !error ? (
-          <p className="mt-6 text-sm text-zinc-500">Özet yükleniyor…</p>
+          <p className="mt-6 text-sm text-paper-800/55">Özet yükleniyor…</p>
         ) : null}
 
         {c ? (
@@ -165,74 +167,70 @@ export default function AdminDashboardPage() {
               <StatCard href="/admin/users" label="Aktif öğrenci platform aboneliği" value={c.activeStudentSubscriptions} />
               <StatCard href="/admin/users" label="Aktif ders paketi" value={c.lessonPackagesActive} hint="lesson_packages" />
               <StatCard href="/admin/merkez" label="Modül dizini" value="Merkez" hint="Tüm ekranlar" />
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">Rol dağılımı</div>
-                <ul className="mt-2 space-y-1 text-sm text-zinc-700">
+              <div className="rounded-xl border border-paper-200 bg-white p-4">
+                <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Rol dağılımı</div>
+                <ul className="mt-2 space-y-1 text-sm text-paper-800">
                   {Object.entries(roles).map(([role, n]) => (
                     <li key={role} className="flex justify-between gap-2">
                       <span className="capitalize">{role}</span>
-                      <span className="font-mono tabular-nums text-zinc-900">{n}</span>
+                      <span className="font-mono tabular-nums text-paper-900">{n}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             </div>
-            <p className="mt-4 text-xs text-zinc-500">
+            <p className="mt-4 text-xs text-paper-800/55">
               Veri anı: {new Date(data!.generatedAt).toLocaleString("tr-TR")}
             </p>
           </>
         ) : null}
 
-        <section className="mt-10 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Bölümler</h2>
-          <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-            <li>
-              <Link className="font-medium text-brand-800 underline" href="/admin/merkez">
-                Kontrol merkezi
-              </Link>
-              <span className="text-zinc-500"> — tüm modüller ve veri görünümleri</span>
-            </li>
-            <li>
-              <Link className="font-medium text-brand-800 underline" href="/admin/users">
-                Kullanıcılar
-              </Link>
-              <span className="text-zinc-500"> — arama, rol filtresi ve rol güncelleme</span>
-            </li>
-            <li>
-              <Link className="font-medium text-brand-800 underline" href="/admin/teachers">
-                Öğretmenler
-              </Link>
-              <span className="text-zinc-500"> — doğrulama, şehir, halka açık profil</span>
-            </li>
-            <li>
-              <Link className="font-medium text-brand-800 underline" href="/admin/requests">
-                Ders talepleri
-              </Link>
-              <span className="text-zinc-500"> — özet ve liste</span>
-            </li>
-            <li>
-              <Link className="font-medium text-brand-800 underline" href="/admin/bank">
-                Havale onayı
-              </Link>
-            </li>
-            <li>
-              <Link className="font-medium text-brand-800 underline" href="/admin/wallet">
-                Cüzdan grant
-              </Link>
-            </li>
-            <li>
-              <Link className="font-medium text-brand-800 underline" href="/admin/courses">
-                Kurslar
-              </Link>
-              <span className="text-zinc-500"> — tüm durumlar, öğretmen ve detay linki</span>
-            </li>
-            <li>
-              <Link className="font-medium text-brand-800 underline" href="/admin/payments">
-                Abonelik ödemeleri
-              </Link>
-              <span className="text-zinc-500"> — PayTR / havale kayıtları</span>
-            </li>
-          </ul>
+        <section className="mt-10 border-t border-paper-200 pt-8">
+          <h2 className="text-sm font-semibold text-paper-900">Diğer modüller</h2>
+          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm leading-relaxed">
+            <Link
+              href="/admin/users"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+            >
+              Kullanıcılar
+            </Link>
+            <Link
+              href="/admin/teachers"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+            >
+              Öğretmenler
+            </Link>
+            <Link
+              href="/admin/requests"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+            >
+              Ders talepleri
+            </Link>
+            <Link
+              href="/admin/bank"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+            >
+              Havale
+            </Link>
+            <Link
+              href="/admin/wallet"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+            >
+              Cüzdan grant
+            </Link>
+            <Link
+              href="/admin/courses"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+            >
+              Kurslar
+            </Link>
+            <Link
+              href="/admin/payments"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+            >
+              Abonelik ödemeleri
+            </Link>
+          </p>
         </section>
       </div>
     </div>

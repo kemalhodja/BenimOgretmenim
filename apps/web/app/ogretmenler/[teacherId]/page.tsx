@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { RegisterNavLink } from "../../components/AuthNavLinks";
 import { apiFetch } from "../../lib/api";
 import { clearToken, getToken } from "../../lib/auth";
@@ -174,11 +174,15 @@ export default function OgretmenDetayPage() {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
   const teacherId =
     typeof params.teacherId === "string" ? params.teacherId : "";
-  const loginReturnHref = loginHrefWithReturn(
-    pathname || (teacherId ? `/ogretmenler/${teacherId}` : "/ogretmenler"),
-  );
+  const pathWithQuery = useMemo(() => {
+    const base = pathname || (teacherId ? `/ogretmenler/${teacherId}` : "/ogretmenler");
+    const q = searchParams.toString();
+    return q ? `${base}?${q}` : base;
+  }, [pathname, teacherId, searchParams]);
+  const loginReturnHref = loginHrefWithReturn(pathWithQuery);
 
   const [teacher, setTeacher] = useState<TeacherDetail | null>(null);
   const [branches, setBranches] = useState<BranchRow[]>([]);
@@ -197,9 +201,10 @@ export default function OgretmenDetayPage() {
     return (p ?? branches[0])?.branch_id;
   }, [branches]);
 
-  const talepHref = primaryBranchId
+  const talepPath = primaryBranchId
     ? `/student/requests?branchId=${primaryBranchId}`
     : "/student/requests";
+  const talepEntryHref = authToken ? talepPath : loginHrefWithReturn(talepPath);
 
   useEffect(() => {
     setAuthToken(getToken());
@@ -310,34 +315,34 @@ export default function OgretmenDetayPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div className="min-h-screen bg-paper-50">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/ogretmenler"
-          className="text-sm font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-4 hover:text-zinc-900"
+          className="text-sm font-medium text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
         >
           ← Öğretmen listesi
         </Link>
       </div>
 
       {error && (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {!teacher && !error && (
-        <div className="mt-8 text-sm text-zinc-500">Yükleniyor…</div>
+        <div className="mt-8 text-sm text-paper-800/55">Yükleniyor…</div>
       )}
 
       {teacher && (
         <>
-          <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-zinc-500">Site</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-6">
+            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">
               {teacher.display_name}
             </h1>
-            <div className="mt-2 text-sm text-zinc-600">
+            <div className="mt-2 text-sm text-paper-800/75">
               {teacher.city_name ?? "Şehir belirtilmemiş"}
               {teacher.district_name ? ` · ${teacher.district_name}` : ""}
               {" · "}
@@ -345,7 +350,7 @@ export default function OgretmenDetayPage() {
                 ? "Doğrulanmış profil"
                 : `Profil: ${teacher.verification_status}`}
             </div>
-            <div className="mt-2 text-sm text-zinc-600">
+            <div className="mt-2 text-sm text-paper-800/75">
               {teacher.rating_count != null && Number(teacher.rating_count) > 0
                 ? `★ ${Number(teacher.rating_avg ?? 0).toFixed(1)} (${teacher.rating_count} değerlendirme)`
                 : "Henüz değerlendirme yok"}
@@ -353,27 +358,23 @@ export default function OgretmenDetayPage() {
 
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href={talepHref}
-                className="inline-flex rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-800"
+                href={talepEntryHref}
+                className="inline-flex rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
               >
-                Bu branş için talep oluştur
+                Talep oluştur
               </Link>
-              <RegisterNavLink className="inline-flex items-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800">
-                Hemen kayıt ol
+              <RegisterNavLink className="inline-flex items-center rounded-xl border border-paper-300 bg-white px-4 py-2.5 text-sm font-medium text-paper-900 hover:bg-paper-50">
+                Kayıt ol
               </RegisterNavLink>
             </div>
 
             {authToken ? (
-              <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
-                <h2 className="text-sm font-semibold text-amber-950">Doğrudan ders anlaşması</h2>
-                <p className="mt-1 text-xs text-amber-900/80">
-                  Önceden anlaştığınız toplam tutar cüzdanınızdan düşer; dersi öğretmen tamamlayınca
-                  ona yansır.{" "}
-                  <Link
-                    className="font-medium underline"
-                    href="/student/panel"
-                  >
-                    Abonelik & cüzdan
+              <div className="mt-6 rounded-xl border border-paper-200 bg-paper-50/80 p-4">
+                <h2 className="text-sm font-semibold text-paper-900">Doğrudan ders anlaşması</h2>
+                <p className="mt-1 text-xs text-paper-800/75">
+                  Toplam tutar cüzdandan düşer; ders tamamlanınca öğretmene aktarılır.{" "}
+                  <Link className="font-medium text-brand-800 underline-offset-4 hover:underline" href="/student/panel">
+                    Cüzdan
                   </Link>
                   .
                 </p>
@@ -384,21 +385,21 @@ export default function OgretmenDetayPage() {
                   <div className="mt-2 text-sm text-brand-900">{directOk}</div>
                 )}
                 <div className="mt-3 flex flex-wrap items-end gap-2">
-                  <label className="text-sm text-amber-950/90">
+                  <label className="text-sm text-paper-900">
                     Tutar (TL)
                     <input
                       type="text"
                       inputMode="decimal"
                       value={directTl}
                       onChange={(e) => setDirectTl(e.target.value)}
-                      className="ml-0 mt-1 block w-32 rounded-lg border border-amber-200 bg-white px-2 py-1.5 font-mono text-sm"
+                      className="ml-0 mt-1 block w-32 rounded-lg border border-paper-200 bg-white px-2 py-1.5 font-mono text-sm outline-none focus:border-brand-400"
                     />
                   </label>
                   <button
                     type="button"
                     disabled={directBusy}
                     onClick={() => void createDirectBooking()}
-                    className="rounded-xl bg-amber-800 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-medium text-white hover:bg-brand-900 disabled:opacity-50"
                   >
                     {directBusy ? "…" : "Anlaşma oluştur"}
                   </button>
@@ -407,26 +408,26 @@ export default function OgretmenDetayPage() {
                       type="button"
                       disabled={directFundBusy}
                       onClick={() => void fundPendingDirect()}
-                      className="rounded-xl border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-950 disabled:opacity-50"
+                      className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50 disabled:opacity-50"
                     >
                       {directFundBusy ? "…" : "Cüzdanımdan öde"}
                     </button>
                   )}
                   <Link
-                    className="rounded-xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-amber-950"
+                    className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
                     href="/student/dogrudan-dersler"
                   >
-                    Tüm anlaşmalarım
+                    Anlaşmalarım
                   </Link>
                 </div>
               </div>
             ) : (
-              <p className="mt-4 text-sm text-zinc-500">
-                Doğrudan ders anlaşması için{" "}
-                <Link className="font-medium text-brand-800 underline" href={loginReturnHref}>
+              <p className="mt-4 text-sm text-paper-800/55">
+                Doğrudan anlaşma için{" "}
+                <Link className="font-medium text-brand-800 underline-offset-4 hover:underline" href={loginReturnHref}>
                   giriş yapın
                 </Link>{" "}
-                (öğrenci hesabı; platform aboneliği ve cüzdan yükü gerekir).
+                (öğrenci; abonelik ve cüzdan gerekir).
               </p>
             )}
 
@@ -435,20 +436,20 @@ export default function OgretmenDetayPage() {
               (teacher.platform_links_jsonb?.length ?? 0) > 0 ||
               (teacher.exam_docs_jsonb?.length ?? 0) > 0) && (
               <div className="mt-8">
-                <h2 className="text-sm font-semibold text-zinc-900">
+                <h2 className="text-sm font-semibold text-paper-900">
                   Bağlantılar
                 </h2>
                 <div className="mt-3 space-y-3 text-sm">
                   {teacher.video_url && (
                     <div>
-                      <div className="text-xs font-medium text-zinc-500">
+                      <div className="text-xs font-medium text-paper-800/55">
                         Video
                       </div>
                       {(() => {
                         const emb = getVideoEmbed(teacher.video_url ?? "");
                         if (!emb) return null;
                         return (
-                          <div className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50">
+                          <div className="mt-2 overflow-hidden rounded-xl border border-paper-200 bg-paper-50">
                             <div className="relative aspect-video">
                               <iframe
                                 src={emb.embedUrl}
@@ -474,7 +475,7 @@ export default function OgretmenDetayPage() {
 
                   {teacher.instagram_url && (
                     <div>
-                      <div className="text-xs font-medium text-zinc-500">
+                      <div className="text-xs font-medium text-paper-800/55">
                         Instagram
                       </div>
                       <a
@@ -487,7 +488,7 @@ export default function OgretmenDetayPage() {
                           "Instagram profili"}
                       </a>
                       {hostLabel(teacher.instagram_url) && (
-                        <span className="ml-2 text-xs text-zinc-500">
+                        <span className="ml-2 text-xs text-paper-800/50">
                           ({hostLabel(teacher.instagram_url)})
                         </span>
                       )}
@@ -496,7 +497,7 @@ export default function OgretmenDetayPage() {
 
                   {(teacher.platform_links_jsonb?.length ?? 0) > 0 && (
                     <div>
-                      <div className="text-xs font-medium text-zinc-500">
+                      <div className="text-xs font-medium text-paper-800/55">
                         Özel platformlar
                       </div>
                       <ul className="mt-1 space-y-1">
@@ -511,7 +512,7 @@ export default function OgretmenDetayPage() {
                               {x.title}
                             </a>
                             {hostLabel(x.url) && (
-                              <span className="ml-2 text-xs text-zinc-500">
+                              <span className="ml-2 text-xs text-paper-800/50">
                                 ({hostLabel(x.url)})
                               </span>
                             )}
@@ -523,7 +524,7 @@ export default function OgretmenDetayPage() {
 
                   {(teacher.exam_docs_jsonb?.length ?? 0) > 0 && (
                     <div>
-                      <div className="text-xs font-medium text-zinc-500">
+                      <div className="text-xs font-medium text-paper-800/55">
                         Dokümanlar
                       </div>
                       {(() => {
@@ -544,7 +545,7 @@ export default function OgretmenDetayPage() {
                           <div className="mt-2 space-y-3">
                             {entries.map(([lbl, items]) => (
                               <div key={lbl}>
-                                <div className="text-xs font-semibold text-zinc-700">
+                                <div className="text-xs font-semibold text-paper-800">
                                   {lbl}
                                 </div>
                                 <ul className="mt-1 space-y-1">
@@ -559,7 +560,7 @@ export default function OgretmenDetayPage() {
                                         {x.title}
                                       </a>
                                       {hostLabel(x.url) && (
-                                        <span className="ml-2 text-xs text-zinc-500">
+                                        <span className="ml-2 text-xs text-paper-800/50">
                                           ({hostLabel(x.url)})
                                         </span>
                                       )}
@@ -579,36 +580,36 @@ export default function OgretmenDetayPage() {
 
             {teacher.bio_raw && (
               <div className="mt-8">
-                <h2 className="text-sm font-semibold text-zinc-900">Hakkında</h2>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-700">
+                <h2 className="text-sm font-semibold text-paper-900">Hakkında</h2>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-paper-800/85">
                   {teacher.bio_raw}
                 </p>
               </div>
             )}
 
             <div className="mt-8">
-              <h2 className="text-sm font-semibold text-zinc-900">Branşlar</h2>
+              <h2 className="text-sm font-semibold text-paper-900">Branşlar</h2>
               {branches.length === 0 ? (
-                <p className="mt-2 text-sm text-zinc-500">Branş kaydı yok.</p>
+                <p className="mt-2 text-sm text-paper-800/55">Branş kaydı yok.</p>
               ) : (
                 <ul className="mt-3 space-y-2">
                   {branches.map((b) => (
                     <li
                       key={b.branch_id}
-                      className="rounded-xl border border-zinc-100 px-3 py-2 text-sm text-zinc-800"
+                      className="rounded-xl border border-paper-100 px-3 py-2 text-sm text-paper-800"
                     >
                       <span className="font-medium">{b.branch_name}</span>
                       {b.is_primary && (
                         <span className="ml-2 text-xs text-brand-700">(birincil)</span>
                       )}
                       {b.years_experience != null && (
-                        <span className="ml-2 text-xs text-zinc-500">
+                        <span className="ml-2 text-xs text-paper-800/55">
                           {b.years_experience} yıl
                         </span>
                       )}
                       {b.hourly_rate_min_minor != null &&
                         b.hourly_rate_max_minor != null && (
-                          <div className="mt-1 text-xs text-zinc-500">
+                          <div className="mt-1 text-xs text-paper-800/55">
                             Saatlik (TL): {minorToTl(b.hourly_rate_min_minor)} –{" "}
                             {minorToTl(b.hourly_rate_max_minor)}
                           </div>
@@ -620,34 +621,33 @@ export default function OgretmenDetayPage() {
             </div>
           </div>
 
-          <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-zinc-900">Yorumlar</h2>
-            <p className="mt-1 text-xs text-zinc-500">
-              Tamamlanan derslerden gelen değerlendirmeler; yorumcu adı
-              gizlilik için kısaltılır.
+          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-6">
+            <h2 className="text-lg font-semibold text-paper-900">Yorumlar</h2>
+            <p className="mt-1 text-xs text-paper-800/55">
+              Tamamlanan derslerden; yorumcu adı gizlilik için kısaltılır.
             </p>
             {reviews.length === 0 ? (
-              <p className="mt-4 text-sm text-zinc-600">Henüz yorum yok.</p>
+              <p className="mt-4 text-sm text-paper-800/75">Henüz yorum yok.</p>
             ) : (
               <ul className="mt-4 space-y-4">
                 {reviews.map((rev, i) => (
                   <li
                     key={`${rev.created_at}-${i}`}
-                    className="border-b border-zinc-100 pb-4 last:border-0 last:pb-0"
+                    className="border-b border-paper-100 pb-4 last:border-0 last:pb-0"
                   >
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="text-sm font-medium text-zinc-900">
+                      <span className="text-sm font-medium text-paper-900">
                         {rev.reviewer_label}
                       </span>
-                      <span className="text-sm text-amber-700">
+                      <span className="text-sm text-brand-800">
                         {"★".repeat(Math.min(5, Math.max(1, rev.rating)))}
                       </span>
                     </div>
-                    <div className="text-xs text-zinc-500">
+                    <div className="text-xs text-paper-800/55">
                       {new Date(rev.created_at).toLocaleDateString("tr-TR")}
                     </div>
                     {rev.comment && (
-                      <p className="mt-2 text-sm text-zinc-700">{rev.comment}</p>
+                      <p className="mt-2 text-sm text-paper-800/85">{rev.comment}</p>
                     )}
                   </li>
                 ))}
@@ -656,6 +656,7 @@ export default function OgretmenDetayPage() {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

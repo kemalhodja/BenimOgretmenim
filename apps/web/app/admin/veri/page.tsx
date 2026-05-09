@@ -44,7 +44,7 @@ export default function AdminVeriPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[40vh] items-center justify-center bg-zinc-50 text-sm text-zinc-500">
+        <div className="flex min-h-[40vh] items-center justify-center bg-paper-50 text-sm text-paper-800/55">
           Yükleniyor…
         </div>
       }
@@ -104,27 +104,32 @@ function AdminVeriInner() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <p className="text-sm font-medium text-zinc-500">Yönetim · veri</p>
-        <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{cfg.title}</h1>
-          <div className="flex flex-wrap gap-2 text-sm">
-            <Link href="/admin/merkez" className="font-medium text-brand-800 underline">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">{cfg.title}</h1>
+          <p className="flex flex-wrap gap-x-4 text-sm">
+            <Link
+              href="/admin/merkez"
+              className="font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+            >
               Merkez
             </Link>
-            <Link href="/admin" className="text-zinc-600 underline">
+            <Link
+              href="/admin"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+            >
               Özet
             </Link>
-          </div>
+          </p>
         </div>
 
         {key === "ledger" ? (
           <div className="mt-4 flex flex-wrap items-end gap-2">
             <label className="text-sm">
-              <span className="font-medium text-zinc-700">userId (UUID)</span>
+              <span className="font-medium text-paper-800">userId (UUID)</span>
               <input
-                className="mt-1 block rounded-xl border border-zinc-200 px-3 py-2 font-mono text-xs"
+                className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 font-mono text-xs"
                 value={userIdFilter}
                 onChange={(e) => setUserIdFilter(e.target.value)}
                 placeholder="Filtre…"
@@ -132,7 +137,7 @@ function AdminVeriInner() {
             </label>
             <button
               type="button"
-              className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white"
+              className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-semibold text-white"
               onClick={() => {
                 setAppliedUserId(userIdFilter.trim());
                 setOffset(0);
@@ -144,21 +149,21 @@ function AdminVeriInner() {
         ) : null}
 
         {error ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         ) : null}
 
-        <p className="mt-3 text-xs text-zinc-500">
+        <p className="mt-3 text-xs text-paper-800/55">
           Toplam {total} · gösterilen {rows.length} · offset {offset}
         </p>
 
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="mt-4 overflow-x-auto rounded-xl border border-paper-200 bg-white shadow-sm">
           {loading ? (
-            <p className="p-6 text-sm text-zinc-500">Yükleniyor…</p>
+            <p className="p-6 text-sm text-paper-800/55">Yükleniyor…</p>
           ) : rows.length === 0 ? (
-            <p className="p-6 text-sm text-zinc-500">Kayıt yok.</p>
+            <p className="p-6 text-sm text-paper-800/55">Kayıt yok.</p>
           ) : (
             <table className="min-w-full text-left text-xs">
-              <thead className="border-b border-zinc-200 bg-zinc-50 font-semibold text-zinc-600">
+              <thead className="border-b border-paper-200 bg-paper-50 font-semibold text-paper-800/75">
                 <tr>
                   {Object.keys(rows[0] ?? {}).map((col) => (
                     <th key={col} className="whitespace-nowrap px-2 py-2 font-mono">
@@ -169,9 +174,9 @@ function AdminVeriInner() {
               </thead>
               <tbody>
                 {rows.map((row, i) => (
-                  <tr key={i} className="border-b border-zinc-100 last:border-0">
+                  <tr key={i} className="border-b border-paper-100 last:border-0">
                     {Object.keys(rows[0] ?? {}).map((col) => (
-                      <td key={col} className="max-w-[14rem] truncate px-2 py-1.5 font-mono text-zinc-800">
+                      <td key={col} className="max-w-[14rem] truncate px-2 py-1.5 font-mono text-paper-800">
                         {formatCell(row[col])}
                       </td>
                     ))}
@@ -182,24 +187,24 @@ function AdminVeriInner() {
           )}
         </div>
 
-        <div className="mt-4 flex gap-2">
+        <nav className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm" aria-label="Sayfalama">
           <button
             type="button"
             disabled={offset === 0}
             onClick={() => setOffset((o) => Math.max(0, o - limit))}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm disabled:opacity-40"
+            className="font-medium text-brand-800 underline decoration-brand-400 underline-offset-4 disabled:cursor-not-allowed disabled:opacity-30 disabled:no-underline"
           >
-            Önceki
+            ← Önceki
           </button>
           <button
             type="button"
             disabled={offset + limit >= total}
             onClick={() => setOffset((o) => o + limit)}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm disabled:opacity-40"
+            className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 disabled:cursor-not-allowed disabled:opacity-30 disabled:no-underline"
           >
-            Sonraki
+            Sonraki →
           </button>
-        </div>
+        </nav>
       </div>
     </div>
   );

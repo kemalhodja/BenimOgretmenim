@@ -8,7 +8,7 @@ export default function StudentRequestsLayout({
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[40vh] items-center justify-center text-sm text-zinc-500">
+        <div className="flex min-h-[40vh] items-center justify-center bg-paper-50 text-sm text-paper-800/55">
           Yükleniyor…
         </div>
       }

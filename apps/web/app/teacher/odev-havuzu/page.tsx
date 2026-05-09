@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
@@ -215,44 +214,26 @@ export default function OdevHavuzuPage() {
   const rewardTl = (rewardMinor / 100).toFixed(2);
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Soru / ödev havuzu</h1>
-        <p className="mt-1 text-sm text-zinc-600">
+        <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Soru / ödev havuzu</h1>
+        <p className="mt-1 text-sm text-paper-800/75">
           Üstlenince soru {resolveMinutes} dakika yalnızca size aittir; sürede cevaplamazsanız tekrar havuza
-          düşer. Öğrenci cevabı onaylarsa öğretmen cüzdanına <strong>{rewardTl} TL</strong> aktarılır (öğrenci
-          cüzdanından). Öğrenci, ödeme öncesi cevabı yeterli bulmazsa soruyu tekrar havuza iade edebilir; bu
+          düşer. Öğrenci cevabı onaylarsa <strong>{rewardTl} TL</strong> BenimÖğretmenim havuzundan öğretmen
+          cüzdanınıza aktarılır. Öğrenci, ödeme öncesi cevabı yeterli bulmazsa soruyu tekrar havuza iade edebilir; bu
           durumda bildirim alırsınız. Ayrıca siz de çözmeden soruyu iade edebilirsiniz (ödeme olmaz).
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Link
-            href="/teacher/requests"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Açık talepler
-          </Link>
-          <Link
-            href="/teacher/cuzdan"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Cüzdan
-          </Link>
-          <Link href="/teacher" className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white">
-            Panel
-          </Link>
-        </div>
 
         {error && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         )}
 
-        <div className="mt-6 flex gap-2 border-b border-zinc-200 pb-2">
+        <div className="mt-6 flex gap-2 border-b border-paper-200 pb-2">
           <button
             type="button"
             onClick={() => setTab("pool")}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-              tab === "pool" ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100"
+              tab === "pool" ? "bg-brand-800 text-white" : "text-paper-800 hover:bg-paper-100"
             }`}
           >
             Havuz
@@ -261,7 +242,7 @@ export default function OdevHavuzuPage() {
             type="button"
             onClick={() => setTab("claims")}
             className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-              tab === "claims" ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100"
+              tab === "claims" ? "bg-brand-800 text-white" : "text-paper-800 hover:bg-paper-100"
             }`}
           >
             Üstlendiklerim ({claims.length})
@@ -272,9 +253,9 @@ export default function OdevHavuzuPage() {
           <>
             <div className="mt-4">
               <label className="text-sm">
-                <span className="font-medium text-zinc-700">Branş</span>
+                <span className="font-medium text-paper-800">Branş</span>
                 <select
-                  className="ml-0 mt-1 w-full max-w-sm rounded-xl border border-zinc-200 px-3 py-2"
+                  className="ml-0 mt-1 w-full max-w-sm rounded-xl border border-paper-200 px-3 py-2"
                   value={branchId}
                   onChange={(e) => setBranchId(e.target.value ? Number(e.target.value) : "")}
                 >
@@ -289,21 +270,21 @@ export default function OdevHavuzuPage() {
             </div>
             <div className="mt-6 space-y-3">
               {branchId === "" ? (
-                <p className="text-sm text-zinc-500">Branş seçin.</p>
+                <p className="text-sm text-paper-800/55">Branş seçin.</p>
               ) : posts.length === 0 ? (
-                <p className="text-sm text-zinc-500">Açık gönderi yok.</p>
+                <p className="text-sm text-paper-800/55">Açık gönderi yok.</p>
               ) : (
                 posts.map((p) => (
                   <div
                     key={p.id}
-                    className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm shadow-sm"
+                    className="rounded-xl border border-paper-200 bg-white p-4 text-sm shadow-sm"
                   >
-                    <div className="font-medium text-zinc-900">
+                    <div className="font-medium text-paper-900">
                       {p.topic}{" "}
-                      <span className="text-xs text-zinc-500">· {p.student_display_name}</span>
+                      <span className="text-xs text-paper-800/55">· {p.student_display_name}</span>
                     </div>
-                    <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-zinc-700">{p.help_text}</p>
-                    <div className="mt-1 text-xs text-zinc-500">
+                    <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-paper-800">{p.help_text}</p>
+                    <div className="mt-1 text-xs text-paper-800/55">
                       {homeworkPostStatusLabelTr(p.status)} ·{" "}
                       {new Date(p.created_at).toLocaleString("tr-TR")}
                     </div>
@@ -332,7 +313,7 @@ export default function OdevHavuzuPage() {
                       type="button"
                       disabled={claimBusy === p.id}
                       onClick={() => void claim(p.id)}
-                      className="mt-2 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs text-white"
+                      className="mt-2 rounded-lg bg-brand-800 px-3 py-1.5 text-xs text-white"
                     >
                       {claimBusy === p.id ? "…" : "Üstlen"}
                     </button>
@@ -347,23 +328,23 @@ export default function OdevHavuzuPage() {
               {tick}
             </span>
             {claims.length === 0 ? (
-              <p className="text-sm text-zinc-500">Üstlenilmiş soru yok.</p>
+              <p className="text-sm text-paper-800/55">Üstlenilmiş soru yok.</p>
             ) : (
               claims.map((p) => (
                 <div
                   key={p.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm shadow-sm"
+                  className="rounded-xl border border-paper-200 bg-white p-4 text-sm shadow-sm"
                 >
-                  <div className="font-medium text-zinc-900">
-                    {p.topic} <span className="text-xs text-zinc-500">· {p.student_display_name}</span>
+                  <div className="font-medium text-paper-900">
+                    {p.topic} <span className="text-xs text-paper-800/55">· {p.student_display_name}</span>
                   </div>
-                  <div className="mt-1 text-xs text-zinc-500">
+                  <div className="mt-1 text-xs text-paper-800/55">
                     {homeworkPostStatusLabelTr(p.status)}
                     {p.status === "claimed" && p.resolve_deadline_at ? (
                       <> · Kalan: {formatRemaining(p.resolve_deadline_at)}</>
                     ) : null}
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-zinc-800">{p.help_text}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-paper-800">{p.help_text}</p>
                   {Array.isArray(p.image_urls_jsonb) && (p.image_urls_jsonb as string[]).length > 0 && (
                     <ul className="mt-2 text-xs text-blue-700">
                       {(p.image_urls_jsonb as string[]).map((u, i) => (
@@ -376,10 +357,10 @@ export default function OdevHavuzuPage() {
                     </ul>
                   )}
                   {p.status === "claimed" ? (
-                    <div className="mt-3 space-y-2 border-t border-zinc-100 pt-3">
-                      <label className="block text-xs font-medium text-zinc-700">Cevabınız</label>
+                    <div className="mt-3 space-y-2 border-t border-paper-100 pt-3">
+                      <label className="block text-xs font-medium text-paper-800">Cevabınız</label>
                       <textarea
-                        className="w-full min-h-32 rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                        className="w-full min-h-32 rounded-xl border border-paper-200 px-3 py-2 text-sm"
                         placeholder="Çözümü yazın (en az 10 karakter)…"
                         value={answerDraft[p.id] ?? ""}
                         onChange={(e) =>
@@ -389,13 +370,13 @@ export default function OdevHavuzuPage() {
                           }))
                         }
                       />
-                      <label className="block text-xs text-zinc-600">
+                      <label className="block text-xs text-paper-800/75">
                         Cevap görselleri (isteğe, en fazla 4, ~350 KB)
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp"
                           multiple
-                          className="mt-1 block w-full text-xs file:mr-2 file:rounded file:border file:border-zinc-200 file:bg-white file:px-2 file:py-0.5"
+                          className="mt-1 block w-full text-xs file:mr-2 file:rounded file:border file:border-paper-200 file:bg-white file:px-2 file:py-0.5"
                           onChange={(e) => {
                             const files = Array.from(e.target.files ?? []).slice(0, 4);
                             if (files.length === 0) return;
@@ -431,7 +412,7 @@ export default function OdevHavuzuPage() {
                         />
                       </label>
                       {(answerImagesByPost[p.id] ?? []).length > 0 ? (
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-xs text-paper-800/55">
                           {answerImagesByPost[p.id]!.length} görsel eklendi.
                           <button
                             type="button"
@@ -460,7 +441,7 @@ export default function OdevHavuzuPage() {
                         type="button"
                         disabled={returnBusy === p.id || answerBusy === p.id}
                         onClick={() => void teacherReturn(p.id)}
-                        className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                        className="rounded-lg border border-paper-200 bg-white px-3 py-2 text-xs font-medium text-paper-900 disabled:opacity-50"
                       >
                         {returnBusy === p.id ? "…" : "İade et (havuz)"}
                       </button>

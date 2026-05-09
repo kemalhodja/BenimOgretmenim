@@ -130,62 +130,39 @@ export default function StudentDerslerPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Tamamlanan dersler · yorum
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600">
-              Tamamlanan oturumlara yıldız ve kısa yorum bırakın; öğretmen profilinde
-              adınız gizlenerek gösterilir.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/student/panel"
-              className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 shadow-sm"
-            >
-              Abonelik & cüzdan
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">
+            Tamamlanan dersler · yorum
+          </h1>
+          <p className="mt-1 text-sm text-paper-800/75">
+            Tamamlanan oturumlara yıldız ve kısa yorum bırakın; öğretmen profilinde adınız gizlenerek gösterilir.
+          </p>
+          <p className="mt-2 text-sm text-paper-800/65">
+            Diğer işlemler üst menüden. Ödeme ve bakiye:{" "}
+            <Link href="/student/panel" className="font-medium text-brand-800 underline-offset-4 hover:underline">
+              özet / cüzdan
             </Link>
-            <Link
-              href="/student/requests"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Taleplerim
-            </Link>
-            <Link
-              href="/student/dogrudan-dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Doğrudan ders
-            </Link>
-            <Link
-              href="/student/kurslar"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Kurslarım
-            </Link>
-          </div>
+            .
+          </p>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
         {ok && (
-          <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
             {ok}
           </div>
         )}
 
         <div className="mt-8 space-y-4">
-          <h2 className="text-base font-semibold text-zinc-900">Yorum bekleyen dersler</h2>
+          <h2 className="text-base font-semibold text-paper-900">Yorum bekleyen dersler</h2>
           {sessions.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75 shadow-sm">
               Yorum yazılabilecek tamamlanmış ders yok. Paketinizdeki dersler tamamlandıkça
               burada listelenir.
             </div>
@@ -199,14 +176,14 @@ export default function StudentDerslerPage() {
               return (
                 <div
                   key={s.lesson_session_id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                  className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <div className="text-sm font-semibold text-zinc-900">
+                      <div className="text-sm font-semibold text-paper-900">
                         {s.teacher_display_name}
                       </div>
-                      <div className="mt-1 text-xs text-zinc-500">
+                      <div className="mt-1 text-xs text-paper-800/55">
                         Ders #{s.session_index} · {whenLabel}
                       </div>
                       <Link
@@ -218,7 +195,7 @@ export default function StudentDerslerPage() {
                     </div>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="text-xs font-medium text-zinc-600">Puan:</span>
+                    <span className="text-xs font-medium text-paper-800/75">Puan:</span>
                     {[1, 2, 3, 4, 5].map((n) => (
                       <button
                         key={n}
@@ -233,7 +210,7 @@ export default function StudentDerslerPage() {
                         className={`rounded-lg px-2.5 py-1 text-sm font-medium ${
                           ratings[s.lesson_session_id] === n
                             ? "bg-brand-700 text-white"
-                            : "border border-zinc-200 bg-zinc-50 text-zinc-800 hover:bg-zinc-100"
+                            : "border border-paper-200 bg-paper-50 text-paper-800 hover:bg-paper-100"
                         }`}
                       >
                         {n}
@@ -241,7 +218,7 @@ export default function StudentDerslerPage() {
                     ))}
                   </div>
                   <label className="mt-3 block">
-                    <span className="text-xs font-medium text-zinc-600">
+                    <span className="text-xs font-medium text-paper-800/75">
                       Yorum (isteğe bağlı)
                     </span>
                     <textarea
@@ -254,7 +231,7 @@ export default function StudentDerslerPage() {
                         }))
                       }
                       rows={3}
-                      className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                      className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                       placeholder="Kısa geri bildiriminiz…"
                     />
                   </label>
@@ -262,7 +239,7 @@ export default function StudentDerslerPage() {
                     type="button"
                     disabled={busyId === s.lesson_session_id}
                     onClick={() => void submitReview(s.lesson_session_id)}
-                    className="mt-3 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    className="mt-3 rounded-xl bg-brand-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   >
                     {busyId === s.lesson_session_id ? "Gönderiliyor…" : "Yorumu gönder"}
                   </button>
@@ -274,24 +251,24 @@ export default function StudentDerslerPage() {
 
         {pastReviews.length > 0 && (
           <div className="mt-10">
-            <h2 className="text-base font-semibold text-zinc-900">Gönderdiğim yorumlar</h2>
+            <h2 className="text-base font-semibold text-paper-900">Gönderdiğim yorumlar</h2>
             <ul className="mt-3 space-y-3">
               {pastReviews.map((pr) => (
                 <li
                   key={String(pr.review_id)}
-                  className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm shadow-sm"
+                  className="rounded-xl border border-paper-200 bg-white p-4 text-sm shadow-sm"
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-medium text-zinc-900">
+                    <span className="font-medium text-paper-900">
                       {pr.teacher_display_name} · ders #{pr.session_index}
                     </span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-paper-800/55">
                       {new Date(pr.created_at).toLocaleString("tr-TR")}
                     </span>
                   </div>
                   <div className="mt-1 text-sm text-amber-800">★ {pr.rating} / 5</div>
                   {pr.comment && (
-                    <p className="mt-2 whitespace-pre-wrap text-zinc-700">{pr.comment}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-paper-800">{pr.comment}</p>
                   )}
                   <Link
                     href={`/ogretmenler/${pr.teacher_id}`}

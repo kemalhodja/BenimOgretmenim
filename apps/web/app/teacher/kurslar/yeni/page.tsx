@@ -91,77 +91,58 @@ export default function TeacherYeniKursPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Yeni kurs
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600">
-              Kursu taslak olarak oluşturun; sonra yayınlayıp cohort açın.
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Link
-              href="/teacher/kurslar"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              ← Kurslar
-            </Link>
-            <Link
-              href="/teacher/cuzdan"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Cüzdan
-            </Link>
-            <Link
-              href="/teacher"
-              className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-            >
-              Panel
-            </Link>
-          </div>
+        <div>
+          <Link
+            href="/teacher/kurslar"
+            className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+          >
+            ← Kurslar
+          </Link>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">Yeni kurs</h1>
+          <p className="mt-1 text-sm text-paper-800/75">
+            Kursu taslak olarak oluşturun; sonra yayınlayıp cohort açın.
+          </p>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <div className="grid grid-cols-1 gap-4">
             <label className="block">
-              <div className="mb-1 text-sm font-medium text-zinc-700">Başlık</div>
+              <div className="mb-1 text-sm font-medium text-paper-800">Başlık</div>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                 placeholder="Örn: 8. Sınıf LGS Matematik Kampı"
               />
             </label>
 
             <label className="block">
-              <div className="mb-1 text-sm font-medium text-zinc-700">Açıklama</div>
+              <div className="mb-1 text-sm font-medium text-paper-800">Açıklama</div>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="min-h-28 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                className="min-h-28 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                 placeholder="Hedef, ders planı, seviye, kaynaklar…"
               />
             </label>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className="block">
-                <div className="mb-1 text-sm font-medium text-zinc-700">Branş</div>
+                <div className="mb-1 text-sm font-medium text-paper-800">Branş</div>
                 <select
                   value={branchId}
                   onChange={(e) =>
                     setBranchId(e.target.value ? Number(e.target.value) : "")
                   }
-                  className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                  className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                 >
                   <option value="">Seçiniz</option>
                   {branches.map((b) => (
@@ -173,15 +154,15 @@ export default function TeacherYeniKursPage() {
               </label>
 
               <label className="block">
-                <div className="mb-1 text-sm font-medium text-zinc-700">Ücret (TL)</div>
+                <div className="mb-1 text-sm font-medium text-paper-800">Ücret (TL)</div>
                 <input
                   value={priceTl}
                   onChange={(e) => setPriceTl(e.target.value)}
                   inputMode="decimal"
-                  className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                  className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                   placeholder="0"
                 />
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-paper-800/55">
                   Şimdilik kurs ücreti gösterim amaçlıdır; ödeme akışını sonraki adımda ekleyeceğiz.
                 </p>
               </label>
@@ -191,7 +172,7 @@ export default function TeacherYeniKursPage() {
               type="button"
               disabled={saving}
               onClick={() => void create()}
-              className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
             >
               {saving ? "Oluşturuluyor…" : "Kurs oluştur"}
             </button>

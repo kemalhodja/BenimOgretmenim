@@ -53,61 +53,26 @@ export default function TeacherRequestChatPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link
-            href="/teacher/requests"
-            className="text-sm font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-4 hover:text-zinc-900"
-          >
-            ← Açık talepler
-          </Link>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/teacher/cuzdan"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Cüzdan
-            </Link>
-            <Link
-              href="/teacher/dogrudan-dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Doğrudan dersler
-            </Link>
-            <Link
-              href="/teacher/dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Ders oturumları
-            </Link>
-            <Link
-              href="/teacher/kurslar"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Online kurslar
-            </Link>
-            <Link
-              href="/teacher"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Panel
-            </Link>
-          </div>
-        </div>
+        <Link
+          href="/teacher/requests"
+          className="text-sm font-medium text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+        >
+          ← Açık talepler
+        </Link>
 
-        <p className="mt-6 text-sm font-medium text-zinc-500">Öğretmen</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Talep sohbeti</h1>
-        <p className="mt-1 font-mono text-xs text-zinc-500">{requestId}</p>
+        <h1 className="mt-6 text-2xl font-semibold tracking-tight text-paper-900">Talep sohbeti</h1>
+        <p className="mt-1 font-mono text-xs text-paper-800/55">{requestId}</p>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             {error}
           </div>
         )}
 
         {canChat === null && !error && (
-          <div className="mt-6 text-sm text-zinc-500">Yükleniyor…</div>
+          <div className="mt-6 text-sm text-paper-800/55">Yükleniyor…</div>
         )}
         {canChat === true && <RequestChat token={token} requestId={requestId} />}
       </div>

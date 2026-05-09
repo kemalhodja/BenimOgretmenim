@@ -2,7 +2,7 @@
 
 /* Marka: canlı cyan + mercan (yeşilimsi mint yok); logo ile uyumlu sıcak vurgu. */
 :root {
-  --background: #f0f8fc;
+  --background: #f6fafc;
   --foreground: #0a1620;
 }
 
@@ -70,9 +70,8 @@
 body {
   background-color: var(--background);
   background-image:
-    radial-gradient(100% 55% at 100% -5%, rgb(242 100 58 / 0.12), transparent 52%),
-    radial-gradient(85% 50% at -5% 10%, rgb(14 184 212 / 0.11), transparent 48%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.55) 0%, transparent 42%);
+    radial-gradient(100% 50% at 100% 0%, rgb(242 100 58 / 0.06), transparent 50%),
+    radial-gradient(90% 45% at 0% 15%, rgb(14 184 212 / 0.06), transparent 48%);
   background-attachment: fixed;
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;

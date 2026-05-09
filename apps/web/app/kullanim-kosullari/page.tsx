@@ -20,32 +20,31 @@ export const metadata: Metadata = {
 
 export default function KullanimKosullariPage() {
   return (
-    <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <p className="text-sm font-medium text-zinc-500">Site</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Kullanım koşulları</h1>
-      <p className="mt-2 text-sm text-zinc-600">
-        Aşağıdaki metin yasal nihai sözleşme yerine geçmez; yayına çıkmadan önce
-        hukuk danışmanlığı ile güncellenmelidir.
+    <article className="min-h-screen bg-paper-50">
+      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Kullanım koşulları</h1>
+      <p className="mt-2 text-sm text-paper-800/75">
+        Özet çerçeve; yürürlük öncesi hukuk danışmanlığı ile tam metin hazırlanmalıdır.
       </p>
-      <section className="mt-10 space-y-4 text-sm leading-relaxed text-zinc-700">
-        <h2 className="text-base font-semibold text-zinc-900">Hizmet</h2>
+      <section className="mt-10 space-y-4 text-sm leading-relaxed text-paper-800/85">
+        <h2 className="text-base font-semibold text-paper-900">Hizmet</h2>
         <p>
           BenimÖğretmenim; öğrenci, veli ve öğretmenleri buluşturan dijital bir
           aracı platformdur. Dersin kendisi taraflar arasındadır; platform
           mümkün olduğunca iletişim ve ödeme kayıtlarını destekler.
         </p>
-        <h2 className="text-base font-semibold text-zinc-900">Hesap ve içerik</h2>
+        <h2 className="text-base font-semibold text-paper-900">Hesap ve içerik</h2>
         <p>
           Yanlış veya yanıltıcı profil, taciz, spam veya yasa dışı içerik
           yasaktır. Şüpheli kullanım durumunda hesap askıya alınabilir veya
           sonlandırılabilir.
         </p>
-        <h2 className="text-base font-semibold text-zinc-900">Ödeme ve abonelik</h2>
+        <h2 className="text-base font-semibold text-paper-900">Ödeme ve abonelik</h2>
         <p>
           Öğretmen abonelikleri ve öğrenci ödemeleri ilgili ürün kurallarına tabidir.
           İade ve anlaşmazlık süreçleri ayrıca tanımlanmalıdır.
         </p>
-        <h2 className="text-base font-semibold text-zinc-900">Sorumluluk sınırı</h2>
+        <h2 className="text-base font-semibold text-paper-900">Sorumluluk sınırı</h2>
         <p>
           Platform, tarafların birbirleriyle yaptığı sözlü veya yazılı anlaşmaların
           tarafı değildir; doğrudan zararlardan dolayı sorumluluk hukuken
@@ -53,10 +52,11 @@ export default function KullanimKosullariPage() {
         </p>
       </section>
       <p className="mt-10 text-sm">
-        <Link href="/" className="text-brand-800 underline">
-          Ana sayfaya dön
+        <Link href="/" className="font-medium text-brand-800 underline-offset-4 hover:underline">
+          Ana sayfa
         </Link>
       </p>
+      </div>
     </article>
   );
 }

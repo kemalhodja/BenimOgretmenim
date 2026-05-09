@@ -52,11 +52,16 @@ export default function AdminMerkezPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <p className="text-sm font-medium text-zinc-500">Yönetim</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Kontrol merkezi</h1>
-        <p className="mt-2 text-sm text-zinc-600">
+        <Link
+          href="/admin"
+          className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+        >
+          ← Özet
+        </Link>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">Kontrol merkezi</h1>
+        <p className="mt-2 text-sm text-paper-800/75">
           Tüm yönetim modülleri ve veri görünümleri. İşlemler API üzerinden audit edilir; üretimde{" "}
           <span className="font-mono">ADMIN_API_SECRET</span> önerilir.
         </p>
@@ -64,16 +69,16 @@ export default function AdminMerkezPage() {
         <div className="mt-8 space-y-10">
           {SECTIONS.map((sec) => (
             <section key={sec.title}>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500">{sec.title}</h2>
-              <ul className="mt-3 divide-y divide-zinc-200 rounded-2xl border border-zinc-200 bg-white shadow-sm">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-paper-800/55">{sec.title}</h2>
+              <ul className="mt-3 divide-y divide-paper-200 rounded-xl border border-paper-200 bg-white">
                 {sec.items.map((it) => (
                   <li key={it.href}>
                     <Link
                       href={it.href}
-                      className="flex flex-col gap-0.5 px-4 py-3 transition hover:bg-zinc-50 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-0.5 px-4 py-3 transition hover:bg-paper-50 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <span className="font-medium text-brand-900">{it.title}</span>
-                      <span className="text-sm text-zinc-500">{it.desc}</span>
+                      <span className="text-sm text-paper-800/55">{it.desc}</span>
                     </Link>
                   </li>
                 ))}

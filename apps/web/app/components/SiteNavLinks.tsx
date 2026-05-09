@@ -4,16 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { getRoleFromToken, getToken, panelNavLabel, panelPathForRole } from "../lib/auth";
+import { loginHrefWithReturn } from "../lib/authRedirect";
 
-const COMMON_BEFORE_PANEL = [
+/** Kısa liste: keşif + panel + yardım. Detaylar panele ve ana sayfa bölümlerine taşınır. */
+const NAV_PUBLIC = [
   { href: "/ogretmenler", label: "Öğretmen ara" },
-  { href: "/#nasil", label: "Nasıl çalışır?" },
-] as const;
-
-const COMMON_AFTER_PANEL = [
   { href: "/courses", label: "Kurslar" },
   { href: "/fiyatlar", label: "Fiyatlar" },
-  { href: "/iletisim", label: "İletişim" },
+  { href: "/yardim", label: "Yardım" },
 ] as const;
 
 type Variant = "desktop" | "mobile";
@@ -43,29 +41,25 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
   }, [sync]);
 
   const role = mounted ? getRoleFromToken(token) : null;
-  const panelHref = role ? panelPathForRole(role) : "/panel";
+  const panelHref = role ? panelPathForRole(role) : loginHrefWithReturn("/panel");
   const panelLabel = role ? panelNavLabel(role) : "Panel";
 
+  const deskCls =
+    "rounded-lg px-2.5 py-1.5 text-sm font-medium text-paper-800/80 transition hover:bg-paper-100 hover:text-paper-900";
+  const mobCls = "shrink-0 rounded-md px-2 py-1 text-paper-800/85 hover:bg-paper-100";
+
   if (!mounted) {
-    if (variant === "desktop") {
-      return (
-        <>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <span
-              key={i}
-              className="inline-block h-8 w-14 shrink-0 rounded-lg bg-paper-200/60"
-              aria-hidden
-            />
-          ))}
-        </>
-      );
-    }
+    const n = variant === "desktop" ? 5 : 5;
     return (
       <>
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: n }).map((_, i) => (
           <span
             key={i}
-            className="inline-block h-6 w-12 shrink-0 rounded-md bg-paper-200/60"
+            className={
+              variant === "desktop"
+                ? "inline-block h-8 w-14 shrink-0 rounded-lg bg-paper-200/60"
+                : "inline-block h-6 w-12 shrink-0 rounded-md bg-paper-200/60"
+            }
             aria-hidden
           />
         ))}
@@ -76,60 +70,28 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
   if (variant === "desktop") {
     return (
       <>
-        {COMMON_BEFORE_PANEL.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-paper-800/75 transition hover:bg-paper-100/80 hover:text-paper-900"
-          >
+        {NAV_PUBLIC.map((item) => (
+          <Link key={item.href} href={item.href} className={deskCls}>
             {item.label}
           </Link>
         ))}
-        <Link
-          href={panelHref}
-          className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-paper-800/75 transition hover:bg-paper-100/80 hover:text-paper-900"
-        >
+        <Link href={panelHref} className={deskCls}>
           {panelLabel}
         </Link>
-        {COMMON_AFTER_PANEL.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="rounded-lg px-2.5 py-1.5 text-sm font-medium text-paper-800/75 transition hover:bg-paper-100/80 hover:text-paper-900"
-          >
-            {item.label}
-          </Link>
-        ))}
       </>
     );
   }
 
   return (
     <>
-      {COMMON_BEFORE_PANEL.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className="shrink-0 rounded-md px-2 py-1 text-paper-800/80 hover:bg-paper-100/80"
-        >
+      {NAV_PUBLIC.map((item) => (
+        <Link key={item.href} href={item.href} className={mobCls}>
           {item.label}
         </Link>
       ))}
-      <Link
-        href={panelHref}
-        className="shrink-0 rounded-md px-2 py-1 font-medium text-brand-900 hover:bg-brand-50/80"
-      >
+      <Link href={panelHref} className={`${mobCls} font-medium text-brand-900`}>
         {panelLabel}
       </Link>
-      {COMMON_AFTER_PANEL.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className="shrink-0 rounded-md px-2 py-1 text-paper-800/80 hover:bg-paper-100/80"
-        >
-          {item.label}
-        </Link>
-      ))}
     </>
   );
 }

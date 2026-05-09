@@ -64,7 +64,17 @@ export function panelPathForRole(role: UserRole): string {
   if (role === "admin") return "/admin";
   if (role === "teacher") return "/teacher";
   if (role === "guardian") return "/guardian";
-  return "/student/requests";
+  return "/student/panel";
+}
+
+/** Oturumdaki rol, kendi panel alanında mı? (Üst çeredeki çift “panele git” önlenir.) */
+export function isOnRolePanel(role: UserRole, pathname: string): boolean {
+  const p = (pathname.split("?")[0] ?? "").replace(/\/+$/, "") || "/";
+  if (role === "admin") return p === "/admin" || p.startsWith("/admin/");
+  if (role === "teacher") return p === "/teacher" || p.startsWith("/teacher/");
+  if (role === "guardian") return p === "/guardian" || p.startsWith("/guardian/");
+  if (role === "student") return p === "/student" || p.startsWith("/student/");
+  return false;
 }
 
 /** Üst menü / CTA kısa etiketleri */

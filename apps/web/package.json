@@ -11,6 +11,8 @@
     "start": "next start",
     "lint": "eslint . --cache --cache-location .eslintcache",
     "test:e2e": "playwright test",
+    "test:e2e:public": "playwright test --grep-invert @integration",
+    "test:e2e:integration": "playwright test --grep @integration",
     "test:e2e:ui": "playwright test --ui",
     "logo:strip-bg": "node scripts/remove-logo-bg.mjs"
   },

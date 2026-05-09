@@ -112,13 +112,13 @@ export default function OdevSorPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
-        <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Soru / ödev yardım</h1>
-        <p className="mt-1 text-sm text-zinc-600">
+        <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Soru / ödev yardım</h1>
+        <p className="mt-1 text-sm text-paper-800/75">
           Branş havuzuna düşer; bir öğretmen üstlenir (varsayılan 20 dk içinde cevaplamalı). Cevabı onaylarsanız
-          öğretmen cüzdanına 10,00 TL aktarılır (sizin cüzdanınızdan). Onaylamadan önce cevabı yeterli bulmazsanız
+          öğretmen ücreti BenimÖğretmenim ödeme havuzundan öğretmen cüzdanına aktarılır (sizin cüzdanınızdan
+          düşülmez). Onaylamadan önce cevabı yeterli bulmazsanız
           soruyu tekrar havuza iade edebilirsiniz (ödeme yapılmaz). Henüz kimse üstlenmediyse gönderiyi
           tamamen iptal edebilirsiniz. Aktif abonelik gerekir.
         </p>
@@ -132,32 +132,32 @@ export default function OdevSorPage() {
           >
             Abonelik & cüzdan
           </Link>
-          <Link className="font-medium text-zinc-700 underline" href="/student/requests">
+          <Link className="font-medium text-paper-800 underline" href="/student/requests">
             Ders talepleri
           </Link>
-          <Link className="font-medium text-zinc-700 underline" href="/student/dogrudan-dersler">
+          <Link className="font-medium text-paper-800 underline" href="/student/dogrudan-dersler">
             Doğrudan ders
           </Link>
-          <Link className="font-medium text-zinc-700 underline" href="/ogretmenler">
+          <Link className="font-medium text-paper-800 underline" href="/ogretmenler">
             Öğretmen ara
           </Link>
         </div>
         {error && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {error}
           </div>
         )}
         {ok && (
-          <div className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
+          <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
             {ok}
           </div>
         )}
 
-        <div className="mt-6 space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="mt-6 space-y-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <label className="block text-sm">
-            <span className="font-medium text-zinc-700">Branş (ders) — zorunlu</span>
+            <span className="font-medium text-paper-800">Branş (ders) — zorunlu</span>
             <select
-              className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2"
+              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
               value={branchId}
               onChange={(e) => setBranchId(e.target.value ? Number(e.target.value) : "")}
             >
@@ -170,25 +170,25 @@ export default function OdevSorPage() {
             </select>
           </label>
           <label className="block text-sm">
-            <span className="font-medium text-zinc-700">Konu — zorunlu</span>
+            <span className="font-medium text-paper-800">Konu — zorunlu</span>
             <input
-              className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2"
+              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
               value={topic}
               onChange={(e) => setTopic(e.target.value)}
             />
           </label>
           <label className="block text-sm">
-            <span className="font-medium text-zinc-700">Neyi anlamadınız? — zorunlu</span>
+            <span className="font-medium text-paper-800">Neyi anlamadınız? — zorunlu</span>
             <textarea
-              className="mt-1 w-full min-h-28 rounded-xl border border-zinc-200 px-3 py-2"
+              className="mt-1 w-full min-h-28 rounded-xl border border-paper-200 px-3 py-2"
               value={helpText}
               onChange={(e) => setHelpText(e.target.value)}
             />
           </label>
           <label className="block text-sm">
-            <span className="font-medium text-zinc-700">Görseller (en fazla 4, küçük dosya)</span>
+            <span className="font-medium text-paper-800">Görseller (en fazla 4, küçük dosya)</span>
             <div className="mt-1 flex flex-col gap-2 sm:flex-row">
-              <label className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-900 shadow-sm">
+              <label className="inline-flex items-center gap-2 rounded-xl border border-paper-200 bg-white px-3 py-2 text-xs font-medium text-paper-900 shadow-sm">
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -222,7 +222,7 @@ export default function OdevSorPage() {
                 />
                 Kamerayla çek
               </label>
-              <span className="text-xs text-zinc-500 sm:self-center">
+              <span className="text-xs text-paper-800/55 sm:self-center">
                 (Telefonlarda kamera açılır)
               </span>
             </div>
@@ -230,7 +230,7 @@ export default function OdevSorPage() {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               multiple
-              className="mt-1 block w-full text-xs text-zinc-600 file:mr-2 file:rounded-lg file:border file:border-zinc-200 file:bg-white file:px-2 file:py-1"
+              className="mt-1 block w-full text-xs text-paper-800/75 file:mr-2 file:rounded-lg file:border file:border-paper-200 file:bg-white file:px-2 file:py-1"
               onChange={(e) => {
                 const files = Array.from(e.target.files ?? []).slice(0, 4);
                 if (files.length === 0) return;
@@ -262,16 +262,16 @@ export default function OdevSorPage() {
               }}
             />
             <textarea
-              className="mt-2 w-full min-h-20 font-mono text-xs rounded-xl border border-zinc-200 px-3 py-2"
+              className="mt-2 w-full min-h-20 font-mono text-xs rounded-xl border border-paper-200 px-3 py-2"
               placeholder="İsteğe: https://... veya yukarıdan foto (data URL eklenir)"
               value={imageUrls}
               onChange={(e) => setImageUrls(e.target.value)}
             />
           </label>
           <label className="block text-sm">
-            <span className="font-medium text-zinc-700">Ses URL (isteğe)</span>
+            <span className="font-medium text-paper-800">Ses URL (isteğe)</span>
             <input
-              className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm"
               value={audioUrl}
               onChange={(e) => setAudioUrl(e.target.value)}
             />
@@ -280,7 +280,7 @@ export default function OdevSorPage() {
             type="button"
             disabled={busy}
             onClick={() => void submit()}
-            className="w-full rounded-xl bg-zinc-900 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            className="w-full rounded-xl bg-brand-800 py-2.5 text-sm font-medium text-white disabled:opacity-50"
           >
             {busy ? "…" : "Havuza gönder"}
           </button>

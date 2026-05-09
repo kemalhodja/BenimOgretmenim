@@ -58,35 +58,40 @@ export default function OdevGonderilerPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
-        <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Gönderdiğim sorular</h1>
-        <div className="mt-3 flex flex-wrap gap-2 text-sm">
-          <Link className="font-medium text-brand-800 underline" href="/student/odev-sor">
-            Yeni soru
+        <Link
+          href="/student/odev-sor"
+          className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+        >
+          ← Soru / ödev
+        </Link>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">Gönderdiğim sorular</h1>
+        <p className="mt-2 text-sm text-paper-800/65">
+          <Link
+            href="/student/odev-sor"
+            className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+          >
+            Yeni soru gönder
           </Link>
-          <Link className="text-zinc-700 underline" href="/student/panel">
-            Panel
-          </Link>
-        </div>
+        </p>
         {error && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {error}
           </div>
         )}
         <ul className="mt-6 space-y-3">
           {posts.length === 0 ? (
-            <p className="text-sm text-zinc-500">Henüz gönderi yok.</p>
+            <p className="text-sm text-paper-800/55">Henüz gönderi yok.</p>
           ) : (
             posts.map((p) => (
               <li key={p.id}>
                 <Link
                   href={`/student/odev-sor/${p.id}`}
-                  className="block rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm hover:border-brand-300"
+                  className="block rounded-xl border border-paper-200 bg-white p-4 shadow-sm hover:border-brand-300"
                 >
-                  <div className="font-medium text-zinc-900">{p.topic}</div>
-                  <div className="mt-1 text-xs text-zinc-500">
+                  <div className="font-medium text-paper-900">{p.topic}</div>
+                  <div className="mt-1 text-xs text-paper-800/55">
                     {p.branch_name ?? "—"} · {homeworkPostStatusLabelTr(p.status)} ·{" "}
                     {new Date(p.created_at).toLocaleString("tr-TR")}
                   </div>

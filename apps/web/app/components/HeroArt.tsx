@@ -10,8 +10,8 @@ export function HeroArt() {
       <div
         className="absolute inset-0 opacity-[0.45] [background-image:radial-gradient(rgb(30_42_68/0.07)_1.2px,transparent_1.2px)] [background-size:22px_22px]"
       />
-      <div className="absolute -right-20 -top-20 h-[420px] w-[420px] rounded-full bg-gradient-to-br from-brand-200/50 via-brand-100/20 to-transparent blur-3xl" />
-      <div className="absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-gradient-to-tr from-warm-200/50 via-warm-100/30 to-transparent blur-3xl" />
+      <div className="absolute -right-20 -top-20 h-[380px] w-[380px] rounded-full bg-brand-100/35 blur-3xl" />
+      <div className="absolute -bottom-28 -left-16 h-80 w-80 rounded-full bg-warm-100/30 blur-3xl" />
       <div className="absolute right-8 top-1/2 hidden h-[min(360px,42vw)] w-[min(360px,42vw)] -translate-y-1/2 sm:block lg:hidden">
         <svg
           viewBox="0 0 400 400"

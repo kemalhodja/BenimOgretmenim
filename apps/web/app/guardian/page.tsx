@@ -103,40 +103,39 @@ export default function GuardianPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Veli</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Veli paneli</h1>
-            <p className="mt-1 text-xs text-zinc-500">Öğrenci hesabı sizi veli olarak ekler.</p>
-          </div>
-          <Link
-            href="/"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Ana sayfa
-          </Link>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Veli paneli</h1>
+          <p className="mt-1 text-sm text-paper-800/65">Öğrenci hesabı veli olarak bağlar.</p>
+          <p className="mt-2 text-sm">
+            <Link
+              href="/"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+            >
+              Ana sayfa
+            </Link>
+          </p>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         <section className="mt-8">
-          <h2 className="text-base font-semibold text-zinc-900">Bağlı öğrenciler</h2>
+          <h2 className="text-base font-semibold text-paper-900">Bağlı öğrenciler</h2>
           <div className="mt-3 space-y-2">
             {students.length === 0 ? (
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
+              <div className="rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/75">
                 Bağlı öğrenci yok. Öğrenci, veli hesabını bağlamalıdır.
               </div>
             ) : (
               students.map((s) => (
                 <div
                   key={s.student_id}
-                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-900 shadow-sm"
+                  className="rounded-xl border border-paper-200 bg-white px-4 py-3 text-sm font-medium text-paper-900"
                 >
                   {s.student_display_name}
                 </div>
@@ -146,29 +145,29 @@ export default function GuardianPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
-          <p className="mt-1 text-xs text-zinc-500">Ders özeti ve ödev bildirimleri. Ödeme öğrenci hesabından.</p>
+          <h2 className="text-base font-semibold text-paper-900">Bildirimler</h2>
+          <p className="mt-1 text-xs text-paper-800/55">Özet ve ödev; ödeme öğrenci hesabından.</p>
           <div className="mt-3 space-y-2">
             {notifications.length === 0 ? (
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
+              <div className="rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/75">
                 Bildirim yok.
               </div>
             ) : (
               notifications.map((n) => (
                 <div
                   key={n.id}
-                  className={`rounded-2xl border p-4 shadow-sm ${
+                  className={`rounded-xl border p-4 ${
                     n.read_at
-                      ? "border-zinc-100 bg-zinc-50"
-                      : "border-amber-200 bg-amber-50/40"
+                      ? "border-paper-100 bg-paper-50"
+                      : "border-brand-200 bg-brand-50/40"
                   }`}
                 >
-                  <div className="text-sm font-semibold text-zinc-900">{n.title}</div>
-                  <div className="mt-1 text-xs text-zinc-500">
+                  <div className="text-sm font-semibold text-paper-900">{n.title}</div>
+                  <div className="mt-1 text-xs text-paper-800/55">
                     {new Date(n.created_at).toLocaleString("tr-TR")}
                     {n.read_at ? " · Okundu" : ""}
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800">
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-paper-800">
                     {n.body}
                   </p>
                   {(() => {
@@ -184,7 +183,7 @@ export default function GuardianPage() {
                       k === "homework_teacher_returned_guardian"
                     ) {
                       return (
-                        <p className="mt-2 text-xs text-zinc-500">Detaylar öğrenci panelinde.</p>
+                        <p className="mt-2 text-xs text-paper-800/55">Detaylar öğrenci panelinde.</p>
                       );
                     }
                     return null;
@@ -194,7 +193,7 @@ export default function GuardianPage() {
                       type="button"
                       disabled={readBusy === n.id}
                       onClick={() => void markRead(n.id)}
-                      className="mt-3 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 disabled:opacity-50"
+                      className="mt-3 rounded-lg border border-paper-300 bg-white px-3 py-1.5 text-xs font-medium text-paper-900 hover:bg-paper-50 disabled:opacity-50"
                     >
                       {readBusy === n.id ? "…" : "Okundu işaretle"}
                     </button>
@@ -206,24 +205,24 @@ export default function GuardianPage() {
         </section>
 
         <section className="mt-10">
-          <h2 className="text-base font-semibold text-zinc-900">Ders özeti</h2>
-          <p className="mt-1 text-xs text-zinc-500">Öğretmen ders sonu notu burada görünür.</p>
+          <h2 className="text-base font-semibold text-paper-900">Ders özeti</h2>
+          <p className="mt-1 text-xs text-paper-800/55">Öğretmen ders sonu notu.</p>
           <div className="mt-3 space-y-3">
             {progress.length === 0 ? (
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-600 shadow-sm">
+              <div className="rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/75">
                 Kayıt yok.
               </div>
             ) : (
               progress.map((p) => (
                 <article
                   key={p.snapshot_id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"
+                  className="rounded-xl border border-paper-200 bg-white p-4"
                 >
-                  <div className="text-xs text-zinc-500">
+                  <div className="text-xs text-paper-800/55">
                     {p.student_display_name} · {p.teacher_display_name} ·{" "}
                     {new Date(p.created_at).toLocaleString("tr-TR")}
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-800">
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-paper-800">
                     {p.narrative_tr}
                   </p>
                 </article>

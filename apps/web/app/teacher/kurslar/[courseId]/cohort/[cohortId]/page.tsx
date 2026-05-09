@@ -189,66 +189,47 @@ export default function TeacherCohortSessionsPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
-        <p className="text-sm font-medium text-zinc-500">Öğretmen · grup oturumları</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+        <Link
+          href={`/teacher/kurslar/${courseId}`}
+          className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+        >
+          ← Kurs yönetimi
+        </Link>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">
           {cohortTitle || "Grup"}
         </h1>
         {courseTitle ? (
-          <p className="mt-1 text-sm text-zinc-600">
-            Kurs: <span className="font-medium text-zinc-800">{courseTitle}</span>
+          <p className="mt-1 text-sm text-paper-800/75">
+            Kurs: <span className="font-medium text-paper-800">{courseTitle}</span>
           </p>
         ) : null}
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href={`/teacher/kurslar/${courseId}`}
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Kursa dön
-          </Link>
-          <Link
-            href="/teacher/kurslar"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Tüm kurslar
-          </Link>
-          <Link
-            href="/teacher/dersler"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Ders oturumları
-          </Link>
-          <Link
-            href="/teacher"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Panel
-          </Link>
-        </div>
+        <p className="mt-2 text-sm text-paper-800/55">
+          Panele ve diğer listelere üst menüden geçebilirsiniz.
+        </p>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
         {ok && (
-          <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-800">
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-800">
             {ok}
           </div>
         )}
 
-        <section className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Kayıtlı öğrenciler</h2>
+        <section className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-paper-900">Kayıtlı öğrenciler</h2>
           {enrollments.length === 0 ? (
-            <p className="mt-2 text-sm text-zinc-500">Henüz kayıt yok.</p>
+            <p className="mt-2 text-sm text-paper-800/55">Henüz kayıt yok.</p>
           ) : (
-            <ul className="mt-3 space-y-1 text-sm text-zinc-800">
+            <ul className="mt-3 space-y-1 text-sm text-paper-800">
               {enrollments.map((e) => (
                 <li key={e.id}>
                   {e.student_display_name}{" "}
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-paper-800/55">
                     ({toLocal(e.enrolled_at)})
                   </span>
                 </li>
@@ -257,15 +238,15 @@ export default function TeacherCohortSessionsPage() {
           )}
         </section>
 
-        <section className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Yeni oturum</h2>
+        <section className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-paper-900">Yeni oturum</h2>
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="flex-1 text-sm">
-              <span className="text-xs font-medium text-zinc-600">Başlık (isteğe bağlı)</span>
+              <span className="text-xs font-medium text-paper-800/75">Başlık (isteğe bağlı)</span>
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm"
                 placeholder="Örn. 1. ünite canlı ders"
               />
             </label>
@@ -273,7 +254,7 @@ export default function TeacherCohortSessionsPage() {
               type="button"
               disabled={busy === "new"}
               onClick={() => void addSession()}
-              className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               Oturum ekle
             </button>
@@ -281,25 +262,25 @@ export default function TeacherCohortSessionsPage() {
         </section>
 
         <section className="mt-8">
-          <h2 className="text-sm font-semibold text-zinc-900">Oturumlar</h2>
+          <h2 className="text-sm font-semibold text-paper-900">Oturumlar</h2>
           <div className="mt-3 space-y-3">
             {sessions.length === 0 ? (
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
+              <div className="rounded-xl border border-paper-200 bg-white p-5 text-sm text-paper-800/75 shadow-sm">
                 Henüz oturum yok. Yukarıdan ekleyin.
               </div>
             ) : (
               sessions.map((s) => (
                 <div
                   key={s.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                  className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <div className="text-sm font-semibold text-zinc-900">
+                      <div className="text-sm font-semibold text-paper-900">
                         #{s.session_index}
                         {s.title ? ` · ${s.title}` : ""}
                       </div>
-                      <div className="mt-1 text-xs text-zinc-500">
+                      <div className="mt-1 text-xs text-paper-800/55">
                         {s.status} · {toLocal(s.scheduled_start)}
                         {s.duration_minutes ? ` · ${s.duration_minutes} dk` : ""}
                       </div>
@@ -315,7 +296,7 @@ export default function TeacherCohortSessionsPage() {
                       ) : null}
                     </div>
                     <div className="flex w-full max-w-md flex-col gap-2">
-                      <label className="text-xs font-medium text-zinc-600">
+                      <label className="text-xs font-medium text-paper-800/75">
                         Başlangıç (yerel)
                         <input
                           type="datetime-local"
@@ -323,10 +304,10 @@ export default function TeacherCohortSessionsPage() {
                           onChange={(e) =>
                             setWhenBySession((prev) => ({ ...prev, [s.id]: e.target.value }))
                           }
-                          className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                          className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm"
                         />
                       </label>
-                      <label className="text-xs font-medium text-zinc-600">
+                      <label className="text-xs font-medium text-paper-800/75">
                         Süre (dk)
                         <input
                           type="number"
@@ -339,7 +320,7 @@ export default function TeacherCohortSessionsPage() {
                               [s.id]: Number(e.target.value) || 60,
                             }))
                           }
-                          className="mt-1 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                          className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm"
                         />
                       </label>
                       <button

@@ -276,27 +276,27 @@ export function SupportWidget() {
           />
           <div
             id="support-widget-panel"
-            className="fixed bottom-0 right-0 z-[60] flex max-h-[min(520px,85vh)] w-full max-w-md flex-col rounded-t-2xl border border-zinc-200 bg-white shadow-2xl sm:bottom-6 sm:right-6 sm:max-h-[min(480px,80vh)] sm:rounded-2xl"
+            className="fixed bottom-0 right-0 z-[60] flex max-h-[min(520px,85vh)] w-full max-w-md flex-col rounded-t-2xl border border-paper-200 bg-white shadow-2xl sm:bottom-6 sm:right-6 sm:max-h-[min(480px,80vh)] sm:rounded-xl"
           >
-            <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-paper-100 px-4 py-3">
               <div>
-                <p className="text-sm font-semibold text-zinc-900">Canlı destek</p>
-                <p className="text-xs text-zinc-500">Sayfadan ayrılmadan yazın; ekibimiz yanıtlar.</p>
+                <p className="text-sm font-semibold text-paper-900">Canlı destek</p>
+                <p className="text-xs text-paper-800/55">Sayfadan ayrılmadan yazın; ekibimiz yanıtlar.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100"
+                className="rounded-lg px-2 py-1 text-sm text-paper-800/55 hover:bg-paper-100"
               >
                 Kapat
               </button>
             </div>
 
             {!loggedIn && !guestActive ? (
-              <div className="space-y-4 px-4 py-6 text-sm text-zinc-700">
-                <p className="font-medium text-zinc-900">Nasıl devam etmek istersiniz?</p>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-                  <p className="text-xs text-zinc-600">Hesabınız varsa giriş yapın (taleplerinizle ilişkilendirilir).</p>
+              <div className="space-y-4 px-4 py-6 text-sm text-paper-800">
+                <p className="font-medium text-paper-900">Nasıl devam etmek istersiniz?</p>
+                <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                  <p className="text-xs text-paper-800/75">Hesabınız varsa giriş yapın (taleplerinizle ilişkilendirilir).</p>
                   <Link
                     href={loginHrefWithReturn(pathname)}
                     className="mt-2 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900"
@@ -304,22 +304,22 @@ export function SupportWidget() {
                     Giriş yap
                   </Link>
                 </div>
-                <div className="rounded-xl border border-zinc-200 p-3">
-                  <p className="text-xs text-zinc-600">Misafir olarak e-postanızı verin; aynı tarayıcıda konuşmaya devam edebilirsiniz.</p>
-                  <label className="mt-2 block text-xs font-medium text-zinc-700">E-posta</label>
+                <div className="rounded-xl border border-paper-200 p-3">
+                  <p className="text-xs text-paper-800/75">Misafir olarak e-postanızı verin; aynı tarayıcıda konuşmaya devam edebilirsiniz.</p>
+                  <label className="mt-2 block text-xs font-medium text-paper-800">E-posta</label>
                   <input
                     type="email"
                     autoComplete="email"
                     value={guestEmail}
                     onChange={(e) => setGuestEmail(e.target.value)}
                     placeholder="ornek@posta.com"
-                    className="mt-1 w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm"
+                    className="mt-1 w-full rounded-lg border border-paper-200 px-3 py-2 text-sm"
                   />
                   <button
                     type="button"
                     disabled={guestBootstrapping || !guestEmail.includes("@")}
                     onClick={() => void startGuestSession()}
-                    className="mt-3 w-full rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                    className="mt-3 w-full rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
                   >
                     {guestBootstrapping ? "Başlatılıyor…" : "Misafir olarak devam et"}
                   </button>
@@ -328,7 +328,7 @@ export function SupportWidget() {
             ) : (
               <>
                 {guestActive ? (
-                  <div className="flex items-center justify-between border-b border-zinc-50 px-4 py-2 text-xs text-zinc-500">
+                  <div className="flex items-center justify-between border-b border-paper-100 px-4 py-2 text-xs text-paper-800/55">
                     <span>Misafir oturumu</span>
                     <button type="button" onClick={clearGuest} className="text-brand-800 underline">
                       Sıfırla
@@ -344,24 +344,24 @@ export function SupportWidget() {
 
                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
                   {loading ? (
-                    <p className="text-sm text-zinc-500">Yükleniyor…</p>
+                    <p className="text-sm text-paper-800/55">Yükleniyor…</p>
                   ) : messages.length === 0 ? (
-                    <p className="text-sm text-zinc-500">Merhaba! Nasıl yardımcı olabiliriz?</p>
+                    <p className="text-sm text-paper-800/55">Merhaba! Nasıl yardımcı olabiliriz?</p>
                   ) : (
                     messages.map((m) => (
                       <div
                         key={m.id}
-                        className={`max-w-[92%] rounded-2xl px-3 py-2 text-sm ${
+                        className={`max-w-[92%] rounded-xl px-3 py-2 text-sm ${
                           m.sender === "user"
                             ? "ml-auto bg-brand-50 text-brand-950"
-                            : "mr-auto border border-zinc-100 bg-zinc-50 text-zinc-900"
+                            : "mr-auto border border-paper-100 bg-paper-50 text-paper-900"
                         }`}
                       >
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-paper-800/55">
                           {m.sender === "user" ? "Siz" : "Destek"}
                         </p>
                         <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
-                        <p className="mt-1 text-[10px] text-zinc-400">
+                        <p className="mt-1 text-[10px] text-paper-800/45">
                           {new Date(m.created_at).toLocaleString("tr-TR", {
                             day: "2-digit",
                             month: "short",
@@ -374,7 +374,7 @@ export function SupportWidget() {
                   )}
                 </div>
 
-                <div className="border-t border-zinc-100 p-3">
+                <div className="border-t border-paper-100 p-3">
                   <div className="flex gap-2">
                     <textarea
                       value={text}
@@ -382,7 +382,7 @@ export function SupportWidget() {
                       rows={2}
                       maxLength={4000}
                       placeholder="Mesajınız…"
-                      className="min-h-[44px] flex-1 resize-none rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                      className="min-h-[44px] flex-1 resize-none rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                     />
                     <button
                       type="button"

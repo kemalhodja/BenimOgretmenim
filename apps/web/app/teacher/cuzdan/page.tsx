@@ -103,81 +103,80 @@ export default function TeacherCuzdanPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Cüzdan ve hareketler</h1>
-        <p className="mt-1 text-sm text-zinc-600">
+                <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Cüzdan ve hareketler</h1>
+        <p className="mt-1 text-sm text-paper-800/75">
           Doğrudan ders anlaşmalarında (öğrenci ödeme tamamladığında) ödemeniz burada görünür.
           İsterseniz PayTR ile cüzdan yükleyerek de bakiye alabilirsiniz.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">
-          <Link className="text-zinc-600 underline" href="/teacher">
+          <Link className="text-paper-800/75 underline" href="/teacher">
             ← Panel
           </Link>
-          <Link className="text-zinc-600 underline" href="/teacher/dogrudan-dersler">
+          <Link className="text-paper-800/75 underline" href="/teacher/dogrudan-dersler">
             Doğrudan ders anlaşmaları
           </Link>
-          <Link className="text-zinc-600 underline" href="/teacher/dersler">
+          <Link className="text-paper-800/75 underline" href="/teacher/dersler">
             Ders oturumları
           </Link>
-          <Link className="text-zinc-600 underline" href="/teacher/kurslar">
+          <Link className="text-paper-800/75 underline" href="/teacher/kurslar">
             Online kurslar
           </Link>
         </div>
 
         {error && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {error}
           </div>
         )}
         {ok && (
-          <div className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
+          <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
             {ok}
           </div>
         )}
 
-        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Bakiye</h2>
+        <div className="mt-6 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-paper-900">Bakiye</h2>
           {wallet && (
-            <p className="mt-2 text-2xl font-mono text-zinc-800">
+            <p className="mt-2 text-2xl font-mono text-paper-800">
               {tl(wallet.balanceMinor)} {wallet.currency}
             </p>
           )}
           <div className="mt-4 flex flex-wrap items-end gap-2">
             <label className="text-sm">
-              <span className="text-zinc-600">PayTR ile yükle (kuruş, min 10.000)</span>
+              <span className="text-paper-800/75">PayTR ile yükle (kuruş, min 10.000)</span>
               <input
                 type="number"
                 min={10000}
                 step={1000}
                 value={topupKurus}
                 onChange={(e) => setTopupKurus(Number(e.target.value) || 10_000)}
-                className="ml-0 mt-1 block w-40 rounded-lg border border-zinc-200 px-2 py-1 font-mono text-sm"
+                className="ml-0 mt-1 block w-40 rounded-lg border border-paper-200 px-2 py-1 font-mono text-sm"
               />
             </label>
             <button
               type="button"
               disabled={busy}
               onClick={() => void topup()}
-              className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
             >
               Yükle
             </button>
           </div>
         </div>
 
-        <h2 className="mt-8 text-sm font-semibold text-zinc-900">Son hareketler</h2>
-        <p className="text-xs text-zinc-500">
+        <h2 className="mt-8 text-sm font-semibold text-paper-900">Son hareketler</h2>
+        <p className="text-xs text-paper-800/55">
           Doğrudan ders ödemeleri: <code className="text-[11px]">direct_booking_payout</code> gibi
           türler burada listelenir.
         </p>
-        <div className="mt-2 overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="mt-2 overflow-x-auto rounded-xl border border-paper-200 bg-white shadow-sm">
           {entries.length === 0 ? (
-            <p className="p-4 text-sm text-zinc-500">Henüz hareket yok.</p>
+            <p className="p-4 text-sm text-paper-800/55">Henüz hareket yok.</p>
           ) : (
             <table className="w-full min-w-[640px] text-left text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-500">
+              <thead className="border-b border-paper-200 bg-paper-50 text-xs text-paper-800/55">
                 <tr>
                   <th className="px-3 py-2">Tarih</th>
                   <th className="px-3 py-2">Tür</th>
@@ -187,23 +186,23 @@ export default function TeacherCuzdanPage() {
               </thead>
               <tbody>
                 {entries.map((e) => (
-                  <tr key={e.id} className="border-b border-zinc-100">
-                    <td className="px-3 py-2 font-mono text-xs text-zinc-600">
+                  <tr key={e.id} className="border-b border-paper-100">
+                    <td className="px-3 py-2 font-mono text-xs text-paper-800/75">
                       {new Date(e.created_at).toLocaleString("tr-TR")}
                     </td>
-                    <td className="px-3 py-2 text-zinc-800">
+                    <td className="px-3 py-2 text-paper-800">
                       {e.kind}
                       {e.ref_id ? (
-                        <span className="ml-1 text-[10px] text-zinc-400">
+                        <span className="ml-1 text-[10px] text-paper-800/45">
                           ({e.ref_id.slice(0, 8)}…)
                         </span>
                       ) : null}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-zinc-800">
+                    <td className="px-3 py-2 text-right font-mono text-paper-800">
                       {Number(e.delta_minor) >= 0 ? "+" : ""}
                       {tl(e.delta_minor)}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-zinc-600">
+                    <td className="px-3 py-2 text-right font-mono text-paper-800/75">
                       {tl(e.balance_after)}
                     </td>
                   </tr>

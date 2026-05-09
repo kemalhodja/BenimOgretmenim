@@ -8,6 +8,9 @@
  *   npm run smoke:roles-deep --prefix apps/api
  *
  * Misafir destek: `022_support_guest_threads` migration uygulanmış olmalı.
+ *
+ * Ödev ödülü: API üretiminde `PLATFORM_HOMEWORK_WALLET_USER_ID` tanımlı olmalı; smoke yerelde bu env yoksa
+ * admin kullanıcısı havuz olarak kullanılır (grant bu kullanıcıya yapılır).
  */
 
 import { pool } from "../db.js";
@@ -92,9 +95,13 @@ async function main() {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ email: adminEmail, password: adminPassword }),
   });
-  const adminBody = (await adminLogin.json()) as { token?: string; error?: string };
+  const adminBody = (await adminLogin.json()) as {
+    token?: string;
+    user?: { id?: string };
+    error?: string;
+  };
   console.log("[smoke:roles-deep] admin login", adminLogin.status);
-  if (!adminLogin.ok || !adminBody.token) {
+  if (!adminLogin.ok || !adminBody.token || !adminBody.user?.id) {
     console.error(adminBody);
     process.exitCode = 1;
     return;
@@ -153,18 +160,20 @@ async function main() {
   await ensureActiveStudentPlatformSubscription(student.userId);
 
   const grantMinor = 500_000;
-  const grant = await fetch(`${base}/v1/wallet/admin/grant`, {
+  const homeworkPoolUserId =
+    process.env.PLATFORM_HOMEWORK_WALLET_USER_ID?.trim() || adminBody.user.id;
+  const grantPool = await fetch(`${base}/v1/wallet/admin/grant`, {
     method: "POST",
     headers: { ...adminAuth, "content-type": "application/json" },
     body: JSON.stringify({
-      userId: student.userId,
+      userId: homeworkPoolUserId,
       amountMinor: grantMinor,
-      reason: "smoke-roles-deep",
+      reason: "smoke-roles-deep homework pool",
     }),
   });
-  console.log("[smoke:roles-deep] wallet admin grant (student)", grant.status);
-  if (!grant.ok) {
-    console.error(await grant.json().catch(() => ({})));
+  console.log("[smoke:roles-deep] wallet admin grant (homework pool)", grantPool.status, homeworkPoolUserId);
+  if (!grantPool.ok) {
+    console.error(await grantPool.json().catch(() => ({})));
     process.exitCode = 1;
     return;
   }

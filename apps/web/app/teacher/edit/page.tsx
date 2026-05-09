@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Link from "next/link";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
@@ -267,64 +266,16 @@ export default function TeacherEditPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-4xl px-6 py-8">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Profil düzenle
-            </h1>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/teacher/requests"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Açık talepler
-            </Link>
-            <Link
-              href="/teacher/teklifler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Tekliflerim
-            </Link>
-            <Link
-              href="/teacher/dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Ders oturumları
-            </Link>
-            <Link
-              href="/teacher/kurslar"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Online kurslar
-            </Link>
-            <Link
-              href="/teacher/cuzdan"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Cüzdan
-            </Link>
-            <Link
-              href="/teacher/dogrudan-dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Doğrudan dersler
-            </Link>
-            <Link
-              href="/teacher"
-              className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-            >
-              Panel
-            </Link>
-          </div>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Profil düzenle</h1>
+          <p className="mt-1 text-sm text-paper-800/65">Kayıttan sonra diğer sayfalar üst menüden.</p>
         </div>
 
         {(error || ok) && (
           <div
-            className={`mt-6 rounded-2xl border p-4 text-sm ${
+            className={`mt-6 rounded-xl border p-4 text-sm ${
               error
                 ? "border-red-200 bg-red-50 text-red-700"
                 : "border-brand-200 bg-brand-50 text-brand-800"
@@ -335,29 +286,29 @@ export default function TeacherEditPage() {
         )}
 
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Profil</h2>
+          <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-paper-900">Profil</h2>
             <div className="mt-4 space-y-4">
               <label className="block" data-focus="bio">
-                <div className="mb-1 text-sm font-medium text-zinc-700">
+                <div className="mb-1 text-sm font-medium text-paper-800">
                   Biyografi
                 </div>
                 <textarea
                   value={bioRaw}
                   onChange={(e) => setBioRaw(e.target.value)}
-                  className="min-h-28 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                  className="min-h-28 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                 />
               </label>
 
               <label className="block" data-focus="video">
-                <div className="mb-1 text-sm font-medium text-zinc-700">
+                <div className="mb-1 text-sm font-medium text-paper-800">
                   Video URL
                 </div>
                 <input
                   value={videoUrl}
                   onChange={(e) => setVideoUrl(e.target.value)}
-                  className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-zinc-400 ${
-                    validation.videoOk ? "border-zinc-200" : "border-red-300"
+                  className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand-400 ${
+                    validation.videoOk ? "border-paper-200" : "border-red-300"
                   }`}
                   placeholder="https://..."
                 />
@@ -369,7 +320,7 @@ export default function TeacherEditPage() {
               </label>
 
               <label className="block" data-focus="instagram">
-                <div className="mb-1 text-sm font-medium text-zinc-700">
+                <div className="mb-1 text-sm font-medium text-paper-800">
                   Instagram URL
                 </div>
                 <input
@@ -378,8 +329,8 @@ export default function TeacherEditPage() {
                   onBlur={() =>
                     setInstagramUrl((prev) => normalizeInstagramInput(prev))
                   }
-                  className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-zinc-400 ${
-                    validation.instagramOk ? "border-zinc-200" : "border-red-300"
+                  className={`w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand-400 ${
+                    validation.instagramOk ? "border-paper-200" : "border-red-300"
                   }`}
                   placeholder="https://instagram.com/kullaniciadi"
                 />
@@ -391,12 +342,12 @@ export default function TeacherEditPage() {
               </label>
 
               <label className="block" data-focus="platformLinks">
-                <div className="mb-1 text-sm font-medium text-zinc-700">
+                <div className="mb-1 text-sm font-medium text-paper-800">
                   Özel platform linkleri
                 </div>
                 <div className="space-y-2">
                   {(platformLinks ?? []).length === 0 && (
-                    <div className="text-xs text-zinc-500">
+                    <div className="text-xs text-paper-800/55">
                       Henüz link eklemediniz.
                     </div>
                   )}
@@ -414,7 +365,7 @@ export default function TeacherEditPage() {
                             ),
                           )
                         }
-                        className="rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400 sm:col-span-2"
+                        className="rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400 sm:col-span-2"
                         placeholder="Başlık (örn: Zoom)"
                       />
                       <input
@@ -426,10 +377,10 @@ export default function TeacherEditPage() {
                             ),
                           )
                         }
-                        className={`rounded-xl border px-3 py-2 text-sm outline-none focus:border-zinc-400 sm:col-span-3 ${
+                        className={`rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand-400 sm:col-span-3 ${
                           validation.platformInvalidIdx.includes(idx)
                             ? "border-red-300"
-                            : "border-zinc-200"
+                            : "border-paper-200"
                         }`}
                         placeholder="https://..."
                       />
@@ -461,7 +412,7 @@ export default function TeacherEditPage() {
                         { title: "", url: "" },
                       ])
                     }
-                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900"
+                    className="rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm font-medium text-paper-900"
                   >
                     Link ekle
                   </button>
@@ -469,12 +420,12 @@ export default function TeacherEditPage() {
               </label>
 
               <label className="block" data-focus="examDocs">
-                <div className="mb-1 text-sm font-medium text-zinc-700">
+                <div className="mb-1 text-sm font-medium text-paper-800">
                   Yazılıya hazırlık dokümanları
                 </div>
                 <div className="space-y-2">
                   {(examDocs ?? []).length === 0 && (
-                    <div className="text-xs text-zinc-500">
+                    <div className="text-xs text-paper-800/55">
                       Henüz doküman eklemediniz.
                     </div>
                   )}
@@ -492,7 +443,7 @@ export default function TeacherEditPage() {
                             ),
                           )
                         }
-                        className="rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400 sm:col-span-2"
+                        className="rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400 sm:col-span-2"
                         placeholder="Başlık"
                       />
                       <input
@@ -504,10 +455,10 @@ export default function TeacherEditPage() {
                             ),
                           )
                         }
-                        className={`rounded-xl border px-3 py-2 text-sm outline-none focus:border-zinc-400 sm:col-span-3 ${
+                        className={`rounded-xl border px-3 py-2 text-sm outline-none focus:border-brand-400 sm:col-span-3 ${
                           validation.examInvalidIdx.includes(idx)
                             ? "border-red-300"
-                            : "border-zinc-200"
+                            : "border-paper-200"
                         }`}
                         placeholder="https://..."
                       />
@@ -530,7 +481,7 @@ export default function TeacherEditPage() {
                             ),
                           )
                         }
-                        className="rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400 sm:col-span-1"
+                        className="rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400 sm:col-span-1"
                       >
                         {docKinds.map((k) => (
                           <option key={k.id} value={k.id}>
@@ -561,7 +512,7 @@ export default function TeacherEditPage() {
                         { title: "", url: "", kind: "yazili_hazirlik" },
                       ])
                     }
-                    className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900"
+                    className="rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm font-medium text-paper-900"
                   >
                     Doküman ekle
                   </button>
@@ -569,7 +520,7 @@ export default function TeacherEditPage() {
               </label>
 
               <label className="block" data-focus="city">
-                <div className="mb-1 text-sm font-medium text-zinc-700">
+                <div className="mb-1 text-sm font-medium text-paper-800">
                   Şehir
                 </div>
                 <select
@@ -577,7 +528,7 @@ export default function TeacherEditPage() {
                   onChange={(e) =>
                     setCityId(e.target.value ? Number(e.target.value) : "")
                   }
-                  className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                  className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                 >
                   <option value="">Seçiniz</option>
                   {cities.map((c) => (
@@ -589,20 +540,20 @@ export default function TeacherEditPage() {
               </label>
 
               <label className="block" data-focus="availability">
-                <div className="mb-1 text-sm font-medium text-zinc-700">
+                <div className="mb-1 text-sm font-medium text-paper-800">
                   Müsaitlik (JSON)
                 </div>
                 <textarea
                   value={availability}
                   onChange={(e) => setAvailability(e.target.value)}
-                  className="min-h-40 w-full rounded-xl border border-zinc-200 px-3 py-2 font-mono text-xs outline-none focus:border-zinc-400"
+                  className="min-h-40 w-full rounded-xl border border-paper-200 px-3 py-2 font-mono text-xs outline-none focus:border-brand-400"
                 />
               </label>
 
               <button
                 onClick={saveProfile}
                 disabled={saving}
-                className="w-full rounded-xl bg-zinc-900 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+                className="w-full rounded-xl bg-brand-800 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-50"
               >
                 {saving ? "Kaydediliyor..." : "Profil kaydet"}
               </button>
@@ -615,17 +566,17 @@ export default function TeacherEditPage() {
           </div>
 
           <div
-            className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+            className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
             data-focus="branches"
           >
-            <h2 className="text-base font-semibold text-zinc-900">Branşlar</h2>
-            <p className="mt-1 text-sm text-zinc-600">
+            <h2 className="text-base font-semibold text-paper-900">Branşlar</h2>
+            <p className="mt-1 text-sm text-paper-800/75">
               Şimdilik sadece “leaf” (alt dalı olmayan) branşlar listelenir.
             </p>
 
             <div className="mt-4 space-y-4">
               <label className="block">
-                <div className="mb-1 text-sm font-medium text-zinc-700">
+                <div className="mb-1 text-sm font-medium text-paper-800">
                   Branş seçimi
                 </div>
                 <select
@@ -644,7 +595,7 @@ export default function TeacherEditPage() {
                       setPrimaryBranchId(ids[0]);
                     }
                   }}
-                  className="h-56 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                  className="h-56 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                 >
                   {leafBranches.map((b) => (
                     <option key={b.id} value={b.id}>
@@ -655,7 +606,7 @@ export default function TeacherEditPage() {
               </label>
 
               <label className="block">
-                <div className="mb-1 text-sm font-medium text-zinc-700">
+                <div className="mb-1 text-sm font-medium text-paper-800">
                   Ana branş
                 </div>
                 <select
@@ -666,7 +617,7 @@ export default function TeacherEditPage() {
                     )
                   }
                   disabled={selectedBranchIds.length === 0}
-                  className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400 disabled:opacity-50"
+                  className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400 disabled:opacity-50"
                 >
                   {selectedBranchIds.map((id) => {
                     const b = branches.find((x) => x.id === id);
@@ -682,20 +633,20 @@ export default function TeacherEditPage() {
               <button
                 onClick={saveBranches}
                 disabled={saving}
-                className="w-full rounded-xl bg-zinc-900 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+                className="w-full rounded-xl bg-brand-800 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-50"
               >
                 {saving ? "Kaydediliyor..." : "Branşları kaydet"}
               </button>
 
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-paper-800/55">
                 Seçili: {selectedBranchIds.length} branş
               </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 text-xs text-zinc-600">
-          <div className="font-medium text-zinc-900">Not</div>
+        <div className="mt-6 rounded-xl border border-paper-200 bg-white p-4 text-xs text-paper-800/75">
+          <div className="font-medium text-paper-900">Not</div>
           <div className="mt-1">
             İleride burayı rakipteki gibi adım adım onboarding sihirbazına
             çevireceğiz (AI mülakat → profil → branş → ücret → takvim).

@@ -85,7 +85,11 @@ export default function OdevDetayPage() {
     if (!token || !postId) return;
     const reward = data?.satisfactionRewardMinor ?? 500;
     const tl = (reward / 100).toFixed(2);
-    if (!window.confirm(`Öğretmene ${tl} TL aktarılacak (cüzdanınızdan düşülür). Onaylıyor musunuz?`)) {
+    if (
+      !window.confirm(
+        `Öğretmene ${tl} TL ödül aktarılacak (BenimÖğretmenim havuzundan). Onaylıyor musunuz?`,
+      )
+    ) {
       return;
     }
     setBusy(true);
@@ -100,8 +104,13 @@ export default function OdevDetayPage() {
     } catch (e) {
       const m = e instanceof Error ? e.message : "hata";
       setError(m);
-      if (m.includes("insufficient_wallet")) {
-        setError("Cüzdan bakiyeniz yetersiz. Önce cüzdan yükleyin (/student/panel).");
+      if (m.includes("insufficient_platform_pool") || m.includes("platform_pool_balance")) {
+        setError(
+          "Ödeme havuzunda geçici olarak yeterli bakiye yok. Kısa süre sonra tekrar deneyin veya destek ile iletişime geçin.",
+        );
+      }
+      if (m.includes("platform_homework_wallet_not_configured")) {
+        setError("Ödeme havuzu yapılandırılmamış. Lütfen destek ile iletişime geçin.");
       }
     } finally {
       setBusy(false);
@@ -175,44 +184,43 @@ export default function OdevDetayPage() {
     : [];
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
         <Link href="/student/odev-sor/gonderiler" className="text-sm font-medium text-brand-800 underline">
           ← Gönderilerim
         </Link>
         {error && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {error}
           </div>
         )}
         {!post ? (
-          <p className="mt-6 text-sm text-zinc-500">Yükleniyor…</p>
+          <p className="mt-6 text-sm text-paper-800/55">Yükleniyor…</p>
         ) : (
           <div className="mt-6 space-y-6">
             <header>
-              <p className="text-sm font-medium text-zinc-500">Öğrenci · soru / ödev</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Gönderi detayı</h1>
+                            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Gönderi detayı</h1>
             </header>
             {post.status === "open" && post.last_answer_rejected_at ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-950">
+              <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-950">
                 Son öğretmen cevabını havuza iade ettiniz; soru branş havuzunda tekrar görünür. Başka bir
                 öğretmen üstlenebilir.
               </div>
             ) : null}
             {post.status === "cancelled" ? (
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-100/90 p-4 text-sm text-zinc-700">
+              <div className="rounded-xl border border-paper-200 bg-paper-100/90 p-4 text-sm text-paper-800">
                 Bu gönderiyi iptal ettiniz; öğretmen havuzunda listelenmez.
               </div>
             ) : null}
-            <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm" aria-labelledby="homework-topic">
-              <h2 id="homework-topic" className="text-xl font-semibold text-zinc-900">
+            <section className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm" aria-labelledby="homework-topic">
+              <h2 id="homework-topic" className="text-xl font-semibold text-paper-900">
                 {post.topic}
               </h2>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-paper-800/55">
                 {post.branch_name ?? "—"} · {homeworkPostStatusLabelTr(post.status)} ·{" "}
                 {post.teacher_display_name ? `Öğretmen: ${post.teacher_display_name}` : null}
               </p>
-              <p className="mt-4 whitespace-pre-wrap text-sm text-zinc-800">{post.help_text}</p>
+              <p className="mt-4 whitespace-pre-wrap text-sm text-paper-800">{post.help_text}</p>
               {imgs.length > 0 && (
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {imgs.map((src, i) => (
@@ -237,7 +245,7 @@ export default function OdevDetayPage() {
                 </a>
               ) : null}
               {post.status === "open" ? (
-                <div className="mt-5 border-t border-zinc-100 pt-4">
+                <div className="mt-5 border-t border-paper-100 pt-4">
                   <button
                     type="button"
                     disabled={cancelBusy || busy || rejectBusy}
@@ -251,11 +259,11 @@ export default function OdevDetayPage() {
             </section>
 
             {post.answer_text ? (
-              <section className="rounded-2xl border border-brand-200 bg-brand-50/40 p-5 shadow-sm">
+              <section className="rounded-xl border border-brand-200 bg-brand-50/40 p-5 shadow-sm">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-900">
                   Öğretmen cevabı
                 </h2>
-                <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-900">{post.answer_text}</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm text-paper-900">{post.answer_text}</p>
                 {ansImgs.length > 0 && (
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     {ansImgs.map((src, i) => (
@@ -271,10 +279,10 @@ export default function OdevDetayPage() {
                 )}
                 {post.status === "answered" && !post.homework_reward_applied_at ? (
                   <div className="mt-4 space-y-3">
-                    <label className="block text-xs text-zinc-600">
+                    <label className="block text-xs text-paper-800/75">
                       İsteğe bağlı kısa not (öğretmene bildirimde iletilir, en fazla 500 karakter)
                       <textarea
-                        className="mt-1 w-full min-h-16 rounded-xl border border-zinc-200 px-3 py-2 text-sm text-zinc-900"
+                        className="mt-1 w-full min-h-16 rounded-xl border border-paper-200 px-3 py-2 text-sm text-paper-900"
                         value={rejectNote}
                         onChange={(e) => setRejectNote(e.target.value)}
                         maxLength={500}
@@ -299,7 +307,7 @@ export default function OdevDetayPage() {
                       >
                     {busy
                       ? "…"
-                      : `Cevabı yeterli buldum — öğretmene ${((data?.satisfactionRewardMinor ?? 1000) / 100).toFixed(2)} TL`}
+                      : `Cevabı yeterli buldum — öğretmene ${((data?.satisfactionRewardMinor ?? 1000) / 100).toFixed(2)} TL (havuzdan)`}
                       </button>
                     </div>
                   </div>
@@ -311,7 +319,7 @@ export default function OdevDetayPage() {
                 ) : null}
               </section>
             ) : post.status === "claimed" ? (
-              <p className="text-sm text-zinc-600">
+              <p className="text-sm text-paper-800/75">
                 Bir öğretmen soruyu üstlendi; cevap hazırlanıyor. Son tarih:{" "}
                 {post.resolve_deadline_at
                   ? new Date(post.resolve_deadline_at).toLocaleString("tr-TR")

@@ -124,80 +124,31 @@ export default function TeacherTekliflerPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-            Verdiğim teklifler
-          </h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Talep durumu ve teklif sonucunu buradan takip edin; mesajlaşma için
-            talebe gidin.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/teacher/requests"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Açık talepler
-          </Link>
-          <Link
-            href="/teacher/odev-havuzu"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Ödev havuzu
-          </Link>
-          <Link
-            href="/teacher/cuzdan"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Cüzdan
-          </Link>
-          <Link
-            href="/teacher/dogrudan-dersler"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Doğrudan dersler
-          </Link>
-          <Link
-            href="/teacher/dersler"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Ders oturumları
-          </Link>
-          <Link
-            href="/teacher/kurslar"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Online kurslar
-          </Link>
-          <Link
-            href="/teacher"
-            className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-          >
-            Panel
-          </Link>
-        </div>
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Verdiğim teklifler</h1>
+        <p className="mt-1 text-sm text-paper-800/75">
+          Talep ve teklif durumu; sohbet için ilgili talep satırına gidin. Yeni teklif için: üst menü
+          «Talepler».
+        </p>
       </div>
 
       {error && (
-        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {ok && (
-        <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
+        <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
           {ok}
         </div>
       )}
 
       <div className="mt-8 space-y-3">
         {rows.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+          <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75 shadow-sm">
             Henüz teklif yok.{" "}
             <Link href="/teacher/requests" className="font-medium text-brand-800 underline">
               Açık taleplere göz atın
@@ -208,27 +159,27 @@ export default function TeacherTekliflerPage() {
           rows.map((o) => (
             <div
               key={o.offer_id}
-              className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+              className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <div className="text-sm font-semibold text-zinc-900">
+                  <div className="text-sm font-semibold text-paper-900">
                     Talep #{o.request_id.slice(0, 8)} · {o.branch_name ?? `Branş ${o.branch_id}`}
                   </div>
-                  <div className="mt-1 text-xs text-zinc-500">
+                  <div className="mt-1 text-xs text-paper-800/55">
                     Talep: {statusTr(o.request_status)} · Teklif:{" "}
                     {statusTr(o.offer_status)}
                   </div>
-                  <div className="mt-1 text-xs text-zinc-500">
+                  <div className="mt-1 text-xs text-paper-800/55">
                     {o.delivery_mode} · {new Date(o.offer_created_at).toLocaleString("tr-TR")}
                   </div>
                   {o.request_note_preview && (
-                    <p className="mt-2 line-clamp-2 text-sm text-zinc-700">
+                    <p className="mt-2 line-clamp-2 text-sm text-paper-800">
                       {o.request_note_preview}
                     </p>
                   )}
                   {o.proposed_hourly_rate_minor != null && (
-                    <div className="mt-2 text-xs text-zinc-600">
+                    <div className="mt-2 text-xs text-paper-800/75">
                       Önerilen saatlik: {minorToTl(o.proposed_hourly_rate_minor)} TL
                     </div>
                   )}
@@ -239,14 +190,14 @@ export default function TeacherTekliflerPage() {
                       type="button"
                       disabled={withdrawingId === o.offer_id}
                       onClick={() => void withdrawOffer(o.request_id, o.offer_id)}
-                      className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-50"
+                      className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-center text-sm font-medium text-paper-800 hover:bg-paper-50 disabled:opacity-50"
                     >
                       {withdrawingId === o.offer_id ? "…" : "Teklifi geri çek"}
                     </button>
                   )}
                   <Link
                     href={`/teacher/requests/${o.request_id}`}
-                    className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+                    className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-center text-sm font-medium text-paper-900 hover:bg-paper-50"
                   >
                     Mesajlar
                   </Link>

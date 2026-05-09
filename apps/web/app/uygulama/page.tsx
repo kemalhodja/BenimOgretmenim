@@ -20,14 +20,14 @@ export const metadata: Metadata = {
 
 export default function UygulamaPage() {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-      <p className="text-sm font-medium text-zinc-500">Site</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-950 sm:text-3xl">
-        Telefona ekle ve tam ekran kullan
+    <div className="min-h-screen bg-paper-50">
+      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
+      <h1 className="text-2xl font-semibold tracking-tight text-paper-950 sm:text-3xl">
+        Telefona ekle
       </h1>
-      <p className="mt-3 text-sm leading-relaxed text-paper-800/90">
-        BenimÖğretmenim bir <strong>web uygulaması</strong> (PWA): mağaza olmadan da ana ekrana
-        kısayol eklenebilir. Aşağıdaki adımlar güncel Safari ve Chrome için geçerlidir.
+      <p className="mt-2 text-sm leading-relaxed text-paper-800/85">
+        BenimÖğretmenim bir <strong>web uygulaması</strong> (PWA): ana ekrana kısayol ekleyerek tam
+        ekran kullanabilirsiniz. Android’de Chrome; iPhone’da Safari ile kurulum yapılır.
       </p>
 
       <section id="android" className="mt-10 scroll-mt-24">
@@ -74,68 +74,71 @@ export default function UygulamaPage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="text-lg font-semibold text-paper-950">Google Play ve App Store</h2>
-        <p className="mt-2 text-sm leading-relaxed text-paper-800/90">
-          Mağazada <strong>“BenimÖğretmenim”</strong> aramasıyla çıkmak için ayrıca bir{" "}
-          <strong>mağaza paketi</strong> gerekir; yalnızca web sitesi Play / App Store listesine
-          otomatik düşmez.
+        <h2 className="text-lg font-semibold text-paper-950">Mağaza uygulaması</h2>
+        <p className="mt-2 text-sm leading-relaxed text-paper-800/85">
+          Play veya App Store’da görünmek için siteye ek olarak bir mağaza paketi gerekir; tarayıcıdan
+          eklenen PWA kısayolu mağaza girişi sayılmaz.
         </p>
-        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-paper-800/90">
-          <li>
-            <strong>Google Play:</strong> Genelde{" "}
-            <strong>Trusted Web Activity (TWA)</strong> ile ince bir Android kabuğu; sitede{" "}
-            <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">
-              /.well-known/assetlinks.json
-            </code>{" "}
-            dosyası ile uygulama imzası eşleştirilir. Geliştirici şablonu: repoda{" "}
-            <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">
-              apps/twa-android/assetlinks.template.json
-            </code>{" "}
-            ve adım listesi{" "}
-            <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">
-              apps/twa-android/BUILD.txt
-            </code>
-            . Canlı sitede şimdilik boş{" "}
-            <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">[]</code> bırakıldı;
-            TWA yayınından önce gerçek JSON ile değiştirin. Android Studio ile açılabilir{" "}
-            <strong>Gradle TWA iskeleti</strong> repoda{" "}
-            <code className="rounded bg-paper-200/80 px-1 font-mono text-xs">apps/twa-android</code>{" "}
-            klasöründedir (<code className="rounded bg-paper-200/80 px-1 font-mono text-xs">
-              com.benimogretmenim.twa
-            </code>
-            ).
-          </li>
-          <li>
-            <strong>App Store:</strong> WebView veya Capacitor benzeri bir{" "}
-            <strong>iOS kabuğu</strong> + Apple Developer Program üyeliği + inceleme süreci gerekir
-            (Safari PWA ana ekranı mağaza girişi sayılmaz).
-          </li>
-        </ul>
-        <p className="mt-3 text-sm text-paper-800/90">
-          Gizlilik ve veri toplama beyanları mağaza formlarında istenir; mevcut{" "}
-          <Link href="/gizlilik" className="font-medium text-brand-800 underline">
-            Gizlilik
-          </Link>{" "}
-          ve{" "}
-          <Link href="/kullanim-kosullari" className="font-medium text-brand-800 underline">
-            Kullanım koşulları
-          </Link>{" "}
-          sayfalarınız bunun temelidir.
-        </p>
+        <details className="mt-4 rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/90">
+          <summary className="cursor-pointer font-medium text-paper-900">
+            Geliştirici notları (TWA, dosya yolları, iOS)
+          </summary>
+          <ul className="mt-3 list-disc space-y-2 pl-5">
+            <li>
+              <strong>Google Play:</strong> Çoğu kurulumda{" "}
+              <strong>Trusted Web Activity (TWA)</strong>; sitede{" "}
+              <code className="rounded bg-paper-100 px-1 font-mono text-xs">
+                /.well-known/assetlinks.json
+              </code>{" "}
+              ile imza eşlemesi. Repoda şablon:{" "}
+              <code className="rounded bg-paper-100 px-1 font-mono text-xs">
+                apps/twa-android/assetlinks.template.json
+              </code>
+              , adımlar:{" "}
+              <code className="rounded bg-paper-100 px-1 font-mono text-xs">
+                apps/twa-android/BUILD.txt
+              </code>
+              , iskelet:{" "}
+              <code className="rounded bg-paper-100 px-1 font-mono text-xs">apps/twa-android</code> (
+              <code className="rounded bg-paper-100 px-1 font-mono text-xs">
+                com.benimogretmenim.twa
+              </code>
+              ).
+            </li>
+            <li>
+              <strong>App Store:</strong> WebView / Capacitor benzeri iOS kabuğu ve Apple Developer
+              Program + inceleme gerekir.
+            </li>
+          </ul>
+          <p className="mt-3 text-sm text-paper-800/85">
+            Mağaza formlarında gizlilik beyanı istenir; temel metinler{" "}
+            <Link href="/gizlilik" className="font-medium text-brand-800 underline-offset-4 hover:underline">
+              Gizlilik
+            </Link>{" "}
+            ve{" "}
+            <Link
+              href="/kullanim-kosullari"
+              className="font-medium text-brand-800 underline-offset-4 hover:underline"
+            >
+              Kullanım koşulları
+            </Link>
+            .
+          </p>
+        </details>
       </section>
 
-      <div className="mt-10 rounded-2xl border border-brand-200 bg-brand-50/60 p-4 text-sm text-brand-950">
-        <div className="font-medium">Kısayol hazır mı?</div>
-        <p className="mt-1 text-brand-900/90">
-          Ana sayfaya dönün; Android’de <strong>Yükle</strong> teklifi veya iOS’ta yukarıdaki Safari
-          adımları görünür.
+      <div className="mt-10 rounded-xl border border-paper-200 bg-white p-5 text-sm">
+        <div className="font-medium text-paper-900">Kurulum için</div>
+        <p className="mt-1 text-paper-800/75">
+          Siteyi açın; Android’de yükleme teklifi veya iOS’ta yukarıdaki Safari adımları görünür.
         </p>
         <Link
           href="/"
-          className="mt-3 inline-flex rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-800"
+          className="mt-4 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
         >
           Ana sayfa
         </Link>
+      </div>
       </div>
     </div>
   );

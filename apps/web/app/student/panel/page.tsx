@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
@@ -58,9 +58,14 @@ function tlMinor(v: string | number): string {
   return (n / 100).toFixed(2);
 }
 
-export default function StudentPanelPage() {
+function StudentPanelPageInner() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
+  const pathWithQuery = useMemo(() => {
+    const q = searchParams.toString();
+    return q ? `${pathname}?${q}` : pathname;
+  }, [pathname, searchParams]);
   const [token, setToken] = useState<string | null>(null);
   const [sub, setSub] = useState<SubMe | null>(null);
   const [wallet, setWallet] = useState<Wallet | null>(null);
@@ -78,11 +83,11 @@ export default function StudentPanelPage() {
   useEffect(() => {
     const t = getToken();
     if (!t) {
-      router.replace(loginHrefWithReturn(pathname));
+      router.replace(loginHrefWithReturn(pathWithQuery));
       return;
     }
     setToken(t);
-  }, [router, pathname]);
+  }, [router, pathWithQuery]);
 
   const load = useCallback(async (t: string) => {
     const [s, w, l, h, n] = await Promise.all([
@@ -141,14 +146,14 @@ export default function StudentPanelPage() {
       setError(msg);
       if (msg.includes("[401]")) {
         clearToken();
-        router.replace(loginHrefWithReturn(pathname));
+        router.replace(loginHrefWithReturn(pathWithQuery));
         return;
       }
       if (msg.includes("[403]")) {
         setError("Bu sayfa yalnızca öğrenci hesabı içindir.");
       }
     });
-  }, [token, load, router, pathname]);
+  }, [token, load, router, pathWithQuery]);
 
   async function topupWallet() {
     if (!token) return;
@@ -171,7 +176,7 @@ export default function StudentPanelPage() {
       setError(msg);
       if (msg.includes("[401]")) {
         clearToken();
-        router.replace(loginHrefWithReturn(pathname));
+        router.replace(loginHrefWithReturn(pathWithQuery));
       }
       if (msg.includes("[403]")) {
         setError("Cüzdan yüklemek için öğrenci hesabı gerekir.");
@@ -201,7 +206,7 @@ export default function StudentPanelPage() {
       setError(msg);
       if (msg.includes("[401]")) {
         clearToken();
-        router.replace(loginHrefWithReturn(pathname));
+        router.replace(loginHrefWithReturn(pathWithQuery));
       }
       if (msg.includes("[403]")) {
         setError("Abonelik satın almak için öğrenci hesabı gerekir.");
@@ -214,68 +219,63 @@ export default function StudentPanelPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
-        <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Abonelik ve cüzdan</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Ders talebi ve ödev gibi özellikler için aylık abonelik gerekir. Güncel tutar:{" "}
-          {sub ? `${tl(sub.pricePerMonthMinor)} TL/ay` : "—"}.
+        <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Özet</h1>
+        <p className="mt-1 text-sm text-paper-800/80">
+          Abonelik, cüzdan ve bildirimler. Güncel paket tutarı:{" "}
+          <span className="font-medium text-paper-900">{sub ? `${tl(sub.pricePerMonthMinor)} TL/ay` : "—"}</span>.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href="/student/odev-sor"
-            className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-          >
-            Ödev / soru gönder
-          </Link>
-          <Link
-            href="/student/odev-sor/gonderiler"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Soru gönderilerim
-          </Link>
+        <p className="mt-3 text-sm text-paper-800/70">
+          Dersler ve kurslar üst menüde; en sık işlem talep açmak.
+        </p>
+        <div className="mt-4">
           <Link
             href="/student/requests"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm"
+            className="inline-flex rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-900"
           >
-            Ders ilanı
+            Taleplerim
           </Link>
-          <Link
-            href="/student/kurslar"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm"
-          >
-            Kurslarım
-          </Link>
-          <Link
-            href="/student/dogrudan-dersler"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm"
-          >
-            Doğrudan ders
-          </Link>
-          <Link
-            href="/student/grup-dersler"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 shadow-sm"
-          >
-            Grup ders
-          </Link>
+          <p className="mt-3 text-sm text-paper-800/70">
+            <Link
+              href="/student/odev-sor"
+              className="font-medium text-brand-800 underline decoration-brand-400 underline-offset-2"
+            >
+              Ödev / soru gönder
+            </Link>
+            <span className="text-paper-800/40"> · </span>
+            <Link
+              href="/student/odev-sor/gonderiler"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-2 hover:text-paper-900"
+            >
+              Gönderilerim
+            </Link>
+            <span className="text-paper-800/40"> · </span>
+            <Link href="/courses" className="text-paper-800/75 underline decoration-paper-300 underline-offset-2 hover:text-paper-900">
+              Kurs kataloğu
+            </Link>
+            <span className="text-paper-800/40"> · </span>
+            <Link href="/ogretmenler" className="text-paper-800/75 underline decoration-paper-300 underline-offset-2 hover:text-paper-900">
+              Öğretmen ara
+            </Link>
+          </p>
         </div>
 
         {error && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {error}
           </div>
         )}
         {ok && (
-          <div className="mt-4 rounded-2xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
+          <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
             {ok}
           </div>
         )}
 
         {notifications.length > 0 && (
-          <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
-            <p className="mt-1 text-xs text-zinc-500">Ödev ve hesap güncellemeleri.</p>
+          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-paper-900">Bildirimler</h2>
+            <p className="mt-1 text-xs text-paper-800/55">Ödev ve hesap güncellemeleri.</p>
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;
@@ -284,17 +284,17 @@ export default function StudentPanelPage() {
                   <li
                     key={n.id}
                     className={`rounded-xl border px-3 py-2 text-sm ${
-                      unread ? "border-brand-200 bg-brand-50/60" : "border-zinc-100 bg-zinc-50"
+                      unread ? "border-brand-200 bg-brand-50/60" : "border-paper-100 bg-paper-50"
                     }`}
                   >
-                    <div className="font-medium text-zinc-900">{n.title}</div>
-                    <p className="mt-1 text-zinc-700">{n.body}</p>
+                    <div className="font-medium text-paper-900">{n.title}</div>
+                    <p className="mt-1 text-paper-800">{n.body}</p>
                     {href ? (
                       <Link href={href} className="mt-2 inline-block text-xs font-medium text-brand-800 underline">
                         Ödev kaydına git
                       </Link>
                     ) : null}
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-paper-800/55">
                       <span>
                         {n.sent_at ? new Date(n.sent_at).toLocaleString("tr-TR") : "—"}
                       </span>
@@ -303,7 +303,7 @@ export default function StudentPanelPage() {
                           type="button"
                           disabled={notifBusyId === n.id}
                           onClick={() => void markNotificationRead(n.id)}
-                          className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-50"
+                          className="rounded-lg border border-paper-300 bg-white px-2 py-1 text-xs font-medium text-paper-800 hover:bg-paper-100 disabled:opacity-50"
                         >
                           {notifBusyId === n.id ? "…" : "Okundu"}
                         </button>
@@ -316,23 +316,23 @@ export default function StudentPanelPage() {
           </div>
         )}
 
-        <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Bakiye</h2>
+        <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-paper-900">Bakiye</h2>
           {wallet && (
-            <p className="mt-1 text-2xl font-mono text-zinc-800">
+            <p className="mt-1 text-2xl font-mono text-paper-800">
               {tl(wallet.balanceMinor)} {wallet.currency}
             </p>
           )}
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-paper-800/55">
             Bloke:{" "}
-            <span className="font-mono font-medium text-zinc-800">
+            <span className="font-mono font-medium text-paper-800">
               {tl(activeHoldMinor)} TL
             </span>
             {wallet ? (
               <>
                 {" · "}
                 Kullanılabilir:{" "}
-                <span className="font-mono font-medium text-zinc-800">
+                <span className="font-mono font-medium text-paper-800">
                   {tl(Math.max(0, wallet.balanceMinor - activeHoldMinor))} TL
                 </span>
               </>
@@ -340,38 +340,38 @@ export default function StudentPanelPage() {
           </p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
             <label className="text-sm">
-              <span className="text-zinc-600">Tutar (kuruş, en az 10.000)</span>
+              <span className="text-paper-800/75">Tutar (kuruş, en az 10.000)</span>
               <input
                 type="number"
                 min={10000}
                 step={1000}
                 value={topupKurus}
                 onChange={(e) => setTopupKurus(Number(e.target.value) || 10000)}
-                className="ml-0 mt-1 block w-full max-w-xs rounded-lg border border-zinc-200 px-2 py-1 font-mono text-sm"
+                className="ml-0 mt-1 block w-full max-w-xs rounded-lg border border-paper-200 px-2 py-1 font-mono text-sm"
               />
             </label>
             <button
               type="button"
               disabled={busy}
               onClick={() => void topupWallet()}
-              className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 disabled:opacity-50"
+              className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 disabled:opacity-50"
             >
               Cüzdanı PayTR ile yükle
             </button>
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Blokajlar</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+        <div className="mt-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-paper-900">Blokajlar</h2>
+          <p className="mt-1 text-xs text-paper-800/55">
             Grup ders vb. için tutar bloke olabilir; ders bitene kadar sürebilir.
           </p>
-          <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-100">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-paper-100">
             {holds.length === 0 ? (
-              <p className="p-3 text-sm text-zinc-500">Blokaj yok.</p>
+              <p className="p-3 text-sm text-paper-800/55">Blokaj yok.</p>
             ) : (
               <table className="w-full min-w-[720px] text-left text-xs">
-                <thead className="border-b border-zinc-100 bg-zinc-50 text-zinc-500">
+                <thead className="border-b border-paper-100 bg-paper-50 text-paper-800/55">
                   <tr>
                     <th className="px-2 py-2">Tarih</th>
                     <th className="px-2 py-2">Durum</th>
@@ -382,16 +382,16 @@ export default function StudentPanelPage() {
                 </thead>
                 <tbody>
                   {holds.slice(0, 50).map((h) => (
-                    <tr key={h.id} className="border-b border-zinc-50">
-                      <td className="px-2 py-2 font-mono text-zinc-600">
+                    <tr key={h.id} className="border-b border-paper-100">
+                      <td className="px-2 py-2 font-mono text-paper-800/75">
                         {new Date(h.created_at).toLocaleString("tr-TR")}
                       </td>
-                      <td className="px-2 py-2 text-zinc-700">{h.status}</td>
-                      <td className="px-2 py-2 text-zinc-800">{h.reason}</td>
-                      <td className="px-2 py-2 font-mono text-zinc-600">
+                      <td className="px-2 py-2 text-paper-800">{h.status}</td>
+                      <td className="px-2 py-2 text-paper-800">{h.reason}</td>
+                      <td className="px-2 py-2 font-mono text-paper-800/75">
                         {(h.ref_type ?? "—") + (h.ref_id ? `:${h.ref_id.slice(0, 8)}` : "")}
                       </td>
-                      <td className="px-2 py-2 text-right font-mono text-zinc-800">
+                      <td className="px-2 py-2 text-right font-mono text-paper-800">
                         {tlMinor(h.amount_minor)} {h.currency}
                       </td>
                     </tr>
@@ -402,17 +402,17 @@ export default function StudentPanelPage() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Son cüzdan hareketleri</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+        <div className="mt-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-paper-900">Son cüzdan hareketleri</h2>
+          <p className="mt-1 text-xs text-paper-800/55">
             Yükleme, doğrudan ders bloke ödemesi vb. Son 25 kayıt.
           </p>
-          <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-100">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-paper-100">
             {ledger.length === 0 ? (
-              <p className="p-3 text-sm text-zinc-500">Henüz hareket yok.</p>
+              <p className="p-3 text-sm text-paper-800/55">Henüz hareket yok.</p>
             ) : (
               <table className="w-full min-w-[520px] text-left text-xs">
-                <thead className="border-b border-zinc-100 bg-zinc-50 text-zinc-500">
+                <thead className="border-b border-paper-100 bg-paper-50 text-paper-800/55">
                   <tr>
                     <th className="px-2 py-2">Tarih</th>
                     <th className="px-2 py-2">Tür</th>
@@ -422,16 +422,16 @@ export default function StudentPanelPage() {
                 </thead>
                 <tbody>
                   {ledger.map((e) => (
-                    <tr key={e.id} className="border-b border-zinc-50">
-                      <td className="px-2 py-2 font-mono text-zinc-600">
+                    <tr key={e.id} className="border-b border-paper-100">
+                      <td className="px-2 py-2 font-mono text-paper-800/75">
                         {new Date(e.created_at).toLocaleString("tr-TR")}
                       </td>
-                      <td className="px-2 py-2 text-zinc-800">{e.kind}</td>
-                      <td className="px-2 py-2 text-right font-mono text-zinc-800">
+                      <td className="px-2 py-2 text-paper-800">{e.kind}</td>
+                      <td className="px-2 py-2 text-right font-mono text-paper-800">
                         {Number(e.delta_minor) >= 0 ? "+" : ""}
                         {tlMinor(e.delta_minor)} TL
                       </td>
-                      <td className="px-2 py-2 text-right font-mono text-zinc-600">
+                      <td className="px-2 py-2 text-right font-mono text-paper-800/75">
                         {tlMinor(e.balance_after)} TL
                       </td>
                     </tr>
@@ -442,12 +442,12 @@ export default function StudentPanelPage() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-zinc-900">Platform aboneliği</h2>
+        <div className="mt-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-paper-900">Platform aboneliği</h2>
           {sub?.active && sub.subscription ? (
-            <p className="mt-2 text-sm text-zinc-700">
+            <p className="mt-2 text-sm text-paper-800">
               Aktif. Bitiş:{" "}
-              <span className="font-mono text-zinc-800">
+              <span className="font-mono text-paper-800">
                 {new Date(sub.subscription.expires_at).toLocaleString("tr-TR")}
               </span>
             </p>
@@ -456,14 +456,14 @@ export default function StudentPanelPage() {
           )}
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <label className="text-sm">
-              <span className="text-zinc-600">Ay sayısı</span>
+              <span className="text-paper-800/75">Ay sayısı</span>
               <input
                 type="number"
                 min={1}
                 max={60}
                 value={months}
                 onChange={(e) => setMonths(Number(e.target.value) || 1)}
-                className="ml-2 w-20 rounded-lg border border-zinc-200 px-2 py-1 text-sm"
+                className="ml-2 w-20 rounded-lg border border-paper-200 px-2 py-1 text-sm"
               />
             </label>
             <button
@@ -478,5 +478,19 @@ export default function StudentPanelPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function StudentPanelPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-paper-50">
+          <div className="mx-auto max-w-2xl px-6 py-10 text-sm text-paper-800/75">Yükleniyor…</div>
+        </div>
+      }
+    >
+      <StudentPanelPageInner />
+    </Suspense>
   );
 }

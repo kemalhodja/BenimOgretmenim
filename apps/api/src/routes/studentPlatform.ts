@@ -9,8 +9,9 @@ import {
   homeworkSatisfactionRewardMinor,
   releaseExpiredHomeworkClaims,
 } from "../lib/homeworkPosts.js";
+import { resolvePlatformHomeworkWalletUserId } from "../lib/platformHomeworkWallet.js";
 import { applyWalletDelta, teacherPayoutFromGross } from "../lib/wallet.js";
-import { getActiveStudentSubscription, getStudentSubPriceConfig } from "../lib/studentSub.js";
+import { ensureUserWalletRow, getActiveStudentSubscription, getStudentSubPriceConfig } from "../lib/studentSub.js";
 
 export const studentPlatform = new Hono<{ Variables: AppVariables }>();
 
@@ -836,7 +837,7 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
           gid,
           answered.student_id,
           "Öğrencinizin ödev sorusuna cevap",
-          `Bağlı öğrencinizin "${topicShort}" sorusuna öğretmen cevap gönderdi. Öğrenci hesabından onay ve ödeme yapılabilir.`,
+          `Bağlı öğrencinizin "${topicShort}" sorusuna öğretmen cevap gönderdi. Öğrenci onayladığında ödeme platform havuzundan öğretmene aktarılır.`,
           JSON.stringify({
             kind: "homework_answered_guardian",
             homeworkPostId: postId,
@@ -859,6 +860,17 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
   await releaseExpiredHomeworkClaims(pool);
 
   const rewardMinor = homeworkSatisfactionRewardMinor();
+  const platformWalletUserId = await resolvePlatformHomeworkWalletUserId();
+  if (!platformWalletUserId) {
+    return c.json(
+      {
+        error: "platform_homework_wallet_not_configured",
+        hint: "PLATFORM_HOMEWORK_WALLET_USER_ID ile havuz kullanıcısı tanımlayın; admin bu kullanıcıya wallet grant ile bakiye yükler.",
+      },
+      503,
+    );
+  }
+
   const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
   if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
   const studentRowId = sr.rows[0].id as string;
@@ -883,32 +895,38 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
     }
     const row = pq.rows[0] as { teacher_user_id: string; topic: string };
 
+    if (platformWalletUserId === row.teacher_user_id) {
+      await cpool.query("rollback");
+      return c.json({ error: "platform_wallet_teacher_conflict" }, 409);
+    }
+
+    await ensureUserWalletRow(platformWalletUserId, cpool);
     const wq = await cpool.query(
       `select balance_minor::text from user_wallets where user_id = $1 for update`,
-      [userId],
+      [platformWalletUserId],
     );
-    const bal = wq.rowCount ? BigInt(String(wq.rows[0].balance_minor)) : 0n;
-    if (bal < BigInt(rewardMinor)) {
+    const poolBal = wq.rowCount ? BigInt(String(wq.rows[0].balance_minor)) : 0n;
+    if (poolBal < BigInt(rewardMinor)) {
       await cpool.query("rollback");
       return c.json(
         {
-          error: "insufficient_wallet_balance",
+          error: "insufficient_platform_pool_balance",
           requiredMinor: rewardMinor,
-          balanceMinor: Number(bal),
-          hint: "Cüzdanınızda öğretmene aktarılacak tutar yok. Önce cüzdan yükleyin.",
+          balanceMinor: Number(poolBal),
+          hint: "Ödev ödeme havuzunda yeterli bakiye yok. Yönetim platform cüzdanına yükleme yapmalı.",
         },
         409,
       );
     }
 
     await applyWalletDelta({
-      userId,
+      userId: platformWalletUserId,
       deltaMinor: -rewardMinor,
-      kind: "homework_satisfaction_debit",
+      kind: "homework_platform_pool_debit",
       refType: "student_homework_posts",
       refId: postId,
       client: cpool,
-      metadata: { teacher_user_id: row.teacher_user_id },
+      metadata: { teacher_user_id: row.teacher_user_id, student_user_id: userId },
     });
     await applyWalletDelta({
       userId: row.teacher_user_id,
@@ -965,7 +983,7 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
           gid,
           studentRowId,
           "Öğrenci ödev ödemesini onayladı",
-          `Bağlı öğrenciniz "${topicShort}" ödev cevabını onayladı; öğretmene ${tl} TL öğrenci cüzdanından aktarıldı.`,
+          `Bağlı öğrenciniz "${topicShort}" ödev cevabını onayladı; öğretmene ${tl} TL platform havuzundan aktarıldı.`,
           JSON.stringify({
             kind: "homework_rewarded_guardian",
             homeworkPostId: postId,
@@ -985,7 +1003,7 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
           stuUid,
           studentRowId,
           "Ödev ödemesi tamamlandı",
-          `"${topicShort}" için öğretmene ${tl} TL cüzdanınızdan aktarıldı; işlem tamam.`,
+          `"${topicShort}" için öğretmene ${tl} TL platform havuzundan aktarıldı; işlem tamam.`,
           JSON.stringify({ kind: "homework_rewarded_student", homeworkPostId: postId, rewardMinor }),
         ],
       );
@@ -997,7 +1015,7 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
     await cpool.query("rollback").catch(() => {});
     const msg = e instanceof Error ? e.message : String(e);
     if (msg.includes("insufficient_balance")) {
-      return c.json({ error: "insufficient_wallet_balance", requiredMinor: rewardMinor }, 409);
+      return c.json({ error: "insufficient_platform_pool_balance", requiredMinor: rewardMinor }, 409);
     }
     throw e;
   } finally {

@@ -153,81 +153,73 @@ export default function AdminBankPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-4xl px-6 py-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Yönetim</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Havale ve EFT onayı
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600">
-              Giriş (bootstrap):{" "}
-              <span className="font-mono">admin@benimogretmenim.local</span> /{" "}
-              <span className="font-mono">BenimAdmin2026!</span> —{" "}
-              <span className="font-mono">npm run db:seed:admin</span>
-            </p>
-            <p className="mt-2 max-w-xl text-xs text-zinc-500">
-              Üretimde API tarafında{" "}
-              <span className="font-mono">ADMIN_API_SECRET</span> tanımlıysa,
-              Next sunucusunda aynı değer ve{" "}
-              <span className="font-mono">INTERNAL_API_BASE_URL</span> (Docker
-              içi API adresi) ayarlanmalıdır; gizli anahtar tarayıcıya
-              verilmez.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Havale ve EFT onayı</h1>
+          <p className="mt-1 text-sm text-paper-800/75">
+            Giriş (bootstrap):{" "}
+            <span className="font-mono">admin@benimogretmenim.local</span> /{" "}
+            <span className="font-mono">BenimAdmin2026!</span> —{" "}
+            <span className="font-mono">npm run db:seed:admin</span>
+          </p>
+          <p className="mt-2 max-w-xl text-xs text-paper-800/55">
+            Üretimde API tarafında <span className="font-mono">ADMIN_API_SECRET</span> tanımlıysa, Next
+            sunucusunda aynı değer ve <span className="font-mono">INTERNAL_API_BASE_URL</span> (Docker içi
+            API adresi) ayarlanmalıdır; gizli anahtar tarayıcıya verilmez.
+          </p>
+          <p className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
             <button
               type="button"
               onClick={() => void load(token, { showRefreshSpinner: true })}
               disabled={refreshing}
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm disabled:opacity-50"
+              className="font-medium text-brand-800 underline decoration-brand-400 underline-offset-4 disabled:opacity-50"
             >
-              {refreshing ? "Yükleniyor..." : "Yenile"}
+              {refreshing ? "Yükleniyor…" : "Yenile"}
             </button>
             <Link
               href="/"
-              className="inline-flex items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
             >
               Ana sayfa
             </Link>
-          </div>
+          </p>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         <div className="mt-8 space-y-3">
           {items.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-5 text-sm text-paper-800/75 shadow-sm">
               Bekleyen havale yok.
             </div>
           ) : (
             items.map((p) => (
               <div
                 key={p.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-zinc-900">
+                    <div className="text-sm font-semibold text-paper-900">
                       {p.teacher_display_name}
                     </div>
-                    <div className="text-xs text-zinc-500">{p.teacher_email}</div>
-                    <div className="mt-2 text-sm text-zinc-700">
+                    <div className="text-xs text-paper-800/55">{p.teacher_email}</div>
+                    <div className="mt-2 text-sm text-paper-800">
                       Plan: <span className="font-mono">{p.plan_code}</span>
                       {" · "}
                       Tutar: {(p.amount_minor / 100).toFixed(2)} {p.currency}
                     </div>
                     {p.bank_ref && (
-                      <div className="mt-1 text-xs text-zinc-500">
+                      <div className="mt-1 text-xs text-paper-800/55">
                         Dekont/ref: {p.bank_ref}
                       </div>
                     )}
-                    <div className="mt-1 font-mono text-xs text-zinc-400">
+                    <div className="mt-1 font-mono text-xs text-paper-800/45">
                       {p.id}
                     </div>
                   </div>
@@ -247,7 +239,7 @@ export default function AdminBankPage() {
         {toast && (
           <div
             role="status"
-            className="fixed bottom-6 left-1/2 z-50 w-[min(100%-2rem,28rem)] -translate-x-1/2 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-center text-sm font-medium text-brand-900 shadow-lg"
+            className="fixed bottom-6 left-1/2 z-50 w-[min(100%-2rem,28rem)] -translate-x-1/2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-center text-sm font-medium text-brand-900 shadow-lg"
           >
             {toast}
           </div>

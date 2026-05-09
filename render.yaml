@@ -57,6 +57,8 @@ services:
         value: "7d"
       - key: CORS_ORIGINS
         value: https://benimogretmenim.onrender.com
+      # Ödev memnuniyet ödülü öğretmen bu kullanıcının cüzdanından düşer (admin grant ile yükleyin).
+      # Dashboard'dan ekleyin: PLATFORM_HOMEWORK_WALLET_USER_ID = <users.id UUID>
       - fromGroup: benimogretmenim-shared
 
   - type: cron

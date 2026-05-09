@@ -1,6 +1,7 @@
-# Next build + Playwright (ana sayfa, giriş). API build sırasında üretim URL’sine istek atar (ci:web ile aynı).
+# Next build + Playwright — vitrin / oturumsuz koruma / login formu (@integration hariç).
+# Yerel API + seed gerektiren oturum senaryoları burada çalışmaz; bkz. apps/web/e2e/README.md
 
-name: Web Playwright
+name: Web Playwright (public E2E)
 
 on:
   pull_request:
@@ -40,8 +41,8 @@ jobs:
         working-directory: apps/web
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright
+      - name: Run Playwright (public — API gerekmez)
         working-directory: apps/web
         env:
           CI: "true"
-        run: npm run test:e2e
+        run: npm run test:e2e:public

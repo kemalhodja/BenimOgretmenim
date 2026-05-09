@@ -117,51 +117,61 @@ export default function AdminSupportPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <p className="text-sm font-medium text-zinc-500">Yönetim</p>
-        <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Canlı destek</h1>
-          <Link href="/admin/merkez" className="text-sm font-medium text-brand-800 underline">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <Link
+              href="/admin"
+              className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+            >
+              ← Özet
+            </Link>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">Canlı destek</h1>
+          </div>
+          <Link
+            href="/admin/merkez"
+            className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+          >
             Merkez
           </Link>
         </div>
-        <p className="mt-2 text-sm text-zinc-600">
+        <p className="mt-2 text-sm text-paper-800/75">
           Kullanıcıların site içi destek kutusundan gönderdiği mesajlar. Toplam:{" "}
           <span className="font-mono tabular-nums">{total}</span>
         </p>
 
         {error ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         ) : null}
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-          <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
-            <div className="border-b border-zinc-100 px-4 py-3 text-sm font-semibold text-zinc-800">
+          <div className="rounded-xl border border-paper-200 bg-white">
+            <div className="border-b border-paper-100 px-4 py-3 text-sm font-semibold text-paper-800">
               Konuşmalar
             </div>
             <div className="max-h-[520px] overflow-y-auto">
               {listLoading ? (
-                <p className="p-4 text-sm text-zinc-500">Yükleniyor…</p>
+                <p className="p-4 text-sm text-paper-800/55">Yükleniyor…</p>
               ) : threads.length === 0 ? (
-                <p className="p-4 text-sm text-zinc-500">Henüz kayıt yok.</p>
+                <p className="p-4 text-sm text-paper-800/55">Henüz kayıt yok.</p>
               ) : (
-                <ul className="divide-y divide-zinc-100">
+                <ul className="divide-y divide-paper-100">
                   {threads.map((t) => (
                     <li key={t.id}>
                       <button
                         type="button"
                         onClick={() => setSelectedId(t.id)}
-                        className={`w-full px-4 py-3 text-left text-sm transition hover:bg-zinc-50 ${
+                        className={`w-full px-4 py-3 text-left text-sm transition hover:bg-paper-50 ${
                           selectedId === t.id ? "bg-brand-50" : ""
                         }`}
                       >
-                        <div className="font-medium text-zinc-900">{threadListTitle(t)}</div>
-                        <div className="mt-0.5 truncate text-xs text-zinc-500">{threadListSubtitle(t)}</div>
-                        <div className="mt-1 truncate text-xs text-zinc-400">
+                        <div className="font-medium text-paper-900">{threadListTitle(t)}</div>
+                        <div className="mt-0.5 truncate text-xs text-paper-800/55">{threadListSubtitle(t)}</div>
+                        <div className="mt-1 truncate text-xs text-paper-800/45">
                           {t.context_path ? `Sayfa: ${t.context_path}` : "Sayfa bilgisi yok"}
                         </div>
-                        <div className="mt-1 text-[10px] uppercase text-zinc-400">
+                        <div className="mt-1 text-[10px] uppercase text-paper-800/45">
                           {t.status} · {new Date(t.updated_at).toLocaleString("tr-TR")}
                         </div>
                       </button>
@@ -172,11 +182,11 @@ export default function AdminSupportPage() {
             </div>
           </div>
 
-          <div className="flex min-h-[400px] flex-col rounded-2xl border border-zinc-200 bg-white shadow-sm">
-            <div className="border-b border-zinc-100 px-4 py-3">
-              <p className="text-sm font-semibold text-zinc-800">Mesajlar</p>
+          <div className="flex min-h-[400px] flex-col rounded-xl border border-paper-200 bg-white">
+            <div className="border-b border-paper-100 px-4 py-3">
+              <p className="text-sm font-semibold text-paper-800">Mesajlar</p>
               {threadMeta ? (
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-paper-800/55">
                   {threadMeta.user_id
                     ? threadMeta.user_email
                     : threadMeta.visitor_email
@@ -185,25 +195,25 @@ export default function AdminSupportPage() {
                   {threadMeta.context_path ? ` · ${threadMeta.context_path}` : ""}
                 </p>
               ) : (
-                <p className="mt-1 text-xs text-zinc-500">Soldan bir konuşma seçin.</p>
+                <p className="mt-1 text-xs text-paper-800/55">Soldan bir konuşma seçin.</p>
               )}
             </div>
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
               {!selectedId ? (
-                <p className="text-sm text-zinc-500">Liste üzerinden seçim yapın.</p>
+                <p className="text-sm text-paper-800/55">Liste üzerinden seçim yapın.</p>
               ) : msgLoading ? (
-                <p className="text-sm text-zinc-500">Yükleniyor…</p>
+                <p className="text-sm text-paper-800/55">Yükleniyor…</p>
               ) : (
                 messages.map((m) => (
                   <div
                     key={m.id}
-                    className={`max-w-[90%] rounded-2xl px-3 py-2 text-sm ${
+                    className={`max-w-[90%] rounded-xl px-3 py-2 text-sm ${
                       m.sender === "staff"
                         ? "ml-auto bg-brand-50 text-brand-950"
-                        : "mr-auto border border-zinc-100 bg-zinc-50"
+                        : "mr-auto border border-paper-100 bg-paper-50"
                     }`}
                   >
-                    <p className="text-[10px] font-medium uppercase text-zinc-500">
+                    <p className="text-[10px] font-medium uppercase text-paper-800/55">
                       {m.sender === "staff" ? "Yönetim" : threadMeta?.user_id ? "Kullanıcı" : "Misafir"}
                     </p>
                     <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
@@ -211,7 +221,7 @@ export default function AdminSupportPage() {
                 ))
               )}
             </div>
-            <div className="border-t border-zinc-100 p-3">
+            <div className="border-t border-paper-100 p-3">
               <div className="flex gap-2">
                 <textarea
                   value={reply}
@@ -219,7 +229,7 @@ export default function AdminSupportPage() {
                   rows={2}
                   disabled={!selectedId}
                   placeholder={selectedId ? "Yanıt yazın…" : "Önce konuşma seçin"}
-                  className="min-h-[44px] flex-1 resize-none rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-brand-400 disabled:bg-zinc-100"
+                  className="min-h-[44px] flex-1 resize-none rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400 disabled:bg-paper-100"
                 />
                 <button
                   type="button"

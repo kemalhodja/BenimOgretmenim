@@ -112,39 +112,38 @@ export default function StudentDogrudanDerslerPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
-        <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+                <h1 className="text-2xl font-semibold tracking-tight text-paper-900">
           Doğrudan ders anlaşmaları
         </h1>
-        <p className="mt-1 text-sm text-zinc-600">
+        <p className="mt-1 text-sm text-paper-800/75">
           Öğretmen profilinden anlaşma açar, burada cüzdanınızdan ödersiniz. Dersi öğretmen
           portalında tamamladıktan sonra tutar ona ödenir.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          <Link className="text-zinc-600 underline" href="/ogretmenler">
+          <Link className="text-paper-800/75 underline" href="/ogretmenler">
             Öğretmen ara
           </Link>
-          <Link className="text-zinc-600 underline" href="/student/panel">
+          <Link className="text-paper-800/75 underline" href="/student/panel">
             Abonelik & cüzdan
           </Link>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
             {error}
           </div>
         )}
         {ok && (
-          <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
             {ok}
           </div>
         )}
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75 shadow-sm">
               Henüz anlaşma yok.{" "}
               <Link href="/ogretmenler" className="font-medium text-brand-800 underline">
                 Öğretmen seçin
@@ -155,23 +154,23 @@ export default function StudentDogrudanDerslerPage() {
             rows.map((b) => (
               <div
                 key={b.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-zinc-900">
+                    <div className="text-sm font-semibold text-paper-900">
                       {b.teacher_display_name?.trim() ?? "Öğretmen"}
                     </div>
-                    <div className="mt-1 font-mono text-xs text-zinc-500">{b.id}</div>
-                    <div className="mt-2 text-xs text-zinc-600">
+                    <div className="mt-1 font-mono text-xs text-paper-800/55">{b.id}</div>
+                    <div className="mt-2 text-xs text-paper-800/75">
                       Tutar:{" "}
-                      <span className="font-mono font-medium text-zinc-900">
+                      <span className="font-mono font-medium text-paper-900">
                         {minorToTl(b.agreed_amount_minor)} TL
                       </span>
                       {" · "}
                       <span className="font-medium">{statusTr(b.status)}</span>
                     </div>
-                    <div className="mt-1 text-xs text-zinc-500">
+                    <div className="mt-1 text-xs text-paper-800/55">
                       {new Date(b.created_at).toLocaleString("tr-TR")}
                     </div>
                   </div>
@@ -181,7 +180,7 @@ export default function StudentDogrudanDerslerPage() {
                         type="button"
                         disabled={busyId === b.id}
                         onClick={() => void fund(b.id)}
-                        className="rounded-xl bg-zinc-900 px-3 py-2 text-center text-sm font-medium text-white disabled:opacity-50"
+                        className="rounded-xl bg-brand-800 px-3 py-2 text-center text-sm font-medium text-white disabled:opacity-50"
                       >
                         {busyId === b.id ? "…" : "Cüzdanımdan öde"}
                       </button>

@@ -95,9 +95,9 @@ export function RequestChat({ token, requestId }: Props) {
   }
 
   return (
-    <section className="mt-10 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-      <h2 className="text-base font-semibold text-zinc-900">Mesajlar</h2>
-      <p className="mt-1 text-xs text-zinc-500">
+    <section className="mt-10 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+      <h2 className="text-base font-semibold text-paper-900">Mesajlar</h2>
+      <p className="mt-1 text-xs text-paper-800/55">
         Talep sahibi ile teklif veren öğretmen yazışabilir (talep açık veya eşleşmişken).
       </p>
 
@@ -107,20 +107,20 @@ export function RequestChat({ token, requestId }: Props) {
         </div>
       )}
 
-      <div className="mt-4 max-h-72 space-y-2 overflow-y-auto rounded-xl border border-zinc-100 bg-zinc-50 p-3">
+      <div className="mt-4 max-h-72 space-y-2 overflow-y-auto rounded-xl border border-paper-100 bg-paper-50 p-3">
         {loading ? (
-          <div className="text-sm text-zinc-500">Yükleniyor…</div>
+          <div className="text-sm text-paper-800/55">Yükleniyor…</div>
         ) : messages.length === 0 ? (
-          <div className="text-sm text-zinc-500">Henüz mesaj yok.</div>
+          <div className="text-sm text-paper-800/55">Henüz mesaj yok.</div>
         ) : (
           messages.map((m) => (
             <div key={m.id} className="rounded-lg bg-white px-3 py-2 text-sm shadow-sm">
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-paper-800/55">
                 {(m.sender_display_name ?? (m.role === "teacher" ? "Öğretmen" : "Öğrenci")) +
                   " · " +
                   new Date(m.created_at).toLocaleString("tr-TR")}
               </div>
-              <div className="mt-1 whitespace-pre-wrap text-zinc-800">{m.content}</div>
+              <div className="mt-1 whitespace-pre-wrap text-paper-800">{m.content}</div>
             </div>
           ))
         )}
@@ -131,14 +131,14 @@ export function RequestChat({ token, requestId }: Props) {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Mesajınız…"
-          className="min-w-0 flex-1 rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+          className="min-w-0 flex-1 rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
           maxLength={5000}
         />
         <button
           type="button"
           onClick={() => void send()}
           disabled={sending || !text.trim()}
-          className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {sending ? "Gönderiliyor…" : "Gönder"}
         </button>

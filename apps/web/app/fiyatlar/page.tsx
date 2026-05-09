@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
+import { AuthEntryLink } from "../components/AuthEntryLink";
 import { RegisterNavLink } from "../components/AuthNavLinks";
 import { getServerApiBaseUrl } from "../lib/api";
 import { makeRequestId } from "../lib/requestId";
@@ -61,38 +62,37 @@ export default async function FiyatlarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <p className="text-sm font-medium text-zinc-500">Site</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-zinc-900">
+        <h1 className="text-3xl font-semibold tracking-tight text-paper-900">
           Abonelik fiyatları
         </h1>
-        <p className="mt-3 text-sm text-zinc-600">
-          Ücretsiz hesapta sınırlı teklif; abonelikte sınırsız teklif. Ödeme için öğretmen paneli.
+        <p className="mt-2 max-w-xl text-sm text-paper-800/75">
+          Ücretsiz planda sınırlı teklif; abonelikte sınırsız. Ödeme öğretmen panelinden.
         </p>
 
         {loadError && (
-          <div className="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
             {loadError}
           </div>
         )}
 
         {!loadError && plans.length === 0 && (
-          <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75">
             Şu an listelenecek aktif plan yok.
           </div>
         )}
 
-        <ul className="mt-8 space-y-4">
+        <ul className="mt-8 space-y-3">
           {plans.map((p) => (
             <li
               key={p.code}
-              className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm"
+              className="rounded-xl border border-paper-200 bg-white p-5"
             >
               <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
                 <div>
-                  <div className="text-lg font-semibold text-zinc-900">{p.title}</div>
-                  <div className="mt-1 text-sm text-zinc-500">
+                  <div className="text-lg font-semibold text-paper-900">{p.title}</div>
+                  <div className="mt-1 text-sm text-paper-800/55">
                     {p.duration_months} ay · {p.code}
                   </div>
                 </div>
@@ -104,20 +104,17 @@ export default async function FiyatlarPage() {
           ))}
         </ul>
 
-        <div className="mt-10 flex flex-wrap gap-3">
-          <RegisterNavLink className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-zinc-800">
+        <div className="mt-10 flex flex-wrap items-center gap-3">
+          <RegisterNavLink className="rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900">
             Öğretmen kaydı
           </RegisterNavLink>
-          <Link
-            href="/teacher"
-            className="rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50"
+          <AuthEntryLink
+            path="/teacher"
+            className="rounded-xl border border-paper-300 bg-white px-4 py-2.5 text-sm font-medium text-paper-900 hover:bg-paper-50"
           >
-            Panele git
-          </Link>
-          <Link
-            href="/"
-            className="rounded-xl px-4 py-2.5 text-sm font-medium text-zinc-600 hover:text-zinc-900"
-          >
+            Öğretmen paneli
+          </AuthEntryLink>
+          <Link href="/" className="text-sm font-medium text-paper-800/65 underline-offset-4 hover:text-paper-900">
             Ana sayfa
           </Link>
         </div>

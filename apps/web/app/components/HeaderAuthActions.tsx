@@ -7,6 +7,7 @@ import {
   clearToken,
   getRoleFromToken,
   getToken,
+  isOnRolePanel,
   panelNavLabel,
   panelPathForRole,
 } from "../lib/auth";
@@ -53,14 +54,17 @@ export function HeaderAuthActions() {
     const role = getRoleFromToken(token);
     const panelHref = role ? panelPathForRole(role) : "/panel";
     const panelLabel = role ? panelNavLabel(role) : "Panele git";
+    const onPanel = role ? isOnRolePanel(role, pathname) : false;
     return (
       <div className="flex shrink-0 items-center gap-2">
-        <Link
-          href={panelHref}
-          className="rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-800"
-        >
-          {panelLabel}
-        </Link>
+        {!onPanel ? (
+          <Link
+            href={panelHref}
+            className="rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:bg-brand-800"
+          >
+            {panelLabel}
+          </Link>
+        ) : null}
         <button
           type="button"
           onClick={() => {

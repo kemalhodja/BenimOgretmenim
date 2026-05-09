@@ -3,7 +3,10 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AuthEntryLink } from "../components/AuthEntryLink";
 import { apiFetch } from "../lib/api";
+import { getToken } from "../lib/auth";
+import { loginHrefWithReturn } from "../lib/authRedirect";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 type City = { id: number; name: string; slug: string; plate_code: number | null };
@@ -45,6 +48,22 @@ function OgretmenlerPageInner() {
   const [listLoading, setListLoading] = useState(true);
   const [searchInput, setSearchInput] = useState(initialQ);
   const [searchApply, setSearchApply] = useState(initialQ);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSessionToken(getToken());
+    const onAuth = () => setSessionToken(getToken());
+    window.addEventListener("bo:auth-changed", onAuth);
+    window.addEventListener("storage", onAuth);
+    return () => {
+      window.removeEventListener("bo:auth-changed", onAuth);
+      window.removeEventListener("storage", onAuth);
+    };
+  }, []);
+
+  const requestsPath =
+    branchId !== "" ? `/student/requests?branchId=${branchId}` : "/student/requests";
+  const talepHref = sessionToken ? requestsPath : loginHrefWithReturn(requestsPath);
 
   function replaceAllFilters(opts?: {
     q?: string;
@@ -138,37 +157,33 @@ function OgretmenlerPageInner() {
   }, [branchId, cityId, searchApply]);
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-4xl px-6 py-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-500">Site</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Öğretmenler
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600">
-              Branş ve şehre göre filtreleyin. Profilden ders talebi veya giriş yaptıktan sonra
-              doğrudan ders anlaşması (tutar + cüzdan) oluşturabilirsiniz.
+            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Öğretmen ara</h1>
+            <p className="mt-1 max-w-xl text-sm text-paper-800/75">
+              Branş ve şehir seçin; profilden talep açıp teklifleri toplayın veya doğrudan anlaşın.
             </p>
           </div>
-          <div className="flex shrink-0 flex-wrap justify-end gap-2">
-            <Link
-              href="/panel"
-              className="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-950 shadow-sm hover:bg-amber-100"
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <AuthEntryLink
+              path="/panel"
+              className="rounded-xl border border-paper-300 bg-white px-4 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
             >
-              Panele git
-            </Link>
+              Panel
+            </AuthEntryLink>
             <Link
-              href="/student/requests"
-              className="inline-flex items-center justify-center rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-800"
+              href={talepHref}
+              className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
             >
               Talep oluştur
             </Link>
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <div className="mb-1 text-xs font-medium text-zinc-600">İsim veya biyografide ara</div>
+        <div className="mt-6 rounded-xl border border-paper-200 bg-white p-4">
+          <div className="mb-1 text-xs font-medium text-paper-800/65">Metin ara</div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
               value={searchInput}
@@ -179,14 +194,14 @@ function OgretmenlerPageInner() {
                   commitTextSearch();
                 }
               }}
-              placeholder="Örn: matematik, deneyimli…"
-              className="min-w-0 flex-1 rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+              placeholder="Örn. matematik…"
+              className="min-w-0 flex-1 rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
               maxLength={120}
             />
             <button
               type="button"
               onClick={() => commitTextSearch()}
-              className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white"
+              className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900"
             >
               Ara
             </button>
@@ -198,7 +213,7 @@ function OgretmenlerPageInner() {
                   setSearchInput("");
                   replaceAllFilters({ q: "" });
                 }}
-                className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700"
+                className="rounded-xl border border-paper-300 bg-white px-4 py-2 text-sm font-medium text-paper-800 hover:bg-paper-50"
               >
                 Temizle
               </button>
@@ -206,10 +221,10 @@ function OgretmenlerPageInner() {
           </div>
         </div>
 
-        <div className="sticky top-16 z-10 -mx-6 mt-6 border-y border-zinc-200 bg-zinc-50/95 px-6 py-3 backdrop-blur">
+        <div className="sticky top-14 z-10 -mx-6 mt-6 border-y border-paper-200 bg-paper-50/95 px-6 py-3 backdrop-blur-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="block flex-1">
-              <div className="mb-1 text-xs font-medium text-zinc-600">Branş</div>
+              <div className="mb-1 text-xs font-medium text-paper-800/65">Branş</div>
               <select
                 value={branchId}
                 onChange={(e) => {
@@ -218,7 +233,7 @@ function OgretmenlerPageInner() {
                   replaceAllFilters({ branchId: v });
                 }}
                 disabled={!metaReady || metaLoading}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-400"
+                className="w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 disabled:bg-paper-50 disabled:text-paper-800/45"
               >
                 <option value="">
                   {metaLoading ? "Yükleniyor…" : metaReady ? "Tümü" : "Filtreler yok"}
@@ -231,7 +246,7 @@ function OgretmenlerPageInner() {
               </select>
             </label>
             <label className="block flex-1">
-              <div className="mb-1 text-xs font-medium text-zinc-600">Şehir</div>
+              <div className="mb-1 text-xs font-medium text-paper-800/65">Şehir</div>
               <select
                 value={cityId}
                 onChange={(e) => {
@@ -240,7 +255,7 @@ function OgretmenlerPageInner() {
                   replaceAllFilters({ cityId: v });
                 }}
                 disabled={!metaReady || metaLoading}
-                className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400 disabled:bg-zinc-50 disabled:text-zinc-400"
+                className="w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-400 disabled:bg-paper-50 disabled:text-paper-800/45"
               >
                 <option value="">
                   {metaLoading ? "Yükleniyor…" : metaReady ? "Tümü" : "Filtreler yok"}
@@ -262,39 +277,37 @@ function OgretmenlerPageInner() {
                   setSearchInput("");
                   router.replace(pathname, { scroll: false });
                 }}
-                className="flex-1 rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 sm:flex-none"
+                className="flex-1 rounded-xl border border-paper-300 bg-white px-4 py-2 text-sm font-medium text-paper-800 hover:bg-paper-50 sm:flex-none"
               >
                 Sıfırla
               </button>
               <button
                 type="button"
                 onClick={() => loadMeta()}
-                className="flex-1 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white sm:flex-none"
+                className="flex-1 rounded-xl border border-paper-300 bg-white px-4 py-2 text-sm font-medium text-paper-800 hover:bg-paper-50 sm:flex-none"
               >
-                Yenile
+                Listeyi yenile
               </button>
             </div>
           </div>
           {!metaReady && !metaLoading && (
-            <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Filtreler yüklenemedi. Bu genelde API/CORS veya veritabanı kurulumundan kaynaklanır.
-              <span className="font-mono"> /v1/meta/branches</span> ve{" "}
-              <span className="font-mono">/v1/meta/cities</span> uçlarını kontrol edin.
+            <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              Filtreler yüklenemedi — bağlantı veya API adresini kontrol edin.
             </div>
           )}
         </div>
 
         {error && (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         <div className="mt-8 space-y-2">
           {listLoading && rows.length === 0 ? (
-            <div className="text-sm text-zinc-500">Liste yükleniyor…</div>
+            <div className="text-sm text-paper-800/55">Liste yükleniyor…</div>
           ) : rows.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75">
               Kriterlere uyan öğretmen yok.
             </div>
           ) : (
@@ -302,14 +315,14 @@ function OgretmenlerPageInner() {
               <Link
                 key={t.id}
                 href={`/ogretmenler/${t.id}`}
-                className="block rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50"
+                className="block rounded-xl border border-paper-200 bg-white p-4 transition hover:border-brand-200 hover:bg-brand-50/20"
               >
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-zinc-900">
+                    <div className="text-sm font-semibold text-paper-900">
                       {t.display_name}
                     </div>
-                    <div className="text-xs text-zinc-500">
+                    <div className="text-xs text-paper-800/55">
                       {t.city_name ?? "Şehir belirtilmemiş"}
                       {" · "}
                       {t.verification_status === "verified"
@@ -317,7 +330,7 @@ function OgretmenlerPageInner() {
                         : `Durum: ${t.verification_status}`}
                     </div>
                   </div>
-                  <div className="text-sm text-zinc-600">
+                  <div className="text-sm text-paper-800/75">
                     {t.rating_count != null && Number(t.rating_count) > 0
                       ? `★ ${Number(t.rating_avg ?? 0).toFixed(1)} (${t.rating_count})`
                       : "Henüz değerlendirme yok"}
@@ -336,11 +349,11 @@ export default function OgretmenlerPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[50vh] bg-zinc-50 px-6 py-16">
+        <div className="min-h-[50vh] bg-paper-50 px-6 py-16">
           <div className="mx-auto max-w-4xl animate-pulse space-y-4">
-            <div className="h-8 w-56 rounded-lg bg-zinc-200" />
-            <div className="h-28 rounded-2xl bg-zinc-200" />
-            <div className="h-40 rounded-2xl bg-zinc-200" />
+            <div className="h-8 w-56 rounded-lg bg-paper-200" />
+            <div className="h-28 rounded-xl bg-paper-200" />
+            <div className="h-40 rounded-xl bg-paper-200" />
           </div>
         </div>
       }

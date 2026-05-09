@@ -39,7 +39,7 @@ export function documentTitleForPath(pathname: string): string {
     "/teacher/cuzdan": "Cüzdan",
     "/teacher/edit": "Profil ve branş",
     "/student/requests": "Ders talepleri",
-    "/student/panel": "Abonelik ve cüzdan",
+    "/student/panel": "Öğrenci özeti",
     "/student/dersler": "Dersler ve yorum",
     "/student/dogrudan-dersler": "Doğrudan ders anlaşmaları",
     "/student/grup-dersler": "Grup ders talepleri",

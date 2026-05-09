@@ -114,65 +114,34 @@ export default function TeacherDogrudanDerslerPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Doğrudan ders anlaşmaları
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600">
-              Öğrenci cüzdanından ödeme yaptığında durum güncellenir; dersi verdikten sonra
-              tamamlayarak hak edişinizi alırsınız.{" "}
-              <Link href="/teacher/cuzdan" className="font-medium text-brand-800 underline">
-                Cüzdan
-              </Link>
-              .
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/teacher/cuzdan"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Doğrudan ders anlaşmaları</h1>
+          <p className="mt-1 text-sm text-paper-800/75">
+            Öğrenci cüzdanından ödeme yaptığında durum güncellenir; dersi verdikten sonra tamamlayarak
+            hak edişinizi alırsınız.{" "}
+            <Link href="/teacher/cuzdan" className="font-medium text-brand-800 underline-offset-4 hover:underline">
               Cüzdan
             </Link>
-            <Link
-              href="/teacher/dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Ders oturumları
-            </Link>
-            <Link
-              href="/teacher/kurslar"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Online kurslar
-            </Link>
-            <Link
-              href="/teacher"
-              className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-            >
-              Panel
-            </Link>
-          </div>
+            .
+          </p>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
         {ok && (
-          <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
             {ok}
           </div>
         )}
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75 shadow-sm">
               Henüz kayıt yok. Öğrenciler öğretmen havuzundan sizinle anlaştığında burada
               listelenir.
             </div>
@@ -180,23 +149,23 @@ export default function TeacherDogrudanDerslerPage() {
             rows.map((b) => (
               <div
                 key={b.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-zinc-900">
+                    <div className="text-sm font-semibold text-paper-900">
                       {b.student_display_name?.trim() || `Öğrenci · ${b.student_id.slice(0, 8)}…`}
                     </div>
-                    <div className="mt-1 font-mono text-xs text-zinc-500">{b.id}</div>
-                    <div className="mt-2 text-xs text-zinc-600">
+                    <div className="mt-1 font-mono text-xs text-paper-800/55">{b.id}</div>
+                    <div className="mt-2 text-xs text-paper-800/75">
                       Anlaşılan:{" "}
-                      <span className="font-mono font-medium text-zinc-900">
+                      <span className="font-mono font-medium text-paper-900">
                         {minorToTl(b.agreed_amount_minor)} TL
                       </span>
                       {" · "}
                       <span className="font-medium">{statusTr(b.status)}</span>
                     </div>
-                    <div className="mt-1 text-xs text-zinc-500">
+                    <div className="mt-1 text-xs text-paper-800/55">
                       Oluşturulma: {new Date(b.created_at).toLocaleString("tr-TR")}
                       {b.funded_at ? (
                         <>

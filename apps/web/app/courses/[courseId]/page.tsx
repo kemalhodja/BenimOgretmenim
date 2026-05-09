@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { AuthEntryLink } from "../../components/AuthEntryLink";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
@@ -123,74 +124,73 @@ export default function CourseDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
           <Link
             href="/courses"
-            className="text-sm font-medium text-zinc-600 underline decoration-zinc-300 underline-offset-4 hover:text-zinc-900"
+            className="text-sm font-medium text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
           >
             ← Kurslar
           </Link>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Link
-              href="/panel"
-              className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 shadow-sm"
+          <p className="flex flex-wrap justify-end gap-x-4 gap-y-1 text-sm">
+            <AuthEntryLink
+              path="/panel"
+              className="font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
             >
               Panele git
-            </Link>
+            </AuthEntryLink>
             <Link
               href="/"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
+              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
             >
               Ana sayfa
             </Link>
-          </div>
+          </p>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
         {ok && (
-          <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
             <p>{ok}</p>
-            <Link
-              href="/student/kurslar"
+            <AuthEntryLink
+              path="/student/kurslar"
               className="mt-2 inline-block font-medium text-brand-950 underline decoration-brand-400"
             >
               Kurslarım sayfasına git →
-            </Link>
+            </AuthEntryLink>
           </div>
         )}
 
         {!course ? (
-          <div className="mt-8 text-sm text-zinc-600">Yükleniyor…</div>
+          <div className="mt-8 text-sm text-paper-800/75">Yükleniyor…</div>
         ) : (
-          <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium text-zinc-500">Site</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+          <div className="mt-6 rounded-xl border border-paper-200 bg-white p-6 shadow-sm">
+                        <h1 className="text-2xl font-semibold tracking-tight text-paper-900">
               {course.title}
             </h1>
-            <p className="mt-1 text-sm text-zinc-600">
+            <p className="mt-1 text-sm text-paper-800/75">
               {course.teacher_display_name} · {course.branch_name ?? "—"} · {course.delivery_mode} ·{" "}
               {minorToTl(course.price_minor)} {course.currency}
             </p>
             {course.description && (
-              <p className="mt-4 whitespace-pre-wrap text-sm text-zinc-700">
+              <p className="mt-4 whitespace-pre-wrap text-sm text-paper-800">
                 {course.description}
               </p>
             )}
 
-            <h2 className="mt-8 text-base font-semibold text-zinc-900">Cohortlar</h2>
-            <p className="mt-1 text-xs text-zinc-500">
+            <h2 className="mt-8 text-base font-semibold text-paper-900">Cohortlar</h2>
+            <p className="mt-1 text-xs text-paper-800/55">
               Başlangıç tarihine göre listelenir. Kayıt için öğrenci hesabıyla giriş yapın.
             </p>
 
             <div className="mt-4 space-y-3">
               {cohorts.length === 0 ? (
-                <div className="text-sm text-zinc-600">Şu an açık cohort yok.</div>
+                <div className="text-sm text-paper-800/75">Şu an açık cohort yok.</div>
               ) : (
                 cohorts.map((c) => {
                   const full =
@@ -198,13 +198,13 @@ export default function CourseDetailPage() {
                   return (
                     <div
                       key={c.id}
-                      className="rounded-xl border border-zinc-100 bg-zinc-50 p-4"
+                      className="rounded-xl border border-paper-100 bg-paper-50 p-4"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-sm font-semibold text-zinc-900">{c.title}</div>
-                        <div className="text-xs text-zinc-500">{c.status}</div>
+                        <div className="text-sm font-semibold text-paper-900">{c.title}</div>
+                        <div className="text-xs text-paper-800/55">{c.status}</div>
                       </div>
-                      <div className="mt-1 text-xs text-zinc-600">
+                      <div className="mt-1 text-xs text-paper-800/75">
                         Başlangıç: {c.starts_at ? new Date(c.starts_at).toLocaleString("tr-TR") : "—"}
                         {" · "}
                         Kontenjan: {c.capacity ?? "—"}{" "}
@@ -214,7 +214,7 @@ export default function CourseDetailPage() {
                         type="button"
                         disabled={busyId === c.id || full}
                         onClick={() => void enroll(c.id)}
-                        className="mt-3 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                        className="mt-3 rounded-xl bg-brand-800 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                       >
                         {full ? "Dolu" : busyId === c.id ? "…" : "Kayıt ol"}
                       </button>

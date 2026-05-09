@@ -14,7 +14,7 @@ type LoginResponse = {
 
 function defaultDestForRole(role: string): string {
   if (role === "teacher") return "/teacher";
-  if (role === "student") return "/student/requests";
+  if (role === "student") return "/student/panel";
   if (role === "guardian") return "/guardian";
   if (role === "admin") return "/admin";
   return "/";
@@ -126,20 +126,17 @@ function LoginForm() {
     }
   }
 
+  const showDevFooter = process.env.NODE_ENV !== "production";
+
   return (
-    <div className="flex min-h-[calc(100vh-1px)] items-center justify-center bg-zinc-50 px-6 py-10">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+    <div className="flex min-h-[calc(100vh-1px)] items-center justify-center bg-paper-50 px-6 py-10">
+      <div className="w-full max-w-md rounded-2xl border border-paper-200 bg-white p-6 shadow-sm">
         <div className="mb-6">
-          <p className="text-sm font-medium text-zinc-500">Hesap</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Giriş</h1>
-          <p className="mt-1 text-xs text-zinc-500">BenimÖğretmenim</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Giriş yap</h1>
+          <p className="mt-1 text-sm text-paper-800/75">E-posta ve parolanızla devam edin.</p>
           {showRolePresets ? (
-            <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50/80 p-3">
-              <p className="text-xs font-medium text-zinc-600">
-                Hızlı doldur — API’de{" "}
-                <span className="font-mono">npm run db:seed:admin</span> (admin) ve{" "}
-                <span className="font-mono">npm run db:seed</span> (diğer roller)
-              </p>
+            <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3">
+              <p className="text-xs text-paper-800/65">Yerel ortam — tek tıkla doldur</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {SEED_ROLE_PRESETS.map((p) => (
                   <button
@@ -151,84 +148,80 @@ function LoginForm() {
                       setError(null);
                       setShowRegisterHint(false);
                     }}
-                    className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:border-brand-300 hover:text-brand-900"
+                    className="rounded-lg border border-paper-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-paper-900 hover:border-brand-300"
                   >
                     {p.label}
-                    {"hint" in p && p.hint ? (
-                      <span className="ml-1 font-normal text-zinc-500">{p.hint}</span>
-                    ) : null}
                   </button>
                 ))}
               </div>
-              <p className="mt-2 font-mono text-[0.65rem] leading-snug text-zinc-500">
-                Admin parola: <span className="select-all">{BOOTSTRAP_ADMIN_PASSWORD}</span>
-                <br />
-                Tam seed (öğretmen/öğrenci/veli): <span className="select-all">{SEED_PASSWORD}</span>
-              </p>
-              <p className="mt-2 text-[0.65rem] leading-snug text-zinc-600">
-                <strong className="text-zinc-800">Admin:</strong> kayıt formunda admin yoktur.{" "}
-                <span className="font-mono">npm run db:seed:admin</span> ile{" "}
-                <span className="font-mono">{BOOTSTRAP_ADMIN_EMAIL}</span> oluşturulur veya parolası yenilenir.
-                Sadece <span className="font-mono">db:seed</span> çalıştıysa admin girişi:{" "}
-                <span className="font-mono">seed_dev@benimogretmenim.local</span> /{" "}
-                <span className="font-mono">{SEED_PASSWORD}</span>. Canlıda API deploy{" "}
-                <span className="font-mono">bootstrap-admin-if-missing</span> ile{" "}
-                <span className="font-mono">{BOOTSTRAP_ADMIN_EMAIL}</span> eklenir.
-                Girişten sonra <Link href="/admin" className="font-medium text-brand-800 underline">/admin</Link>;
-                havale proxy için <span className="font-mono">ADMIN_API_SECRET</span>.
-              </p>
+              <details className="mt-3 text-xs text-paper-800/70">
+                <summary className="cursor-pointer font-medium text-paper-800">Seed komutları ve parolalar</summary>
+                <div className="mt-2 space-y-2 border-t border-paper-200 pt-2 font-mono text-[0.65rem] leading-relaxed">
+                  <p>
+                    Admin: <span className="select-all">{BOOTSTRAP_ADMIN_EMAIL}</span> —{" "}
+                    <span className="select-all">{BOOTSTRAP_ADMIN_PASSWORD}</span>
+                  </p>
+                  <p>
+                    Tam seed roller: <span className="select-all">{SEED_PASSWORD}</span>
+                  </p>
+                  <p className="font-sans text-paper-800/80">
+                    <span className="font-mono">npm run db:seed:admin</span> /{" "}
+                    <span className="font-mono">db:seed</span>. Admin için{" "}
+                    <Link href="/admin" className="text-brand-800 underline">
+                      /admin
+                    </Link>
+                    .
+                  </p>
+                </div>
+              </details>
             </div>
           ) : (
-            <div className="mt-2 space-y-1 text-xs text-zinc-500">
-              <p>
-                Seed / hızlı giriş: yerelde açın,{" "}
-                <span className="font-mono">NEXT_PUBLIC_DEV_LOGIN_PRESETS=1</span> veya{" "}
-                <span className="font-mono">next dev</span> kullanın.
-              </p>
-              <p>
-                <strong className="text-zinc-700">Admin girişi:</strong> üretimde{" "}
-                <span className="font-mono">role = admin</span> kullanıcı DB ile tanımlanır. Yerelde:{" "}
-                <span className="font-mono">npm run db:seed:admin</span> →{" "}
-                <span className="font-mono">{BOOTSTRAP_ADMIN_EMAIL}</span> /{" "}
-                <span className="font-mono">{BOOTSTRAP_ADMIN_PASSWORD}</span>. Eski tam seed admin:{" "}
-                <span className="font-mono">seed_dev@benimogretmenim.local</span> /{" "}
-                <span className="font-mono">{SEED_PASSWORD}</span>.
-              </p>
-            </div>
-          )}
-          {returnUrl && (
-            <p className="mt-2 text-xs text-zinc-500">
-              Girişten sonra: <span className="font-mono text-zinc-700">{returnUrl}</span>
+            <p className="mt-3 text-xs text-paper-800/55">
+              Hesabınız yok mu?{" "}
+              <Link
+                href={returnUrl ? registerHrefWithReturn(returnUrl) : "/kayit"}
+                className="font-medium text-brand-800 underline"
+              >
+                Kayıt olun
+              </Link>
+              . Admin hesabı kayıtla oluşturulmaz.
             </p>
           )}
-          <p className="mt-2 text-sm">
-            <Link
-              href={returnUrl ? registerHrefWithReturn(returnUrl) : "/kayit"}
-              className="font-medium text-brand-800 underline"
-            >
-              Kayıt ol
-            </Link>
-          </p>
+          {returnUrl && (
+            <p className="mt-2 text-xs text-paper-800/50">
+              Sonra: <span className="font-mono text-paper-800">{returnUrl}</span>
+            </p>
+          )}
+          {showRolePresets ? (
+            <p className="mt-3 text-sm">
+              <Link
+                href={returnUrl ? registerHrefWithReturn(returnUrl) : "/kayit"}
+                className="font-medium text-brand-800 underline"
+              >
+                Yeni hesap oluştur
+              </Link>
+            </p>
+          ) : null}
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <label className="block">
-            <div className="mb-1 text-sm font-medium text-zinc-700">E-posta</div>
+            <div className="mb-1 text-sm font-medium text-paper-800">E-posta</div>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+              className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
               autoComplete="email"
               inputMode="email"
             />
           </label>
 
           <label className="block">
-            <div className="mb-1 text-sm font-medium text-zinc-700">Parola</div>
+            <div className="mb-1 text-sm font-medium text-paper-800">Parola</div>
             <input
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+              className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
               type="password"
               autoComplete="current-password"
             />
@@ -246,8 +239,7 @@ function LoginForm() {
                   >
                     kayıt olun
                   </Link>
-                  . Canlı ortamda örnek <span className="font-mono">*_dev@benimogretmenim.local</span> hesapları
-                  yalnızca veritabanına seed uygulandıysa vardır.
+                  .
                 </p>
               ) : null}
             </div>
@@ -256,17 +248,19 @@ function LoginForm() {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="w-full rounded-xl bg-zinc-900 px-3 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            className="w-full rounded-xl bg-brand-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-brand-900 disabled:opacity-50"
           >
             {loading ? "Giriş yapılıyor..." : "Giriş yap"}
           </button>
 
-          <div className="text-xs text-zinc-500">
-            API:{" "}
-            <span className="font-mono">
-              {process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3002"}
-            </span>
-          </div>
+          {showDevFooter ? (
+            <p className="text-center text-[0.65rem] text-paper-800/45">
+              API{" "}
+              <span className="font-mono">
+                {process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3002"}
+              </span>
+            </p>
+          ) : null}
         </form>
       </div>
     </div>
@@ -277,8 +271,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[calc(100vh-1px)] items-center justify-center bg-zinc-50 px-6">
-          <p className="text-sm text-zinc-500">Yükleniyor…</p>
+        <div className="flex min-h-[calc(100vh-1px)] items-center justify-center bg-paper-50 px-6">
+          <p className="text-sm text-paper-800/55">Yükleniyor…</p>
         </div>
       }
     >

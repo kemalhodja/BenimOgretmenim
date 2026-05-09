@@ -72,55 +72,32 @@ export default function StudentKurslarPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Kurslarım
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600">
+            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Kurslarım</h1>
+            <p className="mt-1 text-sm text-paper-800/75">
               Kayıtlı olduğunuz gruplar ve canlı ders oturumları.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/student/panel"
-              className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 shadow-sm"
-            >
-              Abonelik & cüzdan
-            </Link>
-            <Link
-              href="/courses"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Kurs keşfet
-            </Link>
-            <Link
-              href="/student/requests"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Ders talepleri
-            </Link>
-            <Link
-              href="/student/dogrudan-dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Doğrudan ders
-            </Link>
-          </div>
+          <Link
+            href="/courses"
+            className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
+          >
+            Katalogda keşfet
+          </Link>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75 shadow-sm">
               Henüz kurs kaydınız yok.{" "}
               <Link href="/courses" className="font-medium text-brand-800 underline">
                 Kurslar
@@ -131,15 +108,15 @@ export default function StudentKurslarPage() {
             rows.map((e) => (
               <div
                 key={e.enrollment_id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-zinc-900">{e.course_title}</div>
-                    <div className="mt-1 text-xs text-zinc-500">
+                    <div className="text-sm font-semibold text-paper-900">{e.course_title}</div>
+                    <div className="mt-1 text-xs text-paper-800/55">
                       Grup: {e.cohort_title} · {e.cohort_status} · Öğretmen: {e.teacher_display_name}
                     </div>
-                    <div className="mt-2 text-xs text-zinc-600">
+                    <div className="mt-2 text-xs text-paper-800/75">
                       Sıradaki oturum:{" "}
                       {e.next_session_id ? (
                         <>
@@ -165,13 +142,13 @@ export default function StudentKurslarPage() {
                   <div className="flex shrink-0 flex-col gap-2 sm:items-end">
                     <Link
                       href={`/student/kurslar/${e.course_id}/cohort/${e.cohort_id}`}
-                      className="rounded-xl bg-zinc-900 px-3 py-2 text-center text-sm font-medium text-white"
+                      className="rounded-xl bg-brand-800 px-3 py-2 text-center text-sm font-medium text-white"
                     >
                       Tüm oturumlar
                     </Link>
                     <Link
                       href={`/courses/${e.course_id}`}
-                      className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-center text-sm font-medium text-zinc-800"
+                      className="rounded-xl border border-paper-200 bg-white px-3 py-2 text-center text-sm font-medium text-paper-800"
                     >
                       Kurs sayfası
                     </Link>

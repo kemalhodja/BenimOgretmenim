@@ -72,46 +72,48 @@ export default function AdminLessonRequestsPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <p className="text-sm font-medium text-zinc-500">Yönetim</p>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Ders talepleri</h1>
-          <Link href="/admin" className="text-sm font-medium text-brand-800 underline">
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Ders talepleri</h1>
+          <Link
+            href="/admin"
+            className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+          >
             Özet
           </Link>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {(["", "open", "matched", "cancelled", "expired"] as const).map((st) => (
-            <button
-              key={st || "all"}
-              type="button"
-              onClick={() => setStatus(st)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-                status === st ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-700"
-              }`}
-            >
-              {st === "" ? "Tümü" : st}
-            </button>
-          ))}
-        </div>
+        <label className="mt-4 block max-w-sm text-sm">
+          <span className="font-medium text-paper-800">Durum</span>
+          <select
+            className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm capitalize"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="">Tümü</option>
+            <option value="open">open</option>
+            <option value="matched">matched</option>
+            <option value="cancelled">cancelled</option>
+            <option value="expired">expired</option>
+          </select>
+        </label>
 
-        <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-600">
+        <div className="mt-3 flex flex-wrap gap-3 text-xs text-paper-800/75">
           {Object.entries(summary).map(([k, v]) => (
-            <span key={k} className="rounded-lg bg-zinc-100 px-2 py-1 capitalize">
-              {k}: <strong className="tabular-nums text-zinc-900">{v}</strong>
+            <span key={k} className="rounded-lg bg-paper-100 px-2 py-1 capitalize">
+              {k}: <strong className="tabular-nums text-paper-900">{v}</strong>
             </span>
           ))}
         </div>
 
         {error ? (
-          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         ) : null}
 
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-zinc-200 bg-white shadow-sm">
+        <div className="mt-4 overflow-x-auto rounded-xl border border-paper-200 bg-white shadow-sm">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 text-xs font-semibold uppercase tracking-wide text-zinc-600">
+            <thead className="border-b border-paper-200 bg-paper-50 text-xs font-semibold uppercase tracking-wide text-paper-800/75">
               <tr>
                 <th className="px-3 py-2">Öğrenci</th>
                 <th className="px-3 py-2">Branş</th>
@@ -125,28 +127,28 @@ export default function AdminLessonRequestsPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-zinc-500">
+                  <td colSpan={7} className="px-3 py-6 text-center text-paper-800/55">
                     Yükleniyor…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-zinc-500">
+                  <td colSpan={7} className="px-3 py-6 text-center text-paper-800/55">
                     Kayıt yok.
                   </td>
                 </tr>
               ) : (
                 rows.map((r) => (
-                  <tr key={r.id} className="border-b border-zinc-100 last:border-0">
+                  <tr key={r.id} className="border-b border-paper-100 last:border-0">
                     <td className="px-3 py-2">
-                      <div className="font-medium text-zinc-900">{r.student_display_name}</div>
-                      <div className="text-xs text-zinc-600">{r.student_email}</div>
+                      <div className="font-medium text-paper-900">{r.student_display_name}</div>
+                      <div className="text-xs text-paper-800/75">{r.student_email}</div>
                     </td>
-                    <td className="px-3 py-2 text-zinc-700">{r.branch_name}</td>
-                    <td className="px-3 py-2 capitalize text-zinc-700">{r.status}</td>
-                    <td className="px-3 py-2 text-zinc-600">{r.delivery_mode}</td>
-                    <td className="px-3 py-2 text-zinc-600">{new Date(r.created_at).toLocaleString("tr-TR")}</td>
-                    <td className="max-w-[7rem] truncate px-3 py-2 font-mono text-[11px] text-zinc-500">{r.id}</td>
+                    <td className="px-3 py-2 text-paper-800">{r.branch_name}</td>
+                    <td className="px-3 py-2 capitalize text-paper-800">{r.status}</td>
+                    <td className="px-3 py-2 text-paper-800/75">{r.delivery_mode}</td>
+                    <td className="px-3 py-2 text-paper-800/75">{new Date(r.created_at).toLocaleString("tr-TR")}</td>
+                    <td className="max-w-[7rem] truncate px-3 py-2 font-mono text-[11px] text-paper-800/55">{r.id}</td>
                     <td className="px-3 py-2">
                       {(r.status === "open" || r.status === "matched") && (
                         <button

@@ -194,67 +194,54 @@ export default function StudentRequestDetailPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Öğrenci</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Talep ve teklifler
-            </h1>
-            {summary && (
-              <p className="mt-1 text-sm text-zinc-600">
-                {branchName} · durum:{" "}
-                <span className="font-medium">{requestStatusTr(summary.status)}</span>
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
+        <div>
+          <Link
+            href="/student/requests"
+            className="text-sm font-medium text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+          >
+            ← Taleplerim
+          </Link>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight text-paper-900">
+            Talep ve teklifler
+          </h1>
+          {summary && (
+            <p className="mt-1 text-sm text-paper-800/75">
+              {branchName} · durum:{" "}
+              <span className="font-medium">{requestStatusTr(summary.status)}</span>
+            </p>
+          )}
+          <p className="mt-2 text-sm text-paper-800/65">
+            Diğer sayfalar üst menüden. Ödeme ve bakiye:{" "}
             <Link
               href="/student/panel"
-              className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 shadow-sm"
+              className="font-medium text-brand-800 underline-offset-4 hover:underline"
             >
-              Abonelik & cüzdan
+              özet / cüzdan
             </Link>
-            <Link
-              href="/student/dogrudan-dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Doğrudan ders
-            </Link>
-            <Link
-              href="/ogretmenler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Öğretmen ara
-            </Link>
-            <Link
-              href="/student/requests"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Tüm talepler
-            </Link>
-          </div>
+            .
+          </p>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {ok && (
-          <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
             {ok}
           </div>
         )}
 
         {summary === undefined && !error && (
-          <div className="mt-8 text-sm text-zinc-600">Yükleniyor…</div>
+          <div className="mt-8 text-sm text-paper-800/75">Yükleniyor…</div>
         )}
 
         {summary === null && (
-          <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
+          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 text-sm text-paper-800/75 shadow-sm">
             Bu talep bulunamadı veya size ait değil.
           </div>
         )}
@@ -262,8 +249,8 @@ export default function StudentRequestDetailPage() {
         {summary != null && (
           <div className="mt-8 space-y-3">
             {summary.status === "open" && (
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                <p className="text-sm text-zinc-600">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+                <p className="text-sm text-paper-800/75">
                   Talebi artık istemiyorsanız iptal edebilirsiniz; öğretmenlerle
                   mesajlaşma kapanır.
                 </p>
@@ -278,7 +265,7 @@ export default function StudentRequestDetailPage() {
               </div>
             )}
             {offers.length === 0 ? (
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
+              <div className="rounded-xl border border-paper-200 bg-white p-5 text-sm text-paper-800/75 shadow-sm">
                 Henüz teklif yok. Öğretmenler talebi gördükçe burada listelenecek.
               </div>
             ) : (
@@ -288,24 +275,24 @@ export default function StudentRequestDetailPage() {
                 return (
                   <div
                     key={o.id}
-                    className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                    className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <div className="text-sm font-semibold text-zinc-900">
+                        <div className="text-sm font-semibold text-paper-900">
                           {o.display_name}
                         </div>
-                        <div className="text-xs text-zinc-500">
+                        <div className="text-xs text-paper-800/55">
                           {offerStatusTr(o.status)} ·{" "}
                           {new Date(o.created_at).toLocaleString("tr-TR")}
                         </div>
                         {o.proposed_hourly_rate_minor != null && (
-                          <div className="mt-2 text-sm text-zinc-700">
+                          <div className="mt-2 text-sm text-paper-800">
                             Önerilen saatlik:{" "}
                             {(o.proposed_hourly_rate_minor / 100).toFixed(2)} TL
                           </div>
                         )}
-                        <p className="mt-3 whitespace-pre-wrap text-sm text-zinc-700">
+                        <p className="mt-3 whitespace-pre-wrap text-sm text-paper-800">
                           {o.message}
                         </p>
                       </div>
@@ -323,7 +310,7 @@ export default function StudentRequestDetailPage() {
                             type="button"
                             disabled={busyId === o.id}
                             onClick={() => void decide(o.id, "reject")}
-                            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-50"
+                            className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-800 disabled:opacity-50"
                           >
                             Reddet
                           </button>

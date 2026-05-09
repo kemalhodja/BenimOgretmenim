@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
@@ -126,38 +125,19 @@ export default function TeacherGroupLessonsPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Grup ders ilanları
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600">
-              Öğrencilerin açtığı ilanları kabul edin; ders bitince “tamamla” ile blokajları serbest
-              bırakın.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/teacher/requests"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Açık talepler
-            </Link>
-            <Link
-              href="/teacher"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Panel
-            </Link>
-          </div>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Grup ders ilanları</h1>
+          <p className="mt-1 text-sm text-paper-800/75">
+            Öğrencilerin açtığı ilanları kabul edin; ders bitince «tamamla» ile blokajları serbest
+            bırakın.
+          </p>
         </div>
 
         {(error || ok) && (
           <div
-            className={`mt-6 rounded-2xl border p-4 text-sm ${
+            className={`mt-6 rounded-xl border p-4 text-sm ${
               error
                 ? "border-red-200 bg-red-50 text-red-700"
                 : "border-brand-200 bg-brand-50 text-brand-900"
@@ -169,7 +149,7 @@ export default function TeacherGroupLessonsPage() {
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75 shadow-sm">
               Şu an ilan yok.
             </div>
           ) : (
@@ -179,19 +159,19 @@ export default function TeacherGroupLessonsPage() {
               return (
                 <div
                   key={r.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                  className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <div className="text-sm font-semibold text-zinc-900">
+                      <div className="text-sm font-semibold text-paper-900">
                         {r.branch_name ?? `Branş #${r.branch_id}`} · {r.topic_text}
                       </div>
-                      <div className="mt-1 text-xs text-zinc-500">
+                      <div className="mt-1 text-xs text-paper-800/55">
                         {toLocal(r.planned_start)} · {r.status}
                       </div>
-                      <div className="mt-2 text-xs text-zinc-600">
+                      <div className="mt-2 text-xs text-paper-800/75">
                         Katılımcı: <span className="font-medium">{count}</span> · Kişi başı (şu an):{" "}
-                        <span className="font-mono font-medium text-zinc-900">
+                        <span className="font-mono font-medium text-paper-900">
                           {tl(share)} TL
                         </span>
                       </div>
@@ -209,7 +189,7 @@ export default function TeacherGroupLessonsPage() {
                         type="button"
                         disabled={busyId === r.id}
                         onClick={() => void complete(r.id)}
-                        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 disabled:opacity-50"
+                        className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 disabled:opacity-50"
                       >
                         {busyId === r.id ? "…" : "Tamamla"}
                       </button>

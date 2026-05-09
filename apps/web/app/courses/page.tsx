@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AuthEntryLink } from "../components/AuthEntryLink";
 import { apiFetch } from "../lib/api";
 
 type CourseRow = {
@@ -45,44 +46,31 @@ export default function CoursesPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-4xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-sm font-medium text-zinc-500">Site</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Kurslar
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600">
-              Yayınlanmış kurslar; cohort seçip kayıt olabilirsiniz.
-            </p>
+            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Kurslar</h1>
+            <p className="mt-1 text-sm text-paper-800/75">Yayındaki kurslar — detaydan cohort seçilir.</p>
           </div>
-          <div className="flex flex-wrap justify-end gap-2">
-            <Link
-              href="/panel"
-              className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 shadow-sm"
-            >
-              Panele git
-            </Link>
-            <Link
-              href="/"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Ana sayfa
-            </Link>
-          </div>
+          <AuthEntryLink
+            path="/panel"
+            className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
+          >
+            Panele git
+          </AuthEntryLink>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
-        {loading && !error && <div className="mt-6 text-sm text-zinc-600">Yükleniyor…</div>}
+        {loading && !error && <div className="mt-6 text-sm text-paper-800/65">Yükleniyor…</div>}
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 && !loading ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75">
               Şu an yayınlı kurs yok.
             </div>
           ) : (
@@ -90,10 +78,10 @@ export default function CoursesPage() {
               <Link
                 key={c.id}
                 href={`/courses/${c.id}`}
-                className="block rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50"
+                className="block rounded-xl border border-paper-200 bg-white p-5 hover:border-brand-200 hover:bg-brand-50/30"
               >
-                <div className="text-sm font-semibold text-zinc-900">{c.title}</div>
-                <div className="mt-1 text-xs text-zinc-500">
+                <div className="text-sm font-semibold text-paper-900">{c.title}</div>
+                <div className="mt-1 text-xs text-paper-800/55">
                   {c.teacher_display_name} · {c.branch_name ?? "—"} · {c.delivery_mode} ·{" "}
                   {minorToTl(c.price_minor)} {c.currency}
                 </div>

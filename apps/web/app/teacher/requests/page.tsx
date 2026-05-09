@@ -145,64 +145,16 @@ export default function TeacherRequestsPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
-              Açık ders talepleri
-            </h1>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/teacher/teklifler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Tekliflerim
-            </Link>
-            <Link
-              href="/teacher/cuzdan"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Cüzdan
-            </Link>
-            <Link
-              href="/teacher/dogrudan-dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Doğrudan dersler
-            </Link>
-            <Link
-              href="/teacher/dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Ders oturumları
-            </Link>
-            <Link
-              href="/teacher/grup-dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Grup ders ilanları
-            </Link>
-            <Link
-              href="/teacher/kurslar"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Online kurslar
-            </Link>
-            <Link
-              href="/teacher"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Panele dön
-            </Link>
-          </div>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Açık ders talepleri</h1>
+          <p className="mt-1 text-sm text-paper-800/65">Gönderdiğiniz teklifler: üst menüden «Teklifler».</p>
         </div>
 
         {(error || ok) && (
           <div
-            className={`mt-6 rounded-2xl border p-4 text-sm ${
+            className={`mt-6 rounded-xl border p-4 text-sm ${
               error
                 ? "border-red-200 bg-red-50 text-red-700"
                 : "border-brand-200 bg-brand-50 text-brand-800"
@@ -212,16 +164,16 @@ export default function TeacherRequestsPage() {
           </div>
         )}
 
-        <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="mt-6 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <div className="mb-1 text-sm font-medium text-zinc-700">Filtre: Branş</div>
+              <div className="mb-1 text-sm font-medium text-paper-800">Filtre: Branş</div>
               <select
                 value={filterBranchId}
                 onChange={(e) =>
                   setFilterBranchId(e.target.value ? Number(e.target.value) : "")
                 }
-                className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
               >
                 <option value="">Tümü</option>
                 {leafBranches.map((b) => (
@@ -233,27 +185,27 @@ export default function TeacherRequestsPage() {
             </label>
 
             <label className="block">
-              <div className="mb-1 text-sm font-medium text-zinc-700">Teklif mesajı</div>
+              <div className="mb-1 text-sm font-medium text-paper-800">Teklif mesajı</div>
               <input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                 placeholder="Örn: 5 yıldır LGS matematik…"
               />
             </label>
 
             <label className="block sm:col-span-2">
-              <div className="mb-1 text-sm font-medium text-zinc-700">
+              <div className="mb-1 text-sm font-medium text-paper-800">
                 Önerilen saatlik ücret (TL, isteğe bağlı)
               </div>
               <input
                 value={hourlyTl}
                 onChange={(e) => setHourlyTl(e.target.value)}
                 inputMode="decimal"
-                className="w-full max-w-xs rounded-xl border border-zinc-200 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                className="w-full max-w-xs rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                 placeholder="Örn: 750 veya 750,50"
               />
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-paper-800/55">
                 Boş bırakırsanız ücret gösterilmez. Girilen değer kuruşa yuvarlanır.
               </p>
             </label>
@@ -262,18 +214,18 @@ export default function TeacherRequestsPage() {
 
         <div className="mt-6 space-y-3">
           {open.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-5 text-sm text-paper-800/75 shadow-sm">
               Açık talep yok.
             </div>
           ) : (
             open.map((r) => (
               <div
                 key={r.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-zinc-900">
+                    <div className="text-sm font-semibold text-paper-900">
                       Talep #{r.id.slice(0, 8)} ·{" "}
                       {r.branch_name ?? `Branş #${r.branch_id}`} · teklif:{" "}
                       {r.offers_count}
@@ -286,17 +238,17 @@ export default function TeacherRequestsPage() {
                         Teklif verdiyseniz: mesajlaş →
                       </Link>
                     )}
-                    <div className="mt-1 text-xs text-zinc-500">
+                    <div className="mt-1 text-xs text-paper-800/55">
                       {r.delivery_mode} · {new Date(r.created_at).toLocaleString("tr-TR")}
                     </div>
                     {r.note && (
-                      <div className="mt-2 text-sm text-zinc-700">{r.note}</div>
+                      <div className="mt-2 text-sm text-paper-800">{r.note}</div>
                     )}
                   </div>
                   <button
                     onClick={() => sendOffer(r.id)}
                     disabled={sendingFor === r.id}
-                    className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                   >
                     {sendingFor === r.id ? "Gönderiliyor..." : "Teklif gönder"}
                   </button>
@@ -306,7 +258,7 @@ export default function TeacherRequestsPage() {
           )}
         </div>
 
-        <p className="mt-6 text-xs text-zinc-500">
+        <p className="mt-6 text-xs text-paper-800/55">
           Liste: öğrencilerin açtığı açık talepler. Talep oluşturma bu panelde yoktur; yalnızca teklif
           verirsiniz.
         </p>

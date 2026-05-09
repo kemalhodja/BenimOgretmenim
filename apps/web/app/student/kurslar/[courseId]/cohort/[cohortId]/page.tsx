@@ -86,72 +86,70 @@ export default function StudentCohortSessionsPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
-        <p className="text-sm font-medium text-zinc-500">Öğrenci · grup oturumları</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+        <Link
+          href="/student/kurslar"
+          className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
+        >
+          ← Kurslarım
+        </Link>
+        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">
           {cohortTitle || "Grup"}
         </h1>
         {courseTitle ? (
-          <p className="mt-1 text-sm text-zinc-600">
-            Kurs: <span className="font-medium text-zinc-800">{courseTitle}</span>
+          <p className="mt-1 text-sm text-paper-800/75">
+            Kurs: <span className="font-medium text-paper-800">{courseTitle}</span>
           </p>
         ) : null}
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href="/student/kurslar"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-          >
-            Kurslarıma dön
-          </Link>
+        <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link
             href={`/courses/${courseId}`}
-            className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+            className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
           >
-            Kurs sayfası
+            Kurs vitrin sayfası
           </Link>
           <Link
             href="/student/panel"
-            className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 shadow-sm"
+            className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
           >
-            Abonelik & cüzdan
+            Abonelik ve cüzdan
           </Link>
           <Link
             href="/student/requests"
-            className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
+            className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
           >
             Ders talepleri
           </Link>
-        </div>
+        </p>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         <section className="mt-8">
-          <h2 className="text-sm font-semibold text-zinc-900">Ders oturumları</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h2 className="text-sm font-semibold text-paper-900">Ders oturumları</h2>
+          <p className="mt-1 text-xs text-paper-800/55">
             Tarih ve toplantı linki öğretmeniniz tarafından ayarlanır.
           </p>
           <div className="mt-3 space-y-3">
             {sessions.length === 0 ? (
-              <div className="rounded-2xl border border-zinc-200 bg-white p-5 text-sm text-zinc-600 shadow-sm">
+              <div className="rounded-xl border border-paper-200 bg-white p-5 text-sm text-paper-800/75 shadow-sm">
                 Henüz oturum eklenmemiş.
               </div>
             ) : (
               sessions.map((s) => (
                 <div
                   key={s.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                  className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
                 >
-                  <div className="text-sm font-semibold text-zinc-900">
+                  <div className="text-sm font-semibold text-paper-900">
                     #{s.session_index}
                     {s.title ? ` · ${s.title}` : ""}
                   </div>
-                  <div className="mt-1 text-xs text-zinc-500">
+                  <div className="mt-1 text-xs text-paper-800/55">
                     {s.status} · {toLocal(s.scheduled_start)}
                     {s.duration_minutes ? ` · ${s.duration_minutes} dk` : ""}
                   </div>
@@ -165,7 +163,7 @@ export default function StudentCohortSessionsPage() {
                       Toplantıya katıl
                     </a>
                   ) : (
-                    <p className="mt-2 text-xs text-zinc-500">Toplantı linki henüz yok.</p>
+                    <p className="mt-2 text-xs text-paper-800/55">Toplantı linki henüz yok.</p>
                   )}
                 </div>
               ))

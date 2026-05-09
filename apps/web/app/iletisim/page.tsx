@@ -28,40 +28,41 @@ function iletisimJsonLd(): Record<string, unknown> {
 
 export default function IletisimPage() {
   return (
-    <article className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(iletisimJsonLd()) }}
-      />
-      <p className="text-sm font-medium text-zinc-500">Site</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">İletişim</h1>
-      <p className="mt-4 text-sm text-zinc-600">
-        Destek ve iş birliği için aşağıdaki kanalları kullanın.
-      </p>
-      <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <dl className="space-y-4 text-sm">
-          <div>
-            <dt className="font-medium text-zinc-900">E-posta</dt>
-            <dd className="mt-1 text-zinc-600">
-              <span className="font-mono text-zinc-500">destek@benimogretmenim.com</span>{" "}
-              <span className="text-xs text-zinc-500">(örnek adres)</span>
-            </dd>
-          </div>
-          <div>
-            <dt className="font-medium text-zinc-900">Çalışma saatleri</dt>
-            <dd className="mt-1 text-zinc-600">Hafta içi 10:00–18:00 (GMT+3)</dd>
-          </div>
-        </dl>
+    <article className="min-h-screen bg-paper-50">
+      <div className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(iletisimJsonLd()) }}
+        />
+        <h1 className="text-2xl font-semibold tracking-tight text-paper-900">İletişim</h1>
+        <p className="mt-2 text-sm text-paper-800/75">
+          Destek ve iş birliği için e-posta veya yardım sayfasını kullanın.
+        </p>
+        <div className="mt-8 rounded-xl border border-paper-200 bg-white p-6">
+          <dl className="space-y-5 text-sm">
+            <div>
+              <dt className="font-medium text-paper-900">E-posta</dt>
+              <dd className="mt-1 text-paper-800/75">
+                <span className="font-mono text-paper-800/65">destek@benimogretmenim.com</span>{" "}
+                <span className="text-xs text-paper-800/50">(örnek)</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium text-paper-900">Çalışma saatleri</dt>
+              <dd className="mt-1 text-paper-800/75">Hafta içi 10:00–18:00 (GMT+3)</dd>
+            </div>
+          </dl>
+        </div>
+        <p className="mt-8 text-sm text-paper-800/75">
+          <Link href="/yardim" className="font-medium text-brand-800 underline-offset-4 hover:underline">
+            Yardım
+          </Link>
+          {" · "}
+          <Link href="/" className="font-medium text-brand-800 underline-offset-4 hover:underline">
+            Ana sayfa
+          </Link>
+        </p>
       </div>
-      <p className="mt-8 text-sm">
-        <Link href="/yardim" className="text-brand-800 underline">
-          Yardım sayfası
-        </Link>
-        {" · "}
-        <Link href="/" className="text-brand-800 underline">
-          Ana sayfa
-        </Link>
-      </p>
     </article>
   );
 }

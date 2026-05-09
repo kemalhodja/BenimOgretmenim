@@ -106,9 +106,9 @@ function homeworkNotifHref(payload: unknown): string | null {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <div className="text-xs font-medium text-zinc-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+    <div className="rounded-xl border border-paper-200 bg-white p-4">
+      <div className="text-xs font-medium text-paper-800/55">{label}</div>
+      <div className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">
         {value}
       </div>
     </div>
@@ -332,21 +332,20 @@ export default function TeacherHomePage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">Panel özeti</h1>
-            <p className="mt-1 text-lg font-medium text-zinc-800">{me?.teacher.displayName ?? "—"}</p>
-            <div className="mt-1 text-sm text-zinc-600">
+            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Panel özeti</h1>
+            <p className="mt-1 text-lg font-medium text-paper-800">{me?.teacher.displayName ?? "—"}</p>
+            <div className="mt-1 text-sm text-paper-800/75">
               Doğrulama:{" "}
-              <span className="font-medium text-zinc-900">
+              <span className="font-medium text-paper-900">
                 {me?.teacher.verificationStatus ?? "—"}
               </span>
               {" · "}
               Tamamlanma:{" "}
-              <span className="font-medium text-zinc-900">
+              <span className="font-medium text-paper-900">
                 {me?.completionScore ?? 0}%
               </span>
               {me?.teacher.ratingCount != null &&
@@ -354,7 +353,7 @@ export default function TeacherHomePage() {
                 me.teacher.ratingAvg != null && (
                   <>
                     {" · "}
-                    <span className="font-medium text-zinc-900">
+                    <span className="font-medium text-paper-900">
                       Yorum ort. {Number(me.teacher.ratingAvg).toFixed(2)} (
                       {me.teacher.ratingCount})
                     </span>
@@ -366,7 +365,7 @@ export default function TeacherHomePage() {
           <div className="flex gap-2">
             <button
               onClick={() => token && load(token)}
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm"
+              className="rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm font-medium text-paper-800 shadow-sm"
             >
               Yenile
             </button>
@@ -375,7 +374,7 @@ export default function TeacherHomePage() {
                 clearToken();
                 router.push("/login");
               }}
-              className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
+              className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
             >
               Çıkış
             </button>
@@ -383,15 +382,15 @@ export default function TeacherHomePage() {
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {notifications.length > 0 && (
-          <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Bildirimler</h2>
-            <p className="mt-1 text-xs text-zinc-500">Ödev, yorum ve bildirimler.</p>
+          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-paper-900">Bildirimler</h2>
+            <p className="mt-1 text-xs text-paper-800/55">Ödev, yorum ve bildirimler.</p>
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;
@@ -402,11 +401,11 @@ export default function TeacherHomePage() {
                     className={`rounded-xl border px-3 py-2 text-sm ${
                       unread
                         ? "border-brand-200 bg-brand-50/60"
-                        : "border-zinc-100 bg-zinc-50"
+                        : "border-paper-100 bg-paper-50"
                     }`}
                   >
-                    <div className="font-medium text-zinc-900">{n.title}</div>
-                    <p className="mt-1 text-zinc-700">{n.body}</p>
+                    <div className="font-medium text-paper-900">{n.title}</div>
+                    <p className="mt-1 text-paper-800">{n.body}</p>
                     {hwHref ? (
                       <Link
                         href={hwHref}
@@ -415,7 +414,7 @@ export default function TeacherHomePage() {
                         Ödev havuzuna git
                       </Link>
                     ) : null}
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500">
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-paper-800/55">
                       <span>
                         {n.sent_at
                           ? new Date(n.sent_at).toLocaleString("tr-TR")
@@ -426,7 +425,7 @@ export default function TeacherHomePage() {
                           type="button"
                           disabled={notifBusyId === n.id}
                           onClick={() => void markNotificationRead(n.id)}
-                          className="rounded-lg border border-zinc-300 bg-white px-2 py-1 text-xs font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-50"
+                          className="rounded-lg border border-paper-300 bg-white px-2 py-1 text-xs font-medium text-paper-800 hover:bg-paper-100 disabled:opacity-50"
                         >
                           {notifBusyId === n.id ? "…" : "Okundu"}
                         </button>
@@ -447,9 +446,9 @@ export default function TeacherHomePage() {
         </div>
 
         {(dash?.recentReviews?.length ?? 0) > 0 && (
-          <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-base font-semibold text-zinc-900">Son yorumlar</h2>
+              <h2 className="text-base font-semibold text-paper-900">Son yorumlar</h2>
               {me?.teacher.id && (
                 <Link
                   href={`/ogretmenler/${me.teacher.id}`}
@@ -459,24 +458,24 @@ export default function TeacherHomePage() {
                 </Link>
               )}
             </div>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-paper-800/55">
               Yorumdaki adlar gizlilik için kısaltılır; puan herkese açık profilde de görünür.
             </p>
             <ul className="mt-4 space-y-3">
               {(dash?.recentReviews ?? []).map((rv) => (
                 <li
                   key={`${rv.createdAt}-${rv.sessionIndex}-${rv.reviewerLabel}-${rv.rating}`}
-                  className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm"
+                  className="rounded-xl border border-paper-100 bg-paper-50 px-3 py-2 text-sm"
                 >
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span className="font-medium text-amber-800">★ {rv.rating}/5</span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-paper-800/55">
                       {rv.reviewerLabel} · ders #{rv.sessionIndex} ·{" "}
                       {new Date(rv.createdAt).toLocaleString("tr-TR")}
                     </span>
                   </div>
                   {rv.commentPreview && (
-                    <p className="mt-1 text-zinc-700 line-clamp-3">{rv.commentPreview}</p>
+                    <p className="mt-1 text-paper-800 line-clamp-3">{rv.commentPreview}</p>
                   )}
                 </li>
               ))}
@@ -484,9 +483,9 @@ export default function TeacherHomePage() {
           </div>
         )}
 
-        <div className="mt-8 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-zinc-900">
+            <h2 className="text-base font-semibold text-paper-900">
               Örnek ders anlatım videosu
             </h2>
             <Link
@@ -496,7 +495,7 @@ export default function TeacherHomePage() {
               {me?.teacher.videoUrl ? "Düzenle" : "Video ekle"}
             </Link>
           </div>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-paper-800/55">
             YouTube/Loom gibi bir link ekleyin. Bu video herkese açık öğretmen profilinizde de gösterilir.
           </p>
 
@@ -506,7 +505,7 @@ export default function TeacherHomePage() {
                 const embed = tryYoutubeEmbed(me.teacher.videoUrl);
                 if (embed) {
                   return (
-                    <div className="aspect-video w-full overflow-hidden rounded-xl border border-zinc-200 bg-black">
+                    <div className="aspect-video w-full overflow-hidden rounded-xl border border-paper-200 bg-black">
                       <iframe
                         src={embed}
                         className="h-full w-full"
@@ -520,7 +519,7 @@ export default function TeacherHomePage() {
                 return (
                   <a
                     href={me.teacher.videoUrl}
-                    className="inline-block rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-brand-800 underline"
+                    className="inline-block rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm font-medium text-brand-800 underline"
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -528,24 +527,24 @@ export default function TeacherHomePage() {
                   </a>
                 );
               })()}
-              <div className="mt-2 text-xs text-zinc-500">
+              <div className="mt-2 text-xs text-paper-800/55">
                 URL: <span className="font-mono">{me.teacher.videoUrl}</span>
               </div>
             </div>
           ) : (
-            <div className="mt-4 rounded-xl border border-zinc-100 bg-zinc-50 p-4 text-sm text-zinc-700">
+            <div className="mt-4 rounded-xl border border-paper-100 bg-paper-50 p-4 text-sm text-paper-800">
               Henüz video eklenmedi. Profilinizin dönüşümü için önerilir.
             </div>
           )}
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm lg:col-span-2">
+          <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm lg:col-span-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-zinc-900">
+              <h2 className="text-base font-semibold text-paper-900">
                 Profil checklist
               </h2>
-              <div className="text-sm font-medium text-zinc-900">
+              <div className="text-sm font-medium text-paper-900">
                 {me?.completionScore ?? 0}%
               </div>
             </div>
@@ -553,9 +552,9 @@ export default function TeacherHomePage() {
               {checklistItems.map((it) => (
                 <div
                   key={it.key}
-                  className="flex items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2"
+                  className="flex items-center justify-between rounded-xl border border-paper-100 bg-paper-50 px-3 py-2"
                 >
-                  <div className="text-sm text-zinc-700">{it.key}</div>
+                  <div className="text-sm text-paper-800">{it.key}</div>
                   <div className="flex items-center gap-3">
                     {!it.done && it.fix && (
                       <Link
@@ -566,7 +565,7 @@ export default function TeacherHomePage() {
                       </Link>
                     )}
                     <div
-                      className={`text-xs font-semibold ${it.done ? "text-brand-700" : "text-zinc-500"}`}
+                      className={`text-xs font-semibold ${it.done ? "text-brand-700" : "text-paper-800/55"}`}
                     >
                       {it.done ? "OK" : "Eksik"}
                     </div>
@@ -574,62 +573,62 @@ export default function TeacherHomePage() {
                 </div>
               ))}
             </div>
-            <div className="mt-4 text-sm text-zinc-600">
+            <div className="mt-4 text-sm text-paper-800/75">
               Sonraki adım:{" "}
-              <Link className="font-medium text-zinc-900 underline" href="/teacher/edit">
+              <Link className="font-medium text-paper-900 underline" href="/teacher/edit">
                 Profil & branş düzenle
               </Link>
             {" · "}
-            <Link className="font-medium text-zinc-900 underline" href="/teacher/requests">
+            <Link className="font-medium text-paper-900 underline" href="/teacher/requests">
               Ders talepleri
             </Link>
             {" · "}
-            <Link className="font-medium text-zinc-900 underline" href="/teacher/teklifler">
+            <Link className="font-medium text-paper-900 underline" href="/teacher/teklifler">
               Verdiğim teklifler
             </Link>
             {" · "}
-            <Link className="font-medium text-zinc-900 underline" href="/teacher/kurslar">
+            <Link className="font-medium text-paper-900 underline" href="/teacher/kurslar">
               Online kurslar
             </Link>
             {" · "}
-            <Link className="font-medium text-zinc-900 underline" href="/teacher/dersler">
+            <Link className="font-medium text-paper-900 underline" href="/teacher/dersler">
               Ders oturumları
             </Link>
             {" · "}
-            <Link className="font-medium text-zinc-900 underline" href="/teacher/grup-dersler">
+            <Link className="font-medium text-paper-900 underline" href="/teacher/grup-dersler">
               Grup ders ilanları
             </Link>
             {" · "}
-            <Link className="font-medium text-zinc-900 underline" href="/teacher/cuzdan">
+            <Link className="font-medium text-paper-900 underline" href="/teacher/cuzdan">
               Cüzdan
             </Link>
             {" · "}
-            <Link className="font-medium text-zinc-900 underline" href="/teacher/dogrudan-dersler">
+            <Link className="font-medium text-paper-900 underline" href="/teacher/dogrudan-dersler">
               Doğrudan dersler
             </Link>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-zinc-900">Abonelik</h2>
-            <div className="mt-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3">
-              <div className="text-sm font-medium text-zinc-900">
+          <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-paper-900">Abonelik</h2>
+            <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3">
+              <div className="text-sm font-medium text-paper-900">
                 {sub?.active ? "Aktif" : "Aktif değil"}
               </div>
-              <div className="mt-1 text-xs text-zinc-600">
+              <div className="mt-1 text-xs text-paper-800/75">
                 {sub?.active && sub.subscription
                   ? `${sub.subscription.title} · bitiş: ${new Date(sub.subscription.expires_at).toLocaleDateString("tr-TR")} · kampanya x${sub.subscription.promo_multiplier}`
                   : "Sınırsız teklif ve Akademi’de ders verme hakkı için abonelik gerekli."}
               </div>
             </div>
 
-            <p className="mt-2 text-xs text-zinc-600">
-              Ödeme: <span className="font-medium text-zinc-800">PayTR</span> (kart) veya{" "}
-              <span className="font-medium text-zinc-800">doğrudan havale/EFT</span>. Yeterli cüzdan
+            <p className="mt-2 text-xs text-paper-800/75">
+              Ödeme: <span className="font-medium text-paper-800">PayTR</span> (kart) veya{" "}
+              <span className="font-medium text-paper-800">doğrudan havale/EFT</span>. Yeterli cüzdan
               bakiyesi varsa cüzdandan da alabilirsiniz.
             </p>
 
-            <label className="mt-3 block text-xs text-zinc-600">
+            <label className="mt-3 block text-xs text-paper-800/75">
               Havale için dekont / referans (isteğe bağlı)
               <input
                 type="text"
@@ -637,13 +636,13 @@ export default function TeacherHomePage() {
                 onChange={(e) => setBankRefDraft(e.target.value)}
                 maxLength={120}
                 placeholder="Örn. EFT referans no"
-                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-900"
+                className="mt-1 w-full rounded-lg border border-paper-200 bg-white px-2 py-1.5 text-sm text-paper-900"
               />
             </label>
 
             <div className="mt-3 space-y-3">
-              <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
-                <div className="text-sm font-medium text-zinc-900">
+              <div className="rounded-xl border border-paper-100 bg-paper-50/80 p-3">
+                <div className="text-sm font-medium text-paper-900">
                   6 Aylık (1750 TL) + 12 ay hediye
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -651,7 +650,7 @@ export default function TeacherHomePage() {
                     type="button"
                     disabled={subPayBusy}
                     onClick={() => void buyWithPaytr("teacher_6m")}
-                    className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                    className="rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-900 disabled:opacity-50"
                   >
                     PayTR
                   </button>
@@ -659,7 +658,7 @@ export default function TeacherHomePage() {
                     type="button"
                     disabled={subPayBusy}
                     onClick={() => void buyWithBank("teacher_6m")}
-                    className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                    className="rounded-lg border border-paper-200 bg-white px-3 py-1.5 text-xs font-medium text-paper-900 disabled:opacity-50"
                   >
                     Havale bilgisi
                   </button>
@@ -667,14 +666,14 @@ export default function TeacherHomePage() {
                     type="button"
                     disabled={subPayBusy}
                     onClick={() => void buyFromWallet("teacher_6m")}
-                    className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                    className="rounded-lg border border-paper-200 bg-white px-3 py-1.5 text-xs font-medium text-paper-900 disabled:opacity-50"
                   >
                     Cüzdandan
                   </button>
                 </div>
               </div>
-              <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 p-3">
-                <div className="text-sm font-medium text-zinc-900">
+              <div className="rounded-xl border border-paper-100 bg-paper-50/80 p-3">
+                <div className="text-sm font-medium text-paper-900">
                   12 Aylık (2500 TL) + 24 ay hediye
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -682,7 +681,7 @@ export default function TeacherHomePage() {
                     type="button"
                     disabled={subPayBusy}
                     onClick={() => void buyWithPaytr("teacher_12m")}
-                    className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                    className="rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-900 disabled:opacity-50"
                   >
                     PayTR
                   </button>
@@ -690,7 +689,7 @@ export default function TeacherHomePage() {
                     type="button"
                     disabled={subPayBusy}
                     onClick={() => void buyWithBank("teacher_12m")}
-                    className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                    className="rounded-lg border border-paper-200 bg-white px-3 py-1.5 text-xs font-medium text-paper-900 disabled:opacity-50"
                   >
                     Havale bilgisi
                   </button>
@@ -698,7 +697,7 @@ export default function TeacherHomePage() {
                     type="button"
                     disabled={subPayBusy}
                     onClick={() => void buyFromWallet("teacher_12m")}
-                    className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-900 disabled:opacity-50"
+                    className="rounded-lg border border-paper-200 bg-white px-3 py-1.5 text-xs font-medium text-paper-900 disabled:opacity-50"
                   >
                     Cüzdandan
                   </button>
@@ -707,45 +706,45 @@ export default function TeacherHomePage() {
             </div>
 
             {bankInstructions && (
-              <div className="mt-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3 text-xs text-zinc-700">
-                <div className="font-medium text-zinc-900">Havale talimatı</div>
+              <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3 text-xs text-paper-800">
+                <div className="font-medium text-paper-900">Havale talimatı</div>
                 <dl className="mt-2 space-y-1.5">
                   <div>
-                    <dt className="text-zinc-500">Hesap adı</dt>
-                    <dd className="font-medium text-zinc-900">{bankInstructions.accountName}</dd>
+                    <dt className="text-paper-800/55">Hesap adı</dt>
+                    <dd className="font-medium text-paper-900">{bankInstructions.accountName}</dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-500">IBAN</dt>
-                    <dd className="break-all font-mono text-zinc-900">{bankInstructions.iban || "—"}</dd>
+                    <dt className="text-paper-800/55">IBAN</dt>
+                    <dd className="break-all font-mono text-paper-900">{bankInstructions.iban || "—"}</dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-500">Açıklama (zorunlu)</dt>
-                    <dd className="break-all font-mono text-zinc-900">{bankInstructions.description}</dd>
+                    <dt className="text-paper-800/55">Açıklama (zorunlu)</dt>
+                    <dd className="break-all font-mono text-paper-900">{bankInstructions.description}</dd>
                   </div>
                   <div>
-                    <dt className="text-zinc-500">Tutar (TRY)</dt>
-                    <dd className="font-mono text-zinc-900">{bankInstructions.amountTry}</dd>
+                    <dt className="text-paper-800/55">Tutar (TRY)</dt>
+                    <dd className="font-mono text-paper-900">{bankInstructions.amountTry}</dd>
                   </div>
                 </dl>
-                <p className="mt-2 text-zinc-600">{bankInstructions.note}</p>
+                <p className="mt-2 text-paper-800/75">{bankInstructions.note}</p>
               </div>
             )}
 
             <div className="mt-5">
-              <h2 className="text-base font-semibold text-zinc-900">Branşlar</h2>
+              <h2 className="text-base font-semibold text-paper-900">Branşlar</h2>
             <div className="mt-3 space-y-2">
               {(me?.teacher.branches ?? []).length === 0 ? (
-                <div className="text-sm text-zinc-600">Henüz seçilmedi.</div>
+                <div className="text-sm text-paper-800/75">Henüz seçilmedi.</div>
               ) : (
                 me?.teacher.branches.map((b) => (
                   <div
                     key={b.branchId}
-                    className="flex items-center justify-between rounded-xl border border-zinc-100 px-3 py-2"
+                    className="flex items-center justify-between rounded-xl border border-paper-100 px-3 py-2"
                   >
-                    <div className="text-sm font-medium text-zinc-900">
+                    <div className="text-sm font-medium text-paper-900">
                       {b.name}
                     </div>
-                    <div className="text-xs text-zinc-500">
+                    <div className="text-xs text-paper-800/55">
                       {b.isPrimary ? "Ana" : "—"}
                     </div>
                   </div>
@@ -757,7 +756,7 @@ export default function TeacherHomePage() {
         </div>
 
         {loading && (
-          <div className="mt-6 text-sm text-zinc-500">Yükleniyor...</div>
+          <div className="mt-6 text-sm text-paper-800/55">Yükleniyor...</div>
         )}
       </div>
     </div>

@@ -46,7 +46,6 @@ export default async function OgretmenProfileLayout({
     <>
       <script
         type="application/ld+json"
-        // eslint-disable-next-line react/no-danger -- Schema.org JSON-LD
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       {children}

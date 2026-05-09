@@ -21,6 +21,14 @@ export default defineConfig({
     timeout: 180_000,
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...process.env, PORT: "3000", HOSTNAME: "127.0.0.1" },
+    env: {
+      ...process.env,
+      PORT: "3000",
+      HOSTNAME: "127.0.0.1",
+      /** Yerel Playwright: build + start için (ci-web.mjs ile uyumlu) */
+      WEB_ALLOW_HTTP: process.env.WEB_ALLOW_HTTP ?? "1",
+      NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3002",
+      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:3000",
+    },
   },
 });

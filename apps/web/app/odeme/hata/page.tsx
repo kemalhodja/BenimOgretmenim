@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { AuthEntryLink } from "../../components/AuthEntryLink";
 
 function OdemeHataInner() {
   const sp = useSearchParams();
@@ -10,13 +11,11 @@ function OdemeHataInner() {
     sp.get("failed_reason_msg") ?? sp.get("reason") ?? undefined;
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-6 py-16">
-      <div className="mx-auto max-w-md rounded-2xl border border-red-200 bg-white p-8 text-center shadow-sm">
-        <p className="text-sm font-medium text-zinc-500">Ödeme</p>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight text-red-900">Ödeme tamamlanamadı</h1>
-        <p className="mt-3 text-sm text-zinc-600">
-          İşlem iptal edildi veya banka / kart doğrulaması başarısız oldu. PayTR ile tekrar deneyebilir veya
-          öğretmen aboneliğinde havale / EFT seçeneğini kullanabilirsiniz.
+    <div className="min-h-screen bg-paper-50 px-6 py-16">
+      <div className="mx-auto max-w-md rounded-xl border border-red-200 bg-white p-8 text-center">
+        <h1 className="text-xl font-semibold tracking-tight text-red-900">Ödeme tamamlanamadı</h1>
+        <p className="mt-3 text-sm text-paper-800/75">
+          İşlem iptal veya doğrulama hatası olabilir. Tekrar deneyin veya havale / EFT seçeneğini kullanın.
         </p>
         {reason && (
           <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
@@ -24,15 +23,15 @@ function OdemeHataInner() {
           </p>
         )}
         <div className="mt-8 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
-          <Link
-            href="/panel"
-            className="inline-flex rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white"
+          <AuthEntryLink
+            path="/panel"
+            className="inline-flex rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
           >
             Panele git
-          </Link>
+          </AuthEntryLink>
           <Link
             href="/"
-            className="inline-flex rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-900 shadow-sm"
+            className="inline-flex rounded-xl border border-paper-300 bg-white px-4 py-2.5 text-sm font-medium text-paper-900 hover:bg-paper-50"
           >
             Ana sayfa
           </Link>
@@ -46,9 +45,9 @@ export default function OdemeHataPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-zinc-50 px-6 py-16">
-          <div className="mx-auto max-w-md rounded-2xl border border-red-200/80 bg-white p-8 text-center shadow-sm">
-            <p className="text-sm text-zinc-500">Yükleniyor…</p>
+        <div className="min-h-screen bg-paper-50 px-6 py-16">
+          <div className="mx-auto max-w-md rounded-xl border border-red-200/80 bg-white p-8 text-center">
+            <p className="text-sm text-paper-800/55">Yükleniyor…</p>
           </div>
         </div>
       }

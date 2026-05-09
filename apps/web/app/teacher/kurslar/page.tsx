@@ -93,88 +93,61 @@ export default function TeacherKurslarPage() {
   if (!token) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-sm font-medium text-zinc-500">Öğretmen</p>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-zinc-900">
+            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">
               Kurslar (online dershane)
             </h1>
-            <p className="mt-1 text-sm text-zinc-600">
+            <p className="mt-1 text-sm text-paper-800/75">
               Kurs oluşturun, yayınlayın; cohort açıp öğrencileri kaydedin.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/teacher/kurslar/yeni"
-              className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white"
-            >
-              Yeni kurs
-            </Link>
-            <Link
-              href="/teacher/dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Ders oturumları
-            </Link>
-            <Link
-              href="/teacher/cuzdan"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Cüzdan
-            </Link>
-            <Link
-              href="/teacher/dogrudan-dersler"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Doğrudan dersler
-            </Link>
-            <Link
-              href="/teacher"
-              className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-900 shadow-sm"
-            >
-              Panele dön
-            </Link>
-          </div>
+          <Link
+            href="/teacher/kurslar/yeni"
+            className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+          >
+            Yeni kurs
+          </Link>
         </div>
 
         {error && (
-          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75 shadow-sm">
               Henüz kurs yok. “Yeni kurs” ile başlayın.
             </div>
           ) : (
             rows.map((c) => (
               <div
                 key={c.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <div className="text-sm font-semibold text-zinc-900">{c.title}</div>
-                    <div className="mt-1 text-xs text-zinc-500">
+                    <div className="text-sm font-semibold text-paper-900">{c.title}</div>
+                    <div className="mt-1 text-xs text-paper-800/55">
                       {c.status} · {c.delivery_mode} · {c.branch_name ?? "—"} ·{" "}
                       {minorToTl(c.price_minor)} {c.currency}
                     </div>
-                    <div className="mt-1 text-[11px] font-mono text-zinc-400">{c.id}</div>
+                    <div className="mt-1 text-[11px] font-mono text-paper-800/45">{c.id}</div>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <Link
                       href={`/teacher/kurslar/${c.id}`}
-                      className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+                      className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-medium text-white hover:bg-brand-900"
                     >
                       Yönet
                     </Link>
                     <Link
                       href={`/courses/${c.id}`}
-                      className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+                      className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
                     >
                       Public sayfa
                     </Link>
@@ -193,7 +166,7 @@ export default function TeacherKurslarPage() {
                         type="button"
                         disabled={busyId === c.id}
                         onClick={() => void setStatus(c.id, "draft")}
-                        className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-50"
+                        className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-800 disabled:opacity-50"
                       >
                         Taslak
                       </button>
@@ -202,7 +175,7 @@ export default function TeacherKurslarPage() {
                       type="button"
                       disabled={busyId === c.id}
                       onClick={() => void setStatus(c.id, "archived")}
-                      className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 disabled:opacity-50"
+                      className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-800 disabled:opacity-50"
                     >
                       Arşivle
                     </button>
