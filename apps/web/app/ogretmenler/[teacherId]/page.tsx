@@ -219,14 +219,12 @@ export default function OgretmenDetayPage() {
     ? `/student/requests?branchId=${primaryBranchId}`
     : "/student/requests";
   const talepEntryHref = authToken ? talepPath : loginHrefWithReturn(talepPath);
-  const demoTalepPath = useMemo(() => {
-    const q = new URLSearchParams();
-    q.set("requestKind", "demo");
-    if (primaryBranchId) q.set("branchId", String(primaryBranchId));
-    if (teacherId) q.set("teacherId", teacherId);
-    if (teacher?.display_name) q.set("teacherName", teacher.display_name);
-    return `/student/requests?${q.toString()}`;
-  }, [primaryBranchId, teacherId, teacher?.display_name]);
+  const demoTalepQuery = new URLSearchParams();
+  demoTalepQuery.set("requestKind", "demo");
+  if (primaryBranchId) demoTalepQuery.set("branchId", String(primaryBranchId));
+  if (teacherId) demoTalepQuery.set("teacherId", teacherId);
+  if (teacher?.display_name) demoTalepQuery.set("teacherName", teacher.display_name);
+  const demoTalepPath = `/student/requests?${demoTalepQuery.toString()}`;
   const demoTalepEntryHref = authToken ? demoTalepPath : loginHrefWithReturn(demoTalepPath);
 
   useEffect(() => {

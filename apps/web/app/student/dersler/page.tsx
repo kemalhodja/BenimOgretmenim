@@ -285,6 +285,39 @@ export default function StudentDerslerPage() {
                       Talep detayına git
                     </Link>
                   )}
+                  {selected.request_kind === "demo" && selected.status === "completed" && (
+                    <div className="mt-3 rounded-lg border border-brand-100 bg-white p-3">
+                      <div className="text-xs font-semibold text-paper-900">
+                        Demo sonrası önerilen adımlar
+                      </div>
+                      <p className="mt-1 text-xs text-paper-800/65">
+                        Öğretmenle devam paketi için talep sohbetinden ilerleyin veya farklı seçenekleri
+                        karşılaştırın.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {selected.source_request_id && (
+                          <Link
+                            href={`/student/requests/${selected.source_request_id}`}
+                            className="rounded-lg bg-brand-800 px-2.5 py-1.5 text-xs font-medium text-white"
+                          >
+                            Paket için konuş
+                          </Link>
+                        )}
+                        <Link
+                          href="/ogretmenler"
+                          className="rounded-lg border border-paper-300 bg-white px-2.5 py-1.5 text-xs font-medium text-paper-900"
+                        >
+                          Başka öğretmen dene
+                        </Link>
+                        <Link
+                          href="/student/odev-sor"
+                          className="rounded-lg border border-paper-300 bg-white px-2.5 py-1.5 text-xs font-medium text-paper-900"
+                        >
+                          Ödev desteği al
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 space-y-2">

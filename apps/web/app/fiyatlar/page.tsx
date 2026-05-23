@@ -10,12 +10,12 @@ import { publicSiteUrl } from "../lib/siteUrl";
 const fiyatlarUrl = `${publicSiteUrl()}/fiyatlar`;
 
 export const metadata: Metadata = {
-  title: "Öğretmen abonelik fiyatları",
-  description: "Öğretmen abonelik planları ve güncel fiyatlar.",
+  title: "Abonelik fiyatları",
+  description: "Öğretmen abonelik planları, öğrenci demo ders akışı ve güncel fiyatlar.",
   alternates: { canonical: fiyatlarUrl },
   openGraph: {
-    title: "Öğretmen abonelik fiyatları · BenimÖğretmenim",
-    description: "Plan süreleri, güncel tutarlar ve ödeme seçenekleri.",
+    title: "Abonelik fiyatları · BenimÖğretmenim",
+    description: "Demo ders, öğretmen aboneliği, plan süreleri ve ödeme seçenekleri.",
     url: fiyatlarUrl,
     locale: "tr_TR",
     type: "website",
@@ -68,8 +68,31 @@ export default async function FiyatlarPage() {
           Abonelik fiyatları
         </h1>
         <p className="mt-2 max-w-xl text-sm text-paper-800/75">
-          Ücretsiz planda sınırlı teklif; abonelikte sınırsız. Ödeme öğretmen panelinden.
+          Öğrenciler öğretmen profillerinden demo ders talebi gönderebilir. Öğretmenler için ücretsiz
+          planda sınırlı teklif; abonelikte sınırsız görünürlük ve teklif akışı vardır.
         </p>
+
+        <div className="mt-8 rounded-xl border border-brand-200 bg-brand-50 p-5">
+          <h2 className="text-base font-semibold text-brand-950">Öğrenci için demo ders akışı</h2>
+          <p className="mt-2 text-sm text-brand-900">
+            Öğrenci öğretmen seçer, demo talebi gönderir, öğretmen yanıtlar ve kabul sonrası 30 dakikalık
+            online demo oturumu oluşur. Demo sonrası paket, kurs veya ödev desteğine geçilebilir.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/ogretmenler"
+              className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+            >
+              Öğretmen seç ve demo talep et
+            </Link>
+            <Link
+              href="/student/requests"
+              className="rounded-xl border border-brand-200 bg-white px-4 py-2 text-sm font-medium text-brand-900 hover:bg-brand-100"
+            >
+              Taleplerim
+            </Link>
+          </div>
+        </div>
 
         {loadError && (
           <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

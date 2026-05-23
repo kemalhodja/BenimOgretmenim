@@ -10,6 +10,38 @@ function meetingBase(): string {
   return (process.env.MEETING_BASE_URL ?? "https://meet.jit.si").replace(/\/$/, "");
 }
 
+async function notifyStudentAndGuardians({
+  client,
+  studentId,
+  title,
+  body,
+  payload,
+}: {
+  client: Pick<typeof pool, "query">;
+  studentId: string;
+  title: string;
+  body: string;
+  payload: Record<string, unknown>;
+}) {
+  await client.query(
+    `insert into parent_notifications (
+       recipient_user_id, student_id, snapshot_id, channel,
+       title, body, payload_jsonb, delivery_status, sent_at
+     )
+     select recipient_user_id, $1, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
+     from (
+       select st.user_id as recipient_user_id
+       from students st
+       where st.id = $1
+       union
+       select sg.guardian_user_id as recipient_user_id
+       from student_guardians sg
+       where sg.student_id = $1
+     ) recipients`,
+    [studentId, title, body, JSON.stringify(payload)],
+  );
+}
+
 /** Öğretmen: aktif paketler + öğrenciler */
 packages.get("/teacher/mine", requireAuth, async (c) => {
   const userId = c.get("userId");
@@ -143,24 +175,55 @@ packages.post("/:packageId/sessions/:sessionId/schedule", requireAuth, async (c)
   const end = new Date(start.getTime() + duration * 60_000);
   const meet = `${meetingBase()}/bm-${sessionId}`;
 
-  const r = await pool.query(
-    `update lesson_sessions ls
-     set scheduled_start = $4,
-         scheduled_end = $5,
-         duration_minutes = $6,
-         meeting_url = $7,
-         updated_at = now()
-     from lesson_packages lp
-     where ls.id = $1
-       and ls.package_id = $2
-       and lp.id = $2
-       and lp.teacher_id = $3
-     returning ls.id, ls.scheduled_start, ls.scheduled_end, ls.duration_minutes, ls.meeting_url`,
-    [sessionId, packageId, teacherId, start, end, duration, meet],
-  );
-  if (!r.rowCount) return c.json({ error: "not_found_or_forbidden" }, 404);
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const r = await client.query(
+      `update lesson_sessions ls
+       set scheduled_start = $4,
+           scheduled_end = $5,
+           duration_minutes = $6,
+           meeting_url = $7,
+           updated_at = now()
+       from lesson_packages lp
+       where ls.id = $1
+         and ls.package_id = $2
+         and lp.id = $2
+         and lp.teacher_id = $3
+       returning ls.id, ls.scheduled_start, ls.scheduled_end, ls.duration_minutes, ls.meeting_url,
+                 lp.student_id, lp.request_kind`,
+      [sessionId, packageId, teacherId, start, end, duration, meet],
+    );
+    if (!r.rowCount) {
+      await client.query("rollback");
+      return c.json({ error: "not_found_or_forbidden" }, 404);
+    }
 
-  return c.json({ session: r.rows[0] });
+    const row = r.rows[0] as {
+      id: string;
+      student_id: string;
+      request_kind: string | null;
+      scheduled_start: string;
+      duration_minutes: number;
+      meeting_url: string;
+    };
+    const label = row.request_kind === "demo" ? "Demo ders" : "Ders";
+    await notifyStudentAndGuardians({
+      client,
+      studentId: row.student_id,
+      title: `${label} planlandı`,
+      body: `${label} ${new Date(start).toLocaleString("tr-TR")} için planlandı. Meeting linki dersler ekranında hazır.`,
+      payload: { kind: "lesson_scheduled", packageId, sessionId },
+    });
+
+    await client.query("commit");
+    return c.json({ session: r.rows[0] });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 });
 
 /** Öğretmen: oturumu tamamla; yorum/değerlendirme akışını açar. */
@@ -187,7 +250,8 @@ packages.post("/:packageId/sessions/:sessionId/complete", requireAuth, async (c)
     await client.query("begin");
 
     const row = await client.query(
-      `select ls.id, ls.status, lp.id as package_id, lp.total_lessons, lp.completed_lessons
+      `select ls.id, ls.status, lp.id as package_id, lp.total_lessons, lp.completed_lessons,
+              lp.student_id, lp.request_kind
        from lesson_sessions ls
        join lesson_packages lp on lp.id = ls.package_id
        where ls.id = $1 and lp.id = $2 and lp.teacher_id = $3
@@ -203,6 +267,8 @@ packages.post("/:packageId/sessions/:sessionId/complete", requireAuth, async (c)
       status: string;
       total_lessons: number;
       completed_lessons: number;
+      student_id: string;
+      request_kind: string | null;
     };
     if (current.status === "completed") {
       await client.query("commit");
@@ -233,6 +299,18 @@ packages.post("/:packageId/sessions/:sessionId/complete", requireAuth, async (c)
        where id = $1`,
       [packageId, nextCompleted],
     );
+
+    const label = current.request_kind === "demo" ? "Demo ders" : "Ders";
+    await notifyStudentAndGuardians({
+      client,
+      studentId: current.student_id,
+      title: `${label} tamamlandı`,
+      body:
+        current.request_kind === "demo"
+          ? "Demo ders tamamlandı. Öğretmene yorum bırakabilir, devam paketi için talep sohbetinden ilerleyebilirsiniz."
+          : "Ders tamamlandı. Öğretmene yorum bırakabilir ve gelişim özetinizi takip edebilirsiniz.",
+      payload: { kind: "lesson_completed", packageId, sessionId },
+    });
 
     await client.query("commit");
     return c.json({ ok: true, session: session.rows[0] });

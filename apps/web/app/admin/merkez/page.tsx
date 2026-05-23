@@ -1,9 +1,23 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { apiFetch } from "../../lib/api";
 import { useRequireAdmin } from "../useRequireAdmin";
 
 type Item = { href: string; title: string; desc: string };
+type Overview = {
+  counts: {
+    openDemoRequests: number;
+    unansweredDemoRequests: number;
+    pendingTeacherVerification: number;
+    weakTeacherProfiles: number;
+    pendingBankPayments: number;
+    pendingSubscriptionPayments: number;
+    parentNotificationsUnread: number;
+    homeworkPostsActive: number;
+  };
+};
 
 const SECTIONS: { title: string; items: Item[] }[] = [
   {
@@ -49,7 +63,27 @@ const SECTIONS: { title: string; items: Item[] }[] = [
 
 export default function AdminMerkezPage() {
   const token = useRequireAdmin();
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    apiFetch<Overview>("/api/admin/overview", { token })
+      .then((r) => {
+        if (!cancelled) setOverview(r);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "overview_failed");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
   if (!token) return null;
+
+  const c = overview?.counts;
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -65,6 +99,40 @@ export default function AdminMerkezPage() {
           Tüm yönetim modülleri ve veri görünümleri. İşlemler API üzerinden audit edilir; üretimde{" "}
           <span className="font-mono">ADMIN_API_SECRET</span> önerilir.
         </p>
+
+        {error ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            Operasyon özeti yüklenemedi: {error}
+          </div>
+        ) : null}
+
+        {c ? (
+          <section className="mt-8">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-paper-800/55">
+              Kritik operasyon kuyruğu
+            </h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["Açık demo", c.openDemoRequests, "Yanıtsız: " + c.unansweredDemoRequests, "/admin/requests"],
+                ["Doğrulama", c.pendingTeacherVerification, "Öğretmen bekliyor", "/admin/teachers"],
+                ["Zayıf profil", c.weakTeacherProfiles, "Kalite skoru 40 altı", "/admin/teachers"],
+                ["Ödeme bekliyor", c.pendingBankPayments + c.pendingSubscriptionPayments, "Havale + abonelik", "/admin/payments"],
+                ["Okunmamış bildirim", c.parentNotificationsUnread, "Veli/öğrenci in-app", "/admin/veri?k=notifications"],
+                ["Açık ödev", c.homeworkPostsActive, "Ödev/soru operasyonu", "/admin/homework"],
+              ].map(([label, value, hint, href]) => (
+                <Link
+                  key={String(label)}
+                  href={String(href)}
+                  className="rounded-xl border border-paper-200 bg-white p-4 transition hover:border-brand-200 hover:bg-paper-50"
+                >
+                  <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">{label}</div>
+                  <div className="mt-1 text-2xl font-semibold tabular-nums text-paper-900">{value}</div>
+                  <div className="mt-1 text-xs text-paper-800/55">{hint}</div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="mt-8 space-y-10">
           {SECTIONS.map((sec) => (

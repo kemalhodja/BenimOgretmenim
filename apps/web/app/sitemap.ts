@@ -4,6 +4,7 @@ import { publicSiteUrl } from "./lib/siteUrl";
 
 const MAX_TEACHER_SITEMAP_URLS = 2_000;
 const MAX_COURSE_SITEMAP_URLS = 2_000;
+const MAX_SEO_LANDING_URLS = 600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = publicSiteUrl();
@@ -85,5 +86,51 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // yukarıdakiyle aynı: API yoksa atlanır
   }
 
-  return [...staticPaths, ...teacherEntries, ...courseEntries];
+  const landingEntries: MetadataRoute.Sitemap = [];
+  try {
+    const api = getServerApiBaseUrl();
+    const [citiesRes, branchesRes] = await Promise.all([
+      fetch(`${api}/v1/meta/cities`, { headers: { accept: "application/json" }, next: { revalidate: 3600 } }),
+      fetch(`${api}/v1/meta/branches`, { headers: { accept: "application/json" }, next: { revalidate: 3600 } }),
+    ]);
+    if (citiesRes.ok && branchesRes.ok) {
+      const [citiesBody, branchesBody] = (await Promise.all([
+        citiesRes.json(),
+        branchesRes.json(),
+      ])) as [
+        { cities?: Array<{ slug: string }> },
+        { branches?: Array<{ id: number; parent_id: number | null; slug: string }> },
+      ];
+      const cities = (citiesBody.cities ?? []).slice(0, 20);
+      const branches = branchesBody.branches ?? [];
+      const hasChild = new Set(branches.filter((b) => b.parent_id != null).map((b) => b.parent_id));
+      const leafBranches = branches.filter((b) => !hasChild.has(b.id)).slice(0, 30);
+      const exams = ["lgs", "yks"];
+
+      for (const city of cities) {
+        for (const branch of leafBranches) {
+          if (landingEntries.length >= MAX_SEO_LANDING_URLS) break;
+          landingEntries.push({
+            url: `${base}/ozel-ders/${city.slug}/${branch.slug}`,
+            lastModified: new Date(),
+            changeFrequency: "weekly",
+            priority: 0.58,
+          });
+          for (const exam of exams) {
+            if (landingEntries.length >= MAX_SEO_LANDING_URLS) break;
+            landingEntries.push({
+              url: `${base}/ozel-ders/${city.slug}/${branch.slug}/${exam}`,
+              lastModified: new Date(),
+              changeFrequency: "weekly",
+              priority: 0.55,
+            });
+          }
+        }
+      }
+    }
+  } catch {
+    // SEO landing URL’leri opsiyonel; build anında API yoksa atlanır.
+  }
+
+  return [...staticPaths, ...teacherEntries, ...courseEntries, ...landingEntries];
 }

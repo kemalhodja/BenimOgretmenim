@@ -49,6 +49,18 @@ type HoldsResponse = {
   activeHoldMinor: number;
 };
 
+type ProgressSnapshot = {
+  snapshot_id: string;
+  narrative_tr: string;
+  metrics_jsonb: unknown;
+  created_at: string;
+  package_id: string;
+  teacher_id: string;
+  teacher_display_name: string;
+  lesson_session_id: string;
+  session_index: number;
+};
+
 function tl(minor: number): string {
   return (minor / 100).toFixed(2);
 }
@@ -78,6 +90,7 @@ function StudentPanelPageInner() {
   const [ok, setOk] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
+  const [progressSnapshots, setProgressSnapshots] = useState<ProgressSnapshot[]>([]);
   const [notifBusyId, setNotifBusyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -90,13 +103,16 @@ function StudentPanelPageInner() {
   }, [router, pathWithQuery]);
 
   const load = useCallback(async (t: string) => {
-    const [s, w, l, h, n] = await Promise.all([
+    const [s, w, l, h, n, p] = await Promise.all([
       apiFetch<SubMe>("/v1/student-platform/subscription/me", { token: t }),
       apiFetch<Wallet>("/v1/wallet/me", { token: t }),
       apiFetch<{ entries: LedgerEntry[] }>("/v1/wallet/ledger?limit=25", { token: t }),
       apiFetch<HoldsResponse>("/v1/wallet/holds?limit=50", { token: t }),
       apiFetch<{ notifications: InAppNotification[] }>("/v1/notifications?limit=8", { token: t }).catch(
         () => ({ notifications: [] as InAppNotification[] }),
+      ),
+      apiFetch<{ snapshots: ProgressSnapshot[] }>("/v1/lesson-sessions/progress/mine", { token: t }).catch(
+        () => ({ snapshots: [] as ProgressSnapshot[] }),
       ),
     ]);
     setSub(s);
@@ -105,6 +121,7 @@ function StudentPanelPageInner() {
     setActiveHoldMinor(h.activeHoldMinor ?? 0);
     setHolds(h.holds ?? []);
     setNotifications(n.notifications);
+    setProgressSnapshots(p.snapshots);
   }, []);
 
   async function markNotificationRead(id: string) {
@@ -124,17 +141,19 @@ function StudentPanelPageInner() {
     }
   }
 
-  function homeworkNotifHref(payload: unknown): string | null {
+  function notificationHref(payload: unknown): string | null {
     if (!payload || typeof payload !== "object") return null;
-    const o = payload as { kind?: string; homeworkPostId?: string };
-    if (!o.homeworkPostId) return null;
-    if (
+    const o = payload as { kind?: string; homeworkPostId?: string; lessonSessionId?: string };
+    const isHomeworkKind =
       o.kind === "homework_claimed" ||
       o.kind === "homework_answered" ||
       o.kind === "homework_rewarded_student" ||
-      o.kind === "homework_teacher_returned"
-    ) {
+      o.kind === "homework_teacher_returned";
+    if (o.homeworkPostId && isHomeworkKind) {
       return `/student/odev-sor/${o.homeworkPostId}`;
+    }
+    if (o.kind === "lesson_scheduled" || o.kind === "lesson_completed" || o.lessonSessionId) {
+      return "/student/dersler";
     }
     return null;
   }
@@ -272,6 +291,31 @@ function StudentPanelPageInner() {
           </div>
         )}
 
+        {progressSnapshots.length > 0 && (
+          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-paper-900">Gelişim özeti</h2>
+            <p className="mt-1 text-xs text-paper-800/55">
+              Öğretmenlerin ders sonunda girdiği kısa değerlendirmeler ve sonraki adımlar.
+            </p>
+            <ul className="mt-4 space-y-3">
+              {progressSnapshots.slice(0, 3).map((s) => (
+                <li key={s.snapshot_id} className="rounded-xl border border-paper-100 bg-paper-50 px-3 py-2 text-sm">
+                  <div className="font-medium text-paper-900">
+                    {s.teacher_display_name} · ders #{s.session_index}
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-paper-800">{s.narrative_tr}</p>
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-paper-800/55">
+                    <span>{new Date(s.created_at).toLocaleString("tr-TR")}</span>
+                    <Link href="/student/dersler" className="font-medium text-brand-800 underline">
+                      Derslere git
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {notifications.length > 0 && (
           <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-paper-900">Bildirimler</h2>
@@ -279,7 +323,7 @@ function StudentPanelPageInner() {
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;
-                const href = homeworkNotifHref(n.payload_jsonb);
+                const href = notificationHref(n.payload_jsonb);
                 return (
                   <li
                     key={n.id}
@@ -291,7 +335,7 @@ function StudentPanelPageInner() {
                     <p className="mt-1 text-paper-800">{n.body}</p>
                     {href ? (
                       <Link href={href} className="mt-2 inline-block text-xs font-medium text-brand-800 underline">
-                        Ödev kaydına git
+                        Detaya git
                       </Link>
                     ) : null}
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-paper-800/55">

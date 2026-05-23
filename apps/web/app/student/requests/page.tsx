@@ -34,6 +34,10 @@ export default function StudentRequestsPage() {
   const [branchId, setBranchId] = useState<number | "">("");
   const [note, setNote] = useState("");
   const [topic, setTopic] = useState("");
+  const [gradeLevel, setGradeLevel] = useState("");
+  const [examTarget, setExamTarget] = useState("");
+  const [preferredTimes, setPreferredTimes] = useState("");
+  const [contactPreference, setContactPreference] = useState("Platform mesajları");
   const [requestKind, setRequestKind] = useState<"regular" | "demo">("regular");
   const [targetTeacherId, setTargetTeacherId] = useState<string | null>(null);
   const [targetTeacherName, setTargetTeacherName] = useState<string | null>(null);
@@ -77,6 +81,7 @@ export default function StudentRequestsPage() {
     setTargetTeacherId(teacherId);
     setTargetTeacherName(searchParams.get("teacherName"));
     setTopic((prev) => prev || "Demo ders");
+    setPreferredTimes((prev) => prev || "Hafta içi 18:00-20:00, hafta sonu uygun");
     setNote((prev) => prev || "Demo ders için uygun gün ve saatleri konuşmak istiyorum.");
   }, [searchParams]);
 
@@ -115,6 +120,13 @@ export default function StudentRequestsPage() {
       if (requestKind === "demo" && !targetTeacherId) {
         throw new Error("Demo ders için öğretmen bilgisi eksik.");
       }
+      const structuredDetails = [
+        gradeLevel.trim() ? `Sınıf/seviye: ${gradeLevel.trim()}` : null,
+        examTarget.trim() ? `Hedef: ${examTarget.trim()}` : null,
+        preferredTimes.trim() ? `Uygun zaman: ${preferredTimes.trim()}` : null,
+        contactPreference.trim() ? `İletişim tercihi: ${contactPreference.trim()}` : null,
+        note.trim() ? `Not: ${note.trim()}` : null,
+      ].filter(Boolean);
       await apiFetch("/v1/lesson-requests", {
         method: "POST",
         token,
@@ -124,13 +136,16 @@ export default function StudentRequestsPage() {
           requestKind,
           targetTeacherId,
           deliveryMode: "online",
-          availability: { pazartesi: ["18:00-20:00"] },
-          note: note || null,
+          availability: preferredTimes.trim() ? { preferredTimes: [preferredTimes.trim()] } : {},
+          note: structuredDetails.length > 0 ? structuredDetails.join("\n") : null,
           imageUrls: [],
         }),
       });
       setOk(requestKind === "demo" ? "Demo ders talebi öğretmene gönderildi." : "Talep oluşturuldu.");
       setNote("");
+      setGradeLevel("");
+      setExamTarget("");
+      setPreferredTimes("");
       await refresh(token);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "create_failed";
@@ -181,7 +196,7 @@ export default function StudentRequestsPage() {
               {requestKind === "demo" ? "Demo ders talebi" : "Yeni talep"}
             </h2>
             <p className="mt-1 text-xs text-paper-800/55">
-              Medya için{" "}
+              Sınıf, hedef ve uygun zaman bilgisi öğretmenin hızlı yanıt vermesini sağlar. Medya için{" "}
               <Link className="font-medium text-brand-800 underline-offset-4 hover:underline" href="/student/odev-sor">
                 Ödev sorusu
               </Link>
@@ -222,6 +237,51 @@ export default function StudentRequestsPage() {
                       {b.name}
                     </option>
                   ))}
+                </select>
+              </label>
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="block">
+                  <div className="mb-1 text-sm font-medium text-paper-900">Sınıf / seviye</div>
+                  <input
+                    value={gradeLevel}
+                    onChange={(e) => setGradeLevel(e.target.value)}
+                    className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                    placeholder="Örn. 8. sınıf, 11. sınıf…"
+                  />
+                </label>
+
+                <label className="block">
+                  <div className="mb-1 text-sm font-medium text-paper-900">Hedef</div>
+                  <input
+                    value={examTarget}
+                    onChange={(e) => setExamTarget(e.target.value)}
+                    className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                    placeholder="Örn. LGS, YKS, okul yazılısı…"
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <div className="mb-1 text-sm font-medium text-paper-900">Uygun zaman</div>
+                <input
+                  value={preferredTimes}
+                  onChange={(e) => setPreferredTimes(e.target.value)}
+                  className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                  placeholder="Örn. Hafta içi 18:00 sonrası, pazar öğleden sonra…"
+                />
+              </label>
+
+              <label className="block">
+                <div className="mb-1 text-sm font-medium text-paper-900">İletişim tercihi</div>
+                <select
+                  value={contactPreference}
+                  onChange={(e) => setContactPreference(e.target.value)}
+                  className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                >
+                  <option>Platform mesajları</option>
+                  <option>Önce demo saatini netleştirelim</option>
+                  <option>Veli ile planlama yapılsın</option>
                 </select>
               </label>
 

@@ -53,6 +53,9 @@ export default function TeacherDerslerPage() {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [mastery, setMastery] = useState<Record<string, number>>({});
+  const [focusTopic, setFocusTopic] = useState<Record<string, string>>({});
+  const [nextStepNote, setNextStepNote] = useState<Record<string, string>>({});
 
   const [whenLocal, setWhenLocal] = useState<string>("");
   const [duration, setDuration] = useState<number>(60);
@@ -187,6 +190,66 @@ export default function TeacherDerslerPage() {
       }
       if (msg.includes("[403]")) {
         setError("Bu oturumu tamamlama izniniz yok.");
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function submitEvaluation(sessionId: string) {
+    if (!token) return;
+    const m = mastery[sessionId];
+    const topic = focusTopic[sessionId]?.trim() ?? "";
+    if (!m || m < 1 || m > 5) {
+      setError("Ders değerlendirmesi için 1-5 arası seviye seçin.");
+      return;
+    }
+    if (topic.length < 1) {
+      setError("Odak konu yazın.");
+      return;
+    }
+    setBusy(sessionId);
+    setError(null);
+    setOk(null);
+    try {
+      await apiFetch(`/v1/lesson-sessions/${sessionId}/evaluation`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          answers: {
+            masteryLikert: m,
+            focusTopic: topic,
+            nextStepNote: nextStepNote[sessionId]?.trim() || undefined,
+          },
+        }),
+      });
+      setOk("Ders sonu gelişim özeti kaydedildi; öğrenci/veli bildirimleri oluşturuldu.");
+      setMastery((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+      setFocusTopic((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+      setNextStepNote((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "evaluation_failed";
+      if (msg.includes("evaluation_already_exists") || msg.includes("[409]")) {
+        setError("Bu oturum için ders sonu değerlendirmesi daha önce kaydedilmiş.");
+      } else if (msg.includes("[401]")) {
+        clearToken();
+        router.replace(loginHrefWithReturn(pathname));
+      } else if (msg.includes("[403]")) {
+        setError("Bu değerlendirmeyi kaydetme izniniz yok.");
+      } else {
+        setError(msg);
       }
     } finally {
       setBusy(null);
@@ -354,6 +417,68 @@ export default function TeacherDerslerPage() {
                           >
                             {busy === s.id ? "…" : "Dersi tamamladım"}
                           </button>
+                        )}
+                        {s.status === "completed" && (
+                          <div className="mt-3 rounded-xl border border-paper-100 bg-white p-3">
+                            <div className="text-xs font-semibold text-paper-900">
+                              Ders sonu mini değerlendirme
+                            </div>
+                            <p className="mt-1 text-xs text-paper-800/55">
+                              Öğrenci panelinde gelişim özeti ve veli bildirimi olarak görünür.
+                            </p>
+                            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-5">
+                              <label className="block sm:col-span-1">
+                                <div className="mb-1 text-xs font-medium text-paper-800">Seviye</div>
+                                <select
+                                  value={mastery[s.id] ?? ""}
+                                  onChange={(e) =>
+                                    setMastery((prev) => ({
+                                      ...prev,
+                                      [s.id]: Number(e.target.value),
+                                    }))
+                                  }
+                                  className="w-full rounded-lg border border-paper-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400"
+                                >
+                                  <option value="">Seç</option>
+                                  {[1, 2, 3, 4, 5].map((n) => (
+                                    <option key={n} value={n}>
+                                      {n}/5
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="block sm:col-span-2">
+                                <div className="mb-1 text-xs font-medium text-paper-800">Odak konu</div>
+                                <input
+                                  value={focusTopic[s.id] ?? ""}
+                                  onChange={(e) =>
+                                    setFocusTopic((prev) => ({ ...prev, [s.id]: e.target.value }))
+                                  }
+                                  className="w-full rounded-lg border border-paper-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400"
+                                  placeholder="Örn. Kesir problemleri"
+                                />
+                              </label>
+                              <label className="block sm:col-span-2">
+                                <div className="mb-1 text-xs font-medium text-paper-800">Sonraki adım</div>
+                                <input
+                                  value={nextStepNote[s.id] ?? ""}
+                                  onChange={(e) =>
+                                    setNextStepNote((prev) => ({ ...prev, [s.id]: e.target.value }))
+                                  }
+                                  className="w-full rounded-lg border border-paper-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400"
+                                  placeholder="Ödev / tekrar önerisi"
+                                />
+                              </label>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={busy === s.id}
+                              onClick={() => void submitEvaluation(s.id)}
+                              className="mt-3 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                            >
+                              {busy === s.id ? "…" : "Gelişim özetini kaydet"}
+                            </button>
+                          </div>
                         )}
                         <div className="mt-1 text-[11px] font-mono text-paper-800/45">
                           {busy === s.id ? "…" : s.id}

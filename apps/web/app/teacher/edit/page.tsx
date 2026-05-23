@@ -8,6 +8,7 @@ import { clearToken, getToken } from "../../lib/auth";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 type City = { id: number; name: string; slug: string };
+type District = { id: number; city_id: number; name: string; slug: string };
 
 type TeacherMe = {
   teacher: {
@@ -23,6 +24,22 @@ type TeacherMe = {
     availability: Record<string, unknown>;
     branches: Array<{ branchId: number; isPrimary: boolean }>;
   };
+  checklist: Record<string, boolean>;
+  completionScore: number;
+};
+
+const checklistLabels: Record<string, string> = {
+  branchesSelected: "En az bir branş seç",
+  citySet: "Şehir bilgisini ekle",
+  districtSet: "İlçe bilgisini ekle",
+  availabilitySet: "Müsaitlik saatlerini doldur",
+  bioFilled: "En az 40 karakterlik biyografi yaz",
+  videoLinked: "Tanıtım videosu ekle",
+  instagramLinked: "Instagram/profil linki ekle",
+  platformLinksAdded: "Ders platformu linki ekle",
+  examDocsAdded: "Örnek doküman veya başarı belgesi ekle",
+  onboardingInterviewDone: "AI mülakat/onboarding tamamla",
+  curriculumStarted: "Müfredat planı başlat",
 };
 
 export default function TeacherEditPage() {
@@ -31,6 +48,7 @@ export default function TeacherEditPage() {
   const [token, setToken] = useState<string | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [cities, setCities] = useState<City[]>([]);
+  const [districts, setDistricts] = useState<District[]>([]);
 
   const [bioRaw, setBioRaw] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
@@ -42,10 +60,13 @@ export default function TeacherEditPage() {
     Array<{ title: string; url: string; kind?: string }>
   >([]);
   const [cityId, setCityId] = useState<number | "">("");
+  const [districtId, setDistrictId] = useState<number | "">("");
   const [availability, setAvailability] = useState<string>("{}");
 
   const [selectedBranchIds, setSelectedBranchIds] = useState<number[]>([]);
   const [primaryBranchId, setPrimaryBranchId] = useState<number | "">("");
+  const [completionScore, setCompletionScore] = useState(0);
+  const [checklist, setChecklist] = useState<Record<string, boolean>>({});
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +98,10 @@ export default function TeacherEditPage() {
       setPlatformLinks(m.teacher.platformLinks ?? []);
       setExamDocs(m.teacher.examDocs ?? []);
       setCityId(m.teacher.cityId ?? "");
+      setDistrictId(m.teacher.districtId ?? "");
       setAvailability(JSON.stringify(m.teacher.availability ?? {}, null, 2));
+      setCompletionScore(m.completionScore ?? 0);
+      setChecklist(m.checklist ?? {});
 
       const ids = (m.teacher.branches ?? []).map((x) => x.branchId);
       setSelectedBranchIds(ids);
@@ -85,6 +109,22 @@ export default function TeacherEditPage() {
       setPrimaryBranchId(prim ?? (ids[0] ?? ""));
     })().catch((e) => setError(e instanceof Error ? e.message : "load_failed"));
   }, [token]);
+
+  useEffect(() => {
+    if (cityId === "") {
+      setDistricts([]);
+      setDistrictId("");
+      return;
+    }
+    apiFetch<{ districts: District[] }>(`/v1/meta/districts?cityId=${cityId}`)
+      .then((r) => {
+        setDistricts(r.districts);
+        setDistrictId((prev) =>
+          prev !== "" && r.districts.some((d) => d.id === prev) ? prev : "",
+        );
+      })
+      .catch(() => setDistricts([]));
+  }, [cityId]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -210,6 +250,7 @@ export default function TeacherEditPage() {
           platformLinks: cleanPlatformLinks,
           examDocs: cleanExamDocs,
           cityId: cityId === "" ? null : cityId,
+          districtId: districtId === "" ? null : districtId,
           availability: availabilityJson,
         }),
       });
@@ -265,6 +306,8 @@ export default function TeacherEditPage() {
 
   if (!token) return null;
 
+  const missingChecklist = Object.entries(checklistLabels).filter(([key]) => !checklist[key]);
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-4xl px-6 py-8">
@@ -284,6 +327,37 @@ export default function TeacherEditPage() {
             {error ?? ok}
           </div>
         )}
+
+        <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-brand-950">Profil kalite puanı</h2>
+              <p className="mt-1 text-sm text-brand-900">
+                Bu puan öğretmen kartlarında güven sinyali olarak kullanılır; eksikleri tamamladıkça görünürlük artar.
+              </p>
+            </div>
+            <div className="text-3xl font-semibold text-brand-900">{completionScore}/100</div>
+          </div>
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
+            <div
+              className="h-full rounded-full bg-brand-700"
+              style={{ width: `${Math.min(100, Math.max(0, completionScore))}%` }}
+            />
+          </div>
+          {missingChecklist.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {missingChecklist.slice(0, 6).map(([key, label]) => (
+                <span key={key} className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-brand-900">
+                  {label}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm font-medium text-brand-900">
+              Profil kalite adımları tamam. Admin doğrulama ve öğrenci yorumları puanı daha da güçlendirir.
+            </p>
+          )}
+        </div>
 
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
@@ -534,6 +608,27 @@ export default function TeacherEditPage() {
                   {cities.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block" data-focus="district">
+                <div className="mb-1 text-sm font-medium text-paper-800">
+                  İlçe
+                </div>
+                <select
+                  value={districtId}
+                  onChange={(e) =>
+                    setDistrictId(e.target.value ? Number(e.target.value) : "")
+                  }
+                  disabled={cityId === "" || districts.length === 0}
+                  className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400 disabled:opacity-50"
+                >
+                  <option value="">Seçiniz</option>
+                  {districts.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
                     </option>
                   ))}
                 </select>

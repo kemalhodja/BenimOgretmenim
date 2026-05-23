@@ -6,13 +6,13 @@ import { publicSiteUrl } from "../lib/siteUrl";
 const kampanyaUrl = `${publicSiteUrl()}/kampanya`;
 
 export const metadata: Metadata = {
-  title: "Kampanya",
-  description: "Öğretmen aboneliği kampanya fiyatları.",
+  title: "Demo ders ve öğretmen aboneliği kampanyası",
+  description: "Demo ders dönüşümü ve öğretmen aboneliği kampanya fiyatları.",
   alternates: { canonical: kampanyaUrl },
   openGraph: {
     type: "website",
-    title: "Abonelik kampanyası · BenimÖğretmenim",
-    description: "Öğretmen aboneliği kampanya paketleri ve kayıt sonrası adımlar.",
+    title: "Demo ders kampanyası · BenimÖğretmenim",
+    description: "Öğretmen aboneliği kampanya paketleri, demo ders dönüşümü ve kayıt sonrası adımlar.",
     url: kampanyaUrl,
     locale: "tr_TR",
   },
@@ -27,8 +27,17 @@ export default function KampanyaPage() {
         <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm">
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Abonelik kampanyası</h1>
           <p className="mt-2 text-paper-800/75">
-            Kayıt sonrası öğretmen panelinde abonelik adımından güncel kampanya paketlerini görürsünüz.
+            BenimÖğretmenim’de öğrenciler önce demo ders talep eder; öğretmenler güçlü profil, hızlı
+            yanıt ve abonelik avantajıyla daha fazla talebe ulaşır.
           </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {["Profilini güçlendir", "Demo talebe yanıt ver", "Pakete dönüştür"].map((x, i) => (
+              <div key={x} className="rounded-xl border border-paper-100 bg-paper-50 p-3">
+                <div className="text-xs font-semibold text-brand-800">Adım {i + 1}</div>
+                <div className="mt-1 text-sm font-medium text-paper-900">{x}</div>
+              </div>
+            ))}
+          </div>
           <div className="mt-5 rounded-xl border border-paper-100 bg-paper-50/80 p-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/65">
               Örnek paketler

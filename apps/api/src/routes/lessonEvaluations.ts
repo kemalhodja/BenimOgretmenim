@@ -88,6 +88,38 @@ lessonEvaluations.get("/my-reviews", requireAuth, async (c) => {
   return c.json({ reviews: r.rows });
 });
 
+/** Öğrenci: ders sonu gelişim özetleri */
+lessonEvaluations.get("/progress/mine", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "student") {
+    return c.json({ error: "forbidden_students_only" }, 403);
+  }
+
+  const r = await pool.query(
+    `select s.id as snapshot_id,
+            s.narrative_tr,
+            s.metrics_jsonb,
+            s.created_at,
+            s.package_id,
+            t.id as teacher_id,
+            u.display_name as teacher_display_name,
+            ls.id as lesson_session_id,
+            ls.session_index
+     from ai_progress_snapshots s
+     join students st on st.id = s.student_id
+     join teachers t on t.id = s.teacher_id
+     join users u on u.id = t.user_id
+     join lesson_session_evaluations e on e.id = s.evaluation_id
+     join lesson_sessions ls on ls.id = e.lesson_session_id
+     where st.user_id = $1
+     order by s.created_at desc
+     limit 8`,
+    [userId],
+  );
+  return c.json({ snapshots: r.rows });
+});
+
 /** Öğrenci: bu oturum için kendi yorumunu getir (yoksa review: null) */
 lessonEvaluations.get("/:lessonSessionId/review", requireAuth, async (c) => {
   const userId = c.get("userId");
