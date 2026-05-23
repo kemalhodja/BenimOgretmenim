@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
@@ -29,12 +29,44 @@ type PastReview = {
   teacher_display_name: string;
 };
 
+type StudentPackage = {
+  id: string;
+  status: string;
+  payment_status: string;
+  total_lessons: number;
+  completed_lessons: number;
+  request_kind?: "regular" | "demo";
+  source_request_id: string | null;
+  created_at: string;
+  teacher_id: string;
+  teacher_display_name: string;
+};
+
+type PackageSession = {
+  id: string;
+  session_index: number;
+  scheduled_start: string | null;
+  scheduled_end: string | null;
+  duration_minutes: number | null;
+  delivery_mode: string;
+  meeting_url: string | null;
+  status: string;
+};
+
+function toLocal(dt: string | null): string {
+  if (!dt) return "Planlanmadı";
+  return new Date(dt).toLocaleString("tr-TR");
+}
+
 export default function StudentDerslerPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const [token, setToken] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ReviewableSession[]>([]);
   const [pastReviews, setPastReviews] = useState<PastReview[]>([]);
+  const [packages, setPackages] = useState<StudentPackage[]>([]);
+  const [selectedPkg, setSelectedPkg] = useState<string | null>(null);
+  const [packageSessions, setPackageSessions] = useState<PackageSession[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -53,17 +85,54 @@ export default function StudentDerslerPage() {
   const load = useCallback(async (t: string) => {
     setError(null);
     setOk(null);
-    const [r, past] = await Promise.all([
+    const [r, past, pkg] = await Promise.all([
       apiFetch<{ sessions: ReviewableSession[] }>("/v1/lesson-sessions/reviewable", {
         token: t,
       }),
       apiFetch<{ reviews: PastReview[] }>("/v1/lesson-sessions/my-reviews", {
         token: t,
       }),
+      apiFetch<{ packages: StudentPackage[] }>("/v1/packages/student/mine", {
+        token: t,
+      }),
     ]);
     setSessions(r.sessions);
     setPastReviews(past.reviews);
+    setPackages(pkg.packages);
   }, []);
+
+  const selected = useMemo(
+    () => packages.find((x) => x.id === selectedPkg) ?? packages[0] ?? null,
+    [packages, selectedPkg],
+  );
+
+  useEffect(() => {
+    if (!selected || selectedPkg) return;
+    setSelectedPkg(selected.id);
+  }, [selected, selectedPkg]);
+
+  const loadPackageSessions = useCallback(async (t: string, packageId: string) => {
+    const r = await apiFetch<{ sessions: PackageSession[] }>(
+      `/v1/packages/${packageId}/sessions`,
+      { token: t },
+    );
+    setPackageSessions(r.sessions);
+  }, []);
+
+  useEffect(() => {
+    if (!token || !selectedPkg) return;
+    loadPackageSessions(token, selectedPkg).catch((e) => {
+      const msg = e instanceof Error ? e.message : "load_package_sessions_failed";
+      setError(msg);
+      if (msg.includes("[401]")) {
+        clearToken();
+        router.replace(loginHrefWithReturn(pathname));
+      }
+      if (msg.includes("[403]")) {
+        setError("Bu ders paketine erişim izniniz yok.");
+      }
+    });
+  }, [token, selectedPkg, loadPackageSessions, router, pathname]);
 
   useEffect(() => {
     if (!token) return;
@@ -133,11 +202,9 @@ export default function StudentDerslerPage() {
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">
-            Tamamlanan dersler · yorum
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Derslerim</h1>
           <p className="mt-1 text-sm text-paper-800/75">
-            Tamamlanan oturumlara yıldız ve kısa yorum bırakın; öğretmen profilinde adınız gizlenerek gösterilir.
+            Demo ve normal derslerinizi, meeting linklerini ve tamamlanan ders yorumlarını buradan takip edin.
           </p>
           <p className="mt-2 text-sm text-paper-800/65">
             Diğer işlemler üst menüden. Ödeme ve bakiye:{" "}
@@ -159,7 +226,107 @@ export default function StudentDerslerPage() {
           </div>
         )}
 
-        <div className="mt-8 space-y-4">
+        <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <section className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-paper-900">Ders paketleri</h2>
+            <p className="mt-1 text-xs text-paper-800/55">
+              Demo dersi kabul ettiğinizde burada 30 dakikalık tek oturum olarak görünür.
+            </p>
+            <div className="mt-4 space-y-2">
+              {packages.length === 0 ? (
+                <div className="text-sm text-paper-800/75">Henüz ders paketi yok.</div>
+              ) : (
+                packages.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setSelectedPkg(p.id)}
+                    className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${
+                      selectedPkg === p.id
+                        ? "border-brand-200 bg-brand-50"
+                        : "border-paper-100 bg-paper-50 hover:bg-paper-100"
+                    }`}
+                  >
+                    <div className="font-medium text-paper-900">
+                      {p.teacher_display_name} · {p.completed_lessons}/{p.total_lessons}
+                    </div>
+                    {p.request_kind === "demo" && (
+                      <div className="mt-1 inline-flex rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                        Demo ders
+                      </div>
+                    )}
+                    <div className="mt-0.5 text-xs text-paper-800/55">
+                      {p.status} · ödeme: {p.payment_status} ·{" "}
+                      {new Date(p.created_at).toLocaleString("tr-TR")}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-paper-900">Oturumlar</h2>
+            {!selected ? (
+              <div className="mt-4 text-sm text-paper-800/75">Bir ders paketi seçin.</div>
+            ) : (
+              <>
+                <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3 text-sm">
+                  <div className="font-medium text-paper-900">{selected.teacher_display_name}</div>
+                  <div className="mt-1 text-xs text-paper-800/75">
+                    {selected.request_kind === "demo" ? "Demo ders" : "Paket"}:{" "}
+                    {selected.completed_lessons}/{selected.total_lessons} · {selected.status}
+                  </div>
+                  {selected.source_request_id && (
+                    <Link
+                      href={`/student/requests/${selected.source_request_id}`}
+                      className="mt-2 inline-block text-xs font-medium text-brand-800 underline"
+                    >
+                      Talep detayına git
+                    </Link>
+                  )}
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {packageSessions.length === 0 ? (
+                    <div className="text-sm text-paper-800/75">Oturum yok.</div>
+                  ) : (
+                    packageSessions.map((s) => (
+                      <div
+                        key={s.id}
+                        className="rounded-xl border border-paper-100 bg-paper-50 px-3 py-2 text-sm"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="font-medium text-paper-900">
+                            Ders #{s.session_index} · {s.status}
+                          </div>
+                          <div className="text-xs text-paper-800/55">
+                            {toLocal(s.scheduled_start)}
+                          </div>
+                        </div>
+                        <div className="mt-1 text-xs text-paper-800/75">
+                          {s.delivery_mode} · süre: {s.duration_minutes ?? "—"} dk
+                        </div>
+                        {s.meeting_url && (
+                          <a
+                            href={s.meeting_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 inline-block text-xs font-medium text-brand-800 underline"
+                          >
+                            Meeting linkini aç
+                          </a>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+
+        <div className="mt-10 space-y-4">
           <h2 className="text-base font-semibold text-paper-900">Yorum bekleyen dersler</h2>
           {sessions.length === 0 ? (
             <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75 shadow-sm">

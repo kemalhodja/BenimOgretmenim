@@ -13,6 +13,10 @@ type Branch = { id: number; parent_id: number | null; name: string; slug: string
 type MyRequest = {
   id: string;
   status: string;
+  request_kind?: "regular" | "demo";
+  target_teacher_id: string | null;
+  target_teacher_display_name: string | null;
+  topic_text: string | null;
   branch_id: number;
   created_at: string;
   offers_count: number;
@@ -204,13 +208,24 @@ export default function StudentRequestDetailPage() {
             ← Taleplerim
           </Link>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight text-paper-900">
-            Talep ve teklifler
+            {summary?.request_kind === "demo" ? "Demo talebi ve teklifler" : "Talep ve teklifler"}
           </h1>
           {summary && (
             <p className="mt-1 text-sm text-paper-800/75">
               {branchName} · durum:{" "}
               <span className="font-medium">{requestStatusTr(summary.status)}</span>
             </p>
+          )}
+          {summary?.request_kind === "demo" && (
+            <p className="mt-2 text-sm text-brand-900">
+              Demo ders talebi
+              {summary.target_teacher_display_name
+                ? ` · Öğretmen: ${summary.target_teacher_display_name}`
+                : ""}
+            </p>
+          )}
+          {summary?.topic_text && (
+            <p className="mt-1 text-sm text-paper-800/65">Konu: {summary.topic_text}</p>
           )}
           <p className="mt-2 text-sm text-paper-800/65">
             Diğer sayfalar üst menüden. Ödeme ve bakiye:{" "}

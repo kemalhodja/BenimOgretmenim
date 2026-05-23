@@ -12,6 +12,10 @@ type Branch = { id: number; parent_id: number | null; name: string; slug: string
 type MyRequest = {
   id: string;
   status: string;
+  request_kind?: "regular" | "demo";
+  target_teacher_id: string | null;
+  target_teacher_display_name: string | null;
+  topic_text: string | null;
   branch_id: number;
   city_id: number | null;
   district_id: number | null;
@@ -30,6 +34,9 @@ export default function StudentRequestsPage() {
   const [branchId, setBranchId] = useState<number | "">("");
   const [note, setNote] = useState("");
   const [topic, setTopic] = useState("");
+  const [requestKind, setRequestKind] = useState<"regular" | "demo">("regular");
+  const [targetTeacherId, setTargetTeacherId] = useState<string | null>(null);
+  const [targetTeacherName, setTargetTeacherName] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -60,6 +67,17 @@ export default function StudentRequestsPage() {
     const n = Number(raw);
     if (!Number.isFinite(n) || n <= 0) return;
     setBranchId((prev) => (prev === "" ? n : prev));
+  }, [searchParams]);
+
+  useEffect(() => {
+    const kind = searchParams.get("requestKind") ?? searchParams.get("kind");
+    const teacherId = searchParams.get("teacherId");
+    if (kind !== "demo" || !teacherId) return;
+    setRequestKind("demo");
+    setTargetTeacherId(teacherId);
+    setTargetTeacherName(searchParams.get("teacherName"));
+    setTopic((prev) => prev || "Demo ders");
+    setNote((prev) => prev || "Demo ders için uygun gün ve saatleri konuşmak istiyorum.");
   }, [searchParams]);
 
   async function refresh(t: string) {
@@ -94,19 +112,24 @@ export default function StudentRequestsPage() {
     try {
       if (branchId === "") throw new Error("Branş seçin");
       if (topic.trim().length < 2) throw new Error("Ders konusu en az 2 karakter olmalı (zorunlu).");
+      if (requestKind === "demo" && !targetTeacherId) {
+        throw new Error("Demo ders için öğretmen bilgisi eksik.");
+      }
       await apiFetch("/v1/lesson-requests", {
         method: "POST",
         token,
         body: JSON.stringify({
           branchId,
           topic: topic.trim(),
+          requestKind,
+          targetTeacherId,
           deliveryMode: "online",
           availability: { pazartesi: ["18:00-20:00"] },
           note: note || null,
           imageUrls: [],
         }),
       });
-      setOk("Talep oluşturuldu.");
+      setOk(requestKind === "demo" ? "Demo ders talebi öğretmene gönderildi." : "Talep oluşturuldu.");
       setNote("");
       await refresh(token);
     } catch (e) {
@@ -154,7 +177,9 @@ export default function StudentRequestsPage() {
 
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="rounded-xl border border-paper-200 bg-white p-5">
-            <h2 className="text-base font-semibold text-paper-900">Yeni talep</h2>
+            <h2 className="text-base font-semibold text-paper-900">
+              {requestKind === "demo" ? "Demo ders talebi" : "Yeni talep"}
+            </h2>
             <p className="mt-1 text-xs text-paper-800/55">
               Medya için{" "}
               <Link className="font-medium text-brand-800 underline-offset-4 hover:underline" href="/student/odev-sor">
@@ -169,6 +194,18 @@ export default function StudentRequestsPage() {
               </Link>
               .
             </p>
+            {requestKind === "demo" && (
+              <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
+                {targetTeacherName ? (
+                  <>
+                    <span className="font-medium">{targetTeacherName}</span> için demo ders talebi
+                    oluşturuyorsunuz. Talep yalnızca bu öğretmenin panelinde görünür.
+                  </>
+                ) : (
+                  "Demo ders talebi oluşturuyorsunuz. Talep yalnızca ilgili öğretmenin panelinde görünür."
+                )}
+              </div>
+            )}
             <div className="mt-4 space-y-4">
               <label className="block">
                 <div className="mb-1 text-sm font-medium text-paper-900">Branş</div>
@@ -213,7 +250,11 @@ export default function StudentRequestsPage() {
                 disabled={saving}
                 className="w-full rounded-xl bg-brand-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-brand-900 disabled:opacity-50"
               >
-                {saving ? "Oluşturuluyor..." : "Talep oluştur"}
+                {saving
+                  ? "Oluşturuluyor..."
+                  : requestKind === "demo"
+                    ? "Demo talebi gönder"
+                    : "Talep oluştur"}
               </button>
             </div>
           </div>
@@ -233,11 +274,19 @@ export default function StudentRequestsPage() {
                   >
                     <div>
                       <div className="text-sm font-medium text-paper-900">
-                        Talep #{r.id.slice(0, 8)}
+                        {r.request_kind === "demo" ? "Demo talebi" : "Talep"} #{r.id.slice(0, 8)}
                       </div>
                       <div className="text-xs text-paper-800/55">
                         {r.status} · teklif: {r.offers_count}
                       </div>
+                      {r.topic_text && (
+                        <div className="mt-1 text-xs text-paper-800/65">{r.topic_text}</div>
+                      )}
+                      {r.target_teacher_display_name && (
+                        <div className="mt-1 text-xs text-brand-800">
+                          Öğretmen: {r.target_teacher_display_name}
+                        </div>
+                      )}
                     </div>
                     <div className="text-xs text-paper-800/55">
                       {new Date(r.created_at).toLocaleString("tr-TR")}

@@ -26,6 +26,8 @@ packages.get("/teacher/mine", requireAuth, async (c) => {
             lp.payment_status,
             lp.total_lessons,
             lp.completed_lessons,
+            lp.request_kind,
+            lp.source_request_id,
             lp.created_at,
             s.id as student_id,
             u.display_name as student_display_name
@@ -56,6 +58,8 @@ packages.get("/student/mine", requireAuth, async (c) => {
             lp.payment_status,
             lp.total_lessons,
             lp.completed_lessons,
+            lp.request_kind,
+            lp.source_request_id,
             lp.created_at,
             t.id as teacher_id,
             u.display_name as teacher_display_name
@@ -157,5 +161,86 @@ packages.post("/:packageId/sessions/:sessionId/schedule", requireAuth, async (c)
   if (!r.rowCount) return c.json({ error: "not_found_or_forbidden" }, 404);
 
   return c.json({ session: r.rows[0] });
+});
+
+/** Öğretmen: oturumu tamamla; yorum/değerlendirme akışını açar. */
+packages.post("/:packageId/sessions/:sessionId/complete", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
+
+  const packageId = c.req.param("packageId");
+  const sessionId = c.req.param("sessionId");
+  if (!z.string().uuid().safeParse(packageId).success) {
+    return c.json({ error: "invalid_package_id" }, 400);
+  }
+  if (!z.string().uuid().safeParse(sessionId).success) {
+    return c.json({ error: "invalid_session_id" }, 400);
+  }
+
+  const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
+  if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
+  const teacherId = tr.rows[0].id as string;
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+
+    const row = await client.query(
+      `select ls.id, ls.status, lp.id as package_id, lp.total_lessons, lp.completed_lessons
+       from lesson_sessions ls
+       join lesson_packages lp on lp.id = ls.package_id
+       where ls.id = $1 and lp.id = $2 and lp.teacher_id = $3
+       for update`,
+      [sessionId, packageId, teacherId],
+    );
+    if (!row.rowCount) {
+      await client.query("rollback");
+      return c.json({ error: "not_found_or_forbidden" }, 404);
+    }
+
+    const current = row.rows[0] as {
+      status: string;
+      total_lessons: number;
+      completed_lessons: number;
+    };
+    if (current.status === "completed") {
+      await client.query("commit");
+      return c.json({ ok: true, alreadyCompleted: true });
+    }
+    if (current.status !== "scheduled") {
+      await client.query("rollback");
+      return c.json({ error: "session_not_completable" }, 409);
+    }
+
+    const session = await client.query(
+      `update lesson_sessions
+       set status = 'completed',
+           actual_start = coalesce(actual_start, scheduled_start, now()),
+           actual_end = now(),
+           updated_at = now()
+       where id = $1
+       returning id, status, actual_end`,
+      [sessionId],
+    );
+
+    const nextCompleted = Math.min(current.total_lessons, current.completed_lessons + 1);
+    await client.query(
+      `update lesson_packages
+       set completed_lessons = $2,
+           status = case when $2 >= total_lessons then 'completed'::lesson_package_status else status end,
+           updated_at = now()
+       where id = $1`,
+      [packageId, nextCompleted],
+    );
+
+    await client.query("commit");
+    return c.json({ ok: true, session: session.rows[0] });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 });
 

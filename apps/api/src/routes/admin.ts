@@ -28,6 +28,10 @@ admin.get("/overview", requireAuth, async (c) => {
     homeworkOpen,
     directBookingsActive,
     parentNotifUnread,
+    openDemoRequests,
+    unansweredDemoRequests,
+    pendingTeacherVerification,
+    weakTeacherProfiles,
   ] = await Promise.all([
     pool.query(`select role::text as role, count(*)::int as c from users group by role`),
     pool.query(`select count(*)::int as c from teachers`),
@@ -68,6 +72,37 @@ admin.get("/overview", requireAuth, async (c) => {
       `select count(*)::int as c from direct_lesson_bookings where status in ('pending_funding','funded')`,
     ),
     pool.query(`select count(*)::int as c from parent_notifications where read_at is null`),
+    pool.query(
+      `select count(*)::int as c
+       from lesson_requests
+       where status = 'open' and request_kind = 'demo'`,
+    ),
+    pool.query(
+      `select count(*)::int as c
+       from lesson_requests lr
+       where lr.status = 'open'
+         and lr.request_kind = 'demo'
+         and not exists (select 1 from lesson_offers o where o.request_id = lr.id)`,
+    ),
+    pool.query(`select count(*)::int as c from teachers where verification_status = 'pending'`),
+    pool.query(
+      `select count(*)::int as c
+       from teachers t
+       where (
+         (case when t.verification_status = 'verified' then 15 else 0 end) +
+         (case when t.city_id is not null then 10 else 0 end) +
+         (case when length(trim(coalesce(t.bio_raw, ''))) >= 80 then 20
+               when length(trim(coalesce(t.bio_raw, ''))) >= 40 then 10
+               else 0 end) +
+         (case when coalesce(trim(t.video_url), '') <> '' then 15 else 0 end) +
+         (case when exists (select 1 from teacher_branches tbq where tbq.teacher_id = t.id) then 15 else 0 end) +
+         (case when jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+                 and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0 then 10 else 0 end) +
+         (case when jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+                 and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0 then 5 else 0 end) +
+         (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
+       ) < 40`,
+    ),
   ]);
 
   const usersByRole: Record<string, number> = {};
@@ -115,6 +150,10 @@ admin.get("/overview", requireAuth, async (c) => {
       homeworkPostsActive: (homeworkOpen.rows[0] as { c: number }).c,
       directBookingsInFlight: (directBookingsActive.rows[0] as { c: number }).c,
       parentNotificationsUnread: (parentNotifUnread.rows[0] as { c: number }).c,
+      openDemoRequests: (openDemoRequests.rows[0] as { c: number }).c,
+      unansweredDemoRequests: (unansweredDemoRequests.rows[0] as { c: number }).c,
+      pendingTeacherVerification: (pendingTeacherVerification.rows[0] as { c: number }).c,
+      weakTeacherProfiles: (weakTeacherProfiles.rows[0] as { c: number }).c,
     },
     generatedAt: new Date().toISOString(),
   });
@@ -224,7 +263,33 @@ admin.get("/teachers", requireAuth, async (c) => {
     `select t.id as teacher_id, t.user_id, t.verification_status::text as verification_status,
             t.created_at as teacher_created_at,
             u.email, u.display_name, u.last_login_at,
-            ci.name as city_name
+            ci.name as city_name,
+            (
+              (case when t.verification_status = 'verified' then 15 else 0 end) +
+              (case when t.city_id is not null then 10 else 0 end) +
+              (case when length(trim(coalesce(t.bio_raw, ''))) >= 80 then 20
+                    when length(trim(coalesce(t.bio_raw, ''))) >= 40 then 10
+                    else 0 end) +
+              (case when coalesce(trim(t.video_url), '') <> '' then 15 else 0 end) +
+              (case when exists (select 1 from teacher_branches tbq where tbq.teacher_id = t.id) then 15 else 0 end) +
+              (case when jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+                      and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0 then 10 else 0 end) +
+              (case when jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+                      and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0 then 5 else 0 end) +
+              (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
+            )::int as profile_quality_score,
+            coalesce(trim(t.video_url), '') <> '' as has_video,
+            (
+              jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+              and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0
+            ) as has_exam_docs,
+            (select count(*)::int from teacher_branches tb where tb.teacher_id = t.id) as branch_count,
+            (
+              select count(*)::int
+              from lesson_sessions ls
+              join lesson_packages lp on lp.id = ls.package_id
+              where lp.teacher_id = t.id and ls.status = 'completed'
+            ) as completed_sessions_count
      from teachers t
      join users u on u.id = t.user_id
      left join cities ci on ci.id = t.city_id
@@ -267,13 +332,17 @@ admin.get("/lesson-requests", requireAuth, async (c) => {
   const limIdx = args.length;
   const list = await pool.query(
     `select lr.id, lr.status::text as status, lr.delivery_mode::text as delivery_mode,
+            lr.request_kind, lr.target_teacher_id, lr.topic_text,
             lr.created_at, lr.expires_at,
             b.name as branch_name,
-            u.display_name as student_display_name, u.email as student_email
+            u.display_name as student_display_name, u.email as student_email,
+            tu.display_name as target_teacher_display_name
      from lesson_requests lr
      join students s on s.id = lr.student_id
      join users u on u.id = s.user_id
      join branches b on b.id = lr.branch_id
+     left join teachers tt on tt.id = lr.target_teacher_id
+     left join users tu on tu.id = tt.user_id
      where ${where}
      order by lr.created_at desc
      limit $${limIdx}`,

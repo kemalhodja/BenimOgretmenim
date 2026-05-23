@@ -1,12 +1,14 @@
 import { ImageResponse } from "next/og";
-import { brandMarkDataUri } from "./lib/brandMarkSvg";
+import { renderLogoIconPng } from "./lib/renderLogoIconPng";
+
+export const runtime = "nodejs";
 
 export const size = { width: 512, height: 512 };
 export const contentType = "image/png";
 
-export default function Icon() {
-  const src = brandMarkDataUri("bmo-app-icon-512");
-
+export default async function Icon() {
+  const png = await renderLogoIconPng(512);
+  const src = `data:image/png;base64,${png.toString("base64")}`;
   return new ImageResponse(
     (
       <div
@@ -16,14 +18,19 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(160deg, #ecf8f6 0%, #a3d9d0 42%, #2a9d8f 100%)",
+          background: "#f4faf9",
         }}
       >
-        {/* next/image OG ImageResponse içinde kullanılamaz; data URI vektör tek kare */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} width={400} height={400} alt="" />
+        <img
+          src={src}
+          width={512}
+          height={512}
+          alt=""
+          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+        />
       </div>
     ),
-    size,
+    { width: 512, height: 512 },
   );
 }

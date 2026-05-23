@@ -40,6 +40,8 @@ export const lessonRequests = new Hono<{ Variables: AppVariables }>();
 const createRequestSchema = z.object({
   branchId: z.number().int().positive(),
   topic: z.string().min(2).max(200),
+  requestKind: z.enum(["regular", "demo"]).optional().default("regular"),
+  targetTeacherId: z.string().uuid().nullable().optional(),
   deliveryMode: z.enum(["online", "in_person", "hybrid"]).optional(),
   cityId: z.number().int().positive().nullable().optional(),
   districtId: z.number().int().positive().nullable().optional(),
@@ -64,6 +66,8 @@ lessonRequests.post("/", requireAuth, async (c) => {
   }
 
   const { budgetMin, budgetMax } = parsed.data;
+  const requestKind = parsed.data.requestKind;
+  const targetTeacherId = parsed.data.targetTeacherId ?? null;
   if (
     (budgetMin != null && budgetMax == null) ||
     (budgetMin == null && budgetMax != null)
@@ -73,9 +77,12 @@ lessonRequests.post("/", requireAuth, async (c) => {
   if (budgetMin != null && budgetMax != null && budgetMin > budgetMax) {
     return c.json({ error: "budget_min_gt_max" }, 400);
   }
+  if (requestKind === "demo" && !targetTeacherId) {
+    return c.json({ error: "demo_request_target_teacher_required" }, 400);
+  }
 
   const sub = await getActiveStudentSubscription(userId);
-  if (!sub) {
+  if (!sub && requestKind !== "demo") {
     return c.json(
       {
         error: "student_platform_subscription_required",
@@ -93,11 +100,26 @@ lessonRequests.post("/", requireAuth, async (c) => {
   }
   const studentId = sr.rows[0].id as string;
 
+  if (targetTeacherId) {
+    const tr = await pool.query(
+      `select 1
+       from teachers t
+       join teacher_branches tb on tb.teacher_id = t.id
+       where t.id = $1 and tb.branch_id = $2
+       limit 1`,
+      [targetTeacherId, parsed.data.branchId],
+    );
+    if (!tr.rowCount) {
+      return c.json({ error: "target_teacher_branch_not_found" }, 400);
+    }
+  }
+
   const ins = await pool.query(
     `insert into lesson_requests (
        student_id, branch_id, city_id, district_id, delivery_mode,
        budget_hourly_range, availability_jsonb, note,
-       topic_text, image_urls_jsonb, audio_url
+       topic_text, image_urls_jsonb, audio_url,
+       request_kind, target_teacher_id
      ) values (
        $1, $2, $3, $4, $5::lesson_delivery_mode,
        case when $6::int is not null and $7::int is not null
@@ -105,7 +127,8 @@ lessonRequests.post("/", requireAuth, async (c) => {
             else null::int4range
        end,
        $8::jsonb, $9,
-       $10, $11::jsonb, $12
+       $10, $11::jsonb, $12,
+       $13, $14
      )
      returning id, status, created_at`,
     [
@@ -121,6 +144,8 @@ lessonRequests.post("/", requireAuth, async (c) => {
       parsed.data.topic.trim(),
       JSON.stringify(parsed.data.imageUrls ?? []),
       parsed.data.audioUrl?.trim() || null,
+      requestKind,
+      targetTeacherId,
     ],
   );
 
@@ -142,9 +167,13 @@ lessonRequests.get("/mine", requireAuth, async (c) => {
 
   const r = await pool.query(
     `select lr.id, lr.status, lr.branch_id, lr.city_id, lr.district_id, lr.delivery_mode,
+            lr.request_kind, lr.target_teacher_id, lr.topic_text,
+            tu.display_name as target_teacher_display_name,
             lr.created_at,
             (select count(*)::int from lesson_offers o where o.request_id = lr.id) as offers_count
      from lesson_requests lr
+     left join teachers tt on tt.id = lr.target_teacher_id
+     left join users tu on tu.id = tt.user_id
      where lr.student_id = $1
      order by lr.created_at desc
      limit 50`,
@@ -179,9 +208,18 @@ lessonRequests.get("/open", requireAuth, async (c) => {
   }
   const { branchId, cityId, limit, offset } = parsed.data;
 
-  const params: unknown[] = [];
-  let i = 1;
-  let where = `where lr.status = 'open'`;
+  const tr = await pool.query(`select id from teachers where user_id = $1`, [
+    userId,
+  ]);
+  if (!tr.rowCount) {
+    return c.json({ requests: [], limit, offset });
+  }
+  const teacherId = tr.rows[0].id as string;
+
+  const params: unknown[] = [teacherId];
+  let i = 2;
+  let where = `where lr.status = 'open'
+    and (lr.target_teacher_id is null or lr.target_teacher_id = $1)`;
   if (branchId != null) {
     where += ` and lr.branch_id = $${i++}`;
     params.push(branchId);
@@ -201,6 +239,9 @@ lessonRequests.get("/open", requireAuth, async (c) => {
            lr.city_id,
            lr.district_id,
            lr.delivery_mode,
+           lr.request_kind,
+           lr.target_teacher_id,
+           lr.topic_text,
            lr.note,
            lr.created_at,
            (select count(*)::int from lesson_offers o where o.request_id = lr.id) as offers_count
@@ -257,6 +298,8 @@ lessonRequests.get("/my-offers", requireAuth, async (c) => {
             b.name as branch_name,
             lr.city_id,
             lr.delivery_mode,
+            lr.request_kind,
+            lr.target_teacher_id,
             left(coalesce(lr.note, ''), 220) as request_note_preview,
             lr.created_at as request_created_at
      from lesson_offers o
@@ -379,7 +422,7 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
     await client.query("begin");
 
     const reqRow = await client.query(
-      `select id, status from lesson_requests where id = $1 for update`,
+      `select id, status, request_kind, target_teacher_id from lesson_requests where id = $1 for update`,
       [requestId],
     );
     if (!reqRow.rowCount) {
@@ -390,9 +433,16 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
       await client.query("rollback");
       return c.json({ error: "request_not_open" }, 409);
     }
+    const targetTeacherId = reqRow.rows[0].target_teacher_id as string | null;
+    if (targetTeacherId != null && targetTeacherId !== teacherId) {
+      await client.query("rollback");
+      return c.json({ error: "request_targeted_to_another_teacher" }, 403);
+    }
+    const isTargetedDemo =
+      reqRow.rows[0].request_kind === "demo" && targetTeacherId === teacherId;
 
-    // Abonelik yoksa: teklif başına cüzdandan ücret al
-    if (!activeSub.rowCount && offerFeeMinor > 0) {
+    // Hedefli demo yanıtı ücretsiz; normal taleplerde abonelik yoksa teklif ücreti alınır.
+    if (!isTargetedDemo && !activeSub.rowCount && offerFeeMinor > 0) {
       const available = await getWalletAvailableMinor(userId, client);
       if (available < BigInt(offerFeeMinor)) {
         await client.query("rollback");
@@ -434,7 +484,7 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
     return c.json(
       {
         offer: offer.rows[0],
-        chargedOfferFeeMinor: !activeSub.rowCount ? offerFeeMinor : 0,
+        chargedOfferFeeMinor: !isTargetedDemo && !activeSub.rowCount ? offerFeeMinor : 0,
       },
       201,
     );
@@ -502,7 +552,7 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
     await client.query("begin");
 
     const own = await client.query(
-      `select lr.id, lr.delivery_mode, lr.student_id
+      `select lr.id, lr.delivery_mode, lr.student_id, lr.request_kind
        from lesson_requests lr
        join students s on s.id = lr.student_id
        where lr.id = $1 and s.user_id = $2
@@ -556,9 +606,11 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
     );
 
     // Kabul edilen teklif → ders paketi + ilk ders oturumu (online ders akışını başlatır)
+    const isDemoRequest = own.rows[0].request_kind === "demo";
     const defaultTotal = Number(process.env.DEFAULT_PACKAGE_TOTAL_LESSONS ?? "4");
     const totalLessons =
-      Number.isFinite(defaultTotal) && defaultTotal > 0 ? defaultTotal : 4;
+      isDemoRequest ? 1 : Number.isFinite(defaultTotal) && defaultTotal > 0 ? defaultTotal : 4;
+    const durationMinutes = isDemoRequest ? 30 : 60;
 
     const studentId = own.rows[0].student_id as string;
     const teacherId = offerRow.rows[0].teacher_id as string;
@@ -567,19 +619,20 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
     const pkg = await client.query(
       `insert into lesson_packages (
          teacher_id, student_id, total_lessons, completed_lessons,
-         status, payment_status, currency, total_amount_minor, escrow_release_policy_jsonb
-       ) values ($1, $2, $3, 0, 'active', 'pending', 'TRY', 0, '{}'::jsonb)
+         status, payment_status, currency, total_amount_minor, escrow_release_policy_jsonb,
+         source_request_id, request_kind
+       ) values ($1, $2, $3, 0, 'active', 'pending', 'TRY', 0, '{}'::jsonb, $4, $5)
        returning id`,
-      [teacherId, studentId, totalLessons],
+      [teacherId, studentId, totalLessons, requestId, isDemoRequest ? "demo" : "regular"],
     );
     const packageId = pkg.rows[0].id as string;
 
     const sess = await client.query(
       `insert into lesson_sessions (
          package_id, session_index, scheduled_start, duration_minutes, delivery_mode, status
-       ) values ($1, 1, null, 60, $2::lesson_delivery_mode, 'scheduled')
+       ) values ($1, 1, null, $2, $3::lesson_delivery_mode, 'scheduled')
        returning id`,
-      [packageId, deliveryMode],
+      [packageId, durationMinutes, deliveryMode],
     );
     const lessonSessionId = sess.rows[0].id as string;
 

@@ -17,6 +17,8 @@ type OfferRow = {
   request_status: string;
   branch_id: number;
   branch_name: string | null;
+  request_kind?: "regular" | "demo";
+  target_teacher_id: string | null;
   city_id: number | null;
   delivery_mode: string;
   request_note_preview: string | null;
@@ -164,8 +166,14 @@ export default function TeacherTekliflerPage() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="text-sm font-semibold text-paper-900">
-                    Talep #{o.request_id.slice(0, 8)} · {o.branch_name ?? `Branş ${o.branch_id}`}
+                    {o.request_kind === "demo" ? "Demo talebi" : "Talep"} #
+                    {o.request_id.slice(0, 8)} · {o.branch_name ?? `Branş ${o.branch_id}`}
                   </div>
+                  {o.request_kind === "demo" && (
+                    <div className="mt-2 inline-flex rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-900">
+                      Demo ders
+                    </div>
+                  )}
                   <div className="mt-1 text-xs text-paper-800/55">
                     Talep: {statusTr(o.request_status)} · Teklif:{" "}
                     {statusTr(o.offer_status)}

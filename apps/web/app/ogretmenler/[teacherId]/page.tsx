@@ -22,6 +22,12 @@ type TeacherDetail = {
   district_name: string | null;
   rating_avg: number | null;
   rating_count: number | null;
+  profile_quality_score: number | null;
+  has_video: boolean;
+  has_exam_docs: boolean;
+  has_platform_links: boolean;
+  branch_count: number;
+  completed_sessions_count: number;
   created_at: string;
 };
 
@@ -98,6 +104,14 @@ function hostLabel(rawUrl: string): string | null {
   } catch {
     return null;
   }
+}
+
+function qualityLabel(score: number | null | undefined): string {
+  const n = Number(score ?? 0);
+  if (n >= 80) return "Çok güçlü profil";
+  if (n >= 60) return "Güçlü profil";
+  if (n >= 40) return "Gelişen profil";
+  return "Yeni profil";
 }
 
 function instagramHandle(rawUrl: string): string | null {
@@ -205,6 +219,15 @@ export default function OgretmenDetayPage() {
     ? `/student/requests?branchId=${primaryBranchId}`
     : "/student/requests";
   const talepEntryHref = authToken ? talepPath : loginHrefWithReturn(talepPath);
+  const demoTalepPath = useMemo(() => {
+    const q = new URLSearchParams();
+    q.set("requestKind", "demo");
+    if (primaryBranchId) q.set("branchId", String(primaryBranchId));
+    if (teacherId) q.set("teacherId", teacherId);
+    if (teacher?.display_name) q.set("teacherName", teacher.display_name);
+    return `/student/requests?${q.toString()}`;
+  }, [primaryBranchId, teacherId, teacher?.display_name]);
+  const demoTalepEntryHref = authToken ? demoTalepPath : loginHrefWithReturn(demoTalepPath);
 
   useEffect(() => {
     setAuthToken(getToken());
@@ -355,11 +378,62 @@ export default function OgretmenDetayPage() {
                 ? `★ ${Number(teacher.rating_avg ?? 0).toFixed(1)} (${teacher.rating_count} değerlendirme)`
                 : "Henüz değerlendirme yok"}
             </div>
+            <div className="mt-4 rounded-xl border border-paper-100 bg-paper-50 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-semibold text-paper-900">Güven ve kalite</h2>
+                  <p className="mt-1 text-xs text-paper-800/65">
+                    Profil doluluğu, doğrulama, video, doküman ve ders geçmişine göre.
+                  </p>
+                </div>
+                <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-paper-900 ring-1 ring-paper-200">
+                  {qualityLabel(teacher.profile_quality_score)} · {teacher.profile_quality_score ?? 0}/100
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {teacher.verification_status === "verified" && (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                    Doğrulanmış profil
+                  </span>
+                )}
+                {teacher.has_video && (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                    Video tanıtım
+                  </span>
+                )}
+                {teacher.has_exam_docs && (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                    Doküman / sınav içeriği
+                  </span>
+                )}
+                {teacher.has_platform_links && (
+                  <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                    Platform bağlantıları
+                  </span>
+                )}
+                {teacher.branch_count > 0 && (
+                  <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                    {teacher.branch_count} branş
+                  </span>
+                )}
+                {teacher.completed_sessions_count > 0 && (
+                  <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                    {teacher.completed_sessions_count} tamamlanan ders
+                  </span>
+                )}
+              </div>
+            </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
-                href={talepEntryHref}
+                href={demoTalepEntryHref}
                 className="inline-flex rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
+              >
+                Demo ders talep et
+              </Link>
+              <Link
+                href={talepEntryHref}
+                className="inline-flex rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-900 hover:bg-brand-100"
               >
                 Talep oluştur
               </Link>

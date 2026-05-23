@@ -9,6 +9,10 @@ type ReqRow = {
   id: string;
   status: string;
   delivery_mode: string;
+  request_kind?: "regular" | "demo";
+  target_teacher_id: string | null;
+  target_teacher_display_name: string | null;
+  topic_text: string | null;
   created_at: string;
   expires_at: string | null;
   branch_name: string;
@@ -144,7 +148,20 @@ export default function AdminLessonRequestsPage() {
                       <div className="font-medium text-paper-900">{r.student_display_name}</div>
                       <div className="text-xs text-paper-800/75">{r.student_email}</div>
                     </td>
-                    <td className="px-3 py-2 text-paper-800">{r.branch_name}</td>
+                    <td className="px-3 py-2 text-paper-800">
+                      <div>{r.branch_name}</div>
+                      {r.request_kind === "demo" && (
+                        <div className="mt-1 text-xs font-medium text-brand-800">Demo ders</div>
+                      )}
+                      {r.topic_text && (
+                        <div className="mt-1 text-xs text-paper-800/65">{r.topic_text}</div>
+                      )}
+                      {r.target_teacher_display_name && (
+                        <div className="mt-1 text-xs text-paper-800/65">
+                          Öğretmen: {r.target_teacher_display_name}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-3 py-2 capitalize text-paper-800">{r.status}</td>
                     <td className="px-3 py-2 text-paper-800/75">{r.delivery_mode}</td>
                     <td className="px-3 py-2 text-paper-800/75">{new Date(r.created_at).toLocaleString("tr-TR")}</td>

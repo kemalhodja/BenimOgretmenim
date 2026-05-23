@@ -1,28 +1,19 @@
-import { ImageResponse } from "next/og";
-import { brandMarkDataUri } from "../lib/brandMarkSvg";
+import { NextResponse } from "next/server";
+import { renderLogoIconPng } from "../lib/renderLogoIconPng";
 
-/**
- * Play / Chrome PWA için 192×192 PNG (manifest `sizes: 192x192`).
- */
+export const runtime = "nodejs";
+
 export async function GET() {
-  const src = brandMarkDataUri("bmo-pwa-192");
-
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(160deg, #ecf8f6 0%, #a3d9d0 42%, #2a9d8f 100%)",
-        }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} width={148} height={148} alt="" />
-      </div>
-    ),
-    { width: 192, height: 192 },
-  );
+  try {
+    const buf = await renderLogoIconPng(192);
+    return new NextResponse(new Uint8Array(buf), {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+      },
+    });
+  } catch (e) {
+    console.error("[icon-192]", e);
+    return new NextResponse("Icon unavailable", { status: 500 });
+  }
 }

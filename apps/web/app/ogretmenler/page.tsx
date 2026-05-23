@@ -19,8 +19,23 @@ type TeacherRow = {
   city_id: number | null;
   city_name: string | null;
   verification_status: string;
+  profile_quality_score: number | null;
+  has_video: boolean;
+  has_exam_docs: boolean;
+  has_platform_links: boolean;
+  branch_count: number;
+  primary_branch_name: string | null;
+  completed_sessions_count: number;
   created_at: string;
 };
+
+function qualityLabel(score: number | null | undefined): string {
+  const n = Number(score ?? 0);
+  if (n >= 80) return "Çok güçlü profil";
+  if (n >= 60) return "Güçlü profil";
+  if (n >= 40) return "Gelişen profil";
+  return "Yeni profil";
+}
 
 function parseListFilterParam(raw: string | null): number | "" {
   if (raw == null || raw === "") return "";
@@ -323,11 +338,32 @@ function OgretmenlerPageInner() {
                       {t.display_name}
                     </div>
                     <div className="text-xs text-paper-800/55">
+                      {t.primary_branch_name ? `${t.primary_branch_name} · ` : ""}
                       {t.city_name ?? "Şehir belirtilmemiş"}
                       {" · "}
                       {t.verification_status === "verified"
                         ? "Doğrulanmış"
                         : `Durum: ${t.verification_status}`}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                        {qualityLabel(t.profile_quality_score)} · {t.profile_quality_score ?? 0}/100
+                      </span>
+                      {t.has_video && (
+                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                          Video tanıtım
+                        </span>
+                      )}
+                      {t.has_exam_docs && (
+                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                          Dokümanlı
+                        </span>
+                      )}
+                      {t.completed_sessions_count > 0 && (
+                        <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                          {t.completed_sessions_count} tamamlanan ders
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-sm text-paper-800/75">

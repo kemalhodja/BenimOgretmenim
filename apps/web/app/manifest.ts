@@ -58,10 +58,17 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: shortcutIcons,
       },
       {
-        name: "Talep oluştur",
-        short_name: "Talep",
+        name: "Demo ders talep et",
+        short_name: "Demo",
+        url: "/ogretmenler",
+        description: "Öğretmen seçin ve demo ders talebi gönderin",
+        icons: shortcutIcons,
+      },
+      {
+        name: "Taleplerim",
+        short_name: "Talepler",
         url: "/student/requests",
-        description: "Ders talebi açın; teklifleri karşılaştırın",
+        description: "Ders ve demo taleplerinizi takip edin",
         icons: shortcutIcons,
       },
       {

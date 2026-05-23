@@ -76,6 +76,20 @@ teachersPublic.get("/", async (c) => {
   const bayesExpr = `(coalesce(t.rating_count,0)::numeric * coalesce(t.rating_avg,0)::numeric + 14.0)
     / (coalesce(t.rating_count,0)::numeric + 4.0)`;
   const verifiedExpr = `(case when t.verification_status = 'verified' then 1 else 0 end)`;
+  const qualityExpr = `(
+    (case when t.verification_status = 'verified' then 15 else 0 end) +
+    (case when t.city_id is not null then 10 else 0 end) +
+    (case when length(trim(coalesce(t.bio_raw, ''))) >= 80 then 20
+          when length(trim(coalesce(t.bio_raw, ''))) >= 40 then 10
+          else 0 end) +
+    (case when coalesce(trim(t.video_url), '') <> '' then 15 else 0 end) +
+    (case when exists (select 1 from teacher_branches tbq where tbq.teacher_id = t.id) then 15 else 0 end) +
+    (case when jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+            and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0 then 10 else 0 end) +
+    (case when jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+            and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0 then 5 else 0 end) +
+    (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
+  )`;
 
   const orderBy =
     qTrim.length > 0
@@ -89,8 +103,9 @@ teachersPublic.get("/", async (c) => {
       end desc,
       ${bayesExpr} desc,
       ${verifiedExpr} desc,
+      ${qualityExpr} desc,
       t.created_at desc`
-      : `order by ${bayesExpr} desc, ${verifiedExpr} desc, t.created_at desc`;
+      : `order by ${bayesExpr} desc, ${verifiedExpr} desc, ${qualityExpr} desc, t.created_at desc`;
 
   const sql = `
     select t.id,
@@ -100,6 +115,31 @@ teachersPublic.get("/", async (c) => {
            t.city_id,
            c.name as city_name,
            t.verification_status,
+           ${qualityExpr}::int as profile_quality_score,
+           coalesce(trim(t.video_url), '') <> '' as has_video,
+           (
+             jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+             and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0
+           ) as has_exam_docs,
+           (
+             jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+             and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0
+           ) as has_platform_links,
+           (select count(*)::int from teacher_branches tb where tb.teacher_id = t.id) as branch_count,
+           (
+             select b.name
+             from teacher_branches tb
+             join branches b on b.id = tb.branch_id
+             where tb.teacher_id = t.id
+             order by tb.is_primary desc, b.name
+             limit 1
+           ) as primary_branch_name,
+           (
+             select count(*)::int
+             from lesson_sessions ls
+             join lesson_packages lp on lp.id = ls.package_id
+             where lp.teacher_id = t.id and ls.status = 'completed'
+           ) as completed_sessions_count,
            t.created_at
     from teachers t
     join users u on u.id = t.user_id
@@ -136,6 +176,36 @@ teachersPublic.get("/:teacherId", async (c) => {
             d.name as district_name,
             t.rating_avg,
             t.rating_count,
+            (
+              (case when t.verification_status = 'verified' then 15 else 0 end) +
+              (case when t.city_id is not null then 10 else 0 end) +
+              (case when length(trim(coalesce(t.bio_raw, ''))) >= 80 then 20
+                    when length(trim(coalesce(t.bio_raw, ''))) >= 40 then 10
+                    else 0 end) +
+              (case when coalesce(trim(t.video_url), '') <> '' then 15 else 0 end) +
+              (case when exists (select 1 from teacher_branches tbq where tbq.teacher_id = t.id) then 15 else 0 end) +
+              (case when jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+                      and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0 then 10 else 0 end) +
+              (case when jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+                      and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0 then 5 else 0 end) +
+              (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
+            )::int as profile_quality_score,
+            coalesce(trim(t.video_url), '') <> '' as has_video,
+            (
+              jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+              and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0
+            ) as has_exam_docs,
+            (
+              jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+              and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0
+            ) as has_platform_links,
+            (select count(*)::int from teacher_branches tb where tb.teacher_id = t.id) as branch_count,
+            (
+              select count(*)::int
+              from lesson_sessions ls
+              join lesson_packages lp on lp.id = ls.package_id
+              where lp.teacher_id = t.id and ls.status = 'completed'
+            ) as completed_sessions_count,
             t.created_at
      from teachers t
      join users u on u.id = t.user_id

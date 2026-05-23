@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
@@ -12,6 +13,8 @@ type TeacherPackage = {
   payment_status: string;
   total_lessons: number;
   completed_lessons: number;
+  request_kind?: "regular" | "demo";
+  source_request_id: string | null;
   created_at: string;
   student_id: string;
   student_display_name: string;
@@ -118,6 +121,11 @@ export default function TeacherDerslerPage() {
     [rows, selectedPkg],
   );
 
+  useEffect(() => {
+    if (!selected) return;
+    setDuration(selected.request_kind === "demo" ? 30 : 60);
+  }, [selected]);
+
   async function scheduleFirstOpen() {
     if (!token || !selectedPkg) return;
     setError(null);
@@ -151,6 +159,34 @@ export default function TeacherDerslerPage() {
       }
       if (msg.includes("[403]")) {
         setError("Bu oturumu planlama izniniz yok.");
+      }
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function completeSession(sessionId: string) {
+    if (!token || !selectedPkg) return;
+    if (!window.confirm("Bu oturumu tamamlandı olarak işaretlemek istiyor musunuz?")) return;
+    setBusy(sessionId);
+    setError(null);
+    setOk(null);
+    try {
+      await apiFetch(`/v1/packages/${selectedPkg}/sessions/${sessionId}/complete`, {
+        method: "POST",
+        token,
+      });
+      await Promise.all([loadSessions(token, selectedPkg), loadPackages(token)]);
+      setOk("Oturum tamamlandı. Öğrenci artık yorum bırakabilir.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "complete_failed";
+      setError(msg);
+      if (msg.includes("[401]")) {
+        clearToken();
+        router.replace(loginHrefWithReturn(pathname));
+      }
+      if (msg.includes("[403]")) {
+        setError("Bu oturumu tamamlama izniniz yok.");
       }
     } finally {
       setBusy(null);
@@ -203,6 +239,11 @@ export default function TeacherDerslerPage() {
                     <div className="font-medium text-paper-900">
                       {p.student_display_name} · {p.completed_lessons}/{p.total_lessons}
                     </div>
+                    {p.request_kind === "demo" && (
+                      <div className="mt-1 inline-flex rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                        Demo ders
+                      </div>
+                    )}
                     <div className="mt-0.5 text-xs text-paper-800/55">
                       {p.status} · ödeme: {p.payment_status} ·{" "}
                       {new Date(p.created_at).toLocaleString("tr-TR")}
@@ -227,8 +268,19 @@ export default function TeacherDerslerPage() {
                     {selected.student_display_name}
                   </div>
                   <div className="mt-1 text-xs text-paper-800/75">
-                    Paket: {selected.completed_lessons}/{selected.total_lessons} · {selected.status}
+                    {selected.request_kind === "demo" ? "Demo ders" : "Paket"}:{" "}
+                    {selected.completed_lessons}/{selected.total_lessons} · {selected.status}
                   </div>
+                  {selected.source_request_id && (
+                    <div className="mt-2">
+                      <Link
+                        href={`/teacher/requests/${selected.source_request_id}`}
+                        className="text-xs font-medium text-brand-800 underline"
+                      >
+                        Talep sohbetine git
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -292,6 +344,16 @@ export default function TeacherDerslerPage() {
                           >
                             Meeting linkini aç
                           </a>
+                        )}
+                        {s.status === "scheduled" && (
+                          <button
+                            type="button"
+                            disabled={busy === s.id}
+                            onClick={() => void completeSession(s.id)}
+                            className="mt-2 ml-3 inline-block rounded-lg border border-paper-300 bg-white px-2 py-1 text-xs font-medium text-paper-900 hover:bg-paper-100 disabled:opacity-50"
+                          >
+                            {busy === s.id ? "…" : "Dersi tamamladım"}
+                          </button>
                         )}
                         <div className="mt-1 text-[11px] font-mono text-paper-800/45">
                           {busy === s.id ? "…" : s.id}

@@ -13,6 +13,9 @@ type OpenRequest = {
   id: string;
   branch_id: number;
   branch_name: string | null;
+  request_kind?: "regular" | "demo";
+  target_teacher_id: string | null;
+  topic_text: string | null;
   city_id: number | null;
   district_id: number | null;
   delivery_mode: string;
@@ -114,11 +117,14 @@ export default function TeacherRequestsPage() {
         token,
         body: JSON.stringify(payload),
       });
-      setOk(
-        proposedHourlyRateMinor != null
-          ? `Teklif gönderildi (saatlik ${(proposedHourlyRateMinor / 100).toFixed(2)} TL).`
-          : "Teklif gönderildi.",
-      );
+      const request = open.find((r) => r.id === requestId);
+      const successMessage =
+        request?.request_kind === "demo"
+          ? "Demo ders yanıtı gönderildi. Öğrenci kabul ederse 30 dakikalık demo oturumu oluşur."
+          : proposedHourlyRateMinor != null
+            ? `Teklif gönderildi (saatlik ${(proposedHourlyRateMinor / 100).toFixed(2)} TL).`
+            : "Teklif gönderildi.";
+      setOk(successMessage);
       setMessage("");
       setHourlyTl("");
       await refresh(token);
@@ -226,10 +232,15 @@ export default function TeacherRequestsPage() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="text-sm font-semibold text-paper-900">
-                      Talep #{r.id.slice(0, 8)} ·{" "}
+                      {r.request_kind === "demo" ? "Demo talebi" : "Talep"} #{r.id.slice(0, 8)} ·{" "}
                       {r.branch_name ?? `Branş #${r.branch_id}`} · teklif:{" "}
                       {r.offers_count}
                     </div>
+                    {r.request_kind === "demo" && (
+                      <div className="mt-2 inline-flex rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-900">
+                        Size özel demo ders talebi
+                      </div>
+                    )}
                     {r.offers_count > 0 && (
                       <Link
                         href={`/teacher/requests/${r.id}`}
@@ -241,6 +252,11 @@ export default function TeacherRequestsPage() {
                     <div className="mt-1 text-xs text-paper-800/55">
                       {r.delivery_mode} · {new Date(r.created_at).toLocaleString("tr-TR")}
                     </div>
+                    {r.topic_text && (
+                      <div className="mt-2 text-sm font-medium text-paper-900">
+                        Konu: {r.topic_text}
+                      </div>
+                    )}
                     {r.note && (
                       <div className="mt-2 text-sm text-paper-800">{r.note}</div>
                     )}

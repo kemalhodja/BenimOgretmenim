@@ -42,9 +42,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/brand-mark.svg", type: "image/svg+xml" },
       { url: "/icon-192", sizes: "192x192", type: "image/png" },
       { url: "/icon", sizes: "512x512", type: "image/png" },
+      { url: "/brand-mark.svg", type: "image/svg+xml" },
     ],
     apple: [{ url: "/apple-icon", type: "image/png", sizes: "180x180" }],
   },

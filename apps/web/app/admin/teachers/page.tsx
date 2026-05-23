@@ -14,6 +14,11 @@ type TeacherRow = {
   display_name: string;
   last_login_at: string | null;
   city_name: string | null;
+  profile_quality_score: number | null;
+  has_video: boolean;
+  has_exam_docs: boolean;
+  branch_count: number;
+  completed_sessions_count: number;
 };
 
 export default function AdminTeachersPage() {
@@ -128,6 +133,7 @@ export default function AdminTeachersPage() {
               <tr>
                 <th className="px-3 py-2">Öğretmen</th>
                 <th className="px-3 py-2">Doğrulama</th>
+                <th className="px-3 py-2">Kalite</th>
                 <th className="px-3 py-2">Şehir</th>
                 <th className="px-3 py-2">Profil</th>
                 <th className="px-3 py-2 font-mono text-[11px]">teacher_id</th>
@@ -137,13 +143,13 @@ export default function AdminTeachersPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-paper-800/55">
+                  <td colSpan={7} className="px-3 py-6 text-center text-paper-800/55">
                     Yükleniyor…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-6 text-center text-paper-800/55">
+                  <td colSpan={7} className="px-3 py-6 text-center text-paper-800/55">
                     Kayıt yok.
                   </td>
                 </tr>
@@ -155,6 +161,31 @@ export default function AdminTeachersPage() {
                       <div className="text-xs text-paper-800/75">{t.email}</div>
                     </td>
                     <td className="px-3 py-2 capitalize text-paper-800">{t.verification_status}</td>
+                    <td className="px-3 py-2 text-paper-800">
+                      <div className="font-mono text-xs font-semibold text-paper-900">
+                        {t.profile_quality_score ?? 0}/100
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        <span className="rounded bg-paper-100 px-1.5 py-0.5 text-[11px]">
+                          {t.branch_count} branş
+                        </span>
+                        {t.has_video && (
+                          <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[11px] text-brand-900">
+                            video
+                          </span>
+                        )}
+                        {t.has_exam_docs && (
+                          <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[11px] text-brand-900">
+                            doküman
+                          </span>
+                        )}
+                        {t.completed_sessions_count > 0 && (
+                          <span className="rounded bg-paper-100 px-1.5 py-0.5 text-[11px]">
+                            {t.completed_sessions_count} ders
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-3 py-2 text-paper-800/75">{t.city_name ?? "—"}</td>
                     <td className="px-3 py-2">
                       <Link

@@ -26,6 +26,10 @@ type Overview = {
     homeworkPostsActive: number;
     directBookingsInFlight: number;
     parentNotificationsUnread: number;
+    openDemoRequests: number;
+    unansweredDemoRequests: number;
+    pendingTeacherVerification: number;
+    weakTeacherProfiles: number;
   };
   generatedAt: string;
 };
@@ -142,6 +146,27 @@ export default function AdminDashboardPage() {
                 label="Aktif öğretmen aboneliği"
                 value={c.activeTeacherSubscriptions}
               />
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                href="/admin/requests"
+                label="Açık demo talebi"
+                value={c.openDemoRequests ?? 0}
+                hint={`Yanıtsız: ${c.unansweredDemoRequests ?? 0}`}
+              />
+              <StatCard
+                href="/admin/teachers"
+                label="Doğrulama bekleyen"
+                value={c.pendingTeacherVerification ?? 0}
+                hint="Öğretmen kalite kuyruğu"
+              />
+              <StatCard
+                href="/admin/teachers"
+                label="Zayıf öğretmen profili"
+                value={c.weakTeacherProfiles ?? 0}
+                hint="Kalite skoru 40 altı"
+              />
+              <StatCard href="/admin/merkez" label="Kalite operasyonu" value="Takip" hint="Demo + profil sağlığı" />
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard href="/admin/group-lessons" label="Açık grup dersi" value={c.groupLessonRequestsOpen} />
