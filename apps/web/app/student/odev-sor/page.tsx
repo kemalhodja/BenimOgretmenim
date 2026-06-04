@@ -125,8 +125,12 @@ export default function OdevSorPage() {
       }
       if (msg.includes("subscription")) {
         setError(
-          "Aktif abonelik gerekli. /student/panel sayfasından platform aboneliği alın.",
+          "Yıllık abonelikle günlük soru hakkınızı artırabilirsiniz. /student/panel sayfasından aboneliği yönetebilirsiniz.",
         );
+        return;
+      }
+      if (msg.includes("daily_homework_quota_exceeded")) {
+        setError("Bugünkü soru sorma hakkınız doldu. Ücretsiz öğrenciler günde 5 soru sorabilir; yıllık abonelikte bu hak günde 10 sorudur.");
         return;
       }
       if (msg.includes("[403]")) {
@@ -165,7 +169,7 @@ export default function OdevSorPage() {
           öğretmen ücreti BenimÖğretmenim ödeme havuzundan öğretmen cüzdanına aktarılır (sizin cüzdanınızdan
           düşülmez). Onaylamadan önce cevabı yeterli bulmazsanız
           soruyu tekrar havuza iade edebilirsiniz (ödeme yapılmaz). Henüz kimse üstlenmediyse gönderiyi
-          tamamen iptal edebilirsiniz. Aktif abonelik gerekir.
+          tamamen iptal edebilirsiniz.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link href="/student/odev-sor/gonderiler" className="font-medium text-brand-800 underline">
@@ -208,6 +212,9 @@ export default function OdevSorPage() {
           <p className="mt-2 text-sm leading-relaxed text-paper-800/70">
             Sistem konuyu, zorluk seviyesini, hedef cevap süresini ve çözüm sonrası benzer alıştırmaları hazırlar.
           </p>
+          <div className="mt-3 rounded-xl border border-brand-100 bg-white/80 p-3 text-xs leading-relaxed text-brand-950">
+            Kayıtlı öğrenci ücretsiz olarak günlük 5 soru sorabilir. Yıllık abonelikte bu limit günlük 10 soruya çıkar.
+          </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {[
               ["Hedef süre", `${targetMinutes} dk`, urgencyPromise(urgencyLevel)],

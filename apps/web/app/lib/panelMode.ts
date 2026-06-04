@@ -33,6 +33,8 @@ export function documentTitleForPath(pathname: string): string {
     "/teacher/dersler": "Ders oturumları",
     "/teacher/kurslar": "Online kurslarım",
     "/teacher/kurslar/yeni": "Yeni kurs",
+    "/teacher/kampanyalar": "Kampanyalarım",
+    "/teacher/kampanyalar/yeni": "Yeni kampanya",
     "/teacher/grup-dersler": "Grup ders ilanları",
     "/teacher/dogrudan-dersler": "Doğrudan ders anlaşmaları",
     "/teacher/odev-havuzu": "Ödev havuzu",
@@ -63,6 +65,7 @@ export function documentTitleForPath(pathname: string): string {
     "/login": "Giriş",
     "/kayit": "Kayıt",
     "/kampanya": "Kampanya",
+    "/kampanyalar": "Öğretmen kampanyaları",
     "/fiyatlar": "Fiyatlar",
     "/iletisim": "İletişim",
     "/yardim": "Yardım",
@@ -80,12 +83,14 @@ export function documentTitleForPath(pathname: string): string {
 
   if (path.startsWith("/teacher/requests/")) return `Talep sohbeti · Öğretmen · ${SITE}`;
   if (path.startsWith("/teacher/kurslar/")) return `Kurs · Öğretmen · ${SITE}`;
+  if (path.startsWith("/teacher/kampanyalar/")) return `Kampanya · Öğretmen · ${SITE}`;
   if (path.startsWith("/student/requests/")) return `Talep ve teklifler · Öğrenci · ${SITE}`;
   if (path.startsWith("/student/odev-sor/") && path !== "/student/odev-sor/gonderiler") {
     return `Gönderi detayı · Öğrenci · ${SITE}`;
   }
   if (path.startsWith("/student/kurslar/")) return `Kurs · Öğrenci · ${SITE}`;
   if (path.startsWith("/courses/") && path !== "/courses") return `Kurs detayı · ${SITE}`;
+  if (path.startsWith("/kampanyalar/") && path !== "/kampanyalar") return `Kampanya detayı · ${SITE}`;
   if (path.startsWith("/ogretmenler/") && path !== "/ogretmenler") {
     return `Öğretmen profili · ${SITE}`;
   }

@@ -14,26 +14,36 @@ import {
 } from "../lib/homeworkPosts.js";
 import { resolvePlatformHomeworkWalletUserId } from "../lib/platformHomeworkWallet.js";
 import { applyWalletDelta, teacherPayoutFromGross } from "../lib/wallet.js";
-import { ensureUserWalletRow, getActiveStudentSubscription, getStudentSubPriceConfig } from "../lib/studentSub.js";
+import {
+  ensureUserWalletRow,
+  getActiveStudentSubscription,
+  getStudentDailyUsage,
+  getStudentSubPriceConfig,
+  lockStudentDailyUsage,
+  studentUsagePolicyForSubscription,
+} from "../lib/studentSub.js";
 
 export const studentPlatform = new Hono<{ Variables: AppVariables }>();
 
 const purchaseSubSchema = z.object({
-  months: z.number().int().min(1).max(60),
+  months: z.number().int().min(1).max(60).optional(),
 });
 
 studentPlatform.get("/subscription/me", requireAuth, async (c) => {
   const userId = c.get("userId");
   if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
   const sub = await getActiveStudentSubscription(userId);
-  const pricePerMonthMinor = getStudentSubPriceConfig().pricePerMonthMinor;
+  const price = getStudentSubPriceConfig();
+  const policy = studentUsagePolicyForSubscription(sub);
+  const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
+  const usage = sr.rowCount ? await getStudentDailyUsage(sr.rows[0].id as string, policy) : null;
   if (!sub) {
-    return c.json({ active: false, subscription: null, pricePerMonthMinor });
+    return c.json({ active: false, subscription: null, ...price, policy, usage });
   }
-  return c.json({ active: true, subscription: sub, pricePerMonthMinor });
+  return c.json({ active: true, subscription: sub, ...price, policy, usage });
 });
 
-/** Aylık 1000 TL (varsayılan) × ay; PayTR ile — ödeme onayı sonrası aktif */
+/** Öğrenci yıllık aboneliği: varsayılan 12 ay / 1500 TL; PayTR ile ödeme sonrası aktif. */
 studentPlatform.post("/subscription/purchase", requireAuth, async (c) => {
   const userId = c.get("userId");
   if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
@@ -41,27 +51,42 @@ studentPlatform.post("/subscription/purchase", requireAuth, async (c) => {
   const parsed = purchaseSubSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-  const { pricePerMonthMinor } = getStudentSubPriceConfig();
-  const total = pricePerMonthMinor * parsed.data.months;
+  const { annualMonths, annualPriceMinor, pricePerMonthMinor } = getStudentSubPriceConfig();
+  const months = parsed.data.months ?? annualMonths;
+  if (months !== annualMonths) {
+    return c.json({ error: "annual_subscription_only", annualMonths, annualPriceMinor }, 400);
+  }
+  const total = annualPriceMinor;
   const merchantOid = `STU-${Date.now()}-${randomBytes(5).toString("hex")}`;
 
-  const sub = await pool.query(
-    `insert into student_subscriptions (
-       user_id, months_count, price_per_month_minor, price_total_minor, lifecycle
-     ) values ($1, $2, $3, $4, 'awaiting_payment')
-     returning id, months_count, price_total_minor, currency`,
-    [userId, parsed.data.months, pricePerMonthMinor, total],
-  );
+  const client = await pool.connect();
+  let pay: { rows: Array<{ id: string; merchant_oid: string }> };
+  try {
+    await client.query("begin");
+    const sub = await client.query(
+      `insert into student_subscriptions (
+         user_id, months_count, price_per_month_minor, price_total_minor, lifecycle
+       ) values ($1, $2, $3, $4, 'awaiting_payment')
+       returning id, months_count, price_total_minor, currency`,
+      [userId, months, pricePerMonthMinor, total],
+    );
 
-  const sid = sub.rows[0].id as string;
+    const sid = sub.rows[0].id as string;
 
-  const pay = await pool.query(
-    `insert into student_sub_payments (
-       subscription_id, user_id, amount_minor, currency, method, state, merchant_oid
-     ) values ($1, $2, $3, 'TRY', 'paytr_iframe', 'pending', $4)
-     returning id, merchant_oid`,
-    [sid, userId, total, merchantOid],
-  );
+    pay = await client.query(
+      `insert into student_sub_payments (
+         subscription_id, user_id, amount_minor, currency, method, state, merchant_oid
+       ) values ($1, $2, $3, 'TRY', 'paytr_iframe', 'pending', $4)
+       returning id, merchant_oid`,
+      [sid, userId, total, merchantOid],
+    );
+    await client.query("commit");
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 
   return c.json(
     {
@@ -90,21 +115,10 @@ function isAllowedHomeworkImageUrl(u: string): boolean {
   return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(u);
 }
 
-/** Branş havuzuna: foto + açıklama; aktif abonelik gerekir */
+/** Branş havuzuna: foto + açıklama; ücretsiz/yıllık abonelik günlük kotasına tabidir. */
 studentPlatform.post("/homework-posts", requireAuth, async (c) => {
   const userId = c.get("userId");
   if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
-
-  const act = await getActiveStudentSubscription(userId);
-  if (!act) {
-    return c.json(
-      {
-        error: "student_platform_subscription_required",
-        hint: "Ders konusu soruları ve ilanlar için aylık platform aboneliği gerekir.",
-      },
-      403,
-    );
-  }
 
   const parsed = createHomeworkSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
@@ -132,29 +146,57 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
     imageUrls: parsed.data.imageUrls ?? [],
   });
 
-  const ins = await pool.query(
-    `insert into student_homework_posts (
-       student_id, branch_id, topic, help_text, image_urls_jsonb, audio_url,
-       grade_level_text, target_exam, learning_objective, urgency_level,
-       target_answer_minutes, resolution_sla_due_at, ai_metadata_jsonb, storage_backend
-     ) values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10, $11, now() + ($11::int * interval '1 minute'), $12::jsonb, $13)
-     returning id, status, created_at`,
-    [
-      studentId,
-      parsed.data.branchId,
-      parsed.data.topic.trim(),
-      parsed.data.helpText.trim(),
-      JSON.stringify(parsed.data.imageUrls ?? []),
-      parsed.data.audioUrl?.trim() || null,
-      parsed.data.gradeLevelText?.trim() || null,
-      parsed.data.targetExam?.trim() || null,
-      parsed.data.learningObjective?.trim() || null,
-      parsed.data.urgencyLevel,
-      targetMinutes,
-      JSON.stringify(homeworkAi.aiMetadata),
-      homeworkAi.storageBackend,
-    ],
-  );
+  const client = await pool.connect();
+  let ins: { rows: Array<{ id: string; status: string; created_at: Date }> };
+  try {
+    await client.query("begin");
+    await lockStudentDailyUsage(studentId, client);
+    const act = await getActiveStudentSubscription(userId, client);
+    const policy = studentUsagePolicyForSubscription(act);
+    const usage = await getStudentDailyUsage(studentId, policy, client);
+    if (usage.homeworkPostsToday >= policy.dailyHomeworkPostLimit) {
+      await client.query("rollback");
+      return c.json(
+        {
+          error: "daily_homework_quota_exceeded",
+          limit: policy.dailyHomeworkPostLimit,
+          used: usage.homeworkPostsToday,
+          tier: policy.tier,
+        },
+        429,
+      );
+    }
+
+    ins = await client.query(
+      `insert into student_homework_posts (
+         student_id, branch_id, topic, help_text, image_urls_jsonb, audio_url,
+         grade_level_text, target_exam, learning_objective, urgency_level,
+         target_answer_minutes, resolution_sla_due_at, ai_metadata_jsonb, storage_backend
+       ) values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10, $11, now() + ($11::int * interval '1 minute'), $12::jsonb, $13)
+       returning id, status, created_at`,
+      [
+        studentId,
+        parsed.data.branchId,
+        parsed.data.topic.trim(),
+        parsed.data.helpText.trim(),
+        JSON.stringify(parsed.data.imageUrls ?? []),
+        parsed.data.audioUrl?.trim() || null,
+        parsed.data.gradeLevelText?.trim() || null,
+        parsed.data.targetExam?.trim() || null,
+        parsed.data.learningObjective?.trim() || null,
+        parsed.data.urgencyLevel,
+        targetMinutes,
+        JSON.stringify(homeworkAi.aiMetadata),
+        homeworkAi.storageBackend,
+      ],
+    );
+    await client.query("commit");
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 
   // Aynı branştaki öğretmenlere bildirim (in-app). Not: öğretmen profiline bu branş ekli olanlar.
   const created = ins.rows[0] as { id: string };

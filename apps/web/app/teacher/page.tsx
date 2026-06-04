@@ -80,6 +80,19 @@ type BankInstructions = {
   note: string;
 };
 
+function teacherCampaignSummary(planCode?: string, promoMultiplier?: number): string {
+  if (planCode === "teacher_6m") return "Erken erişim: 6 ay öde, toplam 30 ay kullan";
+  if (planCode === "teacher_12m") return "Erken erişim: 12 ay öde, toplam 60 ay kullan";
+  return promoMultiplier && promoMultiplier > 1 ? `Erken erişim kampanyası x${promoMultiplier}` : "Standart abonelik";
+}
+
+const teacherSubscriptionBenefits = [
+  "Öğrenci ders taleplerine sınırsız teklif verebilirsiniz.",
+  "Kendi reklam kampanyanızı yayınlarsınız; ilk kampanya ücretsiz, sonraki yeni ilanlar 1000 TL cüzdan bakiyesiyle açılır.",
+  "Kurs, grup ders, doğrudan ders ve Akademi akışlarında öğretmen olarak görünürlük kazanırsınız.",
+  "Başvuru, bildirim, cüzdan ve ödeme kayıtlarını öğretmen panelinden takip edersiniz.",
+] as const;
+
 function tryYoutubeEmbed(url: string | null): string | null {
   if (!url) return null;
   try {
@@ -897,7 +910,7 @@ export default function TeacherHomePage() {
               </div>
               <div className="mt-1 text-xs text-paper-800/75">
                 {sub?.active && sub.subscription
-                  ? `${sub.subscription.title} · bitiş: ${new Date(sub.subscription.expires_at).toLocaleDateString("tr-TR")} · kampanya x${sub.subscription.promo_multiplier}`
+                  ? `${sub.subscription.title} · bitiş: ${new Date(sub.subscription.expires_at).toLocaleDateString("tr-TR")} · ${teacherCampaignSummary(sub.subscription.plan_code, sub.subscription.promo_multiplier)}`
                   : "Sınırsız teklif ve Akademi’de ders verme hakkı için abonelik gerekli."}
               </div>
             </div>
@@ -907,6 +920,15 @@ export default function TeacherHomePage() {
               <span className="font-medium text-paper-800">doğrudan havale/EFT</span>. Yeterli cüzdan
               bakiyesi varsa cüzdandan da alabilirsiniz.
             </p>
+
+            <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/60 p-4">
+              <div className="text-sm font-semibold text-brand-950">Abone öğretmen neler kazanır?</div>
+              <ul className="mt-3 space-y-2 text-xs leading-relaxed text-brand-900">
+                {teacherSubscriptionBenefits.map((benefit) => (
+                  <li key={benefit}>• {benefit}</li>
+                ))}
+              </ul>
+            </div>
 
             <label className="mt-3 block text-xs text-paper-800/75">
               Havale için dekont / referans (isteğe bağlı)
@@ -923,7 +945,7 @@ export default function TeacherHomePage() {
             <div className="mt-3 space-y-3">
               <div className="rounded-xl border border-paper-100 bg-paper-50/80 p-3">
                 <div className="text-sm font-medium text-paper-900">
-                  6 Aylık (1750 TL) + 12 ay hediye
+                  6 Aylık (1750 TL) + 2 yıl hediye · toplam 30 ay
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
@@ -954,7 +976,7 @@ export default function TeacherHomePage() {
               </div>
               <div className="rounded-xl border border-paper-100 bg-paper-50/80 p-3">
                 <div className="text-sm font-medium text-paper-900">
-                  12 Aylık (2500 TL) + 24 ay hediye
+                  12 Aylık (2500 TL) + 4 yıl hediye · toplam 60 ay
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button

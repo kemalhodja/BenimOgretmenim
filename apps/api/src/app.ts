@@ -18,6 +18,7 @@ import { admin } from "./routes/admin.js";
 import { paytr } from "./routes/paytr.js";
 import { packages } from "./routes/packages.js";
 import { courses } from "./routes/courses.js";
+import { teacherCampaigns } from "./routes/teacherCampaigns.js";
 import { classroom } from "./routes/classroom.js";
 import { learning } from "./routes/learning.js";
 import { studentPlatform } from "./routes/studentPlatform.js";
@@ -134,6 +135,8 @@ app.get("/", (c) => {
         "/v1/packages/teacher/mine, /student/mine, GET /:packageId/sessions, POST /:packageId/sessions/:sessionId/schedule",
       courses:
         "/v1/courses (public list), /:id (detail+cohorts), teacher: POST /, GET /mine, PATCH /:id/status, POST /:id/cohorts; student: GET /student/mine, POST /:id/cohorts/:cohortId/enroll",
+      teacherCampaigns:
+        "/v1/teacher-campaigns (public list/detail), teacher: POST /, GET /mine, PATCH /:id/status, GET /:id/applications; student: POST /:id/applications; admin: GET /admin/moderation, PATCH /admin/:id/status",
       classroom:
         "/v1/classroom/lesson-sessions/:id, /course-sessions/:id (+ POST /notes) — platform içi canlı oda + tahta/not arşivi",
       learning:
@@ -177,6 +180,7 @@ app.route("/v1/lesson-sessions", lessonEvaluations);
 app.route("/v1/lesson-requests", lessonRequests);
 app.route("/v1/packages", packages);
 app.route("/v1/courses", courses);
+app.route("/v1/teacher-campaigns", teacherCampaigns);
 app.route("/v1/classroom", classroom);
 app.route("/v1/learning", learning);
 app.route("/v1/student-platform", studentPlatform);

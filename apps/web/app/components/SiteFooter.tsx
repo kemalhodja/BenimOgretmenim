@@ -48,6 +48,11 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/kampanyalar" className="hover:underline">
+                  Öğretmen kampanyaları
+                </Link>
+              </li>
+              <li>
                 <Link href="/fiyatlar" className="hover:underline">
                   Fiyatlar
                 </Link>

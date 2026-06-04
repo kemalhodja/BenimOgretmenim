@@ -132,9 +132,7 @@ async function main() {
   console.log("[smoke:e2e] GET /v1/teachers?limit=5", teachersList.status);
   assertOk("teachers_list", teachersList);
 
-  // 4) Create a lesson request as student (if route exists)
-  // This endpoint requires an active student subscription in production.
-  // We deliberately assert the gate (403) instead of doing any paid flow.
+  // 4) Create a lesson request as student (free daily quota; no paid flow).
   const lr = await reqJson("/v1/lesson-requests", {
     method: "POST",
     headers: { ...studentAuth, "content-type": "application/json" },
@@ -143,14 +141,14 @@ async function main() {
       topic: "E2E konu",
       deliveryMode: "online",
       cityId: typeof cityId === "number" ? cityId : null,
-      note: "E2E: abonelik yoksa 403 beklenir.",
+      note: "E2E: ücretsiz günlük kota ile oluşturulur.",
     }),
   });
   console.log("[smoke:e2e] POST /v1/lesson-requests", lr.status);
-  if (lr.status !== 403 || lr.json.error !== "student_platform_subscription_required") {
-    console.error("[smoke:e2e] lesson-requests gate beklenenden farklı", lr.status, lr.json);
+  if (![201, 429].includes(lr.status)) {
+    console.error("[smoke:e2e] lesson-requests quota beklenenden farklı", lr.status, lr.json);
     process.exitCode = 1;
-    throw new Error("lesson_request_gate_unexpected");
+    throw new Error("lesson_request_quota_unexpected");
   }
 
   // 5) Teacher endpoints sanity (no paid actions)

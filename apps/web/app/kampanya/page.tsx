@@ -5,14 +5,21 @@ import { publicSiteUrl } from "../lib/siteUrl";
 
 const kampanyaUrl = `${publicSiteUrl()}/kampanya`;
 
+const teacherSubscriptionBenefits = [
+  "Sınırsız teklif verme ve öğrenci taleplerine yanıt hakkı",
+  "Kendi kampanya/reklam ilanını oluşturma: ilk ilan ücretsiz, ikinci ve sonraki yeni ilanlar 1000 TL",
+  "Kurs, grup ders, doğrudan ders ve öğretmen vitrini görünürlüğü",
+  "Başvuru, bildirim, cüzdan ve ödeme kayıtlarını panelden takip",
+] as const;
+
 export const metadata: Metadata = {
-  title: "Demo ders ve öğretmen aboneliği kampanyası",
-  description: "Demo ders dönüşümü ve öğretmen aboneliği kampanya fiyatları.",
+  title: "Erken erişim öğretmen aboneliği kampanyası",
+  description: "6 ay alana 2 yıl, 1 yıl alana 4 yıl ek süre veren erken erişim öğretmen kampanyası.",
   alternates: { canonical: kampanyaUrl },
   openGraph: {
     type: "website",
-    title: "Demo ders kampanyası · BenimÖğretmenim",
-    description: "Öğretmen aboneliği kampanya paketleri, demo ders dönüşümü ve kayıt sonrası adımlar.",
+    title: "Erken erişim kampanyası · BenimÖğretmenim",
+    description: "Öğretmen aboneliğinde erken erişime özel uzun süre avantajı.",
     url: kampanyaUrl,
     locale: "tr_TR",
   },
@@ -25,10 +32,10 @@ export default function KampanyaPage() {
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-12">
         <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm">
-          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Abonelik kampanyası</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Erken erişim abonelik kampanyası</h1>
           <p className="mt-2 text-paper-800/75">
-            BenimÖğretmenim’de öğrenciler önce demo ders talep eder; öğretmenler güçlü profil, hızlı
-            yanıt ve abonelik avantajıyla daha fazla talebe ulaşır.
+            BenimÖğretmenim’de erken erişime katılan öğretmenler, sınırlı dönem kampanyasıyla çok daha uzun
+            görünürlük ve teklif hakkı kazanır.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             {["Profilini güçlendir", "Demo talebe yanıt ver", "Pakete dönüştür"].map((x, i) => (
@@ -44,17 +51,31 @@ export default function KampanyaPage() {
             </div>
             <ul className="mt-3 space-y-2 text-sm text-paper-900">
               <li>
-                <span className="font-semibold">12 ay</span> ·{" "}
-                <span className="font-mono text-paper-800/45 line-through">12.000 TL</span>{" "}
-                <span className="font-mono font-semibold text-brand-800">2500 TL</span>
-                <span className="text-paper-800/70"> · +24 ay hediye</span>
-              </li>
-              <li>
                 <span className="font-semibold">6 ay</span> ·{" "}
                 <span className="font-mono text-paper-800/45 line-through">7.500 TL</span>{" "}
                 <span className="font-mono font-semibold text-brand-800">1750 TL</span>
-                <span className="text-paper-800/70"> · +12 ay hediye</span>
+                <span className="text-paper-800/70"> · +2 yıl hediye · toplam 30 ay</span>
               </li>
+              <li>
+                <span className="font-semibold">12 ay</span> ·{" "}
+                <span className="font-mono text-paper-800/45 line-through">12.000 TL</span>{" "}
+                <span className="font-mono font-semibold text-brand-800">2500 TL</span>
+                <span className="text-paper-800/70"> · +4 yıl hediye · toplam 60 ay</span>
+              </li>
+            </ul>
+            <p className="mt-3 text-xs leading-relaxed text-paper-800/60">
+              Kampanya abonelik süresini uzatır; ödeme tutarı değişmeden öğretmen panelindeki teklif, görünürlük
+              ve ders akışlarına daha uzun süre erişim sağlar.
+            </p>
+          </div>
+          <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">
+              Abone öğretmen ne kazanır?
+            </div>
+            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-brand-950">
+              {teacherSubscriptionBenefits.map((benefit) => (
+                <li key={benefit}>• {benefit}</li>
+              ))}
             </ul>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">

@@ -57,6 +57,28 @@ services:
         value: "7d"
       - key: ADMIN_BOOTSTRAP_PASSWORD
         generateValue: true
+      - key: SUB_PROMO_MULTIPLIER
+        value: "5"
+      - key: STUDENT_SUB_ANNUAL_PRICE_MINOR
+        value: "150000"
+      - key: PAYTR_TEST_MODE
+        value: "0"
+      - key: PAYTR_DEBUG_ON
+        value: "0"
+      - key: PAYTR_MERCHANT_ID
+        sync: false
+      - key: PAYTR_MERCHANT_KEY
+        sync: false
+      - key: PAYTR_MERCHANT_SALT
+        sync: false
+      - key: PAYTR_BASE_URL
+        value: https://www.paytr.com
+      - key: PAYTR_CALLBACK_URL
+        sync: false
+      - key: PAYTR_OK_URL
+        sync: false
+      - key: PAYTR_FAIL_URL
+        sync: false
       - key: CORS_ORIGINS
         value: https://benimogretmenim.onrender.com
       # Ödev memnuniyet ödülü öğretmen bu kullanıcının cüzdanından düşer (admin grant ile yükleyin).

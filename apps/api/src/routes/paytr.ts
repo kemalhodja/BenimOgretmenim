@@ -15,6 +15,15 @@ function mustEnv(name: string): string {
   return v;
 }
 
+function paytrOperationalFlag(name: "PAYTR_TEST_MODE" | "PAYTR_DEBUG_ON"): string {
+  const prod = process.env.NODE_ENV === "production";
+  const v = process.env[name]?.trim() ?? (prod ? "0" : "1");
+  if (prod && v !== "0") {
+    throw new Error(`${name}_must_be_0_in_production`);
+  }
+  return v;
+}
+
 function base64HmacSha256(key: string, data: string): string {
   return crypto.createHmac("sha256", key).update(data).digest("base64");
 }
@@ -88,7 +97,8 @@ paytr.get("/checkout", requireAuth, async (c) => {
 
   const noInstallment = "0";
   const maxInstallment = "0";
-  const testMode = process.env.PAYTR_TEST_MODE ?? "1";
+  const testMode = paytrOperationalFlag("PAYTR_TEST_MODE");
+  const debugOn = paytrOperationalFlag("PAYTR_DEBUG_ON");
   const currency = p.currency === "TRY" ? "TL" : p.currency;
 
   const hashStr = `${merchantId}${userIp}${p.merchant_oid}${email}${p.amount_minor}${basket}${noInstallment}${maxInstallment}${currency}${testMode}`;
@@ -107,7 +117,7 @@ paytr.get("/checkout", requireAuth, async (c) => {
   form.set("user_basket", basket);
   form.set("user_ip", userIp);
   form.set("timeout_limit", process.env.PAYTR_TIMEOUT_LIMIT ?? "30");
-  form.set("debug_on", process.env.PAYTR_DEBUG_ON ?? "1");
+  form.set("debug_on", debugOn);
   form.set("test_mode", testMode);
   form.set("lang", "tr");
   form.set("no_installment", noInstallment);
@@ -198,7 +208,8 @@ paytr.get("/course-checkout", requireAuth, async (c) => {
 
   const noInstallment = "0";
   const maxInstallment = "0";
-  const testMode = process.env.PAYTR_TEST_MODE ?? "1";
+  const testMode = paytrOperationalFlag("PAYTR_TEST_MODE");
+  const debugOn = paytrOperationalFlag("PAYTR_DEBUG_ON");
   const currency = p.currency === "TRY" ? "TL" : p.currency;
 
   const hashStr = `${merchantId}${userIp}${p.merchant_oid}${email}${p.amount_minor}${basket}${noInstallment}${maxInstallment}${currency}${testMode}`;
@@ -217,7 +228,7 @@ paytr.get("/course-checkout", requireAuth, async (c) => {
   form.set("user_basket", basket);
   form.set("user_ip", userIp);
   form.set("timeout_limit", process.env.PAYTR_TIMEOUT_LIMIT ?? "30");
-  form.set("debug_on", process.env.PAYTR_DEBUG_ON ?? "1");
+  form.set("debug_on", debugOn);
   form.set("test_mode", testMode);
   form.set("lang", "tr");
   form.set("no_installment", noInstallment);
@@ -289,7 +300,7 @@ paytr.get("/student-sub-checkout", requireAuth, async (c) => {
   };
   if (p.state !== "pending") return c.json({ error: "payment_not_pending" }, 409);
 
-  const title = `Platform aboneliği (öğrenci) — ${p.months_count} ay · ${(p.price_per_month_minor / 100).toFixed(0)} TL/ay`
+  const title = `Öğrenci yıllık platform aboneliği — ${p.months_count} ay · ${(p.amount_minor / 100).toFixed(0)} TL`
     .slice(0, 200);
 
   const user = await pool.query(
@@ -306,7 +317,8 @@ paytr.get("/student-sub-checkout", requireAuth, async (c) => {
   ).toString("base64");
   const noInstallment = "0";
   const maxInstallment = "0";
-  const testMode = process.env.PAYTR_TEST_MODE ?? "1";
+  const testMode = paytrOperationalFlag("PAYTR_TEST_MODE");
+  const debugOn = paytrOperationalFlag("PAYTR_DEBUG_ON");
   const currency = p.currency === "TRY" ? "TL" : p.currency;
   const hashStr = `${merchantId}${userIp}${p.merchant_oid}${email}${p.amount_minor}${basket}${noInstallment}${maxInstallment}${currency}${testMode}`;
   const paytrToken = base64HmacSha256(merchantKey, hashStr + merchantSalt);
@@ -324,7 +336,7 @@ paytr.get("/student-sub-checkout", requireAuth, async (c) => {
   form.set("user_basket", basket);
   form.set("user_ip", userIp);
   form.set("timeout_limit", process.env.PAYTR_TIMEOUT_LIMIT ?? "30");
-  form.set("debug_on", process.env.PAYTR_DEBUG_ON ?? "1");
+  form.set("debug_on", debugOn);
   form.set("test_mode", testMode);
   form.set("lang", "tr");
   form.set("no_installment", noInstallment);
@@ -395,7 +407,8 @@ paytr.get("/wallet-topup-checkout", requireAuth, async (c) => {
   ).toString("base64");
   const noInstallment = "0";
   const maxInstallment = "0";
-  const testMode = process.env.PAYTR_TEST_MODE ?? "1";
+  const testMode = paytrOperationalFlag("PAYTR_TEST_MODE");
+  const debugOn = paytrOperationalFlag("PAYTR_DEBUG_ON");
   const currency = p.currency === "TRY" ? "TL" : p.currency;
   const hashStr = `${merchantId}${userIp}${p.merchant_oid}${email}${p.amount_minor}${basket}${noInstallment}${maxInstallment}${currency}${testMode}`;
   const paytrToken = base64HmacSha256(merchantKey, hashStr + merchantSalt);
@@ -412,7 +425,7 @@ paytr.get("/wallet-topup-checkout", requireAuth, async (c) => {
   form.set("user_basket", basket);
   form.set("user_ip", userIp);
   form.set("timeout_limit", process.env.PAYTR_TIMEOUT_LIMIT ?? "30");
-  form.set("debug_on", process.env.PAYTR_DEBUG_ON ?? "1");
+  form.set("debug_on", debugOn);
   form.set("test_mode", testMode);
   form.set("lang", "tr");
   form.set("no_installment", noInstallment);
@@ -497,7 +510,7 @@ paytr.post("/callback", async (c) => {
       return c.text("OK");
     }
 
-    const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "3");
+    const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "5");
 
     const plan = await pool.query(
       `select duration_months, price_minor, currency from subscription_plans where code = $1`,
@@ -535,14 +548,22 @@ paytr.post("/callback", async (c) => {
       );
 
       const sub = await client.query(
-        `insert into teacher_subscriptions (
+        `with existing as (
+           select greatest(now(), coalesce(max(expires_at), now())) as starts_at
+           from teacher_subscriptions
+           where teacher_id = $1
+             and status = 'active'
+             and expires_at > now()
+         )
+         insert into teacher_subscriptions (
            teacher_id, plan_code, status, started_at, expires_at,
            promo_multiplier, paid_amount_minor, currency, payment_provider, external_ref, payment_id
-         ) values (
-           $1, $2::subscription_plan_code, 'active', now(),
-           now() + ($3::text || ' months')::interval,
-           $4, $5, $6, 'paytr', $7, $8
          )
+         select $1, $2::subscription_plan_code, 'active',
+                existing.starts_at,
+                existing.starts_at + ($3::text || ' months')::interval,
+                $4, $5, $6, 'paytr', $7, $8
+         from existing
          returning id`,
         [
           row.teacher_id,
@@ -622,8 +643,6 @@ paytr.post("/callback", async (c) => {
         });
         return c.text("OK");
       }
-      const ends = new Date();
-      ends.setMonth(ends.getMonth() + pr.months_count);
       const cl = await pool.connect();
       try {
         await cl.query("begin");
@@ -650,10 +669,21 @@ paytr.post("/callback", async (c) => {
           cl,
         );
         await cl.query(
-          `update student_subscriptions
-           set lifecycle = 'active', starts_at = now(), expires_at = $1, updated_at = now()
-           where id = $2 and lifecycle = 'awaiting_payment'`,
-          [ends, pr.subscription_id],
+          `with existing as (
+             select greatest(now(), coalesce(max(expires_at), now())) as starts_at
+             from student_subscriptions
+             where user_id = $1
+               and lifecycle = 'active'
+               and expires_at > now()
+           )
+           update student_subscriptions s
+           set lifecycle = 'active',
+               starts_at = existing.starts_at,
+               expires_at = existing.starts_at + ($2::int * interval '1 month'),
+               updated_at = now()
+           from existing
+           where s.id = $3 and s.lifecycle = 'awaiting_payment'`,
+          [pr.user_id, pr.months_count, pr.subscription_id],
         );
         await cl.query("commit");
       } catch (e) {

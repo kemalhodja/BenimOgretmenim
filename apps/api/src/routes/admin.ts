@@ -180,6 +180,7 @@ admin.get("/overview", requireAuth, async (c) => {
       `select count(*)::int as c
        from payment_reconciliation_events
        where status <> 'matched'
+         and resolution_status = 'open'
          and created_at >= now() - interval '30 days'`,
     ).catch(() => ({ rows: [{ c: 0 }] })),
     pool.query(
@@ -744,27 +745,33 @@ admin.get("/payment-reconciliation", requireAuth, async (c) => {
   const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? "50") || 50));
   const offset = Math.min(10_000, Math.max(0, Number(c.req.query("offset") ?? "0") || 0));
   const status = c.req.query("status")?.trim();
+  const resolutionStatus = c.req.query("resolutionStatus")?.trim();
   const args: unknown[] = [];
   let where = "true";
   if (status) {
     args.push(status);
     where += ` and status = $${args.length}`;
   }
+  if (resolutionStatus) {
+    args.push(resolutionStatus);
+    where += ` and resolution_status = $${args.length}`;
+  }
   const countR = await pool.query(`select count(*)::int as c from payment_reconciliation_events where ${where}`, args);
   const [statusSummary, riskSummary] = await Promise.all([
     pool.query(
-      `select status, count(*)::int as count, max(created_at) as latest_at
+      `select status, resolution_status, count(*)::int as count, max(created_at) as latest_at
        from payment_reconciliation_events
-       group by status
-       order by count desc, status asc`,
+       group by status, resolution_status
+       order by count desc, status asc, resolution_status asc`,
     ),
     pool.query(
       `select
+         count(*) filter (where status <> 'matched' and resolution_status = 'open')::int as open_issues,
          count(*) filter (where status <> 'matched')::int as issues_30d,
-         count(*) filter (where status = 'amount_mismatch')::int as amount_mismatches_30d,
-         count(*) filter (where status = 'unknown_merchant_oid')::int as unknown_merchant_oids_30d,
-         count(*) filter (where status = 'failed')::int as failed_30d,
-         max(created_at) filter (where status <> 'matched') as latest_issue_at
+         count(*) filter (where status = 'amount_mismatch' and resolution_status = 'open')::int as amount_mismatches_30d,
+         count(*) filter (where status = 'unknown_merchant_oid' and resolution_status = 'open')::int as unknown_merchant_oids_30d,
+         count(*) filter (where status = 'failed' and resolution_status = 'open')::int as failed_30d,
+         max(created_at) filter (where status <> 'matched' and resolution_status = 'open') as latest_issue_at
        from payment_reconciliation_events
        where created_at >= now() - interval '30 days'`,
     ),
@@ -775,6 +782,8 @@ admin.get("/payment-reconciliation", requireAuth, async (c) => {
   const rows = await pool.query(
     `select id, provider, merchant_oid, payment_table, payment_id,
             expected_amount_minor, received_amount_minor, status,
+            resolution_status, resolution_kind, resolution_note,
+            resolved_by_user_id, resolved_at, updated_at,
             details_jsonb, created_at
      from payment_reconciliation_events
      where ${where}
@@ -788,6 +797,7 @@ admin.get("/payment-reconciliation", requireAuth, async (c) => {
         amount_mismatches_30d: number;
         unknown_merchant_oids_30d: number;
         failed_30d: number;
+      open_issues: number;
         latest_issue_at: string | null;
       }
     | undefined;
@@ -798,6 +808,7 @@ admin.get("/payment-reconciliation", requireAuth, async (c) => {
     offset,
     summary: {
       byStatus: statusSummary.rows,
+      openIssues: risk?.open_issues ?? 0,
       issues30d: risk?.issues_30d ?? 0,
       amountMismatches30d: risk?.amount_mismatches_30d ?? 0,
       unknownMerchantOids30d: risk?.unknown_merchant_oids_30d ?? 0,
@@ -805,6 +816,99 @@ admin.get("/payment-reconciliation", requireAuth, async (c) => {
       latestIssueAt: risk?.latest_issue_at ?? null,
     },
   });
+});
+
+const paymentReconciliationResolutionSchema = z.object({
+  resolutionStatus: z.enum(["open", "resolved", "dismissed"]),
+  resolutionKind: z
+    .enum(["provider_retry", "manual_adjustment", "manual_refund", "duplicate", "not_actionable", "other"])
+    .nullable()
+    .optional(),
+  note: z.string().trim().max(1000).optional(),
+});
+
+admin.patch("/payment-reconciliation/:eventId", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+
+  const eventId = c.req.param("eventId")?.trim();
+  if (!eventId || !z.string().uuid().safeParse(eventId).success) {
+    return c.json({ error: "invalid_event_id" }, 400);
+  }
+
+  const parsed = paymentReconciliationResolutionSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const actorId = c.get("userId");
+  const actorRole = c.get("userRole");
+  const resolutionStatus = parsed.data.resolutionStatus;
+  const resolutionKind = resolutionStatus === "open" ? null : (parsed.data.resolutionKind ?? "other");
+  const note = parsed.data.note?.trim() || null;
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const beforeQ = await client.query(
+      `select id, merchant_oid, payment_table, payment_id, status,
+              resolution_status, resolution_kind, resolution_note, resolved_by_user_id, resolved_at
+       from payment_reconciliation_events
+       where id = $1
+       for update`,
+      [eventId],
+    );
+    const before = beforeQ.rows[0] as Record<string, unknown> | undefined;
+    if (!before) {
+      await client.query("rollback");
+      return c.json({ error: "event_not_found" }, 404);
+    }
+
+    const updateQ = await client.query(
+      `update payment_reconciliation_events
+       set resolution_status = $2,
+           resolution_kind = $3,
+           resolution_note = $4,
+           resolved_by_user_id = case when $2 = 'open' then null else $5::uuid end,
+           resolved_at = case when $2 = 'open' then null else now() end,
+           updated_at = now()
+       where id = $1
+       returning id, merchant_oid, payment_table, payment_id, status,
+                 resolution_status, resolution_kind, resolution_note, resolved_by_user_id, resolved_at, updated_at`,
+      [eventId, resolutionStatus, resolutionKind, note, actorId],
+    );
+    const after = updateQ.rows[0] as Record<string, unknown>;
+
+    await writeAdminAudit(
+      {
+        actorUserId: actorId,
+        actorRole,
+        requestId: c.req.header("x-request-id") ?? c.get("requestId") ?? null,
+        action: "payment_reconciliation_resolution_update",
+        entityType: "payment_reconciliation_event",
+        entityId: eventId,
+        reason: note,
+        before,
+        after,
+        metadata: {
+          merchantOid: after.merchant_oid,
+          resolutionStatus,
+          resolutionKind,
+        },
+      },
+      client,
+    );
+
+    await client.query("commit");
+    return c.json({ event: after });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    console.error("[admin] payment reconciliation resolution failed", {
+      eventId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return c.json({ error: "resolution_update_failed" }, 500);
+  } finally {
+    client.release();
+  }
 });
 
 const patchRoleSchema = z.object({

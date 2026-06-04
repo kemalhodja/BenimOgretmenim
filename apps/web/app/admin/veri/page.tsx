@@ -14,7 +14,8 @@ type Cfg = {
   arrayKey: string;
 };
 type ReconciliationSummary = {
-  byStatus: { status: string; count: number; latest_at: string | null }[];
+  byStatus: { status: string; resolution_status: string; count: number; latest_at: string | null }[];
+  openIssues: number;
   issues30d: number;
   amountMismatches30d: number;
   unknownMerchantOids30d: number;
@@ -81,6 +82,11 @@ const DATASETS: Record<string, Cfg> = {
     path: "/api/admin/homework-quality",
     arrayKey: "posts",
   },
+  "teacher-campaigns": {
+    title: "Öğretmen kampanyaları",
+    path: "/api/admin/teacher-campaigns",
+    arrayKey: "campaigns",
+  },
 };
 
 export default function AdminVeriPage() {
@@ -106,6 +112,8 @@ function AdminVeriInner() {
   const [userIdFilter, setUserIdFilter] = useState("");
   const [appliedUserId, setAppliedUserId] = useState("");
   const [reconciliationStatus, setReconciliationStatus] = useState("");
+  const [reconciliationResolutionStatus, setReconciliationResolutionStatus] = useState("open");
+  const [teacherCampaignStatus, setTeacherCampaignStatus] = useState("pending_review");
   const [reconciliationSummary, setReconciliationSummary] = useState<ReconciliationSummary | null>(null);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
@@ -121,8 +129,14 @@ function AdminVeriInner() {
     p.set("offset", String(offset));
     if (key === "ledger" && appliedUserId.trim()) p.set("userId", appliedUserId.trim());
     if (key === "reconciliation" && reconciliationStatus.trim()) p.set("status", reconciliationStatus.trim());
+    if (key === "reconciliation" && reconciliationResolutionStatus.trim()) {
+      p.set("resolutionStatus", reconciliationResolutionStatus.trim());
+    }
+    if (key === "teacher-campaigns" && teacherCampaignStatus.trim()) {
+      p.set("status", teacherCampaignStatus.trim());
+    }
     return p.toString();
-  }, [key, offset, appliedUserId, reconciliationStatus]);
+  }, [key, offset, appliedUserId, reconciliationStatus, reconciliationResolutionStatus, teacherCampaignStatus]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -173,6 +187,65 @@ function AdminVeriInner() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "aksiyon başarısız");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function updateReconciliationResolution(
+    id: string,
+    resolutionStatus: "open" | "resolved" | "dismissed",
+    resolutionKind?: "provider_retry" | "manual_adjustment" | "manual_refund" | "duplicate" | "not_actionable" | "other",
+  ) {
+    if (!token) return;
+    const note =
+      resolutionStatus === "open"
+        ? "Admin yeniden incelemeye açtı."
+        : window.prompt("Kısa çözüm notu girin:", resolutionStatus === "resolved" ? "İncelendi ve çözüldü." : "İncelendi, aksiyon gerekmiyor.");
+    if (note === null) return;
+    setActionBusy(`${id}:${resolutionStatus}`);
+    setError(null);
+    try {
+      await apiFetch(`/api/admin/payment-reconciliation/${id}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({
+          resolutionStatus,
+          resolutionKind: resolutionStatus === "open" ? null : (resolutionKind ?? "other"),
+          note,
+        }),
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "mutabakat aksiyonu başarısız");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function updateTeacherCampaignStatus(
+    id: string,
+    status: "pending_review" | "published" | "rejected" | "paused" | "archived",
+  ) {
+    if (!token) return;
+    const note =
+      status === "published"
+        ? "Admin onayladı."
+        : status === "rejected"
+          ? window.prompt("Red notu girin:", "Kampanya metni veya içerik politikası nedeniyle onaylanmadı.")
+          : `Admin durumu ${status} olarak güncelledi.`;
+    if (note === null) return;
+    setActionBusy(`${id}:campaign:${status}`);
+    setError(null);
+    try {
+      await apiFetch(`/api/admin/teacher-campaigns/${id}/status`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ status, note }),
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "kampanya aksiyonu başarısız");
     } finally {
       setActionBusy(null);
     }
@@ -243,7 +316,7 @@ function AdminVeriInner() {
                 </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-4">
                   {[
-                    ["Toplam risk", reconciliationSummary.issues30d, "", "Tüm kritik olaylar"],
+                    ["Açık risk", reconciliationSummary.openIssues, "", "Kapatılmamış olaylar"],
                     ["Tutar uyuşmazlığı", reconciliationSummary.amountMismatches30d, "amount_mismatch", "Bakiye/ödeme durdurulur"],
                     ["Bilinmeyen sipariş", reconciliationSummary.unknownMerchantOids30d, "unknown_merchant_oid", "PayTR kaydı eşleşmedi"],
                     ["Başarısız callback", reconciliationSummary.failed30d, "failed", "Ödeme başarısız döndü"],
@@ -253,6 +326,7 @@ function AdminVeriInner() {
                       type="button"
                       onClick={() => {
                         setReconciliationStatus(String(status));
+                        setReconciliationResolutionStatus("open");
                         setOffset(0);
                       }}
                       className={`rounded-xl border p-3 text-left transition hover:border-brand-200 ${
@@ -276,7 +350,7 @@ function AdminVeriInner() {
                       }}
                       className="rounded-full border border-paper-200 bg-paper-50 px-3 py-1 text-xs font-medium text-paper-800 hover:border-brand-200 hover:bg-brand-50"
                     >
-                      {item.status}: {item.count}
+                      {item.status}/{item.resolution_status}: {item.count}
                     </button>
                   ))}
                 </div>
@@ -301,10 +375,52 @@ function AdminVeriInner() {
                   <option value="matched">matched</option>
                 </select>
               </label>
+              <label className="text-sm">
+                <span className="font-medium text-paper-800">Çözüm durumu</span>
+                <select
+                  className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                  value={reconciliationResolutionStatus}
+                  onChange={(e) => {
+                    setReconciliationResolutionStatus(e.target.value);
+                    setOffset(0);
+                  }}
+                >
+                  <option value="">Tümü</option>
+                  <option value="open">open</option>
+                  <option value="resolved">resolved</option>
+                  <option value="dismissed">dismissed</option>
+                </select>
+              </label>
               <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
                 PayTR callback olayları beklenen tutar, gelen tutar ve ödeme kaydıyla birlikte burada izlenir.
                 Uyumsuz kayıtlar para güveni için öncelikli incelenmelidir.
               </div>
+            </div>
+          </div>
+        ) : null}
+
+        {key === "teacher-campaigns" ? (
+          <div className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <label className="text-sm">
+              <span className="font-medium text-paper-800">Kampanya durumu</span>
+              <select
+                className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                value={teacherCampaignStatus}
+                onChange={(e) => {
+                  setTeacherCampaignStatus(e.target.value);
+                  setOffset(0);
+                }}
+              >
+                <option value="pending_review">pending_review</option>
+                <option value="published">published</option>
+                <option value="rejected">rejected</option>
+                <option value="paused">paused</option>
+                <option value="archived">archived</option>
+              </select>
+            </label>
+            <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
+              Öğretmen kampanyaları public vitrine çıkmadan önce burada incelenir. Onaylanan kampanyalar
+              `/kampanyalar` listesine düşer; reddedilenler öğretmen panelinde görünür ama public olmaz.
             </div>
           </div>
         ) : null}
@@ -331,7 +447,9 @@ function AdminVeriInner() {
                       {col}
                     </th>
                   ))}
-                  {key === "homework" ? <th className="whitespace-nowrap px-2 py-2">Aksiyon</th> : null}
+                  {key === "homework" || key === "reconciliation" || key === "teacher-campaigns" ? (
+                    <th className="whitespace-nowrap px-2 py-2">Aksiyon</th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -359,6 +477,97 @@ function AdminVeriInner() {
                               </button>
                             );
                           })}
+                        </div>
+                      </td>
+                    ) : null}
+                    {key === "reconciliation" ? (
+                      <td className="whitespace-nowrap px-2 py-1.5">
+                        <div className="flex flex-wrap gap-1">
+                          {(() => {
+                            const id = typeof row.id === "string" ? row.id : "";
+                            const status = typeof row.resolution_status === "string" ? row.resolution_status : "open";
+                            const matched = row.status === "matched";
+                            if (!id || matched) {
+                              return <span className="text-[11px] text-paper-800/45">Aksiyon yok</span>;
+                            }
+                            if (status === "open") {
+                              return (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={actionBusy === `${id}:resolved`}
+                                    onClick={() => void updateReconciliationResolution(id, "resolved", "other")}
+                                    className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-900 disabled:opacity-40"
+                                  >
+                                    {actionBusy === `${id}:resolved` ? "…" : "Çözüldü"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={actionBusy === `${id}:dismissed`}
+                                    onClick={() => void updateReconciliationResolution(id, "dismissed", "not_actionable")}
+                                    className="rounded border border-paper-200 bg-white px-2 py-1 text-[11px] font-medium text-paper-900 disabled:opacity-40"
+                                  >
+                                    {actionBusy === `${id}:dismissed` ? "…" : "Aksiyon yok"}
+                                  </button>
+                                </>
+                              );
+                            }
+                            return (
+                              <button
+                                type="button"
+                                disabled={actionBusy === `${id}:open`}
+                                onClick={() => void updateReconciliationResolution(id, "open")}
+                                className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900 disabled:opacity-40"
+                              >
+                                {actionBusy === `${id}:open` ? "…" : "Tekrar aç"}
+                              </button>
+                            );
+                          })()}
+                        </div>
+                      </td>
+                    ) : null}
+                    {key === "teacher-campaigns" ? (
+                      <td className="whitespace-nowrap px-2 py-1.5">
+                        <div className="flex flex-wrap gap-1">
+                          {(() => {
+                            const id = typeof row.id === "string" ? row.id : "";
+                            const status = typeof row.status === "string" ? row.status : "";
+                            if (!id) return <span className="text-[11px] text-paper-800/45">Aksiyon yok</span>;
+                            return (
+                              <>
+                                {status !== "published" ? (
+                                  <button
+                                    type="button"
+                                    disabled={actionBusy === `${id}:campaign:published`}
+                                    onClick={() => void updateTeacherCampaignStatus(id, "published")}
+                                    className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-900 disabled:opacity-40"
+                                  >
+                                    {actionBusy === `${id}:campaign:published` ? "…" : "Onayla"}
+                                  </button>
+                                ) : null}
+                                {status !== "rejected" ? (
+                                  <button
+                                    type="button"
+                                    disabled={actionBusy === `${id}:campaign:rejected`}
+                                    onClick={() => void updateTeacherCampaignStatus(id, "rejected")}
+                                    className="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-900 disabled:opacity-40"
+                                  >
+                                    {actionBusy === `${id}:campaign:rejected` ? "…" : "Reddet"}
+                                  </button>
+                                ) : null}
+                                {status === "published" ? (
+                                  <button
+                                    type="button"
+                                    disabled={actionBusy === `${id}:campaign:paused`}
+                                    onClick={() => void updateTeacherCampaignStatus(id, "paused")}
+                                    className="rounded border border-paper-200 bg-white px-2 py-1 text-[11px] font-medium text-paper-900 disabled:opacity-40"
+                                  >
+                                    {actionBusy === `${id}:campaign:paused` ? "…" : "Duraklat"}
+                                  </button>
+                                ) : null}
+                              </>
+                            );
+                          })()}
                         </div>
                       </td>
                     ) : null}
@@ -409,6 +618,7 @@ function parseReconciliationSummary(v: unknown): ReconciliationSummary | null {
           return {
             status: typeof row.status === "string" ? row.status : "unknown",
             count: typeof row.count === "number" ? row.count : Number(row.count ?? 0),
+            resolution_status: typeof row.resolution_status === "string" ? row.resolution_status : "open",
             latest_at: typeof row.latest_at === "string" ? row.latest_at : null,
           };
         })
@@ -416,6 +626,7 @@ function parseReconciliationSummary(v: unknown): ReconciliationSummary | null {
     : [];
   return {
     byStatus,
+    openIssues: typeof r.openIssues === "number" ? r.openIssues : Number(r.openIssues ?? 0),
     issues30d: typeof r.issues30d === "number" ? r.issues30d : Number(r.issues30d ?? 0),
     amountMismatches30d:
       typeof r.amountMismatches30d === "number" ? r.amountMismatches30d : Number(r.amountMismatches30d ?? 0),

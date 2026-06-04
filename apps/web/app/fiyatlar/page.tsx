@@ -7,11 +7,11 @@ const fiyatlarUrl = `${publicSiteUrl()}/fiyatlar`;
 
 export const metadata: Metadata = {
   title: "Fiyatlandırma ve kullanım akışları",
-  description: "Öğrenci, öğretmen ve veli için üyelik sonrası role özel abonelik ve kullanım akışları.",
+  description: "Öğrenci yıllık aboneliği, öğretmen erken erişim paketleri ve kampanya ilan ücretleri.",
   alternates: { canonical: fiyatlarUrl },
   openGraph: {
     title: "Fiyatlandırma ve kullanım akışları · BenimÖğretmenim",
-    description: "Fiyatlar üyelikten sonra ilgili kullanıcı rolüne göre panel içinde gösterilir.",
+    description: "Öğrenci, öğretmen ve veli için fiyatlar, kotalar ve ödeme akışları.",
     url: fiyatlarUrl,
     locale: "tr_TR",
     type: "website",
@@ -21,15 +21,15 @@ export const metadata: Metadata = {
 const audiencePlans = [
   {
     title: "Öğrenci",
-    price: "Fiyat öğrenci panelinde görünür",
-    body: "Öğretmen arama, teklif karşılaştırma, soru çözüm havuzu, çalışma planı ve canlı sınıf akışları öğrenci panelinde birleşir.",
+    price: "Ücretsiz başla · yıllık 1500 TL",
+    body: "Ücretsiz kullanımda günlük 1 ders ilanı ve 5 soru; yıllık abonelikte günlük 5 ilan ve 10 soru hakkı.",
     href: "/kayit?role=student",
     cta: "Öğrenci hesabı aç",
   },
   {
     title: "Öğretmen",
-    price: "Planlar öğretmen panelinde görünür",
-    body: "Profil görünürlüğü, teklif verme, doğrudan ders, grup/kurs akışları ve soru çözüm havuzu ile gelir kanalı oluşturun.",
+    price: "1750 TL / 30 ay · 2500 TL / 60 ay",
+    body: "Sınırsız teklif, öğretmen görünürlüğü ve kampanya ilan hakkı. İlk kampanya ücretsiz; sonraki yeni ilanlar 1000 TL.",
     href: "/kayit?role=teacher",
     cta: "Öğretmen olarak başvur",
   },
@@ -97,8 +97,8 @@ export default function FiyatlarPage() {
               Üyelik ve kullanım akışları
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">
-              Öğrenci, öğretmen ve veli için fiyatlar ilgili panelde gösterilir. Ders, ödeme ve takip adımları aynı
-              yerde yönetilir.
+              Temel fiyat ve kota bilgileri şeffaftır; ödeme adımı, dekont, cüzdan ve kişisel durum detayları ilgili
+              rol panelinde yönetilir.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/kayit?role=student" className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-paper-950 hover:bg-brand-50">

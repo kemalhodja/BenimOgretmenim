@@ -11,6 +11,19 @@ type SubMe = {
   active: boolean;
   subscription: { id: string; expires_at: string; months_count: number } | null;
   pricePerMonthMinor: number;
+  annualMonths: number;
+  annualPriceMinor: number;
+  policy: {
+    tier: "free" | "annual";
+    dailyLessonRequestLimit: number;
+    dailyHomeworkPostLimit: number;
+  };
+  usage: {
+    lessonRequestsToday: number;
+    homeworkPostsToday: number;
+    lessonRequestsRemaining: number;
+    homeworkPostsRemaining: number;
+  } | null;
 };
 
 type Wallet = { balanceMinor: number; currency: string };
@@ -93,7 +106,7 @@ function StudentPanelPageInner() {
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [activeHoldMinor, setActiveHoldMinor] = useState<number>(0);
   const [holds, setHolds] = useState<NonNullable<HoldsResponse["holds"]>>([]);
-  const [months, setMonths] = useState(1);
+  const [months] = useState(12);
   const [topupKurus, setTopupKurus] = useState(200000);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -323,10 +336,10 @@ function StudentPanelPageInner() {
   const showOnboarding = searchParams.get("onboarding") === "1";
   const nextBestAction = !sub?.active
     ? {
-        title: "Platform aboneliğini başlat",
-        body: "Öğretmen talebi, soru havuzu ve takip akışlarını açmak için öğrenci aboneliğini tamamlayın.",
+        title: "Ücretsiz kotayı kullan veya yıllık abonelikle yükselt",
+        body: "Kayıtlı öğrenciler ücretsiz günlük 1 ilan ve 5 soru hakkı kullanır. Yıllık abonelik bu hakları 5 ilan ve 10 soruya çıkarır.",
         href: "#platform-aboneligi",
-        cta: "Aboneliğe git",
+        cta: "Kotaları gör",
       }
     : wallet && wallet.balanceMinor - activeHoldMinor < 50_000
       ? {
@@ -357,8 +370,10 @@ function StudentPanelPageInner() {
       <div className="mx-auto max-w-2xl px-6 py-8">
         <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Özet</h1>
         <p className="mt-1 text-sm text-paper-800/80">
-          Abonelik, cüzdan ve bildirimler. Güncel paket tutarı:{" "}
-          <span className="font-medium text-paper-900">{sub ? `${tl(sub.pricePerMonthMinor)} TL/ay` : "—"}</span>.
+          Abonelik, cüzdan ve bildirimler. Yıllık öğrenci aboneliği:{" "}
+          <span className="font-medium text-paper-900">
+            {sub ? `${tl(sub.annualPriceMinor)} TL / ${sub.annualMonths} ay` : "—"}
+          </span>.
         </p>
         <p className="mt-3 text-sm text-paper-800/70">
           Dersler ve kurslar üst menüde; en sık işlem talep açmak.
@@ -732,20 +747,38 @@ function StudentPanelPageInner() {
               </span>
             </p>
           ) : (
-            <p className="mt-2 text-sm text-amber-800">Aboneliğiniz yok veya süresi dolmuş.</p>
+            <p className="mt-2 text-sm text-amber-800">
+              Yıllık aboneliğiniz yok. Ücretsiz günlük kotayla kullanmaya devam edebilirsiniz.
+            </p>
           )}
+          {sub ? (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-paper-100 bg-paper-50 p-3">
+                <div className="text-xs font-semibold text-paper-800/60">Ücretsiz öğrenci</div>
+                <p className="mt-1 text-sm text-paper-900">Günlük 1 ders ilanı, günlük 5 soru hakkı.</p>
+              </div>
+              <div className="rounded-xl border border-brand-200 bg-brand-50 p-3">
+                <div className="text-xs font-semibold text-brand-900/70">Yıllık abone</div>
+                <p className="mt-1 text-sm text-brand-950">
+                  {tl(sub.annualPriceMinor)} TL / {sub.annualMonths} ay: günlük 5 ders ilanı, günlük 10 soru hakkı.
+                </p>
+              </div>
+            </div>
+          ) : null}
+          {sub?.usage ? (
+            <div className="mt-3 rounded-xl border border-paper-100 bg-white p-3 text-xs text-paper-800/75">
+              Bugünkü kalan hak: {sub.usage.lessonRequestsRemaining}/{sub.policy.dailyLessonRequestLimit} ders ilanı,{" "}
+              {sub.usage.homeworkPostsRemaining}/{sub.policy.dailyHomeworkPostLimit} soru. Mevcut paket:{" "}
+              {sub.policy.tier === "annual" ? "Yıllık abone" : "Ücretsiz"}.
+            </div>
+          ) : null}
           <div className="mt-4 flex flex-wrap items-end gap-3">
-            <label className="text-sm">
-              <span className="text-paper-800/75">Ay sayısı</span>
-              <input
-                type="number"
-                min={1}
-                max={60}
-                value={months}
-                onChange={(e) => setMonths(Number(e.target.value) || 1)}
-                className="ml-2 w-20 rounded-lg border border-paper-200 px-2 py-1 text-sm"
-              />
-            </label>
+            <div className="text-sm text-paper-800/75">
+              Satın alma:{" "}
+              <span className="font-medium text-paper-900">
+                {sub ? `${sub.annualMonths} ay / ${tl(sub.annualPriceMinor)} TL` : "Yıllık paket"}
+              </span>
+            </div>
             <button
               type="button"
               disabled={busy}

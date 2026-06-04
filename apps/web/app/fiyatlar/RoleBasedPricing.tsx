@@ -18,6 +18,13 @@ type StudentSubscription = {
   active: boolean;
   subscription: { expires_at?: string; months_count?: number } | null;
   pricePerMonthMinor: number;
+  annualMonths: number;
+  annualPriceMinor: number;
+  policy: {
+    tier: "free" | "annual";
+    dailyLessonRequestLimit: number;
+    dailyHomeworkPostLimit: number;
+  };
 };
 
 function minorToTl(n: number): string {
@@ -30,6 +37,19 @@ function roleName(role: UserRole): string {
   if (role === "guardian") return "Veli";
   return "Admin";
 }
+
+function teacherCampaignLabel(plan: PlanRow): string {
+  if (plan.code === "teacher_6m") return "Erken erişim: 6 ay öde, toplam 30 ay kullan.";
+  if (plan.code === "teacher_12m") return "Erken erişim: 12 ay öde, toplam 60 ay kullan.";
+  return `${plan.duration_months} aylık abonelik.`;
+}
+
+const teacherSubscriptionBenefits = [
+  "Sınırsız teklif verme ve öğrenci taleplerine hızlı dönüş",
+  "Kendi kampanya/reklam ilanını oluşturma; ilk ilan ücretsiz, sonrası 1000 TL cüzdan bakiyesi",
+  "Kurs, grup ders, doğrudan ders ve Akademi görünürlüğü",
+  "Başvuru, bildirim, cüzdan ve ödeme kayıtlarını panelden takip",
+] as const;
 
 export function RoleBasedPricing() {
   const [mounted, setMounted] = useState(false);
@@ -86,10 +106,10 @@ export function RoleBasedPricing() {
   if (!token || !role) {
     return (
       <section className="mt-10 rounded-2xl border border-brand-200 bg-brand-50 p-6 shadow-sm">
-        <h2 className="text-xl font-semibold tracking-tight text-brand-950">Fiyatlar üyelikten sonra görünür</h2>
+        <h2 className="text-xl font-semibold tracking-tight text-brand-950">Detaylı satın alma panelden ilerler</h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-brand-900">
-          Abonelik tutarları herkese açık vitrinde gösterilmez. Öğrenci, öğretmen veya veli hesabı açtıktan sonra
-          sadece kendi rolünüze uygun fiyat ve ödeme seçeneklerini panelinizde görürsünüz.
+          Temel fiyatlar bu sayfada açıktır. Hesap açtıktan sonra kendi rolünüze uygun ödeme, kota, cüzdan ve
+          abonelik durumunu panelinizde yönetirsiniz.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href="/kayit?role=student" className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white">
@@ -141,10 +161,11 @@ export function RoleBasedPricing() {
         <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-5">
           <div className="text-sm font-medium text-brand-900">Öğrenci platform aboneliği</div>
           <div className="mt-2 text-2xl font-semibold text-brand-950">
-            {minorToTl(studentSub.pricePerMonthMinor)} TL / ay
+            {minorToTl(studentSub.annualPriceMinor)} TL / yıl
           </div>
           <p className="mt-2 text-sm text-brand-900">
-            Soru çözüm havuzu, çalışma planı, canlı ders akışı ve öğrenci paneli özellikleri için kullanılır.
+            Ücretsiz kullanımda günlük 1 ders ilanı ve 5 soru hakkı vardır. Yıllık abonelikte günlük 5 ders ilanı
+            ve 10 soru hakkı açılır.
           </p>
           <Link
             href="/student/panel"
@@ -156,25 +177,37 @@ export function RoleBasedPricing() {
       ) : null}
 
       {(role === "teacher" || role === "admin") && plans.length > 0 ? (
-        <ul className="mt-5 grid gap-3 md:grid-cols-2">
-          {plans.map((p) => (
-            <li key={p.code} className="rounded-xl border border-paper-200 bg-paper-50 p-5">
-              <div className="text-lg font-semibold text-paper-900">{p.title}</div>
-              <div className="mt-1 text-sm text-paper-800/55">
-                {p.duration_months} ay · {p.code}
-              </div>
-              <div className="mt-3 text-2xl font-semibold text-brand-800">
-                {minorToTl(p.price_minor)} {p.currency}
-              </div>
-              <Link
-                href="/teacher"
-                className="mt-4 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white"
-              >
-                Öğretmen panelinde satın al
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-5">
+            <div className="text-sm font-semibold text-brand-950">Öğretmen aboneliğine dahil özellikler</div>
+            <ul className="mt-3 grid gap-2 text-sm leading-relaxed text-brand-900 sm:grid-cols-2">
+              {teacherSubscriptionBenefits.map((benefit) => (
+                <li key={benefit}>• {benefit}</li>
+              ))}
+            </ul>
+          </div>
+
+          <ul className="mt-5 grid gap-3 md:grid-cols-2">
+            {plans.map((p) => (
+              <li key={p.code} className="rounded-xl border border-paper-200 bg-paper-50 p-5">
+                <div className="text-lg font-semibold text-paper-900">{p.title}</div>
+                <div className="mt-1 text-sm text-paper-800/55">
+                  {p.duration_months} ay · {p.code}
+                </div>
+                <div className="mt-3 text-2xl font-semibold text-brand-800">
+                  {minorToTl(p.price_minor)} {p.currency}
+                </div>
+                <p className="mt-2 text-xs font-medium text-brand-900">{teacherCampaignLabel(p)}</p>
+                <Link
+                  href="/teacher"
+                  className="mt-4 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white"
+                >
+                  Öğretmen panelinde satın al
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
       ) : null}
 
       {role === "guardian" ? (

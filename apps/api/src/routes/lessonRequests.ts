@@ -5,7 +5,12 @@ import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import { createWalletHold, getWalletAvailableMinor } from "../lib/walletHolds.js";
-import { getActiveStudentSubscription } from "../lib/studentSub.js";
+import {
+  getActiveStudentSubscription,
+  getStudentDailyUsage,
+  lockStudentDailyUsage,
+  studentUsagePolicyForSubscription,
+} from "../lib/studentSub.js";
 
 async function requestMessageParticipant(
   requestId: string,
@@ -93,17 +98,6 @@ lessonRequests.post("/", requireAuth, async (c) => {
     return c.json({ error: "demo_request_target_teacher_required" }, 400);
   }
 
-  const sub = await getActiveStudentSubscription(userId);
-  if (!sub && requestKind !== "demo") {
-    return c.json(
-      {
-        error: "student_platform_subscription_required",
-        hint: "Detaylı ders ilanı vermek için aylık platform aboneliği gerekir. Konu (ders) alanı zorunludur.",
-      },
-      403,
-    );
-  }
-
   const sr = await pool.query(`select id from students where user_id = $1`, [
     userId,
   ]);
@@ -126,40 +120,70 @@ lessonRequests.post("/", requireAuth, async (c) => {
     }
   }
 
-  const ins = await pool.query(
-    `insert into lesson_requests (
-       student_id, branch_id, city_id, district_id, delivery_mode,
-       budget_hourly_range, availability_jsonb, note,
-       topic_text, image_urls_jsonb, audio_url,
-       request_kind, target_teacher_id
-     ) values (
-       $1, $2, $3, $4, $5::lesson_delivery_mode,
-       case when $6::int is not null and $7::int is not null
-            then int4range($6::int, $7::int, '[]')
-            else null::int4range
-       end,
-       $8::jsonb, $9,
-       $10, $11::jsonb, $12,
-       $13, $14
-     )
-     returning id, status, created_at`,
-    [
-      studentId,
-      parsed.data.branchId,
-      parsed.data.cityId ?? null,
-      parsed.data.districtId ?? null,
-      parsed.data.deliveryMode ?? "online",
-      parsed.data.budgetMin ?? null,
-      parsed.data.budgetMax ?? null,
-      JSON.stringify(parsed.data.availability ?? {}),
-      parsed.data.note ?? null,
-      parsed.data.topic.trim(),
-      JSON.stringify(parsed.data.imageUrls ?? []),
-      parsed.data.audioUrl?.trim() || null,
-      requestKind,
-      targetTeacherId,
-    ],
-  );
+  const client = await pool.connect();
+  let ins: { rows: Array<{ id: string; status: string; created_at: Date }> };
+  try {
+    await client.query("begin");
+    if (requestKind !== "demo") {
+      await lockStudentDailyUsage(studentId, client);
+      const sub = await getActiveStudentSubscription(userId, client);
+      const policy = studentUsagePolicyForSubscription(sub);
+      const usage = await getStudentDailyUsage(studentId, policy, client);
+      if (usage.lessonRequestsToday >= policy.dailyLessonRequestLimit) {
+        await client.query("rollback");
+        return c.json(
+          {
+            error: "daily_lesson_request_quota_exceeded",
+            limit: policy.dailyLessonRequestLimit,
+            used: usage.lessonRequestsToday,
+            tier: policy.tier,
+          },
+          429,
+        );
+      }
+    }
+
+    ins = await client.query(
+      `insert into lesson_requests (
+         student_id, branch_id, city_id, district_id, delivery_mode,
+         budget_hourly_range, availability_jsonb, note,
+         topic_text, image_urls_jsonb, audio_url,
+         request_kind, target_teacher_id
+       ) values (
+         $1, $2, $3, $4, $5::lesson_delivery_mode,
+         case when $6::int is not null and $7::int is not null
+              then int4range($6::int, $7::int, '[]')
+              else null::int4range
+         end,
+         $8::jsonb, $9,
+         $10, $11::jsonb, $12,
+         $13, $14
+       )
+       returning id, status, created_at`,
+      [
+        studentId,
+        parsed.data.branchId,
+        parsed.data.cityId ?? null,
+        parsed.data.districtId ?? null,
+        parsed.data.deliveryMode ?? "online",
+        parsed.data.budgetMin ?? null,
+        parsed.data.budgetMax ?? null,
+        JSON.stringify(parsed.data.availability ?? {}),
+        parsed.data.note ?? null,
+        parsed.data.topic.trim(),
+        JSON.stringify(parsed.data.imageUrls ?? []),
+        parsed.data.audioUrl?.trim() || null,
+        requestKind,
+        targetTeacherId,
+      ],
+    );
+    await client.query("commit");
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 
   const requestId = ins.rows[0].id as string;
   const notifyTeacherIds = [...new Set([...(targetTeacherId ? [targetTeacherId] : []), ...shortlistTeacherIds])];

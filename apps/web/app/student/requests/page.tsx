@@ -215,6 +215,9 @@ export default function StudentRequestsPage() {
       if (msg.includes("[403]")) {
         setError("Talep oluşturmak için öğrenci hesabı gerekir.");
       }
+      if (msg.includes("daily_lesson_request_quota_exceeded")) {
+        setError("Bugünkü ders ilanı hakkınız doldu. Ücretsiz öğrenciler günde 1 ilan açabilir; yıllık abonelikte bu hak günde 5 ilandır.");
+      }
     } finally {
       setSaving(false);
     }
@@ -267,6 +270,10 @@ export default function StudentRequestsPage() {
               </Link>
               .
             </p>
+            <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-xs leading-relaxed text-brand-950">
+              Kayıtlı öğrenci ücretsiz olarak günlük 1 ders ilanı açabilir. Yıllık abonelikte bu limit günlük 5 ilana
+              çıkar. Demo ders talepleri ilgili öğretmene özel gönderilir.
+            </div>
             {requestKind === "demo" && (
               <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
                 {targetTeacherName ? (

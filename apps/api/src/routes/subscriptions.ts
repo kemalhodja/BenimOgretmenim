@@ -75,7 +75,7 @@ subscriptions.post("/purchase-from-wallet", requireAuth, async (c) => {
   if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
   const teacherId = tr.rows[0].id as string;
 
-  const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "3");
+  const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "5");
 
   const plan = await pool.query(
     `select code, duration_months, price_minor, currency
@@ -121,14 +121,22 @@ subscriptions.post("/purchase-from-wallet", requireAuth, async (c) => {
     });
 
     const sub = await client.query(
-      `insert into teacher_subscriptions (
+      `with existing as (
+         select greatest(now(), coalesce(max(expires_at), now())) as starts_at
+         from teacher_subscriptions
+         where teacher_id = $1
+           and status = 'active'
+           and expires_at > now()
+       )
+       insert into teacher_subscriptions (
          teacher_id, plan_code, status, started_at, expires_at,
          promo_multiplier, paid_amount_minor, currency, payment_provider, external_ref
-       ) values (
-         $1, $2::subscription_plan_code, 'active', now(),
-         now() + ($3::text || ' months')::interval,
-         $4, $5, $6, 'wallet', $7
        )
+       select $1, $2::subscription_plan_code, 'active',
+              existing.starts_at,
+              existing.starts_at + ($3::text || ' months')::interval,
+              $4, $5, $6, 'wallet', $7
+       from existing
        returning id, plan_code, status, started_at, expires_at, promo_multiplier`,
       [
         teacherId,
@@ -174,7 +182,7 @@ subscriptions.post("/purchase", requireAuth, async (c) => {
   if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
   const teacherId = tr.rows[0].id as string;
 
-  const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "3");
+  const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "5");
 
   const plan = await pool.query(
     `select code, duration_months, price_minor, currency
@@ -313,7 +321,7 @@ subscriptions.post("/admin/approve-bank-transfer", requireAuth, async (c) => {
   };
   if (p.state !== "pending") return c.json({ error: "payment_not_pending" }, 409);
 
-  const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "3");
+  const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "5");
   const plan = await pool.query(
     `select duration_months from subscription_plans where code = $1`,
     [p.plan_code],
@@ -334,14 +342,22 @@ subscriptions.post("/admin/approve-bank-transfer", requireAuth, async (c) => {
     );
 
     const sub = await client.query(
-      `insert into teacher_subscriptions (
+      `with existing as (
+         select greatest(now(), coalesce(max(expires_at), now())) as starts_at
+         from teacher_subscriptions
+         where teacher_id = $1
+           and status = 'active'
+           and expires_at > now()
+       )
+       insert into teacher_subscriptions (
          teacher_id, plan_code, status, started_at, expires_at,
          promo_multiplier, paid_amount_minor, currency, payment_provider, external_ref, payment_id
-       ) values (
-         $1, $2::subscription_plan_code, 'active', now(),
-         now() + ($3::text || ' months')::interval,
-         $4, $5, $6, 'bank_transfer', $7, $8
        )
+       select $1, $2::subscription_plan_code, 'active',
+              existing.starts_at,
+              existing.starts_at + ($3::text || ' months')::interval,
+              $4, $5, $6, 'bank_transfer', $7, $8
+       from existing
        returning id`,
       [
         p.teacher_id,
