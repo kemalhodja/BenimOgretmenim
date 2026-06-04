@@ -63,6 +63,25 @@ const conversionPromises = [
   "Ders sonrası çalışma, ödev ve veli takibi ölçülebilir kalır.",
 ] as const;
 
+const paymentTransparency = [
+  {
+    title: "Ne zaman ücret görünür?",
+    body: "Öğretmen ücreti, paket, kurs, cüzdan yükleme veya abonelik tutarı ilgili panelde ödeme adımından önce gösterilir.",
+  },
+  {
+    title: "Ödeme nasıl korunur?",
+    body: "Kart ödemeleri PayTR üzerinden ilerler; cüzdan ve ders kayıtları admin mutabakat ve audit kayıtlarıyla izlenir.",
+  },
+  {
+    title: "Sorun olursa ne olur?",
+    body: "Tutar uyumsuzluğu, başarısız bildirim veya bilinmeyen ödeme referansı mutabakat kuyruğuna alınır ve manuel incelemeye açılır.",
+  },
+  {
+    title: "İptal/iade nasıl değerlendirilir?",
+    body: "Ders durumu, mesajlar, ödeme referansı, cüzdan hareketi ve platform kayıtları birlikte incelenerek sonuçlandırılır.",
+  },
+] as const;
+
 export default function FiyatlarPage() {
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.14),transparent_28%),radial-gradient(circle_at_88%_8%,rgba(255,122,77,0.12),transparent_30%),#f4fafc]">
@@ -129,6 +148,37 @@ export default function FiyatlarPage() {
               </li>
             ))}
           </ol>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-paper-800/55">
+                Güven ve ücretlendirme
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">
+                Ödeme adımı sürprizsiz, kayıtlı ve incelenebilir ilerler.
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                BenimÖğretmenim’de amaç yalnızca fiyat göstermek değil; ücretin hangi hizmete karşılık geldiğini,
+                ödeme sonucunun nasıl kaydedildiğini ve sorun halinde nasıl incelendiğini açıkça göstermektir.
+              </p>
+            </div>
+            <Link
+              href="/kullanim-kosullari"
+              className="w-fit rounded-xl border border-paper-200 bg-paper-50 px-3 py-2 text-xs font-semibold text-paper-900 hover:border-brand-200 hover:bg-brand-50"
+            >
+              Koşulları incele
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {paymentTransparency.map((item) => (
+              <div key={item.title} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <h3 className="text-sm font-semibold text-paper-900">{item.title}</h3>
+                <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">

@@ -158,10 +158,7 @@ export default function AdminBankPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Havale ve EFT onayı</h1>
           <p className="mt-1 text-sm text-paper-800/75">
-            Giriş (bootstrap):{" "}
-            <span className="font-mono">admin@benimogretmenim.local</span> /{" "}
-            <span className="font-mono">BenimAdmin2026!</span> —{" "}
-            <span className="font-mono">npm run db:seed:admin</span>
+            Bekleyen banka ödemelerini kontrol edin; onay işlemleri API audit kaydıyla izlenir.
           </p>
           <p className="mt-2 max-w-xl text-xs text-paper-800/55">
             Üretimde API tarafında <span className="font-mono">ADMIN_API_SECRET</span> tanımlıysa, Next

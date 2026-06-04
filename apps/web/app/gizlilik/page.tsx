@@ -26,27 +26,44 @@ export default function GizlilikPage() {
         Gizlilik ve kişisel veriler
       </h1>
       <p className="mt-2 text-sm text-paper-800/75">
-        Özet bilgilendirme; nihai KVKK metni yayına alınmadan hukuki danışmanlık ile güncellenmelidir.
+        BenimÖğretmenim; öğrenci, öğretmen, veli ve yönetici hesaplarında kişisel verileri yalnızca eğitim
+        hizmetini sunmak, güvenliği sağlamak ve yasal yükümlülükleri yerine getirmek için işler.
       </p>
       <section className="mt-10 space-y-4 text-sm leading-relaxed text-paper-800/85">
         <h2 className="text-base font-semibold text-paper-900">Toplanan veriler</h2>
         <p>
-          Hesap oluştururken e-posta, görünen ad ve rol bilgisi; öğretmen ve
-          öğrenci profillerinde tercih ettiğiniz branş, şehir, müsaitlik ve mesaj
-          içerikleri işlenebilir. Ödeme işlemlerinde ödeme sağlayıcı (ör. PayTR)
-          kendi politikalarına göre ek veri işleyebilir.
+          Hesap oluştururken e-posta, görünen ad, rol ve oturum bilgileri; öğretmen profillerinde branş,
+          şehir, deneyim, belge, video ve profil açıklamaları; öğrenci akışlarında talep, teklif, ders,
+          ödev, çalışma planı ve mesaj içerikleri işlenebilir. Veli hesaplarında öğrenci bağlantısı,
+          bildirim ve ilerleme bilgileri görüntülenebilir.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Amaç</h2>
         <p>
-          Veriler; hesabınızı sunmak, talep ve teklif eşleştirmesi yapmak, veli
-          bildirimleri iletmek ve yasal yükümlülükleri yerine getirmek için
-          kullanılır.
+          Veriler; hesabı işletmek, öğretmen-öğrenci eşleşmesini sağlamak, ödeme ve cüzdan kayıtlarını
+          tutmak, canlı ders ve ödev süreçlerini yönetmek, veli bildirimleri göndermek, destek taleplerini
+          çözmek, güvenlik/audit kayıtlarını oluşturmak ve mevzuat gerekliliklerini yerine getirmek için kullanılır.
+        </p>
+        <h2 className="text-base font-semibold text-paper-900">Ödeme ve güvenlik</h2>
+        <p>
+          Kart ödemelerinde PayTR gibi ödeme sağlayıcıları devreye girebilir; kart bilgileri BenimÖğretmenim
+          sunucularında saklanmaz. Platform, ödeme sonucu, tutar, işlem referansı, cüzdan hareketi ve
+          mutabakat olaylarını güvenlik ve finansal kayıt amacıyla işler.
+        </p>
+        <h2 className="text-base font-semibold text-paper-900">Saklama ve paylaşım</h2>
+        <p>
+          Veriler hizmet ilişkisi, yasal saklama süreleri, uyuşmazlık çözümü ve finansal kayıt gereklilikleri
+          devam ettiği sürece saklanabilir. Yetkili kamu kurumları, ödeme sağlayıcıları ve teknik hizmet
+          sağlayıcıları dışında üçüncü kişilerle gereksiz paylaşım yapılmaması esastır.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Haklarınız</h2>
         <p>
-          KVKK kapsamında erişim, düzeltme, silme, itiraz ve şikâyet haklarınız
-          vardır. Talepleriniz için iletişim adresinizi ürün ayarlarına
-          eklemeniz önerilir.
+          KVKK kapsamında erişim, düzeltme, silme, işleme itiraz, aktarım yapılan tarafları öğrenme ve
+          zarar doğması halinde tazmin talep etme haklarınız vardır. Talepleriniz için{" "}
+          <Link href="/iletisim" className="font-medium text-brand-800 underline-offset-4 hover:underline">
+            iletişim
+          </Link>{" "}
+          kanalını kullanabilirsiniz. Nihai hukuki metin şirket bilgileri ve veri sorumlusu detaylarıyla
+          birlikte yayıma alınmalıdır.
         </p>
       </section>
       <p className="mt-10 text-sm">

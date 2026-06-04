@@ -12,14 +12,19 @@ import { pool } from "../db.js";
 import { formatDbConnectError } from "../lib/dbErrors.js";
 
 const DEFAULT_EMAIL = "admin@benimogretmenim.local";
-const DEFAULT_PASSWORD = "BenimAdmin2026!";
 
 async function main() {
+  const isProduction = process.env.NODE_ENV === "production";
   const emailRaw = process.env.ADMIN_BOOTSTRAP_EMAIL ?? DEFAULT_EMAIL;
   const email = emailRaw.trim().toLowerCase();
-  const password = process.env.ADMIN_BOOTSTRAP_PASSWORD ?? DEFAULT_PASSWORD;
+  const passwordRaw = process.env.ADMIN_BOOTSTRAP_PASSWORD;
+  const password = passwordRaw?.trim();
   const displayName = (process.env.ADMIN_BOOTSTRAP_DISPLAY_NAME ?? "Yönetici").trim() || "Yönetici";
 
+  if (!password) {
+    console.error("ADMIN_BOOTSTRAP_PASSWORD zorunludur.");
+    process.exit(1);
+  }
   if (!email.includes("@")) {
     console.error("ADMIN_BOOTSTRAP_EMAIL geçerli bir e-posta olmalıdır.");
     process.exit(1);
@@ -47,7 +52,9 @@ async function main() {
     const row = r.rows[0] as { id: string; email: string };
     console.log("Admin bootstrap tamam.");
     console.log("  Kullanıcı adı (giriş e-postası):", row.email);
-    console.log("  Parola:", password);
+    if (!isProduction) {
+      console.log("  Parola:", password);
+    }
     console.log("  user id:", row.id);
     console.log("");
     console.log("Sonraki: web girişinden /admin; API proxy için ADMIN_API_SECRET ayarlayın.");

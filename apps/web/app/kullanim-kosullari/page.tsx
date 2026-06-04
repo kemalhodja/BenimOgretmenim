@@ -24,31 +24,47 @@ export default function KullanimKosullariPage() {
       <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
       <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Kullanım koşulları</h1>
       <p className="mt-2 text-sm text-paper-800/75">
-        Özet çerçeve; yürürlük öncesi hukuk danışmanlığı ile tam metin hazırlanmalıdır.
+        Bu çerçeve; öğrenciler, veliler, öğretmenler ve yöneticiler için platform kullanım kurallarını,
+        ödeme süreçlerini ve güvenlik beklentilerini açıklar.
       </p>
       <section className="mt-10 space-y-4 text-sm leading-relaxed text-paper-800/85">
         <h2 className="text-base font-semibold text-paper-900">Hizmet</h2>
         <p>
-          BenimÖğretmenim; öğrenci, veli ve öğretmenleri buluşturan dijital bir
-          aracı platformdur. Dersin kendisi taraflar arasındadır; platform
-          mümkün olduğunca iletişim ve ödeme kayıtlarını destekler.
+          BenimÖğretmenim; öğrenci, veli ve öğretmenleri özel ders, soru çözüm, canlı sınıf, çalışma
+          takibi, cüzdan ve bildirim akışlarında buluşturan dijital eğitim platformudur. Platform,
+          süreçleri kayıt altına alır ve güvenli ödeme/operasyon altyapısını sağlar.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Hesap ve içerik</h2>
         <p>
-          Yanlış veya yanıltıcı profil, taciz, spam veya yasa dışı içerik
-          yasaktır. Şüpheli kullanım durumunda hesap askıya alınabilir veya
-          sonlandırılabilir.
+          Kullanıcılar doğru bilgi vermek, hesap güvenliğini korumak ve başkalarının haklarını ihlal
+          etmeyen içerik paylaşmakla yükümlüdür. Yanıltıcı profil, sahte belge, taciz, spam, yasa dışı
+          içerik veya platform dışına yönlendiren kötüye kullanım tespit edilirse hesap kısıtlanabilir.
+        </p>
+        <h2 className="text-base font-semibold text-paper-900">Öğretmen doğrulama ve kalite</h2>
+        <p>
+          Öğretmen profilleri doğrulama, belge, branş, şehir, deneyim, ders geçmişi, puan ve yanıt
+          davranışı gibi kalite sinyalleriyle değerlendirilebilir. Platform, güveni korumak için profil
+          görünürlüğünü sınırlayabilir, ek belge isteyebilir veya inceleme başlatabilir.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Ödeme ve abonelik</h2>
         <p>
-          Öğretmen abonelikleri ve öğrenci ödemeleri ilgili ürün kurallarına tabidir.
-          İade ve anlaşmazlık süreçleri ayrıca tanımlanmalıdır.
+          Öğretmen abonelikleri, öğrenci paketleri, cüzdan yüklemeleri, doğrudan ders ve kurs ödemeleri
+          ilgili panelde gösterilen tutar ve koşullara tabidir. Kart ödemeleri ödeme sağlayıcısı üzerinden,
+          havale/EFT ödemeleri admin onayıyla ilerler. Başarısız veya uyumsuz ödeme kayıtları mutabakat
+          sürecine alınır.
+        </p>
+        <h2 className="text-base font-semibold text-paper-900">İptal, iade ve uyuşmazlık</h2>
+        <p>
+          Ders, paket veya ödeme uyuşmazlıklarında platform kayıtları, mesajlar, ders durumu, cüzdan
+          hareketleri ve ödeme sağlayıcı bildirimleri birlikte incelenir. İade veya manuel düzeltme
+          gerekiyorsa işlem admin audit ve mutabakat kayıtlarıyla izlenir. Nihai ticari/iade politikası
+          yayıma alınmadan önce hukuk ve muhasebe danışmanlığıyla netleştirilmelidir.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Sorumluluk sınırı</h2>
         <p>
-          Platform, tarafların birbirleriyle yaptığı sözlü veya yazılı anlaşmaların
-          tarafı değildir; doğrudan zararlardan dolayı sorumluluk hukuken
-          sınırlanabilir.
+          Platform, kayıtlı süreçleri ve teknik altyapıyı sunar; kullanıcıların platform dışında yaptığı
+          anlaşmalardan, paylaşımlardan veya ödemelerden sorumlu tutulamaz. Güvenli deneyim için iletişim
+          ve ödeme adımlarının platform içinde yürütülmesi önerilir.
         </p>
       </section>
       <p className="mt-10 text-sm">

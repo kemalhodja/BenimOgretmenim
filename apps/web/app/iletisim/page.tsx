@@ -43,8 +43,14 @@ export default function IletisimPage() {
             <div>
               <dt className="font-medium text-paper-900">E-posta</dt>
               <dd className="mt-1 text-paper-800/75">
-                <span className="font-mono text-paper-800/65">destek@benimogretmenim.com</span>{" "}
-                <span className="text-xs text-paper-800/50">(örnek)</span>
+                <span className="font-mono text-paper-800/65">destek@benimogretmenim.com</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium text-paper-900">Ödeme ve güven talepleri</dt>
+              <dd className="mt-1 text-paper-800/75">
+                Ödeme, iade, cüzdan, öğretmen doğrulama ve veli bağlantısı konularında destek talebi oluştururken
+                işlem tarihi, hesap e-postası ve varsa ders/ödeme referansını ekleyin.
               </dd>
             </div>
             <div>

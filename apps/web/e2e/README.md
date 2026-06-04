@@ -21,10 +21,11 @@ Kök dizinden: `npm run test:e2e --prefix apps/web` (veya `test:e2e:public` içi
 
 1. PostgreSQL + `npm run db:migrate --prefix apps/api`
 2. `npm run db:seed --prefix apps/api` (öğrenci/öğretmen/veli)
-3. `npm run db:seed:admin --prefix apps/api` (bootstrap admin: `admin@benimogretmenim.local`)
+3. `ADMIN_BOOTSTRAP_PASSWORD=<parola> npm run db:seed:admin --prefix apps/api`
 4. API ayakta: `http://127.0.0.1:3002` (`GET /health` → 200)
 
-Parolalar `e2e/fixtures/seed-users.ts` ile `login` sayfasındaki seed notlarıyla uyumludur.
+Öğrenci, öğretmen ve veli seed parolaları `e2e/fixtures/seed-users.ts` ile uyumludur. Admin için
+`E2E_ADMIN_PASSWORD` veya `ADMIN_BOOTSTRAP_PASSWORD` aynı değerle verilmelidir.
 
 ## Uçtan uca senaryo özeti
 

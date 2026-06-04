@@ -751,6 +751,24 @@ admin.get("/payment-reconciliation", requireAuth, async (c) => {
     where += ` and status = $${args.length}`;
   }
   const countR = await pool.query(`select count(*)::int as c from payment_reconciliation_events where ${where}`, args);
+  const [statusSummary, riskSummary] = await Promise.all([
+    pool.query(
+      `select status, count(*)::int as count, max(created_at) as latest_at
+       from payment_reconciliation_events
+       group by status
+       order by count desc, status asc`,
+    ),
+    pool.query(
+      `select
+         count(*) filter (where status <> 'matched')::int as issues_30d,
+         count(*) filter (where status = 'amount_mismatch')::int as amount_mismatches_30d,
+         count(*) filter (where status = 'unknown_merchant_oid')::int as unknown_merchant_oids_30d,
+         count(*) filter (where status = 'failed')::int as failed_30d,
+         max(created_at) filter (where status <> 'matched') as latest_issue_at
+       from payment_reconciliation_events
+       where created_at >= now() - interval '30 days'`,
+    ),
+  ]);
   args.push(limit, offset);
   const li = args.length - 1;
   const oi = args.length;
@@ -764,7 +782,29 @@ admin.get("/payment-reconciliation", requireAuth, async (c) => {
      limit $${li} offset $${oi}`,
     args,
   );
-  return c.json({ events: rows.rows, total: (countR.rows[0] as { c: number }).c, limit, offset });
+  const risk = riskSummary.rows[0] as
+    | {
+        issues_30d: number;
+        amount_mismatches_30d: number;
+        unknown_merchant_oids_30d: number;
+        failed_30d: number;
+        latest_issue_at: string | null;
+      }
+    | undefined;
+  return c.json({
+    events: rows.rows,
+    total: (countR.rows[0] as { c: number }).c,
+    limit,
+    offset,
+    summary: {
+      byStatus: statusSummary.rows,
+      issues30d: risk?.issues_30d ?? 0,
+      amountMismatches30d: risk?.amount_mismatches_30d ?? 0,
+      unknownMerchantOids30d: risk?.unknown_merchant_oids_30d ?? 0,
+      failed30d: risk?.failed_30d ?? 0,
+      latestIssueAt: risk?.latest_issue_at ?? null,
+    },
+  });
 });
 
 const patchRoleSchema = z.object({

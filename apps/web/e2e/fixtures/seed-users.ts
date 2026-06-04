@@ -18,7 +18,7 @@ export const SEED_USERS = {
   /** npm run db:seed:admin — ayrı bootstrap script */
   adminBootstrap: {
     email: "admin@benimogretmenim.local",
-    password: "BenimAdmin2026!",
+    password: process.env.E2E_ADMIN_PASSWORD ?? process.env.ADMIN_BOOTSTRAP_PASSWORD ?? "",
   },
   /** npm run db:seed tam seed içindeki opsiyonel admin */
   adminSeed: {

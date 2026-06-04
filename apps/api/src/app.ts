@@ -146,7 +146,7 @@ app.get("/", (c) => {
       support:
         "/v1/support/me (GET), POST /me/messages (girişli); POST /guest/session, GET /guest/me, POST /guest/messages (X-Support-Guest-Token; misafir)",
       admin:
-        "/v1/admin/* — overview, users(+role,wallet), teachers(+PATCH verification), courses(+PATCH status), lesson-requests(+PATCH cancel), subscription-payments, group-lesson-requests(+PATCH status), wallet-ledger, homework(+PATCH cancel), direct-bookings(+PATCH cancel), lesson-packages, teacher-subscriptions, wallet-topups, student-sub-payments, course-enrollments, parent-notifications, guardian-invites, support-threads(+messages), POST /reminders/run",
+        "/v1/admin/* — overview, users(+role,wallet), teachers(+PATCH verification), courses(+PATCH status), lesson-requests(+PATCH cancel), subscription-payments, group-lesson-requests(+PATCH status), wallet-ledger, payment-reconciliation, homework(+PATCH cancel), direct-bookings(+PATCH cancel), lesson-packages, teacher-subscriptions, wallet-topups, student-sub-payments, course-enrollments, parent-notifications, guardian-invites, support-threads(+messages), POST /reminders/run",
       paytr:
         "/v1/paytr/checkout, /course-checkout, /student-sub-checkout, /wallet-topup-checkout, /callback",
       guardians:

@@ -55,6 +55,8 @@ services:
         generateValue: true
       - key: JWT_EXPIRES
         value: "7d"
+      - key: ADMIN_BOOTSTRAP_PASSWORD
+        generateValue: true
       - key: CORS_ORIGINS
         value: https://benimogretmenim.onrender.com
       # Ödev memnuniyet ödülü öğretmen bu kullanıcının cüzdanından düşer (admin grant ile yükleyin).

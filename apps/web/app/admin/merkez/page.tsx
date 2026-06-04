@@ -75,6 +75,7 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { href: "/admin/wallet", title: "Cüzdan grant", desc: "Manuel bakiye ekleme" },
       { href: "/admin/veri?k=ledger", title: "Cüzdan defteri", desc: "Tüm ledger satırları" },
       { href: "/admin/veri?k=wallet-topups", title: "Cüzdan PayTR yüklemeleri", desc: "wallet_topup_payments" },
+      { href: "/admin/veri?k=reconciliation", title: "Ödeme mutabakatı", desc: "PayTR callback uyumsuzlukları" },
       { href: "/admin/veri?k=student-sub-payments", title: "Öğrenci platform ödemeleri", desc: "student_sub_payments" },
     ],
   },
@@ -154,6 +155,12 @@ function riskTone(value: number): string {
   return "border-emerald-200 bg-emerald-50 text-emerald-900";
 }
 
+function readinessClass(status: "ready" | "watch" | "action"): string {
+  if (status === "ready") return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (status === "watch") return "border-amber-200 bg-amber-50 text-amber-900";
+  return "border-red-200 bg-red-50 text-red-900";
+}
+
 export default function AdminMerkezPage() {
   const token = useRequireAdmin();
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -207,7 +214,7 @@ export default function AdminMerkezPage() {
           {
             title: "Ödeme mutabakatı",
             value: c.reconciliationIssues30d,
-            href: "/admin/veri?k=wallet-topups",
+            href: "/admin/veri?k=reconciliation",
             action: c.reconciliationIssues30d > 0 ? "PayTR ve cüzdan kayıtlarını karşılaştır" : "Son 30 gün temiz",
           },
           {
@@ -217,6 +224,42 @@ export default function AdminMerkezPage() {
             action: c.teacherQualityAvg < 70 ? "Zayıf profilleri doğrulama ve içerik tamamlama akışına al" : "Kalite ortalaması iyi",
           },
         ];
+  const readinessChecks =
+    c == null
+      ? []
+      : [
+          {
+            title: "Sistem",
+            status: systemHealth?.status === "ok" ? "ready" : systemHealth ? "action" : "watch",
+            value: systemHealth ? healthLabel(systemHealth.status) : "Yükleniyor",
+            action: systemHealth?.status === "ok" ? "Runtime ve DB kontrolleri temiz" : "Sistem sağlığı detayını incele",
+          },
+          {
+            title: "SLA",
+            status: c.homeworkSlaBreaches + c.supportSlaBreaches === 0 ? "ready" : "action",
+            value: `${c.homeworkSlaBreaches + c.supportSlaBreaches} risk`,
+            action:
+              c.homeworkSlaBreaches + c.supportSlaBreaches === 0
+                ? "Ödev ve destek SLA temiz"
+                : "Geciken ödev/destek işlerini kapat",
+          },
+          {
+            title: "Ödeme",
+            status: c.reconciliationIssues30d === 0 ? "ready" : "action",
+            value: `${c.reconciliationIssues30d} uyumsuzluk`,
+            action: c.reconciliationIssues30d === 0 ? "PayTR mutabakatı temiz" : "Mutabakat kayıtlarını kontrol et",
+          },
+          {
+            title: "Öğretmen kalite",
+            status: c.teacherQualityAvg >= 75 ? "ready" : c.teacherQualityAvg >= 60 ? "watch" : "action",
+            value: `${c.teacherQualityAvg}/100`,
+            action:
+              c.teacherQualityAvg >= 75
+                ? "Vitrin kalitesi iyi"
+                : "Doğrulama ve profil tamamlama kuyruğunu büyüt",
+          },
+        ] as const;
+  const readinessActionCount = readinessChecks.filter((item) => item.status === "action").length;
 
   async function runReminders() {
     if (!token) return;
@@ -318,6 +361,39 @@ export default function AdminMerkezPage() {
           </section>
         ) : null}
 
+        {c ? (
+          <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-paper-800/55">
+                  Canlı operasyon durumu
+                </div>
+                <h2 className="mt-2 text-lg font-semibold text-paper-900">
+                  {readinessActionCount === 0 ? "Platform canlı akış için hazır" : `${readinessActionCount} kritik aksiyon bekliyor`}
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                  Sistem sağlığı, SLA, ödeme mutabakatı ve öğretmen kalite sinyalleri tek go/no-go özetinde izlenir.
+                </p>
+              </div>
+              <Link
+                href="/admin/veri?k=reconciliation"
+                className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-100"
+              >
+                Mutabakatı aç
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {readinessChecks.map((item) => (
+                <div key={item.title} className={`rounded-xl border p-3 ${readinessClass(item.status)}`}>
+                  <div className="text-xs font-semibold uppercase tracking-wide">{item.title}</div>
+                  <div className="mt-1 text-lg font-semibold">{item.value}</div>
+                  <p className="mt-1 text-xs opacity-80">{item.action}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <section className="mt-6 rounded-xl border border-paper-200 bg-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -364,7 +440,7 @@ export default function AdminMerkezPage() {
                 ["Ödev SLA ihlali", c.homeworkSlaBreaches, "Açık/üstlenilmiş geciken soru", "/admin/homework"],
                 ["Destek SLA riski", c.supportSlaBreaches, "24 saati aşan açık destek", "/admin/support"],
                 ["Öğretmen kalite", `${c.teacherQualityAvg}/100`, "Profil kalite ortalaması", "/admin/teachers"],
-                ["Ödeme uyumu", c.reconciliationIssues30d, "30g PayTR uyumsuzluğu", "/admin/veri?k=wallet-topups"],
+                ["Ödeme uyumu", c.reconciliationIssues30d, "30g PayTR uyumsuzluğu", "/admin/veri?k=reconciliation"],
                 ["Ders hacmi", c.completedLessons30d, "30g tamamlanan ders", "/admin/veri?k=packages"],
               ].map(([label, value, hint, href]) => (
                 <Link

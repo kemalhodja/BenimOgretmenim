@@ -35,16 +35,9 @@ function parseLoginApiError(err: unknown): { message: string; showRegisterHint: 
   return { message: noRid, showRegisterHint: false };
 }
 
-/**
- * Tam seed (`npm run db:seed`) — apps/api/src/scripts/seed-dev.ts
- * Bootstrap admin (`npm run db:seed:admin`) — apps/api/src/scripts/seed-admin.ts
- * (web’deki varsayılanlar script ile aynı olmalı).
- */
+/** Tam seed (`npm run db:seed`) — apps/api/src/scripts/seed-dev.ts */
 const SEED_PASSWORD = "DevParola1";
 /** Giriş “kullanıcı adı” = e-posta */
-const BOOTSTRAP_ADMIN_EMAIL = "admin@benimogretmenim.local";
-const BOOTSTRAP_ADMIN_PASSWORD = "BenimAdmin2026!";
-
 type SeedPreset = {
   label: string;
   email: string;
@@ -53,12 +46,6 @@ type SeedPreset = {
 };
 
 const SEED_ROLE_PRESETS: readonly SeedPreset[] = [
-  {
-    label: "Admin",
-    email: BOOTSTRAP_ADMIN_EMAIL,
-    password: BOOTSTRAP_ADMIN_PASSWORD,
-    hint: "→ /admin",
-  },
   {
     label: "Admin (ilk seed)",
     email: "seed_dev@benimogretmenim.local",

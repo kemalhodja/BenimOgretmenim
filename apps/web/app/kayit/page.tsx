@@ -46,7 +46,9 @@ function KayitForm() {
   const initialRole = searchParams.get("role");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [role, setRole] = useState<"student" | "teacher" | "guardian">(
     initialRole === "teacher" || initialRole === "guardian" ? initialRole : "student",
   );
@@ -73,15 +75,25 @@ function KayitForm() {
     () =>
       email.trim().length > 3 &&
       password.length >= 8 &&
+      password === passwordConfirm &&
       displayName.trim().length >= 1 &&
+      acceptedTerms &&
       !loading,
-    [email, password, displayName, loading],
+    [email, password, passwordConfirm, displayName, acceptedTerms, loading],
   );
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setEmailTaken(false);
+    if (password !== passwordConfirm) {
+      setError("Parola tekrarı eşleşmiyor.");
+      return;
+    }
+    if (!acceptedTerms) {
+      setError("Devam etmek için kullanım koşulları ve KVKK bilgilendirmesini kabul etmelisiniz.");
+      return;
+    }
     setLoading(true);
     try {
       const r = await apiFetch<RegResponse>("/v1/auth/register", {
@@ -178,6 +190,40 @@ function KayitForm() {
               minLength={8}
             />
             <p className="mt-1 text-xs text-paper-800/55">En az 8 karakter.</p>
+          </label>
+
+          <label className="block">
+            <div className="mb-1 text-sm font-medium text-paper-800">Parola tekrar</div>
+            <input
+              value={passwordConfirm}
+              onChange={(e) => setPasswordConfirm(e.target.value)}
+              className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+            />
+            {passwordConfirm && passwordConfirm !== password ? (
+              <p className="mt-1 text-xs text-red-700">Parola tekrarı eşleşmiyor.</p>
+            ) : null}
+          </label>
+
+          <label className="flex items-start gap-2 rounded-xl border border-paper-200 bg-paper-50 px-3 py-2 text-xs leading-relaxed text-paper-800/75">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-paper-300"
+            />
+            <span>
+              <Link href="/kullanim-kosullari" className="font-semibold text-brand-800 underline-offset-4 hover:underline">
+                Kullanım koşullarını
+              </Link>{" "}
+              ve{" "}
+              <Link href="/gizlilik" className="font-semibold text-brand-800 underline-offset-4 hover:underline">
+                Gizlilik/KVKK bilgilendirmesini
+              </Link>{" "}
+              okudum, kabul ediyorum.
+            </span>
           </label>
 
           {error && (

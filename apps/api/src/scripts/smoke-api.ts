@@ -2,9 +2,8 @@
  * Yerel API duman testi: API çalışırken (örn. npm run dev) ve PostgreSQL ayaktayken çalıştırın.
  *   npm run smoke
  *
- * Abonelik onayı için admin kullanıcı gerekir (`npm run db:seed:admin` — varsayılan
- * admin@benimogretmenim.local / BenimAdmin2026!). Özelleştirmek için:
- *   SMOKE_ADMIN_EMAIL, SMOKE_ADMIN_PASSWORD
+ * Abonelik onayı için admin kullanıcı gerekir. Özelleştirmek için:
+ *   SMOKE_ADMIN_EMAIL, SMOKE_ADMIN_PASSWORD veya ADMIN_BOOTSTRAP_PASSWORD
  *   SMOKE_GUARDIAN_EMAIL, SMOKE_GUARDIAN_PASSWORD (varsayılan seed veli)
  * API'de ADMIN_API_SECRET tanımlıysa smoke sürecinde de aynı env ile çalıştırın.
  *
@@ -93,7 +92,12 @@ async function main() {
   // Admin login (wallet grant + ops)
   const adminEmail =
     process.env.SMOKE_ADMIN_EMAIL ?? "admin@benimogretmenim.local";
-  const adminPassword = process.env.SMOKE_ADMIN_PASSWORD ?? "BenimAdmin2026!";
+  const adminPassword = process.env.SMOKE_ADMIN_PASSWORD ?? process.env.ADMIN_BOOTSTRAP_PASSWORD;
+  if (!adminPassword?.trim()) {
+    console.error("[smoke] SMOKE_ADMIN_PASSWORD veya ADMIN_BOOTSTRAP_PASSWORD zorunludur.");
+    process.exitCode = 1;
+    return;
+  }
   const adminLogin = await fetch(`${base}/v1/auth/login`, {
     method: "POST",
     headers: { "content-type": "application/json" },

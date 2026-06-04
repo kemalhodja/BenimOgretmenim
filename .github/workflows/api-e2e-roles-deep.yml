@@ -37,6 +37,7 @@ jobs:
       JWT_SECRET: ci-jwt-secret-must-be-at-least-32-characters-long
       NODE_ENV: development
       PORT: "3002"
+      ADMIN_BOOTSTRAP_PASSWORD: ci-admin-password-only-for-ephemeral-postgres
 
     steps:
       - uses: actions/checkout@v4
@@ -87,4 +88,5 @@ jobs:
         working-directory: apps/api
         env:
           SMOKE_API_URL: http://127.0.0.1:3002
+          SMOKE_ADMIN_PASSWORD: ci-admin-password-only-for-ephemeral-postgres
         run: npm run smoke:roles-deep

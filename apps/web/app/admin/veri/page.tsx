@@ -13,6 +13,14 @@ type Cfg = {
   path: string;
   arrayKey: string;
 };
+type ReconciliationSummary = {
+  byStatus: { status: string; count: number; latest_at: string | null }[];
+  issues30d: number;
+  amountMismatches30d: number;
+  unknownMerchantOids30d: number;
+  failed30d: number;
+  latestIssueAt: string | null;
+};
 
 const DATASETS: Record<string, Cfg> = {
   ledger: { title: "Cüzdan defteri", path: "/api/admin/wallet-ledger", arrayKey: "entries" },
@@ -23,6 +31,11 @@ const DATASETS: Record<string, Cfg> = {
     arrayKey: "subscriptions",
   },
   "wallet-topups": { title: "Cüzdan yüklemeleri", path: "/api/admin/wallet-topups", arrayKey: "topups" },
+  reconciliation: {
+    title: "Ödeme mutabakatı",
+    path: "/api/admin/payment-reconciliation",
+    arrayKey: "events",
+  },
   "student-sub-payments": {
     title: "Öğrenci platform ödemeleri",
     path: "/api/admin/student-sub-payments",
@@ -92,6 +105,8 @@ function AdminVeriInner() {
 
   const [userIdFilter, setUserIdFilter] = useState("");
   const [appliedUserId, setAppliedUserId] = useState("");
+  const [reconciliationStatus, setReconciliationStatus] = useState("");
+  const [reconciliationSummary, setReconciliationSummary] = useState<ReconciliationSummary | null>(null);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -105,8 +120,9 @@ function AdminVeriInner() {
     p.set("limit", String(limit));
     p.set("offset", String(offset));
     if (key === "ledger" && appliedUserId.trim()) p.set("userId", appliedUserId.trim());
+    if (key === "reconciliation" && reconciliationStatus.trim()) p.set("status", reconciliationStatus.trim());
     return p.toString();
-  }, [key, offset, appliedUserId]);
+  }, [key, offset, appliedUserId, reconciliationStatus]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -117,12 +133,13 @@ function AdminVeriInner() {
       const arr = r[cfg.arrayKey];
       setRows(Array.isArray(arr) ? (arr as Record<string, unknown>[]) : []);
       setTotal(typeof r.total === "number" ? r.total : 0);
+      setReconciliationSummary(key === "reconciliation" ? parseReconciliationSummary(r.summary) : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "yüklenemedi");
     } finally {
       setLoading(false);
     }
-  }, [token, cfg, qs]);
+  }, [token, cfg, qs, key]);
 
   useEffect(() => {
     void load();
@@ -203,6 +220,92 @@ function AdminVeriInner() {
             >
               Uygula
             </button>
+          </div>
+        ) : null}
+
+        {key === "reconciliation" ? (
+          <div className="mt-4 space-y-3">
+            {reconciliationSummary ? (
+              <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-paper-900">Mutabakat risk özeti</h2>
+                    <p className="mt-1 text-xs text-paper-800/60">
+                      Son 30 günde para güvenini etkileyen PayTR callback olayları.
+                    </p>
+                  </div>
+                  <div className="text-xs text-paper-800/55">
+                    Son risk:{" "}
+                    {reconciliationSummary.latestIssueAt
+                      ? new Date(reconciliationSummary.latestIssueAt).toLocaleString("tr-TR")
+                      : "yok"}
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                  {[
+                    ["Toplam risk", reconciliationSummary.issues30d, "", "Tüm kritik olaylar"],
+                    ["Tutar uyuşmazlığı", reconciliationSummary.amountMismatches30d, "amount_mismatch", "Bakiye/ödeme durdurulur"],
+                    ["Bilinmeyen sipariş", reconciliationSummary.unknownMerchantOids30d, "unknown_merchant_oid", "PayTR kaydı eşleşmedi"],
+                    ["Başarısız callback", reconciliationSummary.failed30d, "failed", "Ödeme başarısız döndü"],
+                  ].map(([label, value, status, hint]) => (
+                    <button
+                      key={String(label)}
+                      type="button"
+                      onClick={() => {
+                        setReconciliationStatus(String(status));
+                        setOffset(0);
+                      }}
+                      className={`rounded-xl border p-3 text-left transition hover:border-brand-200 ${
+                        Number(value) > 0 ? "border-amber-200 bg-amber-50 text-amber-950" : "border-emerald-200 bg-emerald-50 text-emerald-900"
+                      }`}
+                    >
+                      <div className="text-xs font-semibold uppercase tracking-wide">{label}</div>
+                      <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
+                      <div className="mt-1 text-xs opacity-80">{hint}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {reconciliationSummary.byStatus.map((item) => (
+                    <button
+                      key={item.status}
+                      type="button"
+                      onClick={() => {
+                        setReconciliationStatus(item.status);
+                        setOffset(0);
+                      }}
+                      className="rounded-full border border-paper-200 bg-paper-50 px-3 py-1 text-xs font-medium text-paper-800 hover:border-brand-200 hover:bg-brand-50"
+                    >
+                      {item.status}: {item.count}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap items-end gap-2 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+              <label className="text-sm">
+                <span className="font-medium text-paper-800">Mutabakat durumu</span>
+                <select
+                  className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                  value={reconciliationStatus}
+                  onChange={(e) => {
+                    setReconciliationStatus(e.target.value);
+                    setOffset(0);
+                  }}
+                >
+                  <option value="">Tümü</option>
+                  <option value="amount_mismatch">amount_mismatch</option>
+                  <option value="unknown_merchant_oid">unknown_merchant_oid</option>
+                  <option value="failed">failed</option>
+                  <option value="matched">matched</option>
+                </select>
+              </label>
+              <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
+                PayTR callback olayları beklenen tutar, gelen tutar ve ödeme kaydıyla birlikte burada izlenir.
+                Uyumsuz kayıtlar para güveni için öncelikli incelenmelidir.
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -293,4 +396,32 @@ function formatCell(v: unknown): string {
   if (v === null || v === undefined) return "—";
   if (typeof v === "object") return JSON.stringify(v).slice(0, 80);
   return String(v);
+}
+
+function parseReconciliationSummary(v: unknown): ReconciliationSummary | null {
+  if (!v || typeof v !== "object") return null;
+  const r = v as Record<string, unknown>;
+  const byStatus = Array.isArray(r.byStatus)
+    ? r.byStatus
+        .map((item) => {
+          if (!item || typeof item !== "object") return null;
+          const row = item as Record<string, unknown>;
+          return {
+            status: typeof row.status === "string" ? row.status : "unknown",
+            count: typeof row.count === "number" ? row.count : Number(row.count ?? 0),
+            latest_at: typeof row.latest_at === "string" ? row.latest_at : null,
+          };
+        })
+        .filter((item): item is ReconciliationSummary["byStatus"][number] => item !== null)
+    : [];
+  return {
+    byStatus,
+    issues30d: typeof r.issues30d === "number" ? r.issues30d : Number(r.issues30d ?? 0),
+    amountMismatches30d:
+      typeof r.amountMismatches30d === "number" ? r.amountMismatches30d : Number(r.amountMismatches30d ?? 0),
+    unknownMerchantOids30d:
+      typeof r.unknownMerchantOids30d === "number" ? r.unknownMerchantOids30d : Number(r.unknownMerchantOids30d ?? 0),
+    failed30d: typeof r.failed30d === "number" ? r.failed30d : Number(r.failed30d ?? 0),
+    latestIssueAt: typeof r.latestIssueAt === "string" ? r.latestIssueAt : null,
+  };
 }

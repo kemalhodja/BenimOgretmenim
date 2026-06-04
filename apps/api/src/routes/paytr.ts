@@ -558,8 +558,14 @@ paytr.post("/callback", async (c) => {
 
       await client.query("commit");
       void sub;
-    } catch {
+    } catch (e) {
       await client.query("rollback").catch(() => {});
+      console.error("[paytr] subscription callback transaction failed", {
+        merchantOid,
+        paymentId: row.id,
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return c.text("PAYTR notification failed: transaction error", 500);
     } finally {
       client.release();
     }
@@ -650,8 +656,14 @@ paytr.post("/callback", async (c) => {
           [ends, pr.subscription_id],
         );
         await cl.query("commit");
-      } catch {
+      } catch (e) {
         await cl.query("rollback").catch(() => {});
+        console.error("[paytr] student subscription callback transaction failed", {
+          merchantOid,
+          paymentId: pr.id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+        return c.text("PAYTR notification failed: transaction error", 500);
       } finally {
         cl.release();
       }
@@ -732,8 +744,14 @@ paytr.post("/callback", async (c) => {
           wcl,
         );
         await wcl.query("commit");
-      } catch {
+      } catch (e) {
         await wcl.query("rollback").catch(() => {});
+        console.error("[paytr] wallet topup callback transaction failed", {
+          merchantOid,
+          paymentId: wr.id,
+          error: e instanceof Error ? e.message : String(e),
+        });
+        return c.text("PAYTR notification failed: transaction error", 500);
       } finally {
         wcl.release();
       }
@@ -850,8 +868,14 @@ paytr.post("/callback", async (c) => {
     }
 
     await cclient.query("commit");
-  } catch {
+  } catch (e) {
     await cclient.query("rollback").catch(() => {});
+    console.error("[paytr] course enrollment callback transaction failed", {
+      merchantOid,
+      paymentId: cRow.id,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return c.text("PAYTR notification failed: transaction error", 500);
   } finally {
     cclient.release();
   }
