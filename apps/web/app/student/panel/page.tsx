@@ -230,6 +230,17 @@ function StudentPanelPageInner() {
     return null;
   }
 
+  function notificationKindLabel(payload: unknown): string {
+    if (!payload || typeof payload !== "object") return "Genel";
+    const kind = String((payload as { kind?: unknown }).kind ?? "");
+    if (kind.includes("homework")) return "Ödev";
+    if (kind.includes("lesson")) return "Ders";
+    if (kind.includes("course")) return "Kurs";
+    if (kind.includes("group")) return "Grup ders";
+    if (kind.includes("direct")) return "Doğrudan ders";
+    return "Genel";
+  }
+
   useEffect(() => {
     if (!token) return;
     load(token).catch((e) => {
@@ -337,6 +348,9 @@ function StudentPanelPageInner() {
             href: "/student/calisma",
             cta: "Plana git",
           };
+  const unreadNotifications = notifications.filter((n) => n.read_at == null).length;
+  const latestNotification = notifications[0] ?? null;
+  const latestNotificationHref = latestNotification ? notificationHref(latestNotification.payload_jsonb) : null;
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -466,6 +480,52 @@ function StudentPanelPageInner() {
             {ok}
           </div>
         )}
+
+        <section className="mt-8 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-paper-800/55">
+                Olay zaman çizelgesi
+              </div>
+              <h2 className="mt-1 text-base font-semibold text-paper-900">
+                {unreadNotifications > 0
+                  ? `${unreadNotifications} okunmamış gelişme var`
+                  : latestNotification
+                    ? "Son gelişme kayıt altında"
+                    : "Henüz yeni gelişme yok"}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                Ders, ödev, kurs ve ödeme dışı takip olayları burada tek sırada görünür.
+              </p>
+            </div>
+            {latestNotificationHref ? (
+              <Link
+                href={latestNotificationHref}
+                className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-100"
+              >
+                Son detaya git
+              </Link>
+            ) : null}
+          </div>
+          {latestNotification ? (
+            <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-paper-800 ring-1 ring-paper-200">
+                  {notificationKindLabel(latestNotification.payload_jsonb)}
+                </span>
+                <span className="text-xs text-paper-800/55">
+                  {latestNotification.sent_at ? new Date(latestNotification.sent_at).toLocaleString("tr-TR") : "Zaman yok"}
+                </span>
+              </div>
+              <div className="mt-2 font-semibold text-paper-900">{latestNotification.title}</div>
+              <p className="mt-1 line-clamp-2 text-paper-800/70">{latestNotification.body}</p>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm text-paper-800/65">
+              İlk ders, ödev veya teklif gelişmesi oluştuğunda burada özetlenecek.
+            </p>
+          )}
+        </section>
 
         {progressSnapshots.length > 0 && (
           <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">

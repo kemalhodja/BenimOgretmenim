@@ -327,9 +327,11 @@ export default function TeacherDerslerPage() {
         <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Ders operasyonu</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Ders takibi</div>
               <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
-              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">
+                {nextAction.body} Tamamlanan derslerde kısa özet öğrenci ve veliye iletilir.
+              </p>
             </div>
             {selected?.source_request_id ? (
               <Link

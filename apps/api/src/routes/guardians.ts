@@ -190,6 +190,7 @@ guardians.get("/overview", requireAuth, async (c) => {
             aps.student_id,
             su.display_name as student_display_name,
             aps.narrative_tr,
+            aps.metrics_jsonb,
             aps.created_at,
             tu.display_name as teacher_display_name
      from ai_progress_snapshots aps
@@ -204,6 +205,34 @@ guardians.get("/overview", requireAuth, async (c) => {
      )
      order by aps.created_at desc
      limit 40`,
+    [userId],
+  );
+
+  const masteryGraph = await pool.query(
+    `select aps.student_id,
+            su.display_name as student_display_name,
+            coalesce(nullif(topic->>'label', ''), nullif(topic->>'code', ''), 'Konu') as topic_label,
+            avg(
+              case
+                when (topic->>'mastery_estimate') ~ '^[0-9]+(\\.[0-9]+)?$'
+                then (topic->>'mastery_estimate')::numeric
+                else null
+              end
+            ) as mastery_estimate,
+            count(*)::int as evidence_count,
+            max(aps.created_at) as last_seen_at
+     from ai_progress_snapshots aps
+     join students s on s.id = aps.student_id
+     join users su on su.id = s.user_id
+     cross join lateral jsonb_array_elements(coalesce(aps.metrics_jsonb->'topics', '[]'::jsonb)) topic
+     where exists (
+       select 1 from student_guardians sg
+       where sg.student_id = aps.student_id
+         and sg.guardian_user_id = $1
+     )
+     group by aps.student_id, su.display_name, topic_label
+     order by mastery_estimate asc nulls last, evidence_count desc, last_seen_at desc
+     limit 24`,
     [userId],
   );
 
@@ -267,6 +296,7 @@ guardians.get("/overview", requireAuth, async (c) => {
   return c.json({
     students: students.rows,
     progress: progress.rows,
+    masteryGraph: masteryGraph.rows,
     studyPlans: studyPlans.rows,
     attempts: attempts.rows,
   });

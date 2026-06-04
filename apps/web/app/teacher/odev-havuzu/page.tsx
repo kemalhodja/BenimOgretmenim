@@ -24,6 +24,8 @@ type PoolPost = {
   target_answer_minutes?: number;
   quality_status?: string;
   resolution_sla_due_at?: string | null;
+  ai_metadata_jsonb?: unknown;
+  storage_backend?: string | null;
   student_display_name: string;
 };
 type ClaimPost = PoolPost & {
@@ -38,6 +40,7 @@ type ClaimPost = PoolPost & {
   revision_requested_at?: string | null;
   accepted_quality_at?: string | null;
   moderator_note?: string | null;
+  answer_quality_jsonb?: unknown;
 };
 
 function formatRemaining(deadlineIso: string | null): string {
@@ -60,6 +63,39 @@ function urgencyClass(level?: string | null): string {
   if (level === "urgent") return "bg-red-50 text-red-800";
   if (level === "priority") return "bg-amber-50 text-amber-900";
   return "bg-paper-100 text-paper-800";
+}
+
+function aiValue(meta: unknown, key: string): string | null {
+  if (!meta || typeof meta !== "object") return null;
+  const value = (meta as Record<string, unknown>)[key];
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+function aiList(meta: unknown, key: string): string[] {
+  if (!meta || typeof meta !== "object") return [];
+  const value = (meta as Record<string, unknown>)[key];
+  return Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean).slice(0, 3) : [];
+}
+
+function slaRiskLabel(post: Pick<PoolPost, "urgency_level" | "resolution_sla_due_at" | "target_answer_minutes">): string {
+  if (post.resolution_sla_due_at) {
+    const ms = new Date(post.resolution_sla_due_at).getTime() - Date.now();
+    if (ms <= 0) return "SLA gecikti";
+    if (ms <= 5 * 60_000) return "SLA kritik";
+  }
+  if (post.urgency_level === "urgent") return "Acil öncelik";
+  if (post.urgency_level === "priority") return "Öncelikli";
+  return `${post.target_answer_minutes ?? 20} dk hedef`;
+}
+
+function answerQualityHint(meta: unknown): string {
+  const score = aiValue(meta, "quality_score");
+  if (score) return `AI kalite puanı: ${score}/100`;
+  const clarity = aiValue(meta, "clarity");
+  if (clarity) return `Cevap netliği: ${clarity}`;
+  return "Çözüm adımlarını açık yazın; kalite puanı buna göre oluşur.";
 }
 
 export default function OdevHavuzuPage() {
@@ -240,6 +276,9 @@ export default function OdevHavuzuPage() {
   if (!token) return null;
 
   const rewardTl = (rewardMinor / 100).toFixed(2);
+  const urgentPoolCount = posts.filter((post) => post.urgency_level === "urgent").length;
+  const claimedDueCount = claims.filter((post) => post.status === "claimed").length;
+  const revisionCount = claims.filter((post) => Boolean(post.revision_requested_at)).length;
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -277,6 +316,20 @@ export default function OdevHavuzuPage() {
           </button>
         </div>
 
+        <section className="mt-4 grid gap-2 sm:grid-cols-3">
+          {[
+            ["Acil havuz", urgentPoolCount, "Önce bu sorulara bakın"],
+            ["Cevap bekleyen", claimedDueCount, "Süre dolmadan tamamlayın"],
+            ["Revizyon", revisionCount, "Kalite düzeltmesi isteyenler"],
+          ].map(([label, value, hint]) => (
+            <div key={label} className="rounded-xl border border-paper-200 bg-white p-3 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">{label}</div>
+              <div className="mt-1 text-xl font-semibold text-paper-900">{value}</div>
+              <div className="mt-1 text-xs text-paper-800/55">{hint}</div>
+            </div>
+          ))}
+        </section>
+
         {tab === "pool" ? (
           <>
             <div className="mt-4">
@@ -312,6 +365,9 @@ export default function OdevHavuzuPage() {
                       <span className="text-xs text-paper-800/55">· {p.student_display_name}</span>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                      <span className="rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-900">
+                        {slaRiskLabel(p)}
+                      </span>
                       <span className={`rounded-full px-2 py-0.5 font-medium ${urgencyClass(p.urgency_level)}`}>
                         {urgencyLabel(p.urgency_level)}
                       </span>
@@ -330,8 +386,23 @@ export default function OdevHavuzuPage() {
                           {p.learning_objective}
                         </span>
                       ) : null}
+                      {aiValue(p.ai_metadata_jsonb, "difficulty") ? (
+                        <span className="rounded-full bg-warm-50 px-2 py-0.5 font-medium text-warm-900">
+                          Zorluk: {aiValue(p.ai_metadata_jsonb, "difficulty")}
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-paper-800">{p.help_text}</p>
+                    {aiList(p.ai_metadata_jsonb, "similar_practice").length > 0 ? (
+                      <div className="mt-2 rounded-xl border border-brand-100 bg-brand-50/50 p-3 text-xs text-brand-950">
+                        <div className="font-semibold">Benzer alıştırmalar</div>
+                        <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                          {aiList(p.ai_metadata_jsonb, "similar_practice").map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
                     <div className="mt-1 text-xs text-paper-800/55">
                       {homeworkPostStatusLabelTr(p.status)} ·{" "}
                       {new Date(p.created_at).toLocaleString("tr-TR")}
@@ -339,6 +410,10 @@ export default function OdevHavuzuPage() {
                     </div>
                     <div className="mt-2 inline-flex rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
                       Kalite: {p.quality_status ?? "not_reviewed"}
+                    </div>
+                    <div className="mt-2 rounded-xl border border-paper-100 bg-paper-50 p-3 text-xs text-paper-800/70">
+                      <span className="font-semibold text-paper-900">Cevap standardı:</span>{" "}
+                      Net çözüm adımları, sonuç kontrolü ve öğrencinin tekrar yapacağı örnek beklenir.
                     </div>
                     {Array.isArray(p.image_urls_jsonb) && (p.image_urls_jsonb as string[]).length > 0 && (
                       <ul className="mt-2 text-xs text-blue-700">
@@ -391,6 +466,9 @@ export default function OdevHavuzuPage() {
                     {p.topic} <span className="text-xs text-paper-800/55">· {p.student_display_name}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 font-semibold text-brand-900">
+                      {slaRiskLabel(p)}
+                    </span>
                     <span className={`rounded-full px-2 py-0.5 font-medium ${urgencyClass(p.urgency_level)}`}>
                       {urgencyLabel(p.urgency_level)}
                     </span>
@@ -409,6 +487,11 @@ export default function OdevHavuzuPage() {
                         {p.learning_objective}
                       </span>
                     ) : null}
+                    {aiValue(p.ai_metadata_jsonb, "topic_hint") ? (
+                      <span className="rounded-full bg-warm-50 px-2 py-0.5 font-medium text-warm-900">
+                        Konu: {aiValue(p.ai_metadata_jsonb, "topic_hint")}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="mt-1 text-xs text-paper-800/55">
                     {homeworkPostStatusLabelTr(p.status)}
@@ -425,7 +508,7 @@ export default function OdevHavuzuPage() {
                     </span>
                     {p.quality_score ? (
                       <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
-                        Puan: {p.quality_score}/5
+                        Puan: {p.quality_score}/100
                       </span>
                     ) : null}
                     {p.revision_requested_at ? (
@@ -434,7 +517,21 @@ export default function OdevHavuzuPage() {
                       </span>
                     ) : null}
                   </div>
+                  <div className="mt-2 rounded-xl border border-paper-100 bg-paper-50 p-3 text-xs text-paper-800/70">
+                    <span className="font-semibold text-paper-900">Kalite rehberi:</span>{" "}
+                    {answerQualityHint(p.answer_quality_jsonb)}
+                  </div>
                   <p className="mt-2 whitespace-pre-wrap text-paper-800">{p.help_text}</p>
+                  {aiList(p.ai_metadata_jsonb, "similar_practice").length > 0 ? (
+                    <div className="mt-2 rounded-xl border border-brand-100 bg-brand-50/50 p-3 text-xs text-brand-950">
+                      <div className="font-semibold">Çözüm sonrası üretilecek benzer alıştırmalar</div>
+                      <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                        {aiList(p.ai_metadata_jsonb, "similar_practice").map((item) => (
+                          <li key={item}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   {Array.isArray(p.image_urls_jsonb) && (p.image_urls_jsonb as string[]).length > 0 && (
                     <ul className="mt-2 text-xs text-blue-700">
                       {(p.image_urls_jsonb as string[]).map((u, i) => (

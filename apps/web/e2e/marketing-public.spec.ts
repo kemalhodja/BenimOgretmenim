@@ -6,10 +6,10 @@ import { expect, test } from "@playwright/test";
  */
 test.describe("Vitrin ve bilgi sayfaları @public", () => {
   const cases: { path: string; title: string | RegExp }[] = [
-    { path: "/", title: "Ders, soru çözüm ve çalışma takibini tek platformda yönetin" },
+    { path: "/", title: "Özel dersi kurumsal kaliteyle yöneten dijital eğitim merkezi" },
     { path: "/courses", title: "Kurslar" },
     { path: "/ogretmenler", title: "Öğretmen ara" },
-    { path: "/fiyatlar", title: "Fiyatlandırma ve kullanım akışları" },
+    { path: "/fiyatlar", title: "Üyelik ve kullanım akışları" },
     { path: "/yardim", title: "Yardım" },
     { path: "/iletisim", title: "İletişim" },
     { path: "/kampanya", title: "Abonelik kampanyası" },
@@ -39,7 +39,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
   test("/fiyatlar — ziyaretçiye abonelik tutarı göstermez", async ({ page }) => {
     const res = await page.goto("/fiyatlar", { waitUntil: "domcontentloaded" });
     expect(res?.ok() ?? false).toBeTruthy();
-    await expect(page.getByRole("heading", { name: "Fiyatlar üyelikten sonra görünür" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Üyelik ve kullanım akışları" })).toBeVisible();
     await expect(page.getByText("1750 TL")).toHaveCount(0);
     await expect(page.getByText("2500 TL")).toHaveCount(0);
   });

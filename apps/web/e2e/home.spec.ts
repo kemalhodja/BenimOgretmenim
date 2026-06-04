@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("Ana sayfa @public", () => {
   test("başlık ve ana CTA görünür", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Ders, soru çözüm");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Özel dersi kurumsal kaliteyle yöneten");
     await expect(page.getByRole("link", { name: "Öğrenci olarak başla" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Öğretmenleri keşfet" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "En hızlı başlangıç" })).toBeVisible();

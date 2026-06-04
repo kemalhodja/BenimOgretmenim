@@ -126,8 +126,6 @@ function LoginForm() {
     }
   }
 
-  const showDevFooter = process.env.NODE_ENV !== "production";
-
   return (
     <div className="flex min-h-[calc(100vh-1px)] items-center justify-center bg-paper-50 px-6 py-10">
       <div className="w-full max-w-md rounded-2xl border border-paper-200 bg-white p-6 shadow-sm">
@@ -154,26 +152,6 @@ function LoginForm() {
                   </button>
                 ))}
               </div>
-              <details className="mt-3 text-xs text-paper-800/70">
-                <summary className="cursor-pointer font-medium text-paper-800">Seed komutları ve parolalar</summary>
-                <div className="mt-2 space-y-2 border-t border-paper-200 pt-2 font-mono text-[0.65rem] leading-relaxed">
-                  <p>
-                    Admin: <span className="select-all">{BOOTSTRAP_ADMIN_EMAIL}</span> —{" "}
-                    <span className="select-all">{BOOTSTRAP_ADMIN_PASSWORD}</span>
-                  </p>
-                  <p>
-                    Tam seed roller: <span className="select-all">{SEED_PASSWORD}</span>
-                  </p>
-                  <p className="font-sans text-paper-800/80">
-                    <span className="font-mono">npm run db:seed:admin</span> /{" "}
-                    <span className="font-mono">db:seed</span>. Admin için{" "}
-                    <Link href="/admin" className="text-brand-800 underline">
-                      /admin
-                    </Link>
-                    .
-                  </p>
-                </div>
-              </details>
             </div>
           ) : (
             <p className="mt-3 text-xs text-paper-800/55">
@@ -253,14 +231,6 @@ function LoginForm() {
             {loading ? "Giriş yapılıyor..." : "Giriş yap"}
           </button>
 
-          {showDevFooter ? (
-            <p className="text-center text-[0.65rem] text-paper-800/45">
-              API{" "}
-              <span className="font-mono">
-                {process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3002"}
-              </span>
-            </p>
-          ) : null}
         </form>
       </div>
     </div>

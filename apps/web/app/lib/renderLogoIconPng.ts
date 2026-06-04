@@ -1,9 +1,5 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import sharp from "sharp";
-
-/** Header + PWA tek kaynak görsel: `public/logo-marketing.png` */
-const LOGO_PATH = path.join(process.cwd(), "public", "logo-marketing.png");
+import { buildBrandMarkSvgXml } from "./brandMarkSvg";
 
 /** `manifest.ts` background_color ile uyumlu */
 const PAD = { r: 244, g: 250, b: 249, alpha: 1 as const };
@@ -12,8 +8,8 @@ const PAD = { r: 244, g: 250, b: 249, alpha: 1 as const };
  * Kare PNG — PWA / favicon / Apple touch için ölçeklenmiş ikon.
  */
 export async function renderLogoIconPng(size: number): Promise<Buffer> {
-  const input = await readFile(LOGO_PATH);
-  return sharp(input)
+  const svg = Buffer.from(buildBrandMarkSvgXml("bmo-icon-bg", 512));
+  return sharp(svg)
     .resize(size, size, {
       fit: "contain",
       position: "center",

@@ -26,6 +26,11 @@ type Overview = {
     guardianInvitesActive: number;
     guardianInvitesAccepted: number;
     guardianInvitesExpired: number;
+    homeworkSlaBreaches: number;
+    supportSlaBreaches: number;
+    teacherQualityAvg: number;
+    reconciliationIssues30d: number;
+    completedLessons30d: number;
   };
 };
 type HealthStatus = "ok" | "degraded" | "down";
@@ -143,6 +148,12 @@ function checkHint(check: SystemHealthCheck): string {
   return "Kontrol tamamlandı";
 }
 
+function riskTone(value: number): string {
+  if (value >= 5) return "border-red-200 bg-red-50 text-red-900";
+  if (value > 0) return "border-amber-200 bg-amber-50 text-amber-900";
+  return "border-emerald-200 bg-emerald-50 text-emerald-900";
+}
+
 export default function AdminMerkezPage() {
   const token = useRequireAdmin();
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -177,6 +188,35 @@ export default function AdminMerkezPage() {
   if (!token) return null;
 
   const c = overview?.counts;
+  const opsPriority =
+    c == null
+      ? []
+      : [
+          {
+            title: "Ödev SLA",
+            value: c.homeworkSlaBreaches,
+            href: "/admin/homework",
+            action: c.homeworkSlaBreaches > 0 ? "Geciken soruları öğretmen/havuz durumuna göre çöz" : "SLA temiz",
+          },
+          {
+            title: "Destek SLA",
+            value: c.supportSlaBreaches,
+            href: "/admin/support",
+            action: c.supportSlaBreaches > 0 ? "24 saati aşan destek konularını kapat" : "Destek ritmi temiz",
+          },
+          {
+            title: "Ödeme mutabakatı",
+            value: c.reconciliationIssues30d,
+            href: "/admin/veri?k=wallet-topups",
+            action: c.reconciliationIssues30d > 0 ? "PayTR ve cüzdan kayıtlarını karşılaştır" : "Son 30 gün temiz",
+          },
+          {
+            title: "Öğretmen kalite",
+            value: Math.max(0, 70 - c.teacherQualityAvg),
+            href: "/admin/teachers",
+            action: c.teacherQualityAvg < 70 ? "Zayıf profilleri doğrulama ve içerik tamamlama akışına al" : "Kalite ortalaması iyi",
+          },
+        ];
 
   async function runReminders() {
     if (!token) return;
@@ -297,6 +337,80 @@ export default function AdminMerkezPage() {
           </div>
           {reminderResult ? <p className="mt-3 text-xs font-medium text-brand-800">{reminderResult}</p> : null}
         </section>
+
+        {c ? (
+          <section className="mt-8 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                  Kurum paneli
+                </div>
+                <h2 className="mt-2 text-lg font-semibold text-paper-900">
+                  SLA, öğretmen performansı ve finans takibi
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                  Geciken işler, ders hacmi, öğretmen kalitesi ve ödeme uyumsuzlukları tek yerde izlenir.
+                </p>
+              </div>
+              <Link
+                href="/admin/veri?k=ledger"
+                className="w-fit rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+              >
+                Finans defteri
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {[
+                ["Ödev SLA ihlali", c.homeworkSlaBreaches, "Açık/üstlenilmiş geciken soru", "/admin/homework"],
+                ["Destek SLA riski", c.supportSlaBreaches, "24 saati aşan açık destek", "/admin/support"],
+                ["Öğretmen kalite", `${c.teacherQualityAvg}/100`, "Profil kalite ortalaması", "/admin/teachers"],
+                ["Ödeme uyumu", c.reconciliationIssues30d, "30g PayTR uyumsuzluğu", "/admin/veri?k=wallet-topups"],
+                ["Ders hacmi", c.completedLessons30d, "30g tamamlanan ders", "/admin/veri?k=packages"],
+              ].map(([label, value, hint, href]) => (
+                <Link
+                  key={String(label)}
+                  href={String(href)}
+                  className="rounded-xl border border-paper-200 bg-white/80 p-4 transition hover:border-brand-200 hover:bg-white"
+                >
+                  <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">{label}</div>
+                  <div className="mt-1 text-2xl font-semibold tabular-nums text-paper-900">{value}</div>
+                  <div className="mt-1 text-xs text-paper-800/55">{hint}</div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {c ? (
+          <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-paper-800/55">
+                  Bugünün operasyon önceliği
+                </div>
+                <h2 className="mt-2 text-lg font-semibold text-paper-900">
+                  Önce güveni etkileyen kuyruğu kapat
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                  SLA gecikmesi, destek beklemesi, ödeme uyumsuzluğu ve düşük öğretmen kalitesi platform güvenini doğrudan etkiler.
+                </p>
+              </div>
+              <div className="rounded-xl border border-paper-200 bg-paper-50 px-4 py-3 text-sm">
+                <div className="text-xs text-paper-800/55">30 gün ders hacmi</div>
+                <div className="mt-1 text-xl font-semibold text-paper-900">{c.completedLessons30d}</div>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {opsPriority.map((item) => (
+                <Link key={item.title} href={item.href} className={`rounded-xl border p-3 ${riskTone(item.value)}`}>
+                  <div className="text-xs font-semibold uppercase tracking-wide">{item.title}</div>
+                  <div className="mt-1 text-2xl font-semibold tabular-nums">{item.value}</div>
+                  <p className="mt-1 text-xs opacity-80">{item.action}</p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         {c ? (
           <section className="mt-8">

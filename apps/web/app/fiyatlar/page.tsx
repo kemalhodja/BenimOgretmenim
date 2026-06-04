@@ -42,17 +42,94 @@ const audiencePlans = [
   },
 ] as const;
 
+const valuePillars = [
+  {
+    title: "Güvenli ödeme",
+    body: "Ders, grup ders ve doğrudan anlaşmalarda ödeme kayıtlı ilerler; blokaj ve aktarım akışı görünür kalır.",
+  },
+  {
+    title: "Operasyon paneli",
+    body: "Talep, teklif, canlı sınıf, ödev, kurs ve bildirimler role göre tek panelde takip edilir.",
+  },
+  {
+    title: "Öğrenme çıktısı",
+    body: "Ders sonrası değerlendirme, çalışma planı, zayıf konu ve veli görünürlüğü fiyatın karşılığını ölçülebilir kılar.",
+  },
+] as const;
+
+const conversionPromises = [
+  "Demo ve teklif akışıyla öğretmen seçimi netleşir.",
+  "Paket kabulünde ödeme ve ders adımları kayıtlı ilerler.",
+  "Ders sonrası çalışma, ödev ve veli takibi ölçülebilir kalır.",
+] as const;
+
 export default function FiyatlarPage() {
   return (
-    <div className="min-h-screen bg-paper-50">
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
-        <h1 className="text-3xl font-semibold tracking-tight text-paper-900">
-          Fiyatlandırma ve kullanım akışları
-        </h1>
-        <p className="mt-2 max-w-xl text-sm text-paper-800/75">
-          Öğrenci, öğretmen ve veli için akışlar ayrıdır; abonelik tutarları sadece giriş yapmış ilgili kullanıcıya
-          kendi panelinde gösterilir.
-        </p>
+    <div className="min-h-screen bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.14),transparent_28%),radial-gradient(circle_at_88%_8%,rgba(255,122,77,0.12),transparent_30%),#f4fafc]">
+      <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-paper-950 px-5 py-10 text-white shadow-[0_24px_90px_rgba(7,13,17,0.18)] sm:px-8">
+          <div className="pointer-events-none absolute -left-16 top-8 h-44 w-44 rounded-full bg-brand-300/20 blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute -right-20 bottom-0 h-52 w-52 rounded-full bg-warm-400/20 blur-3xl" aria-hidden />
+          <div className="relative max-w-3xl">
+            <p className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-brand-100">
+              Role özel üyelik
+            </p>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              Üyelik ve kullanım akışları
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">
+              Öğrenci, öğretmen ve veli için fiyatlar ilgili panelde gösterilir. Ders, ödeme ve takip adımları aynı
+              yerde yönetilir.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="/kayit?role=student" className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-paper-950 hover:bg-brand-50">
+                Öğrenci olarak başla
+              </Link>
+              <Link
+                href="/kayit?role=teacher"
+                className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/15"
+              >
+                Öğretmen başvurusu
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {valuePillars.map((pillar) => (
+            <div key={pillar.title} className="rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold text-paper-900">{pillar.title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-paper-800/70">{pillar.body}</p>
+            </div>
+          ))}
+        </div>
+
+        <section className="mt-8 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-paper-800/55">
+                Değer karşılığı
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">
+                Ücret, sadece erişim değil; güvenli ders akışı ve takip altyapısı içindir.
+              </h2>
+            </div>
+            <Link
+              href="/uygulama"
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-100"
+            >
+              Mobil kullanım
+            </Link>
+          </div>
+          <ol className="mt-4 grid gap-2 sm:grid-cols-3">
+            {conversionPromises.map((item, index) => (
+              <li key={item} className="rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm">
+                <div className="text-xs font-semibold text-brand-900">Adım {index + 1}</div>
+                <p className="mt-1 text-xs leading-relaxed text-paper-800/70">{item}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {audiencePlans.map((plan) => (

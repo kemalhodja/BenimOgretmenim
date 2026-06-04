@@ -169,6 +169,18 @@ function teacherNotifHref(payload: unknown): string | null {
   return null;
 }
 
+function teacherNotificationKindLabel(payload: unknown): string {
+  if (!payload || typeof payload !== "object") return "Genel";
+  const kind = String((payload as { kind?: unknown }).kind ?? "");
+  if (kind.includes("homework")) return "Ödev";
+  if (kind.includes("lesson_request") || kind.includes("lesson_offer")) return "Teklif";
+  if (kind.includes("lesson")) return "Ders";
+  if (kind.includes("course")) return "Kurs";
+  if (kind.includes("group")) return "Grup ders";
+  if (kind.includes("direct")) return "Doğrudan ders";
+  return "Genel";
+}
+
 function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl border border-paper-200 bg-white p-4">
@@ -453,6 +465,9 @@ export default function TeacherHomePage() {
               href: "/teacher/dersler",
               cta: "Derslere git",
             };
+  const unreadNotifications = notifications.filter((n) => n.read_at == null).length;
+  const latestNotification = notifications[0] ?? null;
+  const latestNotificationHref = latestNotification ? teacherNotifHref(latestNotification.payload_jsonb) : null;
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -543,6 +558,52 @@ export default function TeacherHomePage() {
               {nextBestAction.cta}
             </Link>
           </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-paper-800/55">
+                Olay zaman çizelgesi
+              </div>
+              <h2 className="mt-1 text-base font-semibold text-paper-900">
+                {unreadNotifications > 0
+                  ? `${unreadNotifications} okunmamış iş var`
+                  : latestNotification
+                    ? "Son iş akışı kayıt altında"
+                    : "Yeni iş akışı yok"}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                Teklif, ödev, ders, kurs ve doğrudan ders gelişmeleri tek sırada takip edilir.
+              </p>
+            </div>
+            {latestNotificationHref ? (
+              <Link
+                href={latestNotificationHref}
+                className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-100"
+              >
+                Son detaya git
+              </Link>
+            ) : null}
+          </div>
+          {latestNotification ? (
+            <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-paper-800 ring-1 ring-paper-200">
+                  {teacherNotificationKindLabel(latestNotification.payload_jsonb)}
+                </span>
+                <span className="text-xs text-paper-800/55">
+                  {latestNotification.sent_at ? new Date(latestNotification.sent_at).toLocaleString("tr-TR") : "Zaman yok"}
+                </span>
+              </div>
+              <div className="mt-2 font-semibold text-paper-900">{latestNotification.title}</div>
+              <p className="mt-1 line-clamp-2 text-paper-800/70">{latestNotification.body}</p>
+            </div>
+          ) : (
+            <p className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm text-paper-800/65">
+              İlk teklif, ödev veya ders bildirimi geldiğinde burada özetlenecek.
+            </p>
+          )}
         </section>
 
         <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">

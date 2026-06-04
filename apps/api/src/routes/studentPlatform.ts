@@ -5,10 +5,12 @@ import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
+  classifyHomeworkPost,
   homeworkResolveMinutes,
   homeworkSatisfactionRewardMinor,
   homeworkTargetMinutesForUrgency,
   releaseExpiredHomeworkClaims,
+  scoreHomeworkAnswer,
 } from "../lib/homeworkPosts.js";
 import { resolvePlatformHomeworkWalletUserId } from "../lib/platformHomeworkWallet.js";
 import { applyWalletDelta, teacherPayoutFromGross } from "../lib/wallet.js";
@@ -119,13 +121,23 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
   if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
   const studentId = sr.rows[0].id as string;
   const targetMinutes = homeworkTargetMinutesForUrgency(parsed.data.urgencyLevel);
+  const homeworkAi = await classifyHomeworkPost({
+    branchId: parsed.data.branchId,
+    topic: parsed.data.topic.trim(),
+    helpText: parsed.data.helpText.trim(),
+    gradeLevelText: parsed.data.gradeLevelText?.trim() || null,
+    targetExam: parsed.data.targetExam?.trim() || null,
+    learningObjective: parsed.data.learningObjective?.trim() || null,
+    urgencyLevel: parsed.data.urgencyLevel,
+    imageUrls: parsed.data.imageUrls ?? [],
+  });
 
   const ins = await pool.query(
     `insert into student_homework_posts (
        student_id, branch_id, topic, help_text, image_urls_jsonb, audio_url,
        grade_level_text, target_exam, learning_objective, urgency_level,
-       target_answer_minutes, resolution_sla_due_at
-     ) values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10, $11, now() + ($11::int * interval '1 minute'))
+       target_answer_minutes, resolution_sla_due_at, ai_metadata_jsonb, storage_backend
+     ) values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10, $11, now() + ($11::int * interval '1 minute'), $12::jsonb, $13)
      returning id, status, created_at`,
     [
       studentId,
@@ -139,6 +151,8 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
       parsed.data.learningObjective?.trim() || null,
       parsed.data.urgencyLevel,
       targetMinutes,
+      JSON.stringify(homeworkAi.aiMetadata),
+      homeworkAi.storageBackend,
     ],
   );
 
@@ -225,6 +239,7 @@ studentPlatform.get("/homework-posts/mine", requireAuth, async (c) => {
             h.grade_level_text, h.target_exam, h.learning_objective, h.urgency_level,
             h.claimed_at, h.resolve_deadline_at, h.answered_at, h.answer_text, h.answer_image_urls_jsonb,
             h.answer_video_url, h.target_answer_minutes, h.quality_status, h.quality_score,
+            h.ai_metadata_jsonb, h.storage_backend, h.answer_quality_jsonb,
             h.revision_requested_at, h.accepted_quality_at, h.moderator_note, h.resolution_sla_due_at,
             h.student_satisfied_at, h.homework_reward_minor, h.homework_reward_applied_at,
             h.last_answer_rejected_at,
@@ -575,6 +590,7 @@ studentPlatform.get("/homework-posts/teacher/feed", requireAuth, async (c) => {
     `select h.id, h.topic, h.status, h.created_at, h.help_text, h.image_urls_jsonb, h.audio_url,
             h.grade_level_text, h.target_exam, h.learning_objective, h.urgency_level,
             h.target_answer_minutes, h.quality_status, h.resolution_sla_due_at,
+            h.ai_metadata_jsonb, h.storage_backend,
             u.display_name as student_display_name
      from student_homework_posts h
      join students s on s.id = h.student_id
@@ -613,6 +629,7 @@ studentPlatform.get("/homework-posts/teacher/claims", requireAuth, async (c) => 
             h.grade_level_text, h.target_exam, h.learning_objective, h.urgency_level,
             h.claimed_at, h.resolve_deadline_at, h.answered_at, h.answer_text, h.answer_image_urls_jsonb,
             h.answer_video_url, h.target_answer_minutes, h.quality_status, h.quality_score,
+            h.ai_metadata_jsonb, h.storage_backend, h.answer_quality_jsonb,
             h.revision_requested_at, h.accepted_quality_at, h.moderator_note, h.resolution_sla_due_at,
             u.display_name as student_display_name
      from student_homework_posts h
@@ -888,6 +905,11 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
   const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
   if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
   const teacherId = tr.rows[0].id as string;
+  const answerQuality = await scoreHomeworkAnswer({
+    answerText: parsed.data.answerText.trim(),
+    answerImageUrls: parsed.data.answerImageUrls ?? [],
+    answerVideoUrl: parsed.data.answerVideoUrl?.trim() || null,
+  });
 
   const r = await pool.query(
     `update student_homework_posts
@@ -897,19 +919,23 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
          answer_video_url = $5,
          answered_at = now(),
          quality_status = 'pending_review',
+         quality_score = $6,
+         answer_quality_jsonb = $7::jsonb,
          last_answer_rejected_at = null,
          updated_at = now()
      where id = $1
        and claimed_by_teacher_id = $4
        and status = 'claimed'
        and (resolve_deadline_at is null or resolve_deadline_at > now())
-     returning id, status, answered_at, student_id, topic`,
+     returning id, status, answered_at, student_id, topic, quality_score, answer_quality_jsonb`,
     [
       postId,
       parsed.data.answerText.trim(),
       JSON.stringify(parsed.data.answerImageUrls ?? []),
       teacherId,
       parsed.data.answerVideoUrl?.trim() || null,
+      answerQuality.qualityScore,
+      JSON.stringify(answerQuality.quality),
     ],
   );
   if (!r.rowCount) {

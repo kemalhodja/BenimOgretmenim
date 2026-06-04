@@ -65,12 +65,61 @@ type CompareTeacher = Pick<
   | "completed_sessions_count"
 >;
 
+type TrustSignalTeacher = Pick<
+  TeacherRow,
+  | "rating_avg"
+  | "rating_count"
+  | "verification_status"
+  | "profile_quality_score"
+  | "has_video"
+  | "has_exam_docs"
+  | "has_platform_links"
+  | "completed_sessions_count"
+>;
+
 function qualityLabel(score: number | null | undefined): string {
   const n = Number(score ?? 0);
   if (n >= 80) return "Çok güçlü profil";
   if (n >= 60) return "Güçlü profil";
   if (n >= 40) return "Gelişen profil";
   return "Yeni profil";
+}
+
+function trustScore(teacher: TrustSignalTeacher): number {
+  const profileScore = Number(teacher.profile_quality_score ?? 0);
+  const proofScore =
+    (teacher.verification_status === "verified" ? 16 : 0) +
+    (teacher.has_video ? 10 : 0) +
+    (teacher.has_exam_docs ? 10 : 0) +
+    (teacher.has_platform_links ? 6 : 0);
+  const reviewScore =
+    teacher.rating_count != null && Number(teacher.rating_count) > 0
+      ? Math.min(18, Number(teacher.rating_count) * 2 + Number(teacher.rating_avg ?? 0) * 2)
+      : 0;
+  const sessionScore = Math.min(18, teacher.completed_sessions_count);
+  return Math.min(100, Math.round(profileScore * 0.55 + proofScore + reviewScore + sessionScore));
+}
+
+function recommendationReasons(teacher: TrustSignalTeacher): string[] {
+  const reasons: string[] = [];
+  if (teacher.verification_status === "verified") reasons.push("Kimlik ve profil doğrulaması tamam");
+  if (Number(teacher.profile_quality_score ?? 0) >= 75) reasons.push("Profil kalitesi güçlü");
+  if (teacher.completed_sessions_count >= 10) reasons.push("Ders geçmişi yüksek");
+  if (teacher.rating_count != null && Number(teacher.rating_count) > 0) {
+    reasons.push(`${Number(teacher.rating_avg ?? 0).toFixed(1)} puanlı değerlendirme`);
+  }
+  if (teacher.has_video) reasons.push("Tanıtım videosu var");
+  if (teacher.has_exam_docs) reasons.push("Sınav/doküman kanıtı var");
+  if (teacher.has_platform_links) reasons.push("Ek çalışma bağlantıları var");
+  return reasons.slice(0, 3);
+}
+
+function trustActionLabel(teacher: TrustSignalTeacher): string {
+  const score = trustScore(teacher);
+  if (score >= 85) return "Demo için güçlü aday";
+  if (score >= 70) return "Kısa listeye eklenebilir";
+  if (teacher.verification_status !== "verified") return "Doğrulama durumunu inceleyin";
+  return "Profil detayını kontrol edin";
 }
 
 function parseListFilterParam(raw: string | null): number | "" {
@@ -441,6 +490,14 @@ function OgretmenlerPageInner() {
     };
   }, [branchId, cityId, searchApply, sort, verifiedOnly, hasVideo, hasDocs, minRating, maxHourlyTl]);
 
+  const marketplaceSignals = useMemo(() => {
+    const verified = rows.filter((teacher) => teacher.verification_status === "verified").length;
+    const strongQuality = rows.filter((teacher) => Number(teacher.profile_quality_score ?? 0) >= 70).length;
+    const withProof = rows.filter((teacher) => teacher.has_video || teacher.has_exam_docs || teacher.has_platform_links).length;
+    const highTrust = rows.filter((teacher) => trustScore(teacher) >= 80).length;
+    return { verified, strongQuality, withProof, highTrust };
+  }, [rows]);
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-4xl px-6 py-8">
@@ -716,6 +773,49 @@ function OgretmenlerPageInner() {
           </div>
         )}
 
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_54%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-900/65">
+                Güvenli öğretmen marketplace
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-paper-900">
+                Kalite ve güven sinyalleri
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                Doğrulama, profil kalitesi, ders geçmişi ve güvenli ödeme bilgileri seçim yapmayı kolaylaştırır.
+              </p>
+            </div>
+            <div className="grid min-w-full grid-cols-3 gap-2 text-center sm:min-w-[24rem]">
+              <div className="rounded-xl border border-paper-200 bg-white p-3">
+                <div className="text-xl font-semibold text-paper-900">{marketplaceSignals.verified}</div>
+                <div className="mt-1 text-[11px] text-paper-800/55">doğrulanmış</div>
+              </div>
+              <div className="rounded-xl border border-paper-200 bg-white p-3">
+                <div className="text-xl font-semibold text-paper-900">{marketplaceSignals.strongQuality}</div>
+                <div className="mt-1 text-[11px] text-paper-800/55">70+ kalite</div>
+              </div>
+              <div className="rounded-xl border border-paper-200 bg-white p-3">
+                <div className="text-xl font-semibold text-paper-900">{marketplaceSignals.withProof}</div>
+                <div className="mt-1 text-[11px] text-paper-800/55">kanıtlı profil</div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {[
+              ["Güven puanı", `${marketplaceSignals.highTrust} güçlü aday`, "Doğrulama, yorum, ders geçmişi ve profil kanıtı birlikte okunur."],
+              ["Karar rehberi", "Önce demo", "Emin olmadığınızda tek talep açıp teklifleri aynı ölçekte karşılaştırın."],
+              ["Ödeme güveni", "Blokajlı paket", "Kabul sonrası toplam tutar cüzdanda tutulur; ders akışı kayıtlı ilerler."],
+            ].map(([title, value, body]) => (
+              <div key={title} className="rounded-xl border border-paper-200 bg-white/80 p-3 text-sm">
+                <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">{title}</div>
+                <div className="mt-1 font-semibold text-paper-900">{value}</div>
+                <p className="mt-1 text-xs leading-relaxed text-paper-800/60">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {favoriteTeacherDetails.length > 0 && (
           <section className="mt-6 rounded-2xl border border-warm-200 bg-warm-50/60 p-5 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -946,6 +1046,7 @@ function OgretmenlerPageInner() {
               const demoHref = sessionToken ? demoPath : loginHrefWithReturn(demoPath);
               const favorite = favoriteTeacherIds.has(t.id);
               const compared = compareTeachers.some((x) => x.id === t.id);
+              const reasons = recommendationReasons(t);
               return (
               <article
                 key={t.id}
@@ -967,6 +1068,9 @@ function OgretmenlerPageInner() {
                         : `Durum: ${t.verification_status}`}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
+                      <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-900">
+                        Güven {trustScore(t)}/100
+                      </span>
                       <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
                         {qualityLabel(t.profile_quality_score)} · {t.profile_quality_score ?? 0}/100
                       </span>
@@ -990,6 +1094,19 @@ function OgretmenlerPageInner() {
                           {t.completed_sessions_count} tamamlanan ders
                         </span>
                       )}
+                      <span className="rounded-full bg-warm-50 px-2 py-0.5 text-[11px] font-medium text-warm-900">
+                        Güvenli ödeme akışı
+                      </span>
+                    </div>
+                    <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3">
+                      <div className="text-xs font-semibold text-paper-900">{trustActionLabel(t)}</div>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {(reasons.length ? reasons : ["Yeni profil; demo ve mesajla beklentiyi netleştirin"]).map((reason) => (
+                          <span key={reason} className="rounded-full bg-white px-2 py-0.5 text-[11px] text-paper-800 ring-1 ring-paper-200">
+                            {reason}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   <div className="text-sm text-paper-800/75">

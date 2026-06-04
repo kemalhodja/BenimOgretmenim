@@ -27,6 +27,9 @@ type PostDetail = {
   target_answer_minutes?: number;
   quality_status?: string;
   quality_score?: number | null;
+  ai_metadata_jsonb?: unknown;
+  answer_quality_jsonb?: unknown;
+  storage_backend?: string | null;
   revision_requested_at?: string | null;
   accepted_quality_at?: string | null;
   moderator_note?: string | null;
@@ -39,6 +42,29 @@ type PostDetail = {
   /** Migration 017 sonrası API döner; yoksa iade rozeti gösterilmez. */
   last_answer_rejected_at?: string | null;
 };
+
+function aiList(meta: unknown, key: string): string[] {
+  if (!meta || typeof meta !== "object") return [];
+  const value = (meta as Record<string, unknown>)[key];
+  return Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean).slice(0, 3) : [];
+}
+
+function aiValue(meta: unknown, key: string): string | null {
+  if (!meta || typeof meta !== "object") return null;
+  const value = (meta as Record<string, unknown>)[key];
+  if (typeof value === "string" && value.trim()) return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return null;
+}
+
+function homeworkNextStep(post: PostDetail): string {
+  if (post.status === "open") return "Öğretmen havuzunda; uygun öğretmen üstlenince süre başlar.";
+  if (post.status === "claimed") return "Öğretmen çözüm üzerinde; hedef süre takip ediliyor.";
+  if (post.status === "answered") return "Cevabı inceleyin; yeterliyse onaylayın, değilse iade edin.";
+  if (post.status === "satisfied") return "Cevap onaylandı; benzer alıştırmalarla tekrar yapın.";
+  if (post.status === "cancelled") return "Gönderi iptal edildi.";
+  return "Durumu takip edin.";
+}
 
 export default function OdevDetayPage() {
   const router = useRouter();
@@ -262,11 +288,40 @@ export default function OdevDetayPage() {
                 </span>
                 {post.quality_score ? (
                   <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
-                    Puan: {post.quality_score}/5
+                    Puan: {post.quality_score}/100
+                  </span>
+                ) : null}
+                {aiValue(post.ai_metadata_jsonb, "difficulty") ? (
+                  <span className="rounded-full bg-warm-50 px-2 py-0.5 font-medium text-warm-900">
+                    Zorluk: {aiValue(post.ai_metadata_jsonb, "difficulty")}
+                  </span>
+                ) : null}
+                {aiValue(post.ai_metadata_jsonb, "topic_hint") ? (
+                  <span className="rounded-full bg-warm-50 px-2 py-0.5 font-medium text-warm-900">
+                    Konu: {aiValue(post.ai_metadata_jsonb, "topic_hint")}
                   </span>
                 ) : null}
               </div>
+              <div className="mt-4 rounded-xl border border-paper-100 bg-paper-50 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">
+                  Sıradaki adım
+                </div>
+                <p className="mt-1 text-sm font-medium text-paper-900">{homeworkNextStep(post)}</p>
+                <p className="mt-1 text-xs leading-relaxed text-paper-800/60">
+                  Hedef süre: {post.target_answer_minutes ?? 20} dk · Cevap kalite durumu: {post.quality_status ?? "not_reviewed"}
+                </p>
+              </div>
               <p className="mt-4 whitespace-pre-wrap text-sm text-paper-800">{post.help_text}</p>
+              {aiList(post.ai_metadata_jsonb, "similar_practice").length > 0 ? (
+                <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 p-3 text-xs text-brand-950">
+                  <div className="font-semibold">Bu sorudan sonra önerilen 3 benzer alıştırma</div>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                    {aiList(post.ai_metadata_jsonb, "similar_practice").map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               {imgs.length > 0 && (
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {imgs.map((src, i) => (
@@ -309,6 +364,18 @@ export default function OdevDetayPage() {
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-brand-900">
                   Öğretmen cevabı
                 </h2>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {[
+                    ["Kalite", post.quality_score ? `${post.quality_score}/100` : post.quality_status ?? "İnceleniyor"],
+                    ["Ödeme", post.homework_reward_applied_at ? "Ödül aktarıldı" : "Onay bekliyor"],
+                    ["Tekrar", aiList(post.ai_metadata_jsonb, "similar_practice").length ? "Alıştırma hazır" : "Cevap sonrası önerilir"],
+                  ].map(([title, value]) => (
+                    <div key={title} className="rounded-xl border border-brand-100 bg-white/80 p-3">
+                      <div className="text-xs font-semibold text-brand-950">{title}</div>
+                      <div className="mt-1 text-sm font-semibold text-paper-900">{value}</div>
+                    </div>
+                  ))}
+                </div>
                 <p className="mt-3 whitespace-pre-wrap text-sm text-paper-900">{post.answer_text}</p>
                 {post.answer_video_url ? (
                   <a

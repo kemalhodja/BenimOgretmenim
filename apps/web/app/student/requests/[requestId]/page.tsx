@@ -87,6 +87,28 @@ function qualityLabel(score: number): string {
   return "Yeni profil";
 }
 
+function packageTotalLabel(hourlyMinor: number | null, lessonCount: number, durationMinutes: number): string {
+  if (hourlyMinor == null) return "Teklif ücreti bekleniyor";
+  return tl(Math.round(hourlyMinor * lessonCount * (durationMinutes / 60)));
+}
+
+function offerDecisionReasons(offer: Offer): string[] {
+  const reasons: string[] = [];
+  if (offer.comparison_score >= 80) reasons.push("Karşılaştırma skoru yüksek");
+  if (offer.verification_status === "verified") reasons.push("Doğrulanmış öğretmen");
+  if (offer.is_shortlisted_teacher) reasons.push("Kısa listenizdeydi");
+  if (offer.completed_sessions_count >= 10) reasons.push("Ders geçmişi güçlü");
+  if (offer.has_video) reasons.push("Video profili var");
+  if (offer.has_exam_docs) reasons.push("Belge/doküman var");
+  if (
+    offer.lowest_proposed_hourly_rate_minor != null &&
+    offer.proposed_hourly_rate_minor === offer.lowest_proposed_hourly_rate_minor
+  ) {
+    reasons.push("En düşük fiyatlı teklif");
+  }
+  return reasons.slice(0, 3);
+}
+
 export default function StudentRequestDetailPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -324,6 +346,40 @@ export default function StudentRequestDetailPage() {
 
         {summary != null && (
           <div className="mt-8 space-y-3">
+            <section className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-paper-800/55">
+                    Şeffaf ilerleme
+                  </div>
+                  <h2 className="mt-1 text-base font-semibold text-paper-900">
+                    Teklifi kabul etmeden önce paket, ödeme blokajı ve sonraki adım netleşir.
+                  </h2>
+                </div>
+                {bestOffer ? (
+                  <div className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-950">
+                    <div className="text-xs font-medium text-brand-900/70">Seçili paket toplamı</div>
+                    <div className="mt-0.5 font-semibold">
+                      {packageTotalLabel(bestOffer.proposed_hourly_rate_minor, packageLessonCount, lessonDurationMinutes)}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-4">
+                {[
+                  ["1", "Teklifleri karşılaştır", "Puan, kalite, ücret ve yanıt hızı aynı kartta."],
+                  ["2", "Paketi seç", `${packageLessonCount} ders · ${lessonDurationMinutes} dk ile toplam tutar hesaplanır.`],
+                  ["3", "Blokaj oluşur", "Kabulde tutar cüzdanda tutulur, ders bitmeden aktarılmaz."],
+                  ["4", "Ders takibi başlar", "Canlı sınıf, özet ve veli görünürlüğü aynı panelde devam eder."],
+                ].map(([step, title, body]) => (
+                  <div key={step} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                    <div className="text-[11px] font-semibold text-brand-900">Adım {step}</div>
+                    <div className="mt-1 text-xs font-semibold text-paper-900">{title}</div>
+                    <p className="mt-1 text-xs leading-relaxed text-paper-800/60">{body}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
             {summary.status === "open" ? (
               <div className="rounded-xl border border-brand-200 bg-brand-50/70 p-4 text-sm text-brand-950">
                 <div className="font-semibold">Paket ve blokaj seçimi</div>
@@ -331,6 +387,20 @@ export default function StudentRequestDetailPage() {
                   Teklif kabulünde paket oluşturulur; seçtiğiniz ders sayısı ve süreye göre toplam tutar cüzdanınızda
                   bloke edilir. Dersler tamamlandıkça operasyon akışı ödeme defterinden izlenir.
                 </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
+                    <div className="text-xs font-semibold text-brand-950">1. Kalite skoru</div>
+                    <p className="mt-1 text-xs text-brand-900/75">Önerilen teklif, karşılaştırma skoru ve kısa liste sinyaliyle öne çıkar.</p>
+                  </div>
+                  <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
+                    <div className="text-xs font-semibold text-brand-950">2. Güvenli blokaj</div>
+                    <p className="mt-1 text-xs text-brand-900/75">Ödeme ders tamamlanmadan öğretmene aktarılmaz; paket defterde izlenir.</p>
+                  </div>
+                  <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
+                    <div className="text-xs font-semibold text-brand-950">3. Demo sonrası paket</div>
+                    <p className="mt-1 text-xs text-brand-900/75">Demo için 30 dk seçilir; memnun kalınca aynı öğretmenle devam paketi büyütülür.</p>
+                  </div>
+                </div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <label className="block">
                     <span className="text-xs font-medium text-brand-950">Ders sayısı</span>
@@ -395,6 +465,7 @@ export default function StudentRequestDetailPage() {
                   const canAct =
                     summary.status === "open" && o.status === "sent";
                   const isBest = bestOffer?.id === o.id && o.status === "sent";
+                  const decisionReasons = offerDecisionReasons(o);
                   return (
                   <div
                     key={o.id}
@@ -453,20 +524,22 @@ export default function StudentRequestDetailPage() {
                           <div className="mt-3 rounded-xl border border-paper-200 bg-paper-50 p-3 text-xs text-paper-800/75">
                             Paket toplamı:{" "}
                             <span className="font-semibold text-paper-900">
-                              {tl(
-                                o.proposed_hourly_rate_minor == null
-                                  ? null
-                                  : Math.round(
-                                      o.proposed_hourly_rate_minor *
-                                        packageLessonCount *
-                                        (lessonDurationMinutes / 60),
-                                    ),
-                              )}
+                              {packageTotalLabel(o.proposed_hourly_rate_minor, packageLessonCount, lessonDurationMinutes)}
                             </span>{" "}
                             · {packageLessonCount} ders · {lessonDurationMinutes} dk. Kabulde bu tutar cüzdanda bloke
                             edilir.
                           </div>
                         ) : null}
+                        <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3">
+                          <div className="text-xs font-semibold text-paper-900">Neden dikkate alınmalı?</div>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {(decisionReasons.length ? decisionReasons : ["Mesajı ve profil detayını inceleyin"]).map((reason) => (
+                              <span key={reason} className="rounded-full bg-white px-2 py-0.5 text-[11px] text-paper-800 ring-1 ring-paper-200">
+                                {reason}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                         <div className="mt-3 flex flex-wrap gap-1.5">
                           <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
                             {qualityLabel(o.profile_quality_score)} · {o.profile_quality_score}/100

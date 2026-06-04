@@ -12,7 +12,7 @@ const HERO_PHOTO =
   "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=960&q=80";
 
 const HOME_OG_DESCRIPTION =
-  "Özel ders öğretmeni bulun, soru gönderin, canlı ders ve çalışma takibini tek panelden yönetin.";
+  "Özel ders, soru çözüm, canlı sınıf, güvenli ödeme ve veli takibini tek panelde yönetin.";
 
 export const metadata: Metadata = {
   alternates: { canonical: `${publicSiteUrl()}/` },
@@ -38,6 +38,8 @@ export const metadata: Metadata = {
 };
 
 const quickSubjects = ["LGS Matematik", "YKS Fizik", "İngilizce konuşma", "İlkokul destek"] as const;
+
+const heroSignals = ["Akıllı eşleşme", "Canlı sınıf", "Güvenli ödeme", "Veli görünürlüğü"] as const;
 
 const homeQuickActions = [
   {
@@ -123,10 +125,59 @@ const avantPreviewCards = [
   { label: "Plan", value: "%72", hint: "Haftalık ilerleme" },
 ] as const;
 
+const commandDeckCards = [
+  {
+    eyebrow: "01",
+    title: "Eşleşme ve talep motoru",
+    body: "Öğrenci ihtiyacını branş, şehir, demo, kısa liste ve öğretmen kalite sinyalleriyle profesyonel bir seçim akışına çevirir.",
+    metric: "3 teklif",
+    metricLabel: "karşılaştırılabilir",
+  },
+  {
+    eyebrow: "02",
+    title: "Canlı ders operasyonu",
+    body: "Paket, oturum, sınıf linki, mesaj, materyal, kayıt ve ders sonu değerlendirme aynı operasyon hattında ilerler.",
+    metric: "1 panel",
+    metricLabel: "tüm ders yaşam döngüsü",
+  },
+  {
+    eyebrow: "03",
+    title: "Öğrenme ve veli görünürlüğü",
+    body: "Haftalık plan, zayıf konu, ödev çözüm, bildirim ve veli bağlantısı öğrencinin ilerlemesini izlenebilir kılar.",
+    metric: "%72",
+    metricLabel: "örnek plan ilerlemesi",
+  },
+] as const;
+
+const commandTimeline = [
+  "Öğrenci talebi açar",
+  "Öğretmenler teklif verir",
+  "Ödeme blokajı güvenceye alınır",
+  "Canlı sınıf ve gelişim özeti oluşur",
+] as const;
+
 const socialProofStats = [
   { value: "4 akış", label: "özel ders, soru çözüm, canlı sınıf, çalışma takibi" },
   { value: "10 dk", label: "acil soru çözüm hedef SLA örneği" },
   { value: "3 rol", label: "öğrenci, öğretmen ve veli paneli" },
+] as const;
+
+const leadershipStandards = [
+  {
+    title: "Güven",
+    body: "Doğrulanmış profil, kalite skoru, yorumlar ve güvenli ödeme akışı karar öncesi görünür olur.",
+    href: "/ogretmenler?verifiedOnly=1&sort=recommended",
+  },
+  {
+    title: "Şeffaflık",
+    body: "Teklif, paket, cüzdan blokajı, canlı ders ve ders sonu takip aynı kayıtlı süreçte ilerler.",
+    href: "/student/requests",
+  },
+  {
+    title: "Ölçülebilir başarı",
+    body: "Çalışma planı, zayıf konu, ödev kalitesi ve veli görünürlüğü öğrenme sonucunu takip edilebilir kılar.",
+    href: "/student/calisma",
+  },
 ] as const;
 
 const trustQuotes = [
@@ -214,15 +265,25 @@ export default function Home() {
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_min(44%,min(440px,100%))] lg:items-center lg:gap-12">
             <div className="max-lg:order-2 lg:order-none">
               <p className="mb-3 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-brand-100 shadow-[0_0_32px_rgba(34,211,238,0.18)] backdrop-blur">
-                Avangard eğitim işletim sistemi
+                Dijital eğitim merkezi
               </p>
               <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-white sm:text-[2.7rem] sm:leading-[1.05]">
-                Ders, soru çözüm ve çalışma takibini tek platformda yönetin
+                Özel dersi kurumsal kaliteyle yöneten dijital eğitim merkezi
               </h1>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-white/80">
-                Ne yapacağınızı seçin: öğretmen arayın, soru gönderin, canlı derslerinizi takip edin veya
-                öğrencinizin ilerlemesini görün.
+                Öğretmen arama, teklif karşılaştırma, canlı sınıf, soru çözüm, güvenli ödeme ve veli takibi tek
+                profesyonel akışta birleşir.
               </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {heroSignals.map((signal) => (
+                  <span
+                    key={signal}
+                    className="rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-xs font-semibold text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                  >
+                    {signal}
+                  </span>
+                ))}
+              </div>
               <form
                 action="/ogretmenler"
                 className="mt-6 rounded-3xl border border-white/15 bg-white/[0.08] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl"
@@ -352,6 +413,115 @@ export default function Home() {
 
       <section className="border-b border-paper-200 bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                Türkiye için liderlik standardı
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-900">
+                Güven, şeffaflık ve ölçülebilir öğrenme aynı yerde
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                BenimÖğretmenim sadece öğretmen listesi değil; doğru öğretmeni seçme, dersi güvenle başlatma ve sonucu takip etme merkezidir.
+              </p>
+            </div>
+            <Link
+              href="/uygulama"
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-100"
+            >
+              Telefona ekle
+            </Link>
+          </div>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {leadershipStandards.map((item) => (
+              <Link
+                key={item.title}
+                href={item.href}
+                className="rounded-2xl border border-paper-200 bg-paper-50 p-5 transition hover:border-brand-200 hover:bg-white"
+              >
+                <h3 className="text-base font-semibold text-paper-900">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-paper-800/70">{item.body}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden border-b border-paper-200 bg-paper-950 py-14 text-white sm:py-16">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-70 [background-image:radial-gradient(circle_at_12%_18%,rgba(34,211,238,0.2),transparent_24%),radial-gradient(circle_at_86%_8%,rgba(255,122,77,0.18),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent_55%)]"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-brand-200/60 to-transparent"
+          aria-hidden
+        />
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
+            <div>
+              <p className="inline-flex rounded-full border border-brand-200/20 bg-brand-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-brand-100">
+                Profesyonel ürün katmanı
+              </p>
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                Ders sürecini tek yerden yönetin
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-white/70">
+                Talep, teklif, ödeme, canlı ders ve takip adımları tek akışta birleşir.
+              </p>
+            </div>
+            <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_30px_110px_rgba(0,0,0,0.26)] backdrop-blur">
+              <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-white/45">
+                    Canlı akış
+                  </div>
+                  <div className="mt-1 text-lg font-semibold text-white">Ders yaşam döngüsü</div>
+                </div>
+                <div className="rounded-full border border-brand-200/25 bg-brand-300/10 px-3 py-1 text-xs font-semibold text-brand-100">
+                  Online
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {commandTimeline.map((item, index) => (
+                  <div key={item} className="rounded-2xl border border-white/10 bg-paper-950/60 p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-300 to-warm-400 text-xs font-bold text-paper-950">
+                        {index + 1}
+                      </span>
+                      <span className="text-sm font-medium text-white/85">{item}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-4 lg:grid-cols-3">
+            {commandDeckCards.map((card) => (
+              <article
+                key={card.title}
+                className="group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.06] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-0.5 hover:border-brand-200/40 hover:bg-white/[0.08]"
+              >
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-brand-300/10 blur-2xl transition group-hover:bg-warm-300/15" />
+                <div className="relative">
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-100/65">
+                    {card.eyebrow}
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold text-white">{card.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-white/65">{card.body}</p>
+                  <div className="mt-6 rounded-2xl border border-white/10 bg-paper-950/70 p-4">
+                    <div className="text-2xl font-semibold text-white">{card.metric}</div>
+                    <div className="mt-1 text-xs text-white/50">{card.metricLabel}</div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-paper-200 bg-white py-10">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="rounded-[2rem] border border-paper-200 bg-[linear-gradient(135deg,#ffffff_0%,#f4fafc_55%,#fff7f3_100%)] p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -359,7 +529,7 @@ export default function Home() {
                   Güven sinyalleri
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-900">
-                  Sadece vitrin değil, takip edilebilir eğitim deneyimi
+                  Takip edilebilir eğitim deneyimi
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/70">
                   Platform, öğrencinin ilk aramasından ders sonrası ilerleme takibine kadar görünür ve kayıtlı bir

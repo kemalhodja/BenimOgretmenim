@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import pg from "pg";
 import { z } from "zod";
 import { pool } from "../db.js";
-import { buildLessonProgressStub } from "../lib/lessonAiStub.js";
+import { buildLessonProgress } from "../lib/lessonAiStub.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
@@ -346,7 +346,7 @@ lessonEvaluations.post(
 
       const evaluationId = evalInsert.rows[0].id as string;
 
-      const stub = buildLessonProgressStub({
+      const lessonProgress = await buildLessonProgress({
         masteryLikert: answers.masteryLikert,
         focusTopic: answers.focusTopic,
         nextStepNote: answers.nextStepNote,
@@ -363,9 +363,9 @@ lessonEvaluations.post(
           row.student_id,
           row.teacher_id,
           row.package_id,
-          JSON.stringify(stub.metrics),
-          stub.narrativeTr,
-          stub.model,
+          JSON.stringify(lessonProgress.metrics),
+          lessonProgress.narrativeTr,
+          lessonProgress.model,
         ],
       );
 
@@ -390,7 +390,7 @@ lessonEvaluations.post(
             row.student_id,
             snapshotId,
             "Ders sonu gelişim özeti",
-            stub.narrativeTr,
+            lessonProgress.narrativeTr,
             JSON.stringify({ evaluationId, lessonSessionId }),
           ],
         );
@@ -403,8 +403,8 @@ lessonEvaluations.post(
         {
           evaluationId,
           snapshotId,
-          narrativeTr: stub.narrativeTr,
-          metrics: stub.metrics,
+          narrativeTr: lessonProgress.narrativeTr,
+          metrics: lessonProgress.metrics,
           notificationsCreated: notifications.length,
           notifications,
         },

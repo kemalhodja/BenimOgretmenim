@@ -56,6 +56,14 @@ function percentLabel(value: number): string {
   return `${Math.round(value)}%`;
 }
 
+function learningRiskLabel(progressPercent: number, averageScore: number | null, focusTopics: string[]): string {
+  if (averageScore != null && averageScore < 55) return "Temel tekrar gerekli";
+  if (progressPercent < 40 && focusTopics.length > 0) return "Plan aksıyor";
+  if (focusTopics.length >= 3) return "Odak konular birikiyor";
+  if (progressPercent >= 75 && averageScore != null && averageScore >= 70) return "Ritim güçlü";
+  return "Takipte kal";
+}
+
 export default function StudentCalismaPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -220,6 +228,7 @@ export default function StudentCalismaPage() {
           href: focusTopics.length ? "#plan-olustur" : "#deneme-kaydi",
           cta: focusTopics.length ? "Planı yenile" : "Sonuç ekle",
         };
+  const learningRisk = learningRiskLabel(progressPercent, averageScore, focusTopics);
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -242,9 +251,11 @@ export default function StudentCalismaPage() {
         <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_56%,#fff7ed_100%)] p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Akıllı sonraki adım</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Sonraki adım</div>
               <h2 className="mt-1 text-lg font-semibold text-paper-900">{coachCard.title}</h2>
-              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{coachCard.body}</p>
+              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">
+                {coachCard.body} Ders, deneme ve haftalık plan aynı sırada takip edilir.
+              </p>
             </div>
             <a
               href={coachCard.href}
@@ -276,6 +287,38 @@ export default function StudentCalismaPage() {
               {focusTopics.length ? focusTopics.join(", ") : "Deneme sonucundan sonra oluşur"}
             </div>
             <div className="mt-1 text-xs text-paper-800/60">Yanlış analizi tekrarına göre</div>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-paper-800/55">
+                Öğrenme raporu
+              </div>
+              <h2 className="mt-1 text-base font-semibold text-paper-900">{learningRisk}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                Plan ilerlemesi, deneme sonuçları ve zayıf konular birlikte okunur; amaç her hafta tek bir net aksiyona dönmektir.
+              </p>
+            </div>
+            <Link
+              href="/guardian"
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-100"
+            >
+              Veli görünümü
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {[
+              ["Bugünün işi", nextPlanItem ? `${nextPlanItem.title} · ${nextPlanItem.minutes} dk` : "Yeni plan veya deneme sonucu ekle"],
+              ["Tekrar odağı", focusTopics.length ? focusTopics.slice(0, 2).join(", ") : "Yanlış analizi bekleniyor"],
+              ["Hafta hedefi", latestPlan ? `${latestPlan.weekly_minutes} dk planı %${Math.round(progressPercent)} tamamlandı` : "İlk planı oluştur"],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs font-semibold text-paper-900">{title}</div>
+                <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{body}</p>
+              </div>
+            ))}
           </div>
         </section>
 

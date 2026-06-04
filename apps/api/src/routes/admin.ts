@@ -48,6 +48,11 @@ admin.get("/overview", requireAuth, async (c) => {
     activeStudyPlans,
     recentAssessmentAttempts,
     guardianInviteStats,
+    homeworkSlaBreaches,
+    supportSlaBreaches,
+    teacherQualityAvg,
+    reconciliationIssues30d,
+    completedLessons30d,
   ] = await Promise.all([
     pool.query(`select role::text as role, count(*)::int as c from users group by role`),
     pool.query(`select count(*)::int as c from teachers`),
@@ -141,6 +146,48 @@ admin.get("/overview", requireAuth, async (c) => {
          count(*) filter (where accepted_at is null and expires_at <= now())::int as expired
        from guardian_invite_codes`,
     ).catch(() => ({ rows: [{ active: 0, accepted: 0, expired: 0 }] })),
+    pool.query(
+      `select count(*)::int as c
+       from student_homework_posts
+       where status in ('open', 'claimed')
+         and resolution_sla_due_at is not null
+         and resolution_sla_due_at < now()`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c
+       from support_threads
+       where status = 'open'
+         and created_at < now() - interval '1 day'`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select round(avg(
+         (case when t.verification_status = 'verified' then 15 else 0 end) +
+         (case when t.city_id is not null then 10 else 0 end) +
+         (case when length(trim(coalesce(t.bio_raw, ''))) >= 80 then 20
+               when length(trim(coalesce(t.bio_raw, ''))) >= 40 then 10
+               else 0 end) +
+         (case when coalesce(trim(t.video_url), '') <> '' then 15 else 0 end) +
+         (case when exists (select 1 from teacher_branches tbq where tbq.teacher_id = t.id) then 15 else 0 end) +
+         (case when jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+                 and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0 then 10 else 0 end) +
+         (case when jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+                 and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0 then 5 else 0 end) +
+         (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
+       ))::int as avg_score
+       from teachers t`,
+    ).catch(() => ({ rows: [{ avg_score: 0 }] })),
+    pool.query(
+      `select count(*)::int as c
+       from payment_reconciliation_events
+       where status <> 'matched'
+         and created_at >= now() - interval '30 days'`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c
+       from lesson_sessions
+       where status = 'completed'
+         and updated_at >= now() - interval '30 days'`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
   ]);
 
   const usersByRole: Record<string, number> = {};
@@ -202,6 +249,11 @@ admin.get("/overview", requireAuth, async (c) => {
       guardianInvitesActive: (guardianInviteStats.rows[0] as { active: number }).active,
       guardianInvitesAccepted: (guardianInviteStats.rows[0] as { accepted: number }).accepted,
       guardianInvitesExpired: (guardianInviteStats.rows[0] as { expired: number }).expired,
+      homeworkSlaBreaches: (homeworkSlaBreaches.rows[0] as { c: number }).c,
+      supportSlaBreaches: (supportSlaBreaches.rows[0] as { c: number }).c,
+      teacherQualityAvg: (teacherQualityAvg.rows[0] as { avg_score: number | null }).avg_score ?? 0,
+      reconciliationIssues30d: (reconciliationIssues30d.rows[0] as { c: number }).c,
+      completedLessons30d: (completedLessons30d.rows[0] as { c: number }).c,
     },
     generatedAt: new Date().toISOString(),
   });

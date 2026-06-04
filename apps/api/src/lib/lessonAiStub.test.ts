@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { buildLessonProgressStub } from "./lessonAiStub.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { buildLessonProgress, buildLessonProgressStub } from "./lessonAiStub.js";
+
+afterEach(() => {
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.LESSON_AI_API_KEY;
+});
 
 describe("buildLessonProgressStub", () => {
   it("embeds focus topic and mastery percent in narrative", () => {
@@ -23,5 +28,16 @@ describe("buildLessonProgressStub", () => {
     });
     expect(r.narrativeTr).toContain("Kesirler");
     expect(r.narrativeTr).toContain("Bir sonraki derste");
+  });
+
+  it("falls back to deterministic summary when no provider key exists", async () => {
+    const r = await buildLessonProgress({
+      masteryLikert: 5,
+      focusTopic: "Fonksiyonlar",
+      nextStepNote: "grafik okuma",
+    });
+    expect(r.model).toBe("stub-template-v1");
+    expect(r.narrativeTr).toContain("Fonksiyonlar");
+    expect((r.metrics as { source?: string }).source).toBe("stub_template_v1");
   });
 });

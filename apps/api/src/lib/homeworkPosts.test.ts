@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  classifyHomeworkPost,
   homeworkResolveMinutes,
   homeworkSatisfactionRewardMinor,
   homeworkTargetMinutesForUrgency,
   releaseExpiredHomeworkClaims,
+  scoreHomeworkAnswer,
 } from "./homeworkPosts.js";
 
 describe("homeworkResolveMinutes", () => {
@@ -121,5 +123,42 @@ describe("releaseExpiredHomeworkClaims", () => {
       query: vi.fn().mockResolvedValue({ rowCount: undefined }),
     };
     await expect(releaseExpiredHomeworkClaims(db as import("pg").Pool)).resolves.toBe(0);
+  });
+});
+
+describe("homework AI helpers", () => {
+  afterEach(() => {
+    delete process.env.HOMEWORK_AI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    delete process.env.HOMEWORK_STORAGE_PROVIDER;
+  });
+
+  it("classifies homework with heuristic metadata when provider is not configured", async () => {
+    const r = await classifyHomeworkPost({
+      branchId: 12,
+      topic: "Oran orantı",
+      helpText: "Bu problemi nasıl kuracağımı anlamadım.",
+      gradeLevelText: "8. sınıf",
+      targetExam: "LGS",
+      learningObjective: "Problem çözme",
+      urgencyLevel: "urgent",
+      imageUrls: ["data:image/jpeg;base64,abcd"],
+    });
+    expect(r.storageBackend).toBe("inline_data_url_pending_object_storage");
+    expect(r.aiMetadata.provider).toBe("heuristic_v1");
+    expect(r.aiMetadata.estimated_solution_minutes).toBe(10);
+    expect(r.aiMetadata.similar_practice).toEqual(expect.arrayContaining([expect.stringContaining("Oran orantı")]));
+  });
+
+  it("scores homework answers on a 0-100 heuristic scale without provider", async () => {
+    const r = await scoreHomeworkAnswer({
+      answerText: "Önce verilenleri yazalım. Çünkü oran aynı kalır, adım adım çapraz çarpım yapıp sonucu kontrol ederiz.",
+      answerImageUrls: ["https://example.com/solution.png"],
+      answerVideoUrl: null,
+    });
+    expect(r.qualityScore).toBeGreaterThanOrEqual(35);
+    expect(r.qualityScore).toBeLessThanOrEqual(100);
+    expect(r.quality.source).toBe("heuristic_v1");
+    expect((r.quality.rubric as { visual_support?: number }).visual_support).toBe(15);
   });
 });

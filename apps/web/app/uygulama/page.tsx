@@ -33,6 +33,12 @@ const quickAccess = [
   },
 ] as const;
 
+const mobileBenefits = [
+  { title: "Ders linki hızlı açılır", body: "Canlı sınıf, bildirim ve panel bağlantıları ana ekrandan tek dokunuşla erişilir." },
+  { title: "Soru fotoğrafı kolaylaşır", body: "Öğrenci ödev/soru gönderimini telefondan daha kısa sürede tamamlar." },
+  { title: "Öğretmen hızlı yanıtlar", body: "Teklif, soru havuzu ve ders akışları mobilde daha sık kontrol edilir." },
+] as const;
+
 export const metadata: Metadata = {
   title: "Telefona ekle",
   description:
@@ -58,6 +64,18 @@ export default function UygulamaPage() {
         BenimÖğretmenim bir <strong>web uygulaması</strong> (PWA): ana ekrana kısayol ekleyerek tam
         ekran kullanabilirsiniz. Android’de Chrome; iPhone’da Safari ile kurulum yapılır.
       </p>
+
+      <section className="mt-6 rounded-2xl border border-brand-200 bg-brand-50 p-5">
+        <h2 className="text-lg font-semibold text-brand-950">Mobil kullanım neden önemli?</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {mobileBenefits.map((benefit) => (
+            <div key={benefit.title} className="rounded-xl border border-brand-100 bg-white/80 p-3">
+              <h3 className="text-sm font-semibold text-paper-950">{benefit.title}</h3>
+              <p className="mt-1 text-xs leading-relaxed text-paper-800/70">{benefit.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="mt-8 grid gap-4 md:grid-cols-3">
         {quickAccess.map((item) => (
@@ -130,7 +148,7 @@ export default function UygulamaPage() {
         </p>
         <details className="mt-4 rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/90">
           <summary className="cursor-pointer font-medium text-paper-900">
-            Geliştirici notları (TWA, dosya yolları, iOS)
+            Mağaza yayını için hazırlık notları
           </summary>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>

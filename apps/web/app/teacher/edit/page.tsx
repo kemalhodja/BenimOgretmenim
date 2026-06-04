@@ -38,7 +38,7 @@ const checklistLabels: Record<string, string> = {
   instagramLinked: "Instagram/profil linki ekle",
   platformLinksAdded: "Ders platformu linki ekle",
   examDocsAdded: "Örnek doküman veya başarı belgesi ekle",
-  onboardingInterviewDone: "AI mülakat/onboarding tamamla",
+  onboardingInterviewDone: "Tanışma adımını tamamla",
   curriculumStarted: "Müfredat planı başlat",
 };
 
@@ -782,13 +782,6 @@ export default function TeacherEditPage() {
           </div>
         </div>
 
-        <div className="mt-6 rounded-xl border border-paper-200 bg-white p-4 text-xs text-paper-800/75">
-          <div className="font-medium text-paper-900">Not</div>
-          <div className="mt-1">
-            İleride burayı rakipteki gibi adım adım onboarding sihirbazına
-            çevireceğiz (AI mülakat → profil → branş → ücret → takvim).
-          </div>
-        </div>
       </div>
     </div>
   );

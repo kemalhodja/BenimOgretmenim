@@ -14,8 +14,18 @@ type ProgressRow = {
   student_id: string;
   student_display_name: string;
   narrative_tr: string;
+  metrics_jsonb?: unknown;
   created_at: string;
   teacher_display_name: string;
+};
+
+type MasteryRow = {
+  student_id: string;
+  student_display_name: string;
+  topic_label: string;
+  mastery_estimate: string | number | null;
+  evidence_count: number;
+  last_seen_at: string;
 };
 
 type StudyPlanRow = {
@@ -65,6 +75,21 @@ function planProgress(plan: StudyPlanRow): { done: number; skipped: number; tota
   return { done, skipped, total, percent: total > 0 ? (done / total) * 100 : 0 };
 }
 
+function guardianRiskLabel(args: {
+  students: number;
+  unread: number;
+  averageScore: number | null;
+  averageMastery: number | null;
+  focusTopics: string[];
+}): string {
+  if (args.students === 0) return "Öğrenci bağlantısı bekleniyor";
+  if (args.unread > 0) return "Okunmamış gelişme var";
+  if (args.averageMastery != null && args.averageMastery < 0.55) return "Konu tekrarı gerekli";
+  if (args.averageScore != null && args.averageScore < 60) return "Deneme sonucu riskli";
+  if (args.focusTopics.length > 0) return "Odak konuları takip edin";
+  return "Takip düzeni sağlıklı";
+}
+
 export default function GuardianPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -72,6 +97,7 @@ export default function GuardianPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [progress, setProgress] = useState<ProgressRow[]>([]);
+  const [masteryGraph, setMasteryGraph] = useState<MasteryRow[]>([]);
   const [studyPlans, setStudyPlans] = useState<StudyPlanRow[]>([]);
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
@@ -103,6 +129,7 @@ export default function GuardianPage() {
           apiFetch<{
             students: StudentRow[];
             progress: ProgressRow[];
+            masteryGraph: MasteryRow[];
             studyPlans: StudyPlanRow[];
             attempts: AttemptRow[];
           }>(
@@ -115,6 +142,7 @@ export default function GuardianPage() {
         ]);
         setStudents(r.students);
         setProgress(r.progress);
+        setMasteryGraph(r.masteryGraph ?? []);
         setStudyPlans(r.studyPlans ?? []);
         setAttempts(r.attempts ?? []);
         setNotifications(n.notifications);
@@ -154,6 +182,7 @@ export default function GuardianPage() {
         apiFetch<{
           students: StudentRow[];
           progress: ProgressRow[];
+          masteryGraph: MasteryRow[];
           studyPlans: StudyPlanRow[];
           attempts: AttemptRow[];
         }>("/v1/guardians/overview", { token }),
@@ -161,6 +190,7 @@ export default function GuardianPage() {
       ]);
       setStudents(r.students);
       setProgress(r.progress);
+      setMasteryGraph(r.masteryGraph ?? []);
       setStudyPlans(r.studyPlans ?? []);
       setAttempts(r.attempts ?? []);
       setNotifications(n.notifications);
@@ -207,6 +237,17 @@ export default function GuardianPage() {
       ? scoredAttempts.reduce((sum, value) => sum + value, 0) / scoredAttempts.length
       : null;
   const activePlanCount = studyPlans.length;
+  const lowMasteryTopics = masteryGraph
+    .map((row) => ({
+      ...row,
+      mastery: Number(row.mastery_estimate),
+    }))
+    .filter((row) => Number.isFinite(row.mastery))
+    .slice(0, 6);
+  const averageMastery =
+    lowMasteryTopics.length > 0
+      ? lowMasteryTopics.reduce((sum, row) => sum + row.mastery, 0) / lowMasteryTopics.length
+      : null;
   const weakTopicCounts = new Map<string, number>();
   for (const attempt of attempts) {
     for (const topic of topicsFrom(attempt.weak_topics_jsonb)) {
@@ -217,6 +258,14 @@ export default function GuardianPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4)
     .map(([topic]) => topic);
+  const unreadNotifications = notifications.filter((n) => !n.read_at).length;
+  const familyRisk = guardianRiskLabel({
+    students: students.length,
+    unread: unreadNotifications,
+    averageScore,
+    averageMastery,
+    focusTopics,
+  });
   const nextBestAction =
     students.length === 0
       ? {
@@ -346,6 +395,84 @@ export default function GuardianPage() {
               {focusTopics.length ? focusTopics.join(", ") : "Henüz veri yok"}
             </div>
             <div className="mt-1 text-xs text-paper-800/60">Deneme yanlışlarına göre</div>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-paper-800/55">
+                Aile takip özeti
+              </div>
+              <h2 className="mt-1 text-base font-semibold text-paper-900">{familyRisk}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                Bu özet; ders bildirimleri, konu kavrama sinyalleri, deneme sonuçları ve çalışma planını birlikte okur.
+              </p>
+            </div>
+            <Link
+              href="#bildirimler"
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-100"
+            >
+              Bildirimleri aç
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {[
+              ["Okunmamış", `${unreadNotifications} bildirim`, "Ders, ödev ve ödeme dışı gelişmeler burada toplanır."],
+              ["Kavrama", averageMastery == null ? "İlk ders bekleniyor" : percentLabel(averageMastery * 100), "Ders sonu özetlerinden konu bazlı sinyal çıkar."],
+              ["Odak", focusTopics.length ? focusTopics.slice(0, 2).join(", ") : "Veri bekleniyor", "Deneme yanlışları tekrar planını besler."],
+            ].map(([title, value, body]) => (
+              <div key={title} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs font-semibold text-paper-900">{title}</div>
+                <div className="mt-1 text-sm font-semibold text-brand-900">{value}</div>
+                <p className="mt-1 text-xs leading-relaxed text-paper-800/60">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                Veli güven merkezi
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-paper-900">Konu takibi ve risk sinyalleri</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                Ders özetleri, deneme yanlışları ve haftalık plan birlikte takip edilir.
+              </p>
+            </div>
+            <div className="rounded-xl border border-paper-200 bg-paper-50 px-4 py-3 text-sm">
+              <div className="text-xs text-paper-800/55">Ortalama kavrama</div>
+              <div className="mt-1 text-xl font-semibold text-paper-900">
+                {averageMastery == null ? "—" : percentLabel(averageMastery * 100)}
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {lowMasteryTopics.length === 0 ? (
+              <div className="rounded-xl border border-paper-200 bg-paper-50 p-4 text-sm text-paper-800/65">
+                İlk ders değerlendirmesinden sonra konu takibi burada görünür.
+              </div>
+            ) : (
+              lowMasteryTopics.map((row) => (
+                <div key={`${row.student_id}-${row.topic_label}`} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <div className="font-semibold text-paper-900">{row.topic_label}</div>
+                    <div className="text-xs font-medium text-brand-900">{percentLabel(row.mastery * 100)}</div>
+                  </div>
+                  <div className="mt-1 text-xs text-paper-800/55">
+                    {row.student_display_name} · {row.evidence_count} ders sinyali
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-paper-200">
+                    <div
+                      className="h-full rounded-full bg-brand-700"
+                      style={{ width: `${Math.min(100, Math.max(0, row.mastery * 100))}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </section>
 

@@ -10,6 +10,18 @@ import { prepareHomeworkImage, type HomeworkImageAttachment } from "../../lib/ho
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 
+function urgencyTargetMinutes(level: "normal" | "priority" | "urgent"): number {
+  if (level === "urgent") return 10;
+  if (level === "priority") return 15;
+  return 20;
+}
+
+function urgencyPromise(level: "normal" | "priority" | "urgent"): string {
+  if (level === "urgent") return "Acil sorular öğretmen havuzunda en görünür sıraya alınır.";
+  if (level === "priority") return "Öncelikli sorular kısa hedef süreyle takip edilir.";
+  return "Normal sorular standart çözüm hedefiyle havuza düşer.";
+}
+
 export default function OdevSorPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -126,6 +138,7 @@ export default function OdevSorPage() {
   }
 
   if (!token) return null;
+  const targetMinutes = urgencyTargetMinutes(urgencyLevel);
 
   async function addImageFiles(files: File[]) {
     if (files.length === 0) return;
@@ -184,6 +197,31 @@ export default function OdevSorPage() {
             {ok}
           </div>
         )}
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-4 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-900/70">
+            Soru ön kontrolü
+          </div>
+          <h2 className="mt-2 text-base font-semibold text-paper-900">
+            Fotoğraf, konu, aciliyet ve hedef sınav aynı öğrenme verisine dönüşür.
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-paper-800/70">
+            Sistem konuyu, zorluk seviyesini, hedef cevap süresini ve çözüm sonrası benzer alıştırmaları hazırlar.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {[
+              ["Hedef süre", `${targetMinutes} dk`, urgencyPromise(urgencyLevel)],
+              ["Kalite kontrol", "Cevap puanı", "Öğretmen cevabı açıklık, adım ve sonuç kalitesiyle değerlendirilir."],
+              ["Sonraki pratik", "3 öneri", "Çözümden sonra benzer alıştırmalar çalışma akışına bağlanır."],
+            ].map(([title, value, body]) => (
+              <div key={title} className="rounded-xl border border-brand-100 bg-white/80 p-3">
+                <div className="text-xs font-semibold text-brand-950">{title}</div>
+                <div className="mt-1 text-sm font-semibold text-paper-900">{value}</div>
+                <p className="mt-1 text-xs leading-relaxed text-paper-800/60">{body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <div className="mt-6 space-y-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <label className="block text-sm">

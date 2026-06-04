@@ -1,5 +1,5 @@
-import Image from "next/image";
 import Link from "next/link";
+import { BrandLogo } from "./BrandLogo";
 
 const TAGLINE = "Online Akademi";
 
@@ -9,18 +9,19 @@ type Props = {
   className?: string;
 };
 
-/** Şeffaf arka planlı tam logo: `public/logo-marketing.png` (`npm run logo:strip-bg`). */
 export function BrandLockup({ asLink = true, className = "" }: Props) {
   const inner = (
-    <Image
-      src="/logo-marketing.png"
-      alt={`Benim Öğretmenim — ${TAGLINE}`}
-      width={400}
-      height={150}
-      sizes="(max-width: 640px) 280px, 360px"
-      className="h-12 w-auto max-w-[min(280px,88vw)] shrink-0 object-contain object-left sm:h-16 sm:max-w-[min(380px,52vw)]"
-      priority
-    />
+    <span className="flex min-w-0 items-center gap-3">
+      <BrandLogo size="lg" className="shrink-0" />
+      <span className="min-w-0 leading-none">
+        <span className="block whitespace-nowrap text-[1.15rem] font-black tracking-[-0.04em] text-paper-950 sm:text-[1.55rem]">
+          BenimÖğretmenim
+        </span>
+        <span className="mt-1 block text-[0.62rem] font-bold uppercase tracking-[0.28em] text-brand-800 sm:text-[0.72rem]">
+          {TAGLINE}
+        </span>
+      </span>
+    </span>
   );
 
   const base =

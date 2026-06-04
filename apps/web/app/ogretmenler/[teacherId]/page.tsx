@@ -121,6 +121,28 @@ function responseSignalLabel(teacher: TeacherDetail): string {
   return "Yeni eşleşme adayı";
 }
 
+function profileTrustReasons(teacher: TeacherDetail): string[] {
+  const reasons: string[] = [];
+  if (teacher.verification_status === "verified") reasons.push("Doğrulama tamam");
+  if (Number(teacher.profile_quality_score ?? 0) >= 75) reasons.push("Profil kalitesi güçlü");
+  if (teacher.completed_sessions_count >= 10) reasons.push("Tamamlanan ders geçmişi var");
+  if (teacher.rating_count != null && Number(teacher.rating_count) > 0) {
+    reasons.push(`${Number(teacher.rating_avg ?? 0).toFixed(1)} puanlı yorumlar`);
+  }
+  if (teacher.has_video) reasons.push("Video ile tanışma mümkün");
+  if (teacher.has_exam_docs) reasons.push("Doküman/sınav kanıtı ekli");
+  return reasons.slice(0, 4);
+}
+
+function profileDecisionLabel(teacher: TeacherDetail): string {
+  if (teacher.verification_status === "verified" && Number(teacher.profile_quality_score ?? 0) >= 80) {
+    return "Güvenli demo adayı";
+  }
+  if (teacher.has_video || teacher.has_exam_docs) return "Profil kanıtlarını inceleyin";
+  if (teacher.completed_sessions_count > 0) return "Ders geçmişini değerlendirin";
+  return "Demo ile beklentiyi netleştirin";
+}
+
 const sampleLessonFlow = [
   "Hedef ve seviye kontrolü",
   "Canlı anlatım + ortak tahta",
@@ -432,6 +454,25 @@ export default function OgretmenDetayPage() {
                     {teacher.completed_sessions_count} tamamlanan ders
                   </span>
                 )}
+                <span className="rounded-full bg-warm-50 px-2 py-0.5 text-[11px] font-medium text-warm-900">
+                  Güvenli ödeme ve paket akışı
+                </span>
+              </div>
+              <div className="mt-4 rounded-xl border border-paper-200 bg-white p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">
+                  Karar özeti
+                </div>
+                <div className="mt-1 text-sm font-semibold text-paper-900">{profileDecisionLabel(teacher)}</div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {(profileTrustReasons(teacher).length
+                    ? profileTrustReasons(teacher)
+                    : ["Yeni profil; demo talebiyle beklenti ve yöntem netleşir"]
+                  ).map((reason) => (
+                    <span key={reason} className="rounded-full bg-paper-50 px-2 py-0.5 text-[11px] text-paper-800 ring-1 ring-paper-200">
+                      {reason}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -480,6 +521,31 @@ export default function OgretmenDetayPage() {
                 <p className="mt-3 text-xs text-paper-800/55">
                   Demo derste öğretmenin yöntemi görülür; paket kararı sonrasında cüzdan blokajı ile ödeme güvenceye alınır.
                 </p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-warm-200 bg-warm-50/70 p-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-900/70">
+                Ders güvencesi
+              </div>
+              <h2 className="mt-2 text-base font-semibold text-paper-900">
+                Demo, teklif, ödeme blokajı ve canlı sınıf aynı kayıtlı akışta ilerler.
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-paper-800/70">
+                Öğretmeni tanıdıktan sonra paket, oturum, ödeme ve ders sonu değerlendirme aynı panelde kalır.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {[
+                  ["1", "Demo veya talep", "Önce beklenti ve yöntem netleşir."],
+                  ["2", "Cüzdan blokajı", "Ödeme ders tamamlanmadan aktarılmaz."],
+                  ["3", "Ders sonu takip", "Özet, ödev ve ilerleme veliye görünür."],
+                ].map(([step, title, body]) => (
+                  <div key={step} className="rounded-xl border border-warm-200 bg-white/80 p-3">
+                    <div className="text-[11px] font-semibold text-warm-900">Adım {step}</div>
+                    <div className="mt-1 text-xs font-semibold text-paper-900">{title}</div>
+                    <p className="mt-1 text-xs leading-relaxed text-paper-800/60">{body}</p>
+                  </div>
+                ))}
               </div>
             </div>
 

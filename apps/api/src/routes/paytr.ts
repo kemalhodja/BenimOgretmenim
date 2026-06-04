@@ -510,13 +510,17 @@ paytr.post("/callback", async (c) => {
     try {
       await client.query("begin");
 
-      await client.query(
+      const paidUpdate = await client.query(
         `update subscription_payments
          set state = 'paid', paytr_status = $2, paytr_total_amount_minor = $3::int,
              paytr_raw_jsonb = $4::jsonb, updated_at = now()
          where id = $1 and state = 'pending'`,
         [row.id, status, Number(totalAmount), JSON.stringify(body)],
       );
+      if (!paidUpdate.rowCount) {
+        await client.query("commit");
+        return c.text("OK");
+      }
       await writePaymentReconciliationEvent(
         {
           merchantOid,
@@ -617,12 +621,16 @@ paytr.post("/callback", async (c) => {
       const cl = await pool.connect();
       try {
         await cl.query("begin");
-        await cl.query(
+        const paidUpdate = await cl.query(
           `update student_sub_payments
            set state = 'paid', paytr_status = $2, paytr_total_amount_minor = $3::int, paytr_raw_jsonb = $4::jsonb, updated_at = now()
            where id = $1 and state = 'pending'`,
           [pr.id, status, Number(totalAmount), JSON.stringify(body)],
         );
+        if (!paidUpdate.rowCount) {
+          await cl.query("commit");
+          return c.text("OK");
+        }
         await writePaymentReconciliationEvent(
           {
             merchantOid,
@@ -693,12 +701,16 @@ paytr.post("/callback", async (c) => {
       const wcl = await pool.connect();
       try {
         await wcl.query("begin");
-        await wcl.query(
+        const paidUpdate = await wcl.query(
           `update wallet_topup_payments
            set state = 'paid', paytr_status = $2, paytr_total_amount_minor = $3::int, paytr_raw_jsonb = $4::jsonb, updated_at = now()
            where id = $1 and state = 'pending'`,
           [wr.id, status, Number(totalAmount), JSON.stringify(body)],
         );
+        if (!paidUpdate.rowCount) {
+          await wcl.query("commit");
+          return c.text("OK");
+        }
         await applyWalletDelta({
           userId: wr.user_id,
           deltaMinor: wr.amount_minor,
@@ -782,13 +794,17 @@ paytr.post("/callback", async (c) => {
   try {
     await cclient.query("begin");
 
-    await cclient.query(
+    const paidUpdate = await cclient.query(
       `update course_enrollment_payments
        set state = 'paid', paytr_status = $2, paytr_total_amount_minor = $3::int,
            paytr_raw_jsonb = $4::jsonb, updated_at = now()
        where id = $1 and state = 'pending'`,
       [cRow.id, status, Number(totalAmount), JSON.stringify(body)],
     );
+    if (!paidUpdate.rowCount) {
+      await cclient.query("commit");
+      return c.text("OK");
+    }
     await writePaymentReconciliationEvent(
       {
         merchantOid,
