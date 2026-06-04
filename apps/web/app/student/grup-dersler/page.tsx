@@ -186,6 +186,30 @@ export default function StudentGroupLessonsPage() {
 
   if (!token) return null;
 
+  const availableMinor = wallet ? Math.max(0, wallet.balanceMinor - activeHoldMinor) : 0;
+  const soonest = rows[0] ?? null;
+  const affordableCount = rows.filter((r) => {
+    const count = Math.max(1, Number(r.participants_count ?? 1));
+    const share = ceilDiv(Number(r.total_price_minor ?? 100000), count);
+    return !wallet || availableMinor >= share;
+  }).length;
+  const assignedCount = rows.filter((r) => r.teacher_id != null || r.status !== "open").length;
+  const nextAction =
+    rows.length === 0
+      ? {
+          title: "İlk grup ders ilanını açın",
+          body: "Benzer ihtiyacı olan öğrenciler katıldıkça kişi başı maliyet düşer.",
+        }
+      : affordableCount > 0
+        ? {
+            title: "Katılabileceğiniz grup dersleri var",
+            body: `${affordableCount} açık ilan mevcut bakiyenizle katılmaya uygun görünüyor.`,
+          }
+        : {
+            title: "Cüzdan bakiyenizi hazırlayın",
+            body: "Grup dersine katılımda payınız kadar tutar blokeye alınır; bakiye yetersizse panelden yükleme yapın.",
+          };
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
@@ -234,6 +258,43 @@ export default function StudentGroupLessonsPage() {
             {error ?? ok}
           </div>
         )}
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Grup ders asistanı</div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+            </div>
+            <Link
+              href="/student/panel#bakiye"
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-950 hover:bg-brand-100"
+            >
+              Cüzdanı aç
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Açık ilan</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{rows.length}</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Katılabilir</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{affordableCount}</div>
+          </div>
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Öğretmenli</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{assignedCount}</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Sıradaki</div>
+            <div className="mt-1 text-sm font-semibold text-warm-950">
+              {soonest ? toLocal(soonest.planned_start) : "—"}
+            </div>
+          </div>
+        </section>
 
         <section className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <h2 className="text-base font-semibold text-paper-900">Yeni grup dersi talebi</h2>

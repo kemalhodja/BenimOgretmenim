@@ -13,6 +13,64 @@ function meetingBase(): string {
   return (process.env.MEETING_BASE_URL ?? "https://meet.jit.si").replace(/\/$/, "");
 }
 
+async function notifyCourseSessionRecipients({
+  courseId,
+  cohortId,
+  sessionId,
+  courseTitle,
+  cohortTitle,
+  sessionIndex,
+  scheduledStart,
+}: {
+  courseId: string;
+  cohortId: string;
+  sessionId: string;
+  courseTitle: string;
+  cohortTitle: string;
+  sessionIndex: number;
+  scheduledStart: Date;
+}) {
+  await pool.query(
+    `insert into parent_notifications (
+       recipient_user_id, student_id, snapshot_id, channel,
+       title, body, payload_jsonb, delivery_status, sent_at
+     )
+     select recipient_user_id,
+            student_id,
+            null,
+            'in_app',
+            'Kurs dersi planlandı',
+            concat($4::text, ' / ', $5::text, ' dersi #', $6::int, ' ',
+                   to_char($7::timestamptz, 'DD.MM.YYYY HH24:MI'),
+                   ' için planlandı. Sınıf linki kurs panelinizde hazır.'),
+            jsonb_build_object(
+              'kind', 'course_session_scheduled',
+              'courseId', $1::uuid,
+              'cohortId', $2::uuid,
+              'courseSessionId', $3::uuid,
+              'scheduledStart', $7::timestamptz,
+              'classroomHref', concat('/classroom/course/', $3::uuid)
+            ),
+            'sent',
+            now()
+     from (
+       select st.user_id as recipient_user_id,
+              st.id as student_id
+       from course_enrollments ce
+       join students st on st.id = ce.student_id
+       where ce.cohort_id = $2::uuid
+       union
+       select sg.guardian_user_id as recipient_user_id,
+              st.id as student_id
+       from course_enrollments ce
+       join students st on st.id = ce.student_id
+       join student_guardians sg on sg.student_id = st.id
+       where ce.cohort_id = $2::uuid
+     ) recipients`,
+    [courseId, cohortId, sessionId, courseTitle, cohortTitle, sessionIndex, scheduledStart],
+  );
+}
+
 const createCourseSchema = z.object({
   title: z.string().min(3).max(120),
   description: z.string().max(10000).optional().nullable(),
@@ -70,9 +128,42 @@ courses.get("/mine", requireAuth, async (c) => {
   const r = await pool.query(
     `select c.id, c.title, c.status, c.delivery_mode, c.language_code, c.price_minor, c.currency,
             c.branch_id, b.name as branch_name,
-            c.created_at, c.updated_at
+            c.created_at, c.updated_at,
+            (
+              select count(*)::int
+              from course_cohorts cc
+              where cc.course_id = c.id
+            ) as cohort_count,
+            (
+              select count(*)::int
+              from course_cohorts cc
+              where cc.course_id = c.id and cc.status = 'active'
+            ) as active_cohort_count,
+            (
+              select count(*)::int
+              from course_enrollments ce
+              join course_cohorts cc on cc.id = ce.cohort_id
+              where cc.course_id = c.id
+            ) as enrollment_count,
+            ns.id as next_session_id,
+            ns.session_index as next_session_index,
+            ns.title as next_session_title,
+            ns.scheduled_start as next_scheduled_start,
+            ns.meeting_url as next_meeting_url,
+            ns.cohort_title as next_cohort_title
      from courses c
      left join branches b on b.id = c.branch_id
+     left join lateral (
+       select s.id, s.session_index, s.title, s.scheduled_start, s.meeting_url, cc.title as cohort_title
+       from course_cohorts cc
+       join course_sessions s on s.cohort_id = cc.id
+       where cc.course_id = c.id
+         and s.status = 'scheduled'
+       order by (s.scheduled_start is null) asc,
+                s.scheduled_start asc nulls last,
+                s.session_index asc
+       limit 1
+     ) ns on true
      where c.teacher_id = $1
      order by c.created_at desc
      limit 50`,
@@ -514,10 +605,26 @@ courses.post("/:courseId/cohorts/:cohortId/sessions/:sessionId/schedule", requir
        and cc.id = $2::uuid
        and cc.course_id = $3::uuid
        and c.teacher_id = $4
-     returning cs.id, cs.session_index, cs.scheduled_start, cs.scheduled_end, cs.duration_minutes, cs.meeting_url`,
+     returning cs.id, cs.session_index, cs.scheduled_start, cs.scheduled_end, cs.duration_minutes, cs.meeting_url,
+               c.title as course_title, cc.title as cohort_title`,
     [sessionId, cohortId, courseId, teacherId, start, end, duration, meet],
   );
   if (!r.rowCount) return c.json({ error: "not_found_or_forbidden" }, 404);
+  const row = r.rows[0] as {
+    id: string;
+    session_index: number;
+    course_title: string;
+    cohort_title: string;
+  };
+  await notifyCourseSessionRecipients({
+    courseId,
+    cohortId,
+    sessionId: row.id,
+    courseTitle: row.course_title,
+    cohortTitle: row.cohort_title,
+    sessionIndex: row.session_index,
+    scheduledStart: start,
+  });
   return c.json({ session: r.rows[0] });
 });
 

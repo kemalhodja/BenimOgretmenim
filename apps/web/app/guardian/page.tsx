@@ -18,6 +18,27 @@ type ProgressRow = {
   teacher_display_name: string;
 };
 
+type StudyPlanRow = {
+  id: string;
+  student_id: string;
+  student_display_name: string;
+  target_exam: string | null;
+  weekly_minutes: number;
+  weak_topics_jsonb: unknown;
+  items: Array<{ dayIndex: number; title: string; minutes: number; status: string }>;
+  created_at: string;
+};
+
+type AttemptRow = {
+  id: string;
+  student_id: string;
+  student_display_name: string;
+  title: string;
+  score_percent: string | number | null;
+  weak_topics_jsonb: unknown;
+  created_at: string;
+};
+
 type NotifRow = {
   id: string;
   title: string;
@@ -28,14 +49,36 @@ type NotifRow = {
   payload_jsonb?: unknown;
 };
 
+function topicsFrom(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((x) => String(x).trim()).filter(Boolean);
+}
+
+function percentLabel(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
+function planProgress(plan: StudyPlanRow): { done: number; skipped: number; total: number; percent: number } {
+  const total = plan.items.length;
+  const done = plan.items.filter((item) => item.status === "done").length;
+  const skipped = plan.items.filter((item) => item.status === "skipped").length;
+  return { done, skipped, total, percent: total > 0 ? (done / total) * 100 : 0 };
+}
+
 export default function GuardianPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const [token, setToken] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [progress, setProgress] = useState<ProgressRow[]>([]);
+  const [studyPlans, setStudyPlans] = useState<StudyPlanRow[]>([]);
+  const [attempts, setAttempts] = useState<AttemptRow[]>([]);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
   const [readBusy, setReadBusy] = useState<string | null>(null);
 
   useEffect(() => {
@@ -48,12 +91,21 @@ export default function GuardianPage() {
   }, [router, pathname]);
 
   useEffect(() => {
+    setShowOnboarding(new URLSearchParams(window.location.search).get("onboarding") === "1");
+  }, []);
+
+  useEffect(() => {
     if (!token) return;
     (async () => {
       setError(null);
       try {
         const [r, n] = await Promise.all([
-          apiFetch<{ students: StudentRow[]; progress: ProgressRow[] }>(
+          apiFetch<{
+            students: StudentRow[];
+            progress: ProgressRow[];
+            studyPlans: StudyPlanRow[];
+            attempts: AttemptRow[];
+          }>(
             "/v1/guardians/overview",
             { token },
           ),
@@ -63,6 +115,8 @@ export default function GuardianPage() {
         ]);
         setStudents(r.students);
         setProgress(r.progress);
+        setStudyPlans(r.studyPlans ?? []);
+        setAttempts(r.attempts ?? []);
         setNotifications(n.notifications);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "load_failed";
@@ -77,6 +131,49 @@ export default function GuardianPage() {
       }
     })();
   }, [token, router, pathname]);
+
+  async function acceptInvite() {
+    if (!token) return;
+    const code = inviteCode.trim();
+    if (code.length < 6) {
+      setError("Davet kodunu girin.");
+      return;
+    }
+    setInviteBusy(true);
+    setError(null);
+    setOk(null);
+    try {
+      await apiFetch("/v1/guardians/accept-invite", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ code }),
+      });
+      setInviteCode("");
+      setOk("Öğrenci hesabı bağlandı.");
+      const [r, n] = await Promise.all([
+        apiFetch<{
+          students: StudentRow[];
+          progress: ProgressRow[];
+          studyPlans: StudyPlanRow[];
+          attempts: AttemptRow[];
+        }>("/v1/guardians/overview", { token }),
+        apiFetch<{ notifications: NotifRow[] }>("/v1/notifications?limit=30", { token }),
+      ]);
+      setStudents(r.students);
+      setProgress(r.progress);
+      setStudyPlans(r.studyPlans ?? []);
+      setAttempts(r.attempts ?? []);
+      setNotifications(n.notifications);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "invite_accept_failed";
+      if (msg.includes("expired")) setError("Davet kodunun süresi dolmuş.");
+      else if (msg.includes("already_used")) setError("Bu davet kodu daha önce kullanılmış.");
+      else if (msg.includes("not_found")) setError("Davet kodu bulunamadı.");
+      else setError(msg);
+    } finally {
+      setInviteBusy(false);
+    }
+  }
 
   async function markRead(id: string) {
     if (!token) return;
@@ -102,6 +199,46 @@ export default function GuardianPage() {
 
   if (!token) return null;
 
+  const scoredAttempts = attempts
+    .map((attempt) => Number(attempt.score_percent))
+    .filter((value) => Number.isFinite(value));
+  const averageScore =
+    scoredAttempts.length > 0
+      ? scoredAttempts.reduce((sum, value) => sum + value, 0) / scoredAttempts.length
+      : null;
+  const activePlanCount = studyPlans.length;
+  const weakTopicCounts = new Map<string, number>();
+  for (const attempt of attempts) {
+    for (const topic of topicsFrom(attempt.weak_topics_jsonb)) {
+      weakTopicCounts.set(topic, (weakTopicCounts.get(topic) ?? 0) + 1);
+    }
+  }
+  const focusTopics = [...weakTopicCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([topic]) => topic);
+  const nextBestAction =
+    students.length === 0
+      ? {
+          title: "Öğrenci hesabını bağlayın",
+          body: "Öğrenci panelinden veli davet kodu alın; bağlandıktan sonra ders, plan ve bildirim özetleri burada görünür.",
+          href: "#ogrenci-baglama",
+          cta: "Bağlama rehberi",
+        }
+      : notifications.some((n) => !n.read_at)
+        ? {
+            title: "Okunmamış bildirimleri kontrol edin",
+            body: "Ödev, ders ve çalışma güncellemelerini okuyup aile takibini güncel tutun.",
+            href: "#bildirimler",
+            cta: "Bildirimlere git",
+          }
+        : {
+            title: "Çalışma planı ve odak konuları izleyin",
+            body: "Deneme yanlışlarından çıkan odak konuları ve haftalık plan ilerlemesini düzenli kontrol edin.",
+            href: "#calisma-takibi",
+            cta: "Takibe git",
+          };
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
@@ -123,9 +260,55 @@ export default function GuardianPage() {
             {error}
           </div>
         )}
+        {ok && (
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
+            {ok}
+          </div>
+        )}
 
-        <section className="mt-8">
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                {showOnboarding ? "Veli onboarding" : "Sonraki en iyi işlem"}
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-paper-900">{nextBestAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">{nextBestAction.body}</p>
+            </div>
+            <Link
+              href={nextBestAction.href}
+              className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
+            >
+              {nextBestAction.cta}
+            </Link>
+          </div>
+        </section>
+
+        <section id="ogrenci-baglama" className="mt-8">
           <h2 className="text-base font-semibold text-paper-900">Bağlı öğrenciler</h2>
+          <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50/60 p-4">
+            <div className="text-sm font-semibold text-brand-950">Davet koduyla bağlan</div>
+            <p className="mt-1 text-xs text-brand-900/75">
+              Öğrenci panelinden üretilen 7 günlük kodu girin. Kod tek kullanımlıdır.
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                className="min-w-0 flex-1 rounded-xl border border-brand-200 bg-white px-3 py-2 font-mono text-sm text-paper-900"
+                placeholder="Örn. A1B2C3D4"
+                maxLength={32}
+              />
+              <button
+                type="button"
+                disabled={inviteBusy}
+                onClick={() => void acceptInvite()}
+                className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {inviteBusy ? "…" : "Bağlan"}
+              </button>
+            </div>
+          </div>
           <div className="mt-3 space-y-2">
             {students.length === 0 ? (
               <div className="rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/75">
@@ -144,7 +327,90 @@ export default function GuardianPage() {
           </div>
         </section>
 
-        <section className="mt-10">
+        <section className="mt-8 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Aktif plan</div>
+            <div className="mt-2 text-2xl font-semibold text-paper-900">{activePlanCount}</div>
+            <div className="mt-1 text-xs text-paper-800/60">Bağlı öğrenciler için</div>
+          </div>
+          <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Deneme ortalaması</div>
+            <div className="mt-2 text-2xl font-semibold text-paper-900">
+              {averageScore == null ? "—" : percentLabel(averageScore)}
+            </div>
+            <div className="mt-1 text-xs text-paper-800/60">{scoredAttempts.length} sonuç üzerinden</div>
+          </div>
+          <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Odak konular</div>
+            <div className="mt-2 text-sm font-medium text-paper-900">
+              {focusTopics.length ? focusTopics.join(", ") : "Henüz veri yok"}
+            </div>
+            <div className="mt-1 text-xs text-paper-800/60">Deneme yanlışlarına göre</div>
+          </div>
+        </section>
+
+        <section id="calisma-takibi" className="mt-10">
+          <h2 className="text-base font-semibold text-paper-900">Çalışma planı ve deneme takibi</h2>
+          <p className="mt-1 text-xs text-paper-800/55">Öğrencinin hedef planı ve son test sonuçları.</p>
+          <div className="mt-3 grid gap-3 lg:grid-cols-2">
+            <div className="rounded-xl border border-paper-200 bg-white p-4">
+              <h3 className="text-sm font-semibold text-paper-900">Aktif planlar</h3>
+              {studyPlans.length === 0 ? (
+                <p className="mt-2 text-sm text-paper-800/55">Aktif plan yok.</p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {studyPlans.map((p) => {
+                    const progressInfo = planProgress(p);
+                    return (
+                      <li key={p.id} className="rounded-lg bg-paper-50 p-3 text-sm">
+                        <div className="font-medium text-paper-900">
+                          {p.student_display_name} · {p.target_exam ?? "Genel"} · {p.weekly_minutes} dk/hafta
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-paper-200">
+                          <div
+                            className="h-full rounded-full bg-brand-700"
+                            style={{ width: `${Math.min(100, Math.max(0, progressInfo.percent))}%` }}
+                          />
+                        </div>
+                        <div className="mt-1 text-xs text-paper-800/55">
+                          {percentLabel(progressInfo.percent)} · {progressInfo.done}/{progressInfo.total} tamamlandı
+                          {progressInfo.skipped ? ` · ${progressInfo.skipped} atlandı` : ""}
+                        </div>
+                        <div className="mt-2 text-xs text-paper-800/55">
+                          {p.items.slice(0, 2).map((i) => i.title).join(" · ") || "Plan maddesi yok"}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <div className="rounded-xl border border-paper-200 bg-white p-4">
+              <h3 className="text-sm font-semibold text-paper-900">Son denemeler</h3>
+              {attempts.length === 0 ? (
+                <p className="mt-2 text-sm text-paper-800/55">Sonuç kaydı yok.</p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {attempts.slice(0, 5).map((a) => (
+                    <li key={a.id} className="rounded-lg bg-paper-50 p-3 text-sm">
+                      <div className="font-medium text-paper-900">
+                        {a.student_display_name} · {a.title} · %{a.score_percent ?? "—"}
+                      </div>
+                      <div className="mt-1 text-xs text-paper-800/55">
+                        {new Date(a.created_at).toLocaleString("tr-TR")}
+                      </div>
+                      <div className="mt-1 text-xs text-paper-800/55">
+                        Zayıf konular: {topicsFrom(a.weak_topics_jsonb).join(", ") || "—"}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section id="bildirimler" className="mt-10">
           <h2 className="text-base font-semibold text-paper-900">Bildirimler</h2>
           <p className="mt-1 text-xs text-paper-800/55">Özet ve ödev; ödeme öğrenci hesabından.</p>
           <div className="mt-3 space-y-2">
@@ -173,7 +439,15 @@ export default function GuardianPage() {
                   {(() => {
                     const p = n.payload_jsonb;
                     if (!p || typeof p !== "object") return null;
-                    const k = (p as { kind?: string }).kind;
+                    const payload = p as { kind?: string; classroomHref?: string };
+                    if (typeof payload.classroomHref === "string" && payload.classroomHref.startsWith("/classroom/")) {
+                      return (
+                        <Link href={payload.classroomHref} className="mt-2 inline-block text-xs font-medium text-brand-800 underline">
+                          Canlı sınıfa git
+                        </Link>
+                      );
+                    }
+                    const k = payload.kind;
                     if (
                       k === "homework_new_post_guardian" ||
                       k === "homework_claimed_guardian" ||
@@ -184,6 +458,47 @@ export default function GuardianPage() {
                     ) {
                       return (
                         <p className="mt-2 text-xs text-paper-800/55">Detaylar öğrenci panelinde.</p>
+                      );
+                    }
+                    if (
+                      k === "lesson_scheduled" ||
+                      k === "lesson_completed" ||
+                      k === "lesson_reminder_24h" ||
+                      k === "lesson_reminder_2h"
+                    ) {
+                      return (
+                        <p className="mt-2 text-xs text-paper-800/55">
+                          Ders linki ve yorum adımları öğrencinin Dersler ekranında.
+                        </p>
+                      );
+                    }
+                    if (
+                      k === "course_session_scheduled" ||
+                      k === "course_session_reminder_24h" ||
+                      k === "course_session_reminder_2h"
+                    ) {
+                      return (
+                        <p className="mt-2 text-xs text-paper-800/55">
+                          Kurs sınıf linki öğrencinin Kurslar ekranında.
+                        </p>
+                      );
+                    }
+                    if (
+                      k === "group_lesson_teacher_assigned" ||
+                      k === "group_lesson_joined" ||
+                      k === "group_lesson_completed"
+                    ) {
+                      return (
+                        <p className="mt-2 text-xs text-paper-800/55">
+                          Grup ders detayları öğrencinin Grup dersler ekranında.
+                        </p>
+                      );
+                    }
+                    if (k === "direct_booking_completed") {
+                      return (
+                        <p className="mt-2 text-xs text-paper-800/55">
+                          Doğrudan ders anlaşması öğrencinin Doğrudan dersler ekranında.
+                        </p>
                       );
                     }
                     return null;

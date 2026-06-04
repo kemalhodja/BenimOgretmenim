@@ -26,6 +26,11 @@ describe("API app", () => {
     expect(rid).toBeTruthy();
   });
 
+  it("does not expose subscription prices without auth", async () => {
+    const res = await app.request("http://localhost/v1/subscriptions/plans");
+    expect(res.status).toBe(401);
+  });
+
   it("rate limits /v1/auth/login after burst", async () => {
     const health = await app.request("http://localhost/health");
     if (health.status !== 200) {

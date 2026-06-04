@@ -24,6 +24,15 @@ type MyRequest = {
   offers_count: number;
 };
 
+type TeacherBatchRow = {
+  id: string;
+  display_name: string;
+  primary_branch_id: number | null;
+  primary_branch_name: string | null;
+};
+
+type ShortlistTeacher = { id: string; name: string };
+
 export default function StudentRequestsPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -41,6 +50,7 @@ export default function StudentRequestsPage() {
   const [requestKind, setRequestKind] = useState<"regular" | "demo">("regular");
   const [targetTeacherId, setTargetTeacherId] = useState<string | null>(null);
   const [targetTeacherName, setTargetTeacherName] = useState<string | null>(null);
+  const [shortlistTeachers, setShortlistTeachers] = useState<ShortlistTeacher[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -85,6 +95,47 @@ export default function StudentRequestsPage() {
     setNote((prev) => prev || "Demo ders için uygun gün ve saatleri konuşmak istiyorum.");
   }, [searchParams]);
 
+  useEffect(() => {
+    const kind = searchParams.get("requestKind") ?? searchParams.get("kind");
+    const teacherId = searchParams.get("teacherId");
+    if (kind !== "demo" || !teacherId) return;
+    let cancelled = false;
+    apiFetch<{ teachers: TeacherBatchRow[] }>(`/v1/teachers/batch?ids=${encodeURIComponent(teacherId)}`)
+      .then((r) => {
+        if (cancelled) return;
+        const teacher = r.teachers[0];
+        if (!teacher) return;
+        setTargetTeacherName((prev) => prev ?? teacher.display_name);
+        setBranchId((prev) => (prev === "" && teacher.primary_branch_id != null ? teacher.primary_branch_id : prev));
+      })
+      .catch(() => {
+        /* Demo formu query verisiyle çalışmaya devam eder. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
+
+  useEffect(() => {
+    const ids = (searchParams.get("shortlistTeacherIds") ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, 5);
+    if (ids.length === 0) return;
+    const names = (searchParams.get("shortlistTeacherNames") ?? "")
+      .split("|")
+      .map((name) => name.trim())
+      .filter(Boolean);
+    setRequestKind("regular");
+    setShortlistTeachers(ids.map((id, index) => ({ id, name: names[index] ?? `Öğretmen ${index + 1}` })));
+    setTopic((prev) => prev || "Özel ders talebi");
+    setNote((prev) =>
+      prev ||
+      `Karşılaştırdığım öğretmenlerden uygun olanlarla görüşmek istiyorum: ${names.length ? names.join(", ") : ids.join(", ")}`,
+    );
+  }, [searchParams]);
+
   async function refresh(t: string) {
     const [b, m] = await Promise.all([
       apiFetch<{ branches: Branch[] }>("/v1/meta/branches"),
@@ -125,8 +176,15 @@ export default function StudentRequestsPage() {
         examTarget.trim() ? `Hedef: ${examTarget.trim()}` : null,
         preferredTimes.trim() ? `Uygun zaman: ${preferredTimes.trim()}` : null,
         contactPreference.trim() ? `İletişim tercihi: ${contactPreference.trim()}` : null,
+        shortlistTeachers.length > 0 ? `Kısa liste: ${shortlistTeachers.map((teacher) => teacher.name).join(", ")}` : null,
         note.trim() ? `Not: ${note.trim()}` : null,
       ].filter(Boolean);
+      const availabilityPayload: Record<string, unknown> = preferredTimes.trim()
+        ? { preferredTimes: [preferredTimes.trim()] }
+        : {};
+      if (shortlistTeachers.length > 0) {
+        availabilityPayload.shortlistTeacherIds = shortlistTeachers.map((teacher) => teacher.id);
+      }
       await apiFetch("/v1/lesson-requests", {
         method: "POST",
         token,
@@ -136,7 +194,7 @@ export default function StudentRequestsPage() {
           requestKind,
           targetTeacherId,
           deliveryMode: "online",
-          availability: preferredTimes.trim() ? { preferredTimes: [preferredTimes.trim()] } : {},
+          availability: availabilityPayload,
           note: structuredDetails.length > 0 ? structuredDetails.join("\n") : null,
           imageUrls: [],
         }),
@@ -219,6 +277,17 @@ export default function StudentRequestsPage() {
                 ) : (
                   "Demo ders talebi oluşturuyorsunuz. Talep yalnızca ilgili öğretmenin panelinde görünür."
                 )}
+              </div>
+            )}
+            {shortlistTeachers.length > 0 && requestKind !== "demo" && (
+              <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-brand-900">
+                <div className="font-medium">Kısa listeniz talebe eklenecek</div>
+                <p className="mt-1 text-brand-900/80">
+                  {shortlistTeachers.map((teacher) => teacher.name).join(", ")}
+                </p>
+                <p className="mt-1 text-xs text-brand-900/70">
+                  Talep yine açık pazara gider; bu öğretmenler not ve yapılandırılmış availability içinde görünür.
+                </p>
               </div>
             )}
             <div className="mt-4 space-y-4">

@@ -35,6 +35,13 @@ type TeacherMe = {
   };
   checklist: Record<string, boolean>;
   completionScore: number;
+  profileQualityScore: number;
+  profileQualitySignals: Array<{
+    key: string;
+    label: string;
+    points: number;
+    maxPoints: number;
+  }>;
 };
 
 type DashboardReview = {
@@ -91,9 +98,67 @@ function tryYoutubeEmbed(url: string | null): string | null {
   }
 }
 
-function homeworkNotifHref(payload: unknown): string | null {
+function teacherNotifHref(payload: unknown): string | null {
   if (!payload || typeof payload !== "object") return null;
-  const o = payload as { kind?: string };
+  const o = payload as {
+    kind?: string;
+    classroomHref?: string;
+    requestId?: string;
+    lessonSessionId?: string;
+    courseSessionId?: string;
+    groupLessonId?: string;
+    directBookingId?: string;
+  };
+  if (typeof o.classroomHref === "string" && o.classroomHref.startsWith("/classroom/")) {
+    return o.classroomHref;
+  }
+  if (
+    o.kind === "lesson_scheduled" ||
+    o.kind === "lesson_completed" ||
+    o.kind === "lesson_reminder_24h" ||
+    o.kind === "lesson_reminder_2h" ||
+    typeof o.lessonSessionId === "string"
+  ) {
+    return "/teacher/dersler";
+  }
+  if (
+    o.kind === "course_session_scheduled" ||
+    o.kind === "course_session_reminder_24h" ||
+    o.kind === "course_session_reminder_2h" ||
+    typeof o.courseSessionId === "string"
+  ) {
+    return "/teacher/kurslar";
+  }
+  if (
+    o.kind === "group_lesson_created" ||
+    o.kind === "group_lesson_targeted" ||
+    o.kind === "group_lesson_joined_teacher" ||
+    typeof o.groupLessonId === "string"
+  ) {
+    return "/teacher/grup-dersler";
+  }
+  if (
+    o.kind === "direct_booking_created" ||
+    o.kind === "direct_booking_funded" ||
+    typeof o.directBookingId === "string"
+  ) {
+    return "/teacher/dogrudan-dersler";
+  }
+  if (
+    (
+      o.kind === "lesson_request_shortlisted" ||
+      o.kind === "lesson_request_demo_targeted" ||
+      o.kind === "lesson_offer_accepted" ||
+      o.kind === "lesson_offer_rejected" ||
+      o.kind === "lesson_offer_matched_elsewhere"
+    ) &&
+    typeof o.requestId === "string"
+  ) {
+    if (o.kind === "lesson_offer_accepted" || o.kind === "lesson_offer_rejected") {
+      return `/teacher/requests/${o.requestId}`;
+    }
+    return "/teacher/requests";
+  }
   if (
     o.kind === "homework_rewarded" ||
     o.kind === "homework_answer_rejected" ||
@@ -115,10 +180,30 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
+function qualityLabel(score: number): string {
+  if (score >= 80) return "Çok güçlü vitrin";
+  if (score >= 60) return "Güçlü vitrin";
+  if (score >= 40) return "Gelişen vitrin";
+  return "Görünürlük düşük";
+}
+
+function qualitySignalHref(key: string): string | null {
+  const hrefs: Record<string, string> = {
+    city: "/teacher/edit?focus=city",
+    bio: "/teacher/edit?focus=bio",
+    video: "/teacher/edit?focus=video",
+    branches: "/teacher/edit?focus=branches",
+    examDocs: "/teacher/edit?focus=examDocs",
+    platformLinks: "/teacher/edit?focus=platformLinks",
+  };
+  return hrefs[key] ?? null;
+}
+
 export default function TeacherHomePage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const [token, setToken] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [me, setMe] = useState<TeacherMe | null>(null);
   const [dash, setDash] = useState<Dashboard | null>(null);
   const [sub, setSub] = useState<SubMe | null>(null);
@@ -140,6 +225,10 @@ export default function TeacherHomePage() {
     }
     setToken(t);
   }, [router, pathname]);
+
+  useEffect(() => {
+    setShowOnboarding(new URLSearchParams(window.location.search).get("onboarding") === "1");
+  }, []);
 
   const load = useCallback(async (t: string) => {
     setLoading(true);
@@ -331,6 +420,40 @@ export default function TeacherHomePage() {
 
   if (!token) return null;
 
+  const profileQualityScore = me?.profileQualityScore ?? 0;
+  const qualitySignals = me?.profileQualitySignals ?? [];
+  const missingQualitySignals = [...qualitySignals]
+    .filter((item) => item.points < item.maxPoints)
+    .sort((a, b) => b.maxPoints - b.points - (a.maxPoints - a.points));
+  const nextBestAction =
+    profileQualityScore < 80
+      ? {
+          title: "Vitrin kalite hedefini tamamla",
+          body: "Arama ve teklif ekranlarında öne çıkan gerçek kalite sinyallerini güçlendir.",
+          href: "/teacher/edit",
+          cta: "Kalite eksiklerini kapat",
+        }
+      : !sub?.active
+        ? {
+            title: "Öğretmen aboneliğini etkinleştir",
+            body: "Taleplere teklif verme ve görünürlük akışında kesinti yaşamamak için aboneliği tamamlayın.",
+            href: "#ogretmen-aboneligi",
+            cta: "Aboneliğe git",
+          }
+        : (dash?.upcomingScheduledSessions ?? 0) === 0
+          ? {
+              title: "Bugün teklif verebileceğin talepleri aç",
+              body: "Branşına uygun açık taleplerden demo veya paket görüşmesi başlat.",
+              href: "/teacher/requests",
+              cta: "Talepleri gör",
+            }
+          : {
+              title: "Yaklaşan canlı derslerini hazırla",
+              body: "Sınıf linklerini, materyalleri ve ders sonrası değerlendirme akışını kontrol et.",
+              href: "/teacher/dersler",
+              cta: "Derslere git",
+            };
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-6 py-8">
@@ -347,6 +470,11 @@ export default function TeacherHomePage() {
               Tamamlanma:{" "}
               <span className="font-medium text-paper-900">
                 {me?.completionScore ?? 0}%
+              </span>
+              {" · "}
+              Vitrin kalite:{" "}
+              <span className="font-medium text-paper-900">
+                {profileQualityScore}/100
               </span>
               {me?.teacher.ratingCount != null &&
                 me.teacher.ratingCount > 0 &&
@@ -381,6 +509,97 @@ export default function TeacherHomePage() {
           </div>
         </div>
 
+        <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { href: "/teacher/odev-havuzu", title: "Soru havuzu", body: "Yeni soruları üstlen ve çözüm gönder." },
+            { href: "/teacher/requests", title: "Ders talepleri", body: "Teklif bekleyen öğrencileri kontrol et." },
+            { href: "/teacher/dersler", title: "Canlı dersler", body: "Yaklaşan ders ve sınıf linklerini aç." },
+            { href: "/teacher/edit", title: "Profili güçlendir", body: "Video, belge ve branş bilgilerini tamamla." },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm transition hover:border-brand-200 hover:bg-brand-50/30"
+            >
+              <div className="text-sm font-semibold text-paper-900">{item.title}</div>
+              <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+            </Link>
+          ))}
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                {showOnboarding ? "Öğretmen onboarding" : "Sonraki en iyi işlem"}
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-paper-900">{nextBestAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">{nextBestAction.body}</p>
+            </div>
+            <Link
+              href={nextBestAction.href}
+              className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
+            >
+              {nextBestAction.cta}
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-paper-800/55">
+                Arama görünürlüğü
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-paper-900">
+                {qualityLabel(profileQualityScore)} · {profileQualityScore}/100
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-paper-800/70">
+                Bu skor öğrencinin gördüğü öğretmen kartlarında kullanılan doğrulama, biyografi, video,
+                branş, doküman ve yorum sinyallerinden hesaplanır.
+              </p>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-paper-100">
+                <div
+                  className="h-full rounded-full bg-brand-700"
+                  style={{ width: `${Math.min(100, Math.max(0, profileQualityScore))}%` }}
+                />
+              </div>
+            </div>
+            <Link
+              href={missingQualitySignals[0] ? (qualitySignalHref(missingQualitySignals[0].key) ?? "/teacher/edit") : "/teacher/edit"}
+              className="shrink-0 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-semibold text-brand-950 hover:bg-brand-100"
+            >
+              {missingQualitySignals[0] ? `${missingQualitySignals[0].label} tamamla` : "Profili düzenle"}
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {qualitySignals.map((item) => {
+              const done = item.points >= item.maxPoints;
+              const href = qualitySignalHref(item.key);
+              return (
+                <div
+                  key={item.key}
+                  className={`rounded-xl border p-3 text-sm ${
+                    done ? "border-brand-100 bg-brand-50/50" : "border-paper-200 bg-paper-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-medium text-paper-900">{item.label}</div>
+                    <div className={done ? "text-brand-800" : "text-paper-800/55"}>
+                      {item.points}/{item.maxPoints}
+                    </div>
+                  </div>
+                  {!done && href ? (
+                    <Link className="mt-2 inline-block text-xs font-medium text-brand-800 underline" href={href}>
+                      Düzenle
+                    </Link>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {error && (
           <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
@@ -394,7 +613,7 @@ export default function TeacherHomePage() {
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;
-                const hwHref = homeworkNotifHref(n.payload_jsonb);
+                const actionHref = teacherNotifHref(n.payload_jsonb);
                 return (
                   <li
                     key={n.id}
@@ -406,12 +625,12 @@ export default function TeacherHomePage() {
                   >
                     <div className="font-medium text-paper-900">{n.title}</div>
                     <p className="mt-1 text-paper-800">{n.body}</p>
-                    {hwHref ? (
+                    {actionHref ? (
                       <Link
-                        href={hwHref}
+                        href={actionHref}
                         className="mt-2 inline-block text-xs font-medium text-brand-800 underline"
                       >
-                        Ödev havuzuna git
+                        Detaya git
                       </Link>
                     ) : null}
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-paper-800/55">
@@ -609,7 +828,7 @@ export default function TeacherHomePage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div id="ogretmen-aboneligi" className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-paper-900">Abonelik</h2>
             <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3">
               <div className="text-sm font-medium text-paper-900">

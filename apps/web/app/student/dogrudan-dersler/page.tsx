@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
@@ -109,6 +109,48 @@ export default function StudentDogrudanDerslerPage() {
     }
   }
 
+  const stats = useMemo(() => {
+    const pending = rows.filter((b) => b.status === "pending_funding").length;
+    const funded = rows.filter((b) => b.status === "funded").length;
+    const completed = rows.filter((b) => b.status === "completed").length;
+    const totalMinor = rows.reduce((sum, b) => sum + Number(b.agreed_amount_minor ?? 0), 0);
+    return { pending, funded, completed, totalMinor };
+  }, [rows]);
+
+  const priorityBooking =
+    rows.find((b) => b.status === "pending_funding") ??
+    rows.find((b) => b.status === "funded") ??
+    rows[0] ??
+    null;
+  const nextAction =
+    rows.length === 0
+      ? {
+          title: "Öğretmen seçip doğrudan anlaşma başlatın",
+          body: "Birebir ilerlemek istediğiniz öğretmeni seçtikten sonra ödeme adımını buradan tamamlayabilirsiniz.",
+          href: "/ogretmenler",
+          label: "Öğretmen ara",
+        }
+      : priorityBooking?.status === "pending_funding"
+        ? {
+            title: "Ödeme bekleyen anlaşmanız var",
+            body: `${priorityBooking.teacher_display_name ?? "Öğretmen"} için ${minorToTl(priorityBooking.agreed_amount_minor)} TL ödeme tamamlanmalı.`,
+            href: "/student/panel#bakiye",
+            label: "Cüzdanı aç",
+          }
+        : priorityBooking?.status === "funded"
+          ? {
+              title: "Ödeme tamamlandı, ders bekleniyor",
+              body: "Öğretmen dersi tamamladığında anlaşma kapanacak ve işlem geçmişiniz güncellenecek.",
+              href: "/student/dersler",
+              label: "Derslerim",
+            }
+          : {
+              title: "Anlaşmalarınız güncel",
+              body: "Tamamlanan doğrudan dersleri burada izleyebilir, yeni öğretmenlerle çalışmaya başlayabilirsiniz.",
+              href: "/ogretmenler",
+              label: "Yeni öğretmen bul",
+            };
+
   if (!token) return null;
 
   return (
@@ -140,6 +182,41 @@ export default function StudentDogrudanDerslerPage() {
             {ok}
           </div>
         )}
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Doğrudan ders asistanı</div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+            </div>
+            <Link
+              href={nextAction.href}
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-950 hover:bg-brand-100"
+            >
+              {nextAction.label}
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Ödeme bekleyen</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.pending}</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Ödenmiş</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{stats.funded}</div>
+          </div>
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Tamamlanan</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.completed}</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Toplam değer</div>
+            <div className="mt-1 text-sm font-semibold text-warm-950">{minorToTl(stats.totalMinor)} TL</div>
+          </div>
+        </section>
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (

@@ -114,6 +114,19 @@ function qualityLabel(score: number | null | undefined): string {
   return "Yeni profil";
 }
 
+function responseSignalLabel(teacher: TeacherDetail): string {
+  if (teacher.completed_sessions_count >= 20) return "Yoğun ders geçmişi";
+  if (teacher.has_video && teacher.has_platform_links) return "Hızlı tanışma hazır";
+  if (teacher.verification_status === "verified") return "Doğrulanmış iletişim";
+  return "Yeni eşleşme adayı";
+}
+
+const sampleLessonFlow = [
+  "Hedef ve seviye kontrolü",
+  "Canlı anlatım + ortak tahta",
+  "Ders sonu ödev ve takip notu",
+] as const;
+
 function instagramHandle(rawUrl: string): string | null {
   const t = rawUrl.trim();
   if (!t) return null;
@@ -419,6 +432,54 @@ export default function OgretmenDetayPage() {
                     {teacher.completed_sessions_count} tamamlanan ders
                   </span>
                 )}
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
+              <div className="rounded-2xl border border-brand-200 bg-[radial-gradient(circle_at_top_left,#ecfeff_0%,#ffffff_42%,#fff7ed_100%)] p-4">
+                <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">
+                  Premium profil özeti
+                </div>
+                <h2 className="mt-2 text-lg font-semibold text-paper-900">
+                  {teacher.display_name} ile ders öncesi beklenti net, ders sonrası takip ölçülebilir.
+                </h2>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
+                    <div className="text-lg font-semibold text-paper-900">
+                      {teacher.completed_sessions_count}
+                    </div>
+                    <div className="text-xs text-paper-800/60">Tamamlanan ders</div>
+                  </div>
+                  <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
+                    <div className="text-lg font-semibold text-paper-900">
+                      {teacher.branch_count}
+                    </div>
+                    <div className="text-xs text-paper-800/60">Branş kapsamı</div>
+                  </div>
+                  <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
+                    <div className="text-lg font-semibold text-paper-900">
+                      {responseSignalLabel(teacher)}
+                    </div>
+                    <div className="text-xs text-paper-800/60">Eşleşme sinyali</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-paper-200 bg-white p-4">
+                <h2 className="text-sm font-semibold text-paper-900">Örnek ders akışı</h2>
+                <ol className="mt-3 space-y-2">
+                  {sampleLessonFlow.map((item, index) => (
+                    <li key={item} className="flex gap-2 text-sm text-paper-800">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-900">
+                        {index + 1}
+                      </span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-3 text-xs text-paper-800/55">
+                  Demo derste öğretmenin yöntemi görülür; paket kararı sonrasında cüzdan blokajı ile ödeme güvenceye alınır.
+                </p>
               </div>
             </div>
 

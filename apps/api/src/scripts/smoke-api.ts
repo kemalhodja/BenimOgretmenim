@@ -143,9 +143,19 @@ async function main() {
     }
   }
 
-  const plansPub = await fetch(`${base}/v1/subscriptions/plans`);
+  const plansNoAuth = await fetch(`${base}/v1/subscriptions/plans`);
+  const plansNoAuthBody = await plansNoAuth.json();
+  console.log("[smoke] GET /v1/subscriptions/plans (no auth)", plansNoAuth.status, plansNoAuthBody);
+  if (plansNoAuth.status !== 401) {
+    process.exitCode = 1;
+    return;
+  }
+
+  const plansPub = await fetch(`${base}/v1/subscriptions/plans`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   const plansPubBody = await plansPub.json();
-  console.log("[smoke] GET /v1/subscriptions/plans", plansPub.status, plansPubBody);
+  console.log("[smoke] GET /v1/subscriptions/plans (teacher)", plansPub.status, plansPubBody);
   if (!plansPub.ok) {
     process.exitCode = 1;
     return;

@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import {
   homeworkResolveMinutes,
   homeworkSatisfactionRewardMinor,
+  homeworkTargetMinutesForUrgency,
   releaseExpiredHomeworkClaims,
 } from "../lib/homeworkPosts.js";
 import { resolvePlatformHomeworkWalletUserId } from "../lib/platformHomeworkWallet.js";
@@ -73,13 +74,17 @@ const createHomeworkSchema = z.object({
   branchId: z.number().int().positive(),
   topic: z.string().min(2).max(200),
   helpText: z.string().min(5).max(8000),
+  gradeLevelText: z.string().max(80).optional().nullable(),
+  targetExam: z.string().max(80).optional().nullable(),
+  learningObjective: z.string().max(180).optional().nullable(),
+  urgencyLevel: z.enum(["normal", "priority", "urgent"]).optional().default("normal"),
   imageUrls: z.array(z.string().min(1).max(450_000)).max(4).optional().default([]),
   audioUrl: z.string().min(1).max(2000).optional().nullable(),
 });
 
 function isAllowedHomeworkImageUrl(u: string): boolean {
   if (u.length > 400_000) return false;
-  if (/^https?:\/\//i.test(u)) return true;
+  if (/^https:\/\//i.test(u)) return true;
   return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(u);
 }
 
@@ -113,11 +118,14 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
   const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
   if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
   const studentId = sr.rows[0].id as string;
+  const targetMinutes = homeworkTargetMinutesForUrgency(parsed.data.urgencyLevel);
 
   const ins = await pool.query(
     `insert into student_homework_posts (
-       student_id, branch_id, topic, help_text, image_urls_jsonb, audio_url
-     ) values ($1, $2, $3, $4, $5::jsonb, $6)
+       student_id, branch_id, topic, help_text, image_urls_jsonb, audio_url,
+       grade_level_text, target_exam, learning_objective, urgency_level,
+       target_answer_minutes, resolution_sla_due_at
+     ) values ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9, $10, $11, now() + ($11::int * interval '1 minute'))
      returning id, status, created_at`,
     [
       studentId,
@@ -126,6 +134,11 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
       parsed.data.helpText.trim(),
       JSON.stringify(parsed.data.imageUrls ?? []),
       parsed.data.audioUrl?.trim() || null,
+      parsed.data.gradeLevelText?.trim() || null,
+      parsed.data.targetExam?.trim() || null,
+      parsed.data.learningObjective?.trim() || null,
+      parsed.data.urgencyLevel,
+      targetMinutes,
     ],
   );
 
@@ -158,6 +171,8 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
         kind: "homework_new_post",
         homeworkPostId: created.id,
         branchId: parsed.data.branchId,
+        urgencyLevel: parsed.data.urgencyLevel,
+        targetAnswerMinutes: targetMinutes,
       }),
     ],
   );
@@ -172,6 +187,8 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
     kind: "homework_new_post_guardian",
     homeworkPostId: created.id,
     branchId: parsed.data.branchId,
+    urgencyLevel: parsed.data.urgencyLevel,
+    targetAnswerMinutes: targetMinutes,
   });
   for (const g of gNewRows.rows) {
     const gid = g.guardian_user_id as string;
@@ -205,7 +222,10 @@ studentPlatform.get("/homework-posts/mine", requireAuth, async (c) => {
   const r = await pool.query(
     `select h.id, h.branch_id, b.name as branch_name, h.topic, h.status, h.created_at,
             h.help_text, h.image_urls_jsonb, h.audio_url,
+            h.grade_level_text, h.target_exam, h.learning_objective, h.urgency_level,
             h.claimed_at, h.resolve_deadline_at, h.answered_at, h.answer_text, h.answer_image_urls_jsonb,
+            h.answer_video_url, h.target_answer_minutes, h.quality_status, h.quality_score,
+            h.revision_requested_at, h.accepted_quality_at, h.moderator_note, h.resolution_sla_due_at,
             h.student_satisfied_at, h.homework_reward_minor, h.homework_reward_applied_at,
             h.last_answer_rejected_at,
             tu.display_name as teacher_display_name
@@ -225,6 +245,10 @@ const createDirectSchema = z.object({
   teacherId: z.string().uuid(),
   agreedAmountMinor: z.number().int().min(1000), // 10,00 TL minimum
 });
+
+function moneyTl(minor: number): string {
+  return `${(minor / 100).toFixed(2)} TL`;
+}
 
 /** Yönlendirme / havuz: öğretmen havuzu için ilan; ödeme aşaması: cüzdan/ödeme ayrıca tamamlanacak */
 studentPlatform.post("/direct-bookings", requireAuth, async (c) => {
@@ -258,6 +282,26 @@ studentPlatform.post("/direct-bookings", requireAuth, async (c) => {
      ) values ($1, $2, $3, 'pending_funding')
      returning id, status, created_at, agreed_amount_minor, currency`,
     [studentId, parsed.data.teacherId, parsed.data.agreedAmountMinor],
+  );
+  await pool.query(
+    `insert into parent_notifications (
+       recipient_user_id, student_id, snapshot_id, channel,
+       title, body, payload_jsonb, delivery_status, sent_at
+     )
+     select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
+     from teachers t
+     join users u on u.id = t.user_id
+     where t.id = $1`,
+    [
+      parsed.data.teacherId,
+      studentId,
+      "Yeni doğrudan ders anlaşması",
+      `${moneyTl(parsed.data.agreedAmountMinor)} tutarında doğrudan ders anlaşması oluşturuldu. Öğrenci ödemeyi tamamlayınca aksiyon alabilirsiniz.`,
+      JSON.stringify({
+        kind: "direct_booking_created",
+        directBookingId: (ins.rows[0] as { id: string }).id,
+      }),
+    ],
   );
   return c.json(
     {
@@ -325,7 +369,7 @@ studentPlatform.post("/direct-bookings/:bookingId/fund-from-wallet", requireAuth
   try {
     await cpool.query("begin");
     const bq = await cpool.query(
-      `select b.id, b.agreed_amount_minor, b.status, b.student_id
+      `select b.id, b.agreed_amount_minor, b.status, b.student_id, b.teacher_id
        from direct_lesson_bookings b
        where b.id = $1
        for update`,
@@ -335,7 +379,13 @@ studentPlatform.post("/direct-bookings/:bookingId/fund-from-wallet", requireAuth
       await cpool.query("rollback");
       return c.json({ error: "not_found" }, 404);
     }
-    const b = bq.rows[0] as { id: string; agreed_amount_minor: number; status: string; student_id: string };
+    const b = bq.rows[0] as {
+      id: string;
+      agreed_amount_minor: number;
+      status: string;
+      student_id: string;
+      teacher_id: string;
+    };
     if (b.student_id !== studentId) {
       await cpool.query("rollback");
       return c.json({ error: "forbidden" }, 403);
@@ -369,6 +419,23 @@ studentPlatform.post("/direct-bookings/:bookingId/fund-from-wallet", requireAuth
        where id = $1`,
       [b.id],
     );
+    await cpool.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       )
+       select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
+       from teachers t
+       join users u on u.id = t.user_id
+       where t.id = $1`,
+      [
+        b.teacher_id,
+        studentId,
+        "Doğrudan ders ödemesi tamamlandı",
+        `${moneyTl(Number(b.agreed_amount_minor))} tutarındaki doğrudan ders ödemesi alındı. Dersi verdikten sonra tamamlayarak hak edişi cüzdanınıza aktarabilirsiniz.`,
+        JSON.stringify({ kind: "direct_booking_funded", directBookingId: b.id }),
+      ],
+    );
     await cpool.query("commit");
     return c.json({ ok: true, status: "funded" });
   } catch (e) {
@@ -399,7 +466,7 @@ studentPlatform.post("/direct-bookings/:bookingId/complete", requireAuth, async 
   try {
     await cpool.query("begin");
     const bq = await cpool.query(
-      `select b.id, b.agreed_amount_minor, b.status, b.teacher_id
+      `select b.id, b.agreed_amount_minor, b.status, b.teacher_id, b.student_id
        from direct_lesson_bookings b
        where b.id = $1
        for update`,
@@ -409,7 +476,13 @@ studentPlatform.post("/direct-bookings/:bookingId/complete", requireAuth, async 
       await cpool.query("rollback");
       return c.json({ error: "not_found" }, 404);
     }
-    const b = bq.rows[0] as { id: string; agreed_amount_minor: number; status: string; teacher_id: string };
+    const b = bq.rows[0] as {
+      id: string;
+      agreed_amount_minor: number;
+      status: string;
+      teacher_id: string;
+      student_id: string;
+    };
     if (b.teacher_id !== teacherRowId) {
       await cpool.query("rollback");
       return c.json({ error: "forbidden" }, 403);
@@ -438,6 +511,28 @@ studentPlatform.post("/direct-bookings/:bookingId/complete", requireAuth, async 
            updated_at = now()
        where id = $1`,
       [b.id, payout],
+    );
+    await cpool.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       )
+       select recipient_user_id, $1::uuid, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
+       from (
+         select st.user_id as recipient_user_id
+         from students st
+         where st.id = $1
+         union
+         select sg.guardian_user_id as recipient_user_id
+         from student_guardians sg
+         where sg.student_id = $1
+       ) recipients`,
+      [
+        b.student_id,
+        "Doğrudan ders tamamlandı",
+        "Öğretmen doğrudan dersi tamamlandı olarak işaretledi. Ders anlaşmaları ekranından süreci görebilirsiniz.",
+        JSON.stringify({ kind: "direct_booking_completed", directBookingId: b.id }),
+      ],
     );
     await cpool.query("commit");
     return c.json({ ok: true, status: "completed" });
@@ -478,12 +573,17 @@ studentPlatform.get("/homework-posts/teacher/feed", requireAuth, async (c) => {
   const resolveMin = homeworkResolveMinutes();
   const r = await pool.query(
     `select h.id, h.topic, h.status, h.created_at, h.help_text, h.image_urls_jsonb, h.audio_url,
+            h.grade_level_text, h.target_exam, h.learning_objective, h.urgency_level,
+            h.target_answer_minutes, h.quality_status, h.resolution_sla_due_at,
             u.display_name as student_display_name
      from student_homework_posts h
      join students s on s.id = h.student_id
      join users u on u.id = s.user_id
      where h.branch_id = $1 and h.status = 'open'
-     order by h.created_at desc
+     order by
+       case h.urgency_level when 'urgent' then 0 when 'priority' then 1 else 2 end,
+       h.resolution_sla_due_at asc nulls last,
+       h.created_at desc
      limit 50`,
     [bid],
   );
@@ -510,7 +610,10 @@ studentPlatform.get("/homework-posts/teacher/claims", requireAuth, async (c) => 
   const resolveMin = homeworkResolveMinutes();
   const r = await pool.query(
     `select h.id, h.branch_id, h.topic, h.status, h.created_at, h.help_text, h.image_urls_jsonb, h.audio_url,
+            h.grade_level_text, h.target_exam, h.learning_objective, h.urgency_level,
             h.claimed_at, h.resolve_deadline_at, h.answered_at, h.answer_text, h.answer_image_urls_jsonb,
+            h.answer_video_url, h.target_answer_minutes, h.quality_status, h.quality_score,
+            h.revision_requested_at, h.accepted_quality_at, h.moderator_note, h.resolution_sla_due_at,
             u.display_name as student_display_name
      from student_homework_posts h
      join students s on s.id = h.student_id
@@ -574,6 +677,10 @@ studentPlatform.get("/homework-posts/view/:postId", requireAuth, async (c) => {
 const answerHomeworkSchema = z.object({
   answerText: z.string().min(10).max(16_000),
   answerImageUrls: z.array(z.string().min(1).max(450_000)).max(4).optional().default([]),
+  answerVideoUrl: z
+    .union([z.string().url().max(2000), z.literal(""), z.null()])
+    .optional()
+    .nullable(),
 });
 
 studentPlatform.post("/homework-posts/:postId/claim", requireAuth, async (c) => {
@@ -597,7 +704,10 @@ studentPlatform.post("/homework-posts/:postId/claim", requireAuth, async (c) => 
      set status = 'claimed',
          claimed_by_teacher_id = $1,
          claimed_at = now(),
-         resolve_deadline_at = now() + ($3::int * interval '1 minute'),
+        resolve_deadline_at = now() + (coalesce(nullif(target_answer_minutes, 0), $3)::int * interval '1 minute'),
+        target_answer_minutes = coalesce(nullif(target_answer_minutes, 0), $3),
+        resolution_sla_due_at = now() + (coalesce(nullif(target_answer_minutes, 0), $3)::int * interval '1 minute'),
+         quality_status = 'not_reviewed',
          last_answer_rejected_at = null,
          updated_at = now()
      where id = $2
@@ -691,6 +801,7 @@ studentPlatform.post("/homework-posts/:postId/teacher-return", requireAuth, asyn
          claimed_by_teacher_id = null,
          claimed_at = null,
          resolve_deadline_at = null,
+         resolution_sla_due_at = null,
          last_answer_rejected_at = null,
          updated_at = now()
      where id = $1
@@ -783,7 +894,9 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
      set status = 'answered',
          answer_text = $2,
          answer_image_urls_jsonb = $3::jsonb,
+         answer_video_url = $5,
          answered_at = now(),
+         quality_status = 'pending_review',
          last_answer_rejected_at = null,
          updated_at = now()
      where id = $1
@@ -796,6 +909,7 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
       parsed.data.answerText.trim(),
       JSON.stringify(parsed.data.answerImageUrls ?? []),
       teacherId,
+      parsed.data.answerVideoUrl?.trim() || null,
     ],
   );
   if (!r.rowCount) {
@@ -944,6 +1058,9 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
            student_satisfied_at = now(),
            homework_reward_minor = $2,
            homework_reward_applied_at = now(),
+           quality_status = 'accepted',
+           quality_score = 5,
+           accepted_quality_at = now(),
            updated_at = now()
        where id = $1`,
       [postId, rewardMinor],
@@ -1088,11 +1205,15 @@ studentPlatform.post("/homework-posts/:postId/reject-answer", requireAuth, async
            resolve_deadline_at = null,
            answer_text = null,
            answer_image_urls_jsonb = '[]'::jsonb,
+           answer_video_url = null,
            answered_at = null,
            last_answer_rejected_at = now(),
+           quality_status = 'revision_requested',
+           revision_requested_at = now(),
+           moderator_note = nullif($2, ''),
            updated_at = now()
        where id = $1`,
-      [postId],
+      [postId, noteTrim],
     );
 
     if (row.teacher_user_id) {

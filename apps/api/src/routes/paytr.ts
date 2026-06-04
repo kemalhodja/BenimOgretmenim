@@ -5,6 +5,7 @@ import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
+import { writePaymentReconciliationEvent } from "../lib/adminAudit.js";
 
 export const paytr = new Hono<{ Variables: AppVariables }>();
 
@@ -446,6 +447,7 @@ paytr.post("/callback", async (c) => {
   const status = String(body["status"] ?? "");
   const totalAmount = String(body["total_amount"] ?? "");
   const hash = String(body["hash"] ?? "");
+  const receivedAmountMinor = Number(totalAmount);
 
   const calc = base64HmacSha256(merchantKey, `${merchantOid}${merchantSalt}${status}${totalAmount}`);
   if (calc !== hash) {
@@ -453,7 +455,7 @@ paytr.post("/callback", async (c) => {
   }
 
   const p = await pool.query(
-    `select id, teacher_id, plan_code, state
+    `select id, teacher_id, plan_code, state, amount_minor
      from subscription_payments
      where merchant_oid = $1 and method = 'paytr_iframe'
      limit 1`,
@@ -461,8 +463,20 @@ paytr.post("/callback", async (c) => {
   );
 
   if (p.rowCount) {
-    const row = p.rows[0] as { id: string; teacher_id: string; plan_code: string; state: string };
+    const row = p.rows[0] as { id: string; teacher_id: string; plan_code: string; state: string; amount_minor: number };
     if (row.state === "paid") return c.text("OK");
+    if (status === "success" && row.amount_minor !== receivedAmountMinor) {
+      await writePaymentReconciliationEvent({
+        merchantOid,
+        paymentTable: "subscription_payments",
+        paymentId: row.id,
+        expectedAmountMinor: row.amount_minor,
+        receivedAmountMinor,
+        status: "amount_mismatch",
+        details: body,
+      });
+      return c.text("OK");
+    }
 
     if (status !== "success") {
       await pool.query(
@@ -471,6 +485,15 @@ paytr.post("/callback", async (c) => {
          where id = $1`,
         [row.id, status, Number(totalAmount), JSON.stringify(body)],
       );
+      await writePaymentReconciliationEvent({
+        merchantOid,
+        paymentTable: "subscription_payments",
+        paymentId: row.id,
+        expectedAmountMinor: row.amount_minor,
+        receivedAmountMinor,
+        status: "failed",
+        details: body,
+      });
       return c.text("OK");
     }
 
@@ -493,6 +516,18 @@ paytr.post("/callback", async (c) => {
              paytr_raw_jsonb = $4::jsonb, updated_at = now()
          where id = $1 and state = 'pending'`,
         [row.id, status, Number(totalAmount), JSON.stringify(body)],
+      );
+      await writePaymentReconciliationEvent(
+        {
+          merchantOid,
+          paymentTable: "subscription_payments",
+          paymentId: row.id,
+          expectedAmountMinor: row.amount_minor,
+          receivedAmountMinor,
+          status: "matched",
+          details: body,
+        },
+        client,
       );
 
       const sub = await client.query(
@@ -537,7 +572,7 @@ paytr.post("/callback", async (c) => {
   );
   if (!cp.rowCount) {
     const stp = await pool.query(
-      `select p.id, p.subscription_id, p.state, p.user_id, s.months_count
+      `select p.id, p.subscription_id, p.state, p.user_id, p.amount_minor, s.months_count
        from student_sub_payments p
        join student_subscriptions s on s.id = p.subscription_id
        where p.merchant_oid = $1 and p.method = 'paytr_iframe'
@@ -545,8 +580,20 @@ paytr.post("/callback", async (c) => {
       [merchantOid],
     );
     if (stp.rowCount) {
-      const pr = stp.rows[0] as { id: string; subscription_id: string; state: string; user_id: string; months_count: number };
+      const pr = stp.rows[0] as { id: string; subscription_id: string; state: string; user_id: string; amount_minor: number; months_count: number };
       if (pr.state === "paid") return c.text("OK");
+      if (status === "success" && pr.amount_minor !== receivedAmountMinor) {
+        await writePaymentReconciliationEvent({
+          merchantOid,
+          paymentTable: "student_sub_payments",
+          paymentId: pr.id,
+          expectedAmountMinor: pr.amount_minor,
+          receivedAmountMinor,
+          status: "amount_mismatch",
+          details: body,
+        });
+        return c.text("OK");
+      }
       if (status !== "success") {
         await pool.query(
           `update student_sub_payments
@@ -554,6 +601,15 @@ paytr.post("/callback", async (c) => {
            where id = $1`,
           [pr.id, status, Number(totalAmount), JSON.stringify(body)],
         );
+        await writePaymentReconciliationEvent({
+          merchantOid,
+          paymentTable: "student_sub_payments",
+          paymentId: pr.id,
+          expectedAmountMinor: pr.amount_minor,
+          receivedAmountMinor,
+          status: "failed",
+          details: body,
+        });
         return c.text("OK");
       }
       const ends = new Date();
@@ -566,6 +622,18 @@ paytr.post("/callback", async (c) => {
            set state = 'paid', paytr_status = $2, paytr_total_amount_minor = $3::int, paytr_raw_jsonb = $4::jsonb, updated_at = now()
            where id = $1 and state = 'pending'`,
           [pr.id, status, Number(totalAmount), JSON.stringify(body)],
+        );
+        await writePaymentReconciliationEvent(
+          {
+            merchantOid,
+            paymentTable: "student_sub_payments",
+            paymentId: pr.id,
+            expectedAmountMinor: pr.amount_minor,
+            receivedAmountMinor,
+            status: "matched",
+            details: body,
+          },
+          cl,
         );
         await cl.query(
           `update student_subscriptions
@@ -592,6 +660,18 @@ paytr.post("/callback", async (c) => {
     if (wlt.rowCount) {
       const wr = wlt.rows[0] as { id: string; user_id: string; amount_minor: number; state: string };
       if (wr.state === "paid") return c.text("OK");
+      if (status === "success" && wr.amount_minor !== receivedAmountMinor) {
+        await writePaymentReconciliationEvent({
+          merchantOid,
+          paymentTable: "wallet_topup_payments",
+          paymentId: wr.id,
+          expectedAmountMinor: wr.amount_minor,
+          receivedAmountMinor,
+          status: "amount_mismatch",
+          details: body,
+        });
+        return c.text("OK");
+      }
       if (status !== "success") {
         await pool.query(
           `update wallet_topup_payments
@@ -599,6 +679,15 @@ paytr.post("/callback", async (c) => {
            where id = $1`,
           [wr.id, status, Number(totalAmount), JSON.stringify(body)],
         );
+        await writePaymentReconciliationEvent({
+          merchantOid,
+          paymentTable: "wallet_topup_payments",
+          paymentId: wr.id,
+          expectedAmountMinor: wr.amount_minor,
+          receivedAmountMinor,
+          status: "failed",
+          details: body,
+        });
         return c.text("OK");
       }
       const wcl = await pool.connect();
@@ -618,6 +707,18 @@ paytr.post("/callback", async (c) => {
           refId: wr.id,
           client: wcl,
         });
+        await writePaymentReconciliationEvent(
+          {
+            merchantOid,
+            paymentTable: "wallet_topup_payments",
+            paymentId: wr.id,
+            expectedAmountMinor: wr.amount_minor,
+            receivedAmountMinor,
+            status: "matched",
+            details: body,
+          },
+          wcl,
+        );
         await wcl.query("commit");
       } catch {
         await wcl.query("rollback").catch(() => {});
@@ -627,6 +728,12 @@ paytr.post("/callback", async (c) => {
       return c.text("OK");
     }
 
+    await writePaymentReconciliationEvent({
+      merchantOid,
+      receivedAmountMinor,
+      status: "unknown_merchant_oid",
+      details: body,
+    });
     return c.text("OK");
   }
 
@@ -639,6 +746,18 @@ paytr.post("/callback", async (c) => {
     amount_minor: number;
   };
   if (cRow.state === "paid") return c.text("OK");
+  if (status === "success" && cRow.amount_minor !== receivedAmountMinor) {
+    await writePaymentReconciliationEvent({
+      merchantOid,
+      paymentTable: "course_enrollment_payments",
+      paymentId: cRow.id,
+      expectedAmountMinor: cRow.amount_minor,
+      receivedAmountMinor,
+      status: "amount_mismatch",
+      details: body,
+    });
+    return c.text("OK");
+  }
 
   if (status !== "success") {
     await pool.query(
@@ -647,6 +766,15 @@ paytr.post("/callback", async (c) => {
        where id = $1`,
       [cRow.id, status, Number(totalAmount), JSON.stringify(body)],
     );
+    await writePaymentReconciliationEvent({
+      merchantOid,
+      paymentTable: "course_enrollment_payments",
+      paymentId: cRow.id,
+      expectedAmountMinor: cRow.amount_minor,
+      receivedAmountMinor,
+      status: "failed",
+      details: body,
+    });
     return c.text("OK");
   }
 
@@ -660,6 +788,18 @@ paytr.post("/callback", async (c) => {
            paytr_raw_jsonb = $4::jsonb, updated_at = now()
        where id = $1 and state = 'pending'`,
       [cRow.id, status, Number(totalAmount), JSON.stringify(body)],
+    );
+    await writePaymentReconciliationEvent(
+      {
+        merchantOid,
+        paymentTable: "course_enrollment_payments",
+        paymentId: cRow.id,
+        expectedAmountMinor: cRow.amount_minor,
+        receivedAmountMinor,
+        status: "matched",
+        details: body,
+      },
+      cclient,
     );
 
     const capQ = await cclient.query(

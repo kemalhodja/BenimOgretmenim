@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
+import { prepareHomeworkImage, type HomeworkImageAttachment } from "../../lib/homeworkMedia";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 
@@ -17,7 +18,12 @@ export default function OdevSorPage() {
   const [branchId, setBranchId] = useState<number | "">("");
   const [topic, setTopic] = useState("");
   const [helpText, setHelpText] = useState("");
-  const [imageUrls, setImageUrls] = useState(""); // URL satırları + dosyadan eklenen data URL'ler
+  const [gradeLevelText, setGradeLevelText] = useState("");
+  const [targetExam, setTargetExam] = useState("");
+  const [learningObjective, setLearningObjective] = useState("");
+  const [urgencyLevel, setUrgencyLevel] = useState<"normal" | "priority" | "urgent">("normal");
+  const [imageUrlText, setImageUrlText] = useState("");
+  const [imageAttachments, setImageAttachments] = useState<HomeworkImageAttachment[]>([]);
   const [audioUrl, setAudioUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -66,11 +72,12 @@ export default function OdevSorPage() {
     setError(null);
     setOk(null);
     try {
-      const urls = imageUrls
+      const externalUrls = imageUrlText
         .split(/[\n,]+/)
         .map((s) => s.trim())
         .filter(Boolean)
-        .slice(0, 8);
+        .slice(0, Math.max(0, 4 - imageAttachments.length));
+      const urls = [...imageAttachments.map((x) => x.dataUrl), ...externalUrls].slice(0, 4);
       await apiFetch("/v1/student-platform/homework-posts", {
         method: "POST",
         token,
@@ -78,6 +85,10 @@ export default function OdevSorPage() {
           branchId,
           topic: topic.trim(),
           helpText: helpText.trim(),
+          gradeLevelText: gradeLevelText.trim() || null,
+          targetExam: targetExam.trim() || null,
+          learningObjective: learningObjective.trim() || null,
+          urgencyLevel,
           imageUrls: urls,
           audioUrl: audioUrl.trim() || null,
         }),
@@ -85,7 +96,12 @@ export default function OdevSorPage() {
       setOk("Gönderildi. Branştaki öğretmenler havuza görebilir.");
       setTopic("");
       setHelpText("");
-      setImageUrls("");
+      setGradeLevelText("");
+      setTargetExam("");
+      setLearningObjective("");
+      setUrgencyLevel("normal");
+      setImageUrlText("");
+      setImageAttachments([]);
       setAudioUrl("");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "failed";
@@ -110,6 +126,22 @@ export default function OdevSorPage() {
   }
 
   if (!token) return null;
+
+  async function addImageFiles(files: File[]) {
+    if (files.length === 0) return;
+    setError(null);
+    const remaining = Math.max(0, 4 - imageAttachments.length);
+    if (remaining === 0) {
+      setError("En fazla 4 görsel ekleyebilirsiniz.");
+      return;
+    }
+    try {
+      const prepared = await Promise.all(files.slice(0, remaining).map((file) => prepareHomeworkImage(file)));
+      setImageAttachments((prev) => [...prev, ...prepared].slice(0, 4));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Görsel eklenemedi");
+    }
+  }
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -177,6 +209,53 @@ export default function OdevSorPage() {
               onChange={(e) => setTopic(e.target.value)}
             />
           </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="font-medium text-paper-800">Sınıf / seviye</span>
+              <input
+                className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                value={gradeLevelText}
+                onChange={(e) => setGradeLevelText(e.target.value)}
+                placeholder="Örn. 8. sınıf, 11. sınıf"
+                maxLength={80}
+              />
+            </label>
+            <label className="block text-sm">
+              <span className="font-medium text-paper-800">Sınav hedefi</span>
+              <input
+                className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                value={targetExam}
+                onChange={(e) => setTargetExam(e.target.value)}
+                placeholder="Örn. LGS, TYT, AYT, okul yazılısı"
+                maxLength={80}
+              />
+            </label>
+          </div>
+          <label className="block text-sm">
+            <span className="font-medium text-paper-800">Kazanım / alt konu</span>
+            <input
+              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+              value={learningObjective}
+              onChange={(e) => setLearningObjective(e.target.value)}
+              placeholder="Örn. Oran-orantı problemleri, paragrafta ana düşünce"
+              maxLength={180}
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="font-medium text-paper-800">Çözüm önceliği</span>
+            <select
+              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+              value={urgencyLevel}
+              onChange={(e) => setUrgencyLevel(e.target.value as "normal" | "priority" | "urgent")}
+            >
+              <option value="normal">Normal — hedef 20 dk</option>
+              <option value="priority">Öncelikli — hedef 15 dk</option>
+              <option value="urgent">Acil — hedef 10 dk</option>
+            </select>
+            <p className="mt-1 text-xs text-paper-800/55">
+              Aciliyet, öğretmen havuzunda sıralamayı ve hedef cevap süresini etkiler.
+            </p>
+          </label>
           <label className="block text-sm">
             <span className="font-medium text-paper-800">Neyi anlamadınız? — zorunlu</span>
             <textarea
@@ -186,7 +265,7 @@ export default function OdevSorPage() {
             />
           </label>
           <label className="block text-sm">
-            <span className="font-medium text-paper-800">Görseller (en fazla 4, küçük dosya)</span>
+            <span className="font-medium text-paper-800">Görseller (en fazla 4, otomatik sıkıştırılır)</span>
             <div className="mt-1 flex flex-col gap-2 sm:flex-row">
               <label className="inline-flex items-center gap-2 rounded-xl border border-paper-200 bg-white px-3 py-2 text-xs font-medium text-paper-900 shadow-sm">
                 <input
@@ -195,28 +274,7 @@ export default function OdevSorPage() {
                   capture="environment"
                   className="hidden"
                   onChange={(e) => {
-                    const files = Array.from(e.target.files ?? []).slice(0, 1);
-                    if (files.length === 0) return;
-                    const file = files[0];
-                    if (file.size > 350_000) {
-                      setError("Foto çok büyük (≈350 KB üstü); sıkıştırın veya daha küçük çekin.");
-                      e.target.value = "";
-                      return;
-                    }
-                    const fr = new FileReader();
-                    fr.onload = () => {
-                      const dataUrl = String(fr.result ?? "");
-                      const merged = [
-                        ...imageUrls.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean),
-                        dataUrl,
-                      ]
-                        .filter(Boolean)
-                        .slice(0, 4);
-                      setImageUrls(merged.join("\n"));
-                      setError(null);
-                    };
-                    fr.onerror = () => setError("Foto okunamadı");
-                    fr.readAsDataURL(file);
+                    void addImageFiles(Array.from(e.target.files ?? []).slice(0, 1));
                     e.target.value = "";
                   }}
                 />
@@ -232,41 +290,39 @@ export default function OdevSorPage() {
               multiple
               className="mt-1 block w-full text-xs text-paper-800/75 file:mr-2 file:rounded-lg file:border file:border-paper-200 file:bg-white file:px-2 file:py-1"
               onChange={(e) => {
-                const files = Array.from(e.target.files ?? []).slice(0, 4);
-                if (files.length === 0) return;
-                const readers = files.map(
-                  (file) =>
-                    new Promise<string>((resolve, reject) => {
-                      if (file.size > 350_000) {
-                        reject(new Error("Dosya çok büyük (≈350 KB üstü); sıkıştırın veya URL kullanın."));
-                        return;
-                      }
-                      const fr = new FileReader();
-                      fr.onload = () => resolve(String(fr.result ?? ""));
-                      fr.onerror = () => reject(new Error("okuma"));
-                      fr.readAsDataURL(file);
-                    }),
-                );
-                void Promise.all(readers)
-                  .then((dataUrls) => {
-                    const merged = [...imageUrls.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean), ...dataUrls]
-                      .filter(Boolean)
-                      .slice(0, 4);
-                    setImageUrls(merged.join("\n"));
-                    setError(null);
-                  })
-                  .catch((err) => {
-                    setError(err instanceof Error ? err.message : "Görsel eklenemedi");
-                  });
+                void addImageFiles(Array.from(e.target.files ?? []));
                 e.target.value = "";
               }}
             />
+            {imageAttachments.length > 0 ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {imageAttachments.map((item) => (
+                  <div key={item.id} className="rounded-xl border border-paper-200 bg-paper-50 p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.dataUrl} alt={item.name} className="h-32 w-full rounded-lg object-contain" />
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs text-paper-800/65">
+                      <span className="truncate">{item.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setImageAttachments((prev) => prev.filter((x) => x.id !== item.id))}
+                        className="shrink-0 rounded-lg border border-paper-300 bg-white px-2 py-1 font-medium text-paper-900"
+                      >
+                        Sil
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <textarea
               className="mt-2 w-full min-h-20 font-mono text-xs rounded-xl border border-paper-200 px-3 py-2"
-              placeholder="İsteğe: https://... veya yukarıdan foto (data URL eklenir)"
-              value={imageUrls}
-              onChange={(e) => setImageUrls(e.target.value)}
+              placeholder="İsteğe bağlı harici görsel URL'leri: https://..."
+              value={imageUrlText}
+              onChange={(e) => setImageUrlText(e.target.value)}
             />
+            <p className="mt-1 text-xs text-paper-800/55">
+              Dosyalar tarayıcıda küçültülür; harici URL kullanırsanız yalnızca HTTPS bağlantıları kabul edilir.
+            </p>
           </label>
           <label className="block text-sm">
             <span className="font-medium text-paper-800">Ses URL (isteğe)</span>

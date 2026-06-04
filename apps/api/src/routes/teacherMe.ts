@@ -156,6 +156,63 @@ teacherMe.get("/me", requireAuth, async (c) => {
     curriculumStarted: row.has_curriculum_plan === true,
   };
 
+  const bioLength = bio.trim().length;
+  const hasVideo = typeof row.video_url === "string" && row.video_url.trim().length > 0;
+  const hasExamDocs = Array.isArray(row.exam_docs_jsonb) && row.exam_docs_jsonb.length > 0;
+  const hasPlatformLinks =
+    Array.isArray(row.platform_links_jsonb) && row.platform_links_jsonb.length > 0;
+  const profileQualitySignals = [
+    {
+      key: "verification",
+      label: "Admin doğrulama",
+      points: row.verification_status === "verified" ? 15 : 0,
+      maxPoints: 15,
+    },
+    {
+      key: "city",
+      label: "Şehir bilgisi",
+      points: row.city_id != null ? 10 : 0,
+      maxPoints: 10,
+    },
+    {
+      key: "bio",
+      label: "Güçlü biyografi",
+      points: bioLength >= 80 ? 20 : bioLength >= 40 ? 10 : 0,
+      maxPoints: 20,
+    },
+    {
+      key: "video",
+      label: "Tanıtım videosu",
+      points: hasVideo ? 15 : 0,
+      maxPoints: 15,
+    },
+    {
+      key: "branches",
+      label: "Branş bilgisi",
+      points: branches.length > 0 ? 15 : 0,
+      maxPoints: 15,
+    },
+    {
+      key: "examDocs",
+      label: "Doküman / başarı içeriği",
+      points: hasExamDocs ? 10 : 0,
+      maxPoints: 10,
+    },
+    {
+      key: "platformLinks",
+      label: "Platform linkleri",
+      points: hasPlatformLinks ? 5 : 0,
+      maxPoints: 5,
+    },
+    {
+      key: "reviews",
+      label: "Öğrenci yorumu",
+      points: Number(row.rating_count ?? 0) > 0 ? 10 : 0,
+      maxPoints: 10,
+    },
+  ];
+  const profileQualityScore = profileQualitySignals.reduce((sum, item) => sum + item.points, 0);
+
   const completionScore = Math.round(
     (Object.values(checklist).filter(Boolean).length /
       Object.keys(checklist).length) *
@@ -192,6 +249,8 @@ teacherMe.get("/me", requireAuth, async (c) => {
     },
     checklist,
     completionScore,
+    profileQualityScore,
+    profileQualitySignals,
   });
 });
 

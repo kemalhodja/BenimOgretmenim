@@ -30,6 +30,17 @@ type Offer = {
   proposed_hourly_rate_minor: number | null;
   created_at: string;
   display_name: string;
+  rating_avg: string | number | null;
+  rating_count: number | null;
+  verification_status: string;
+  profile_quality_score: number;
+  has_video: boolean;
+  has_exam_docs: boolean;
+  completed_sessions_count: number;
+  is_shortlisted_teacher: boolean;
+  response_minutes: number;
+  lowest_proposed_hourly_rate_minor: number | null;
+  comparison_score: number;
 };
 
 function offerStatusTr(status: string): string {
@@ -57,6 +68,25 @@ function requestStatusTr(status: string): string {
   return m[status] ?? status;
 }
 
+function tl(minor: number | null): string {
+  if (minor == null) return "Belirtilmedi";
+  return `${(minor / 100).toFixed(2)} TL`;
+}
+
+function responseLabel(minutes: number): string {
+  if (minutes < 60) return `${minutes} dk içinde`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} saat içinde`;
+  return `${Math.round(hours / 24)} gün içinde`;
+}
+
+function qualityLabel(score: number): string {
+  if (score >= 80) return "Çok güçlü profil";
+  if (score >= 60) return "Güçlü profil";
+  if (score >= 40) return "Gelişen profil";
+  return "Yeni profil";
+}
+
 export default function StudentRequestDetailPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -72,6 +102,8 @@ export default function StudentRequestDetailPage() {
   const [ok, setOk] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [packageLessonCount, setPackageLessonCount] = useState(4);
+  const [lessonDurationMinutes, setLessonDurationMinutes] = useState(60);
 
   useEffect(() => {
     const t = getToken();
@@ -87,6 +119,10 @@ export default function StudentRequestDetailPage() {
     const b = branches.find((x) => x.id === summary.branch_id);
     return b?.name ?? `Branş #${summary.branch_id}`;
   }, [branches, summary]);
+
+  const bestOffer = useMemo(() => {
+    return offers.find((o) => o.status === "sent") ?? offers[0] ?? null;
+  }, [offers]);
 
   const load = useCallback(
     async (t: string) => {
@@ -129,6 +165,12 @@ export default function StudentRequestDetailPage() {
     });
   }, [token, requestId, load, router, pathname]);
 
+  useEffect(() => {
+    if (summary?.request_kind !== "demo") return;
+    setPackageLessonCount(1);
+    setLessonDurationMinutes(30);
+  }, [summary?.request_kind]);
+
   async function cancelRequest() {
     if (!token) return;
     if (
@@ -169,15 +211,31 @@ export default function StudentRequestDetailPage() {
     setError(null);
     setOk(null);
     try {
-      await apiFetch(`/v1/lesson-requests/${requestId}/offers/${offerId}/decide`, {
+      const accepted = await apiFetch<{
+        packageId?: string;
+        lessonSessionId?: string;
+        payment?: { status: string; totalAmountMinor: number; holdId: string | null };
+      }>(`/v1/lesson-requests/${requestId}/offers/${offerId}/decide`, {
         method: "POST",
         token,
-        body: JSON.stringify({ decision }),
+        body: JSON.stringify({
+          decision,
+          ...(decision === "accept"
+            ? {
+                packageLessonCount,
+                lessonDurationMinutes,
+              }
+            : {}),
+        }),
       });
       await load(token);
       setOk(
         decision === "accept"
-          ? "Teklif kabul edildi; talep eşleşti."
+          ? `Teklif kabul edildi; paket oluşturuldu${
+              accepted.payment?.totalAmountMinor
+                ? ` ve ${tl(accepted.payment.totalAmountMinor)} cüzdanda bloke edildi`
+                : ""
+            }.`
           : "Teklif reddedildi.",
       );
     } catch (e) {
@@ -189,6 +247,9 @@ export default function StudentRequestDetailPage() {
       }
       if (msg.includes("[403]")) {
         setError("Bu teklif üzerinde işlem yapma yetkiniz yok.");
+      }
+      if (msg.includes("insufficient_wallet_available")) {
+        setError("Kullanılabilir cüzdan bakiyesi paket blokajı için yetersiz. Öğrenci panelinden bakiye yükleyin.");
       }
     } finally {
       setBusyId(null);
@@ -263,6 +324,42 @@ export default function StudentRequestDetailPage() {
 
         {summary != null && (
           <div className="mt-8 space-y-3">
+            {summary.status === "open" ? (
+              <div className="rounded-xl border border-brand-200 bg-brand-50/70 p-4 text-sm text-brand-950">
+                <div className="font-semibold">Paket ve blokaj seçimi</div>
+                <p className="mt-1">
+                  Teklif kabulünde paket oluşturulur; seçtiğiniz ders sayısı ve süreye göre toplam tutar cüzdanınızda
+                  bloke edilir. Dersler tamamlandıkça operasyon akışı ödeme defterinden izlenir.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <label className="block">
+                    <span className="text-xs font-medium text-brand-950">Ders sayısı</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={60}
+                      value={packageLessonCount}
+                      onChange={(e) => setPackageLessonCount(Math.min(60, Math.max(1, Number(e.target.value) || 1)))}
+                      className="mt-1 w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm text-paper-900"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-medium text-brand-950">Ders süresi (dk)</span>
+                    <select
+                      value={lessonDurationMinutes}
+                      onChange={(e) => setLessonDurationMinutes(Number(e.target.value))}
+                      className="mt-1 w-full rounded-xl border border-brand-200 bg-white px-3 py-2 text-sm text-paper-900"
+                    >
+                      <option value={30}>30 dk</option>
+                      <option value={45}>45 dk</option>
+                      <option value={60}>60 dk</option>
+                      <option value={90}>90 dk</option>
+                      <option value={120}>120 dk</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            ) : null}
             {summary.status === "open" && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
                 <p className="text-sm text-paper-800/75">
@@ -284,32 +381,137 @@ export default function StudentRequestDetailPage() {
                 Henüz teklif yok. Öğretmenler talebi gördükçe burada listelenecek.
               </div>
             ) : (
-              offers.map((o) => {
-                const canAct =
-                  summary.status === "open" && o.status === "sent";
-                return (
+              <>
+                {bestOffer ? (
+                  <div className="rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-950">
+                    <div className="font-semibold">Önerilen teklif: {bestOffer.display_name}</div>
+                    <p className="mt-1">
+                      Karşılaştırma skoru {bestOffer.comparison_score}/100 · {tl(bestOffer.proposed_hourly_rate_minor)} / saat · cevap {responseLabel(bestOffer.response_minutes)}
+                      {bestOffer.is_shortlisted_teacher ? " · kısa listenizdeydi" : ""}.
+                    </p>
+                  </div>
+                ) : null}
+                {offers.map((o) => {
+                  const canAct =
+                    summary.status === "open" && o.status === "sent";
+                  const isBest = bestOffer?.id === o.id && o.status === "sent";
+                  return (
                   <div
                     key={o.id}
-                    className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
+                    className={`rounded-xl border bg-white p-5 shadow-sm ${
+                      isBest ? "border-brand-300" : "border-paper-200"
+                    }`}
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <div className="text-sm font-semibold text-paper-900">
-                          {o.display_name}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-sm font-semibold text-paper-900">
+                            {o.display_name}
+                          </div>
+                          {isBest ? (
+                            <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-900">
+                              Önerilen
+                            </span>
+                          ) : null}
+                          {o.is_shortlisted_teacher ? (
+                            <span className="rounded-full bg-warm-50 px-2 py-0.5 text-[11px] font-semibold text-warm-900">
+                              Kısa listenizdeydi
+                            </span>
+                          ) : null}
                         </div>
                         <div className="text-xs text-paper-800/55">
                           {offerStatusTr(o.status)} ·{" "}
                           {new Date(o.created_at).toLocaleString("tr-TR")}
                         </div>
-                        {o.proposed_hourly_rate_minor != null && (
-                          <div className="mt-2 text-sm text-paper-800">
-                            Önerilen saatlik:{" "}
-                            {(o.proposed_hourly_rate_minor / 100).toFixed(2)} TL
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="rounded-lg bg-paper-50 p-2">
+                            <div className="text-[11px] text-paper-800/55">Saatlik teklif</div>
+                            <div className="mt-0.5 text-sm font-semibold text-paper-900">
+                              {tl(o.proposed_hourly_rate_minor)}
+                            </div>
                           </div>
-                        )}
+                          <div className="rounded-lg bg-paper-50 p-2">
+                            <div className="text-[11px] text-paper-800/55">Karşılaştırma</div>
+                            <div className="mt-0.5 text-sm font-semibold text-paper-900">
+                              {o.comparison_score}/100
+                            </div>
+                          </div>
+                          <div className="rounded-lg bg-paper-50 p-2">
+                            <div className="text-[11px] text-paper-800/55">Puan</div>
+                            <div className="mt-0.5 text-sm font-semibold text-paper-900">
+                              {o.rating_count ? `${Number(o.rating_avg ?? 0).toFixed(1)} (${o.rating_count})` : "Yeni"}
+                            </div>
+                          </div>
+                          <div className="rounded-lg bg-paper-50 p-2">
+                            <div className="text-[11px] text-paper-800/55">Cevap süresi</div>
+                            <div className="mt-0.5 text-sm font-semibold text-paper-900">
+                              {responseLabel(o.response_minutes)}
+                            </div>
+                          </div>
+                        </div>
+                        {canAct ? (
+                          <div className="mt-3 rounded-xl border border-paper-200 bg-paper-50 p-3 text-xs text-paper-800/75">
+                            Paket toplamı:{" "}
+                            <span className="font-semibold text-paper-900">
+                              {tl(
+                                o.proposed_hourly_rate_minor == null
+                                  ? null
+                                  : Math.round(
+                                      o.proposed_hourly_rate_minor *
+                                        packageLessonCount *
+                                        (lessonDurationMinutes / 60),
+                                    ),
+                              )}
+                            </span>{" "}
+                            · {packageLessonCount} ders · {lessonDurationMinutes} dk. Kabulde bu tutar cüzdanda bloke
+                            edilir.
+                          </div>
+                        ) : null}
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                            {qualityLabel(o.profile_quality_score)} · {o.profile_quality_score}/100
+                          </span>
+                          {o.verification_status === "verified" ? (
+                            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                              Doğrulanmış
+                            </span>
+                          ) : null}
+                          {o.has_video ? (
+                            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                              Video var
+                            </span>
+                          ) : null}
+                          {o.has_exam_docs ? (
+                            <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                              Belgeli
+                            </span>
+                          ) : null}
+                          {o.completed_sessions_count > 0 ? (
+                            <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                              {o.completed_sessions_count} tamamlanan ders
+                            </span>
+                          ) : null}
+                          {o.lowest_proposed_hourly_rate_minor != null &&
+                          o.proposed_hourly_rate_minor === o.lowest_proposed_hourly_rate_minor ? (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+                              En düşük fiyat
+                            </span>
+                          ) : null}
+                          {o.is_shortlisted_teacher ? (
+                            <span className="rounded-full bg-warm-50 px-2 py-0.5 text-[11px] font-medium text-warm-900">
+                              Önceden seçtiğiniz öğretmen
+                            </span>
+                          ) : null}
+                        </div>
                         <p className="mt-3 whitespace-pre-wrap text-sm text-paper-800">
                           {o.message}
                         </p>
+                        <Link
+                          href={`/ogretmenler/${o.teacher_id}`}
+                          className="mt-3 inline-block text-xs font-medium text-brand-800 underline"
+                        >
+                          Öğretmen profilini incele
+                        </Link>
                       </div>
                       {canAct && (
                         <div className="flex shrink-0 gap-2">
@@ -319,7 +521,7 @@ export default function StudentRequestDetailPage() {
                             onClick={() => void decide(o.id, "accept")}
                             className="rounded-xl bg-brand-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                           >
-                            {busyId === o.id ? "…" : "Kabul"}
+                            {busyId === o.id ? "…" : "Paketi kabul et"}
                           </button>
                           <button
                             type="button"
@@ -333,8 +535,9 @@ export default function StudentRequestDetailPage() {
                       )}
                     </div>
                   </div>
-                );
-              })
+                  );
+                })}
+              </>
             )}
             {(summary.status === "open" || summary.status === "matched") && (
               <RequestChat token={token} requestId={requestId} />

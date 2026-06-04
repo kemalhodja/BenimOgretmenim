@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../../../../lib/api";
@@ -186,6 +186,45 @@ export default function TeacherCohortSessionsPage() {
     }
   }
 
+  const stats = useMemo(() => {
+    const planned = sessions.filter((session) => session.scheduled_start).length;
+    const withMeeting = sessions.filter((session) => session.meeting_url).length;
+    return { planned, withMeeting, waiting: Math.max(0, sessions.length - planned) };
+  }, [sessions]);
+
+  const nextSession = useMemo(
+    () =>
+      sessions
+        .filter((session) => session.scheduled_start)
+        .sort(
+          (a, b) =>
+            new Date(a.scheduled_start ?? 0).getTime() -
+            new Date(b.scheduled_start ?? 0).getTime(),
+        )[0] ?? sessions[0] ?? null,
+    [sessions],
+  );
+
+  const nextAction =
+    enrollments.length === 0
+      ? {
+          title: "Önce grubu kayıt için hazır tutun",
+          body: "Öğrenci kaydı gelmeden önce en az bir oturum takvimi eklemek güven verir.",
+        }
+      : sessions.length === 0
+        ? {
+            title: "İlk canlı oturumu ekleyin",
+            body: "Kayıtlı öğrenciler takvimi ve sınıf linkini bu ekrandan takip edecek.",
+          }
+        : nextSession?.scheduled_start
+          ? {
+              title: `Sıradaki oturum: #${nextSession.session_index}`,
+              body: `${toLocal(nextSession.scheduled_start)} için ${enrollments.length} öğrenciye kurs paneli hazır.`,
+            }
+          : {
+              title: "Eklenen oturumu planlayın",
+              body: "Tarih ve süre girildiğinde meeting linki oluşur, öğrenci/veli bildirimi gider.",
+            };
+
   if (!token) return null;
 
   return (
@@ -219,6 +258,33 @@ export default function TeacherCohortSessionsPage() {
             {ok}
           </div>
         )}
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Grup oturum koçu</div>
+            <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
+            <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Öğrenci</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{enrollments.length}</div>
+          </div>
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Oturum</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{sessions.length}</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Planlı</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{stats.planned}</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Link hazır</div>
+            <div className="mt-1 text-2xl font-semibold text-warm-950">{stats.withMeeting}</div>
+          </div>
+        </section>
 
         <section className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-paper-900">Kayıtlı öğrenciler</h2>
@@ -285,14 +351,22 @@ export default function TeacherCohortSessionsPage() {
                         {s.duration_minutes ? ` · ${s.duration_minutes} dk` : ""}
                       </div>
                       {s.meeting_url ? (
-                        <a
-                          href={s.meeting_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 inline-block text-sm font-medium text-blue-700 underline"
-                        >
-                          Toplantı linki
-                        </a>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Link
+                            href={`/classroom/course/${s.id}`}
+                            className="inline-block rounded-lg bg-brand-800 px-2.5 py-1.5 text-xs font-medium text-white"
+                          >
+                            Sınıfı aç
+                          </Link>
+                          <a
+                            href={s.meeting_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-block text-sm font-medium text-blue-700 underline"
+                          >
+                            Harici link
+                          </a>
+                        </div>
                       ) : null}
                     </div>
                     <div className="flex w-full max-w-md flex-col gap-2">

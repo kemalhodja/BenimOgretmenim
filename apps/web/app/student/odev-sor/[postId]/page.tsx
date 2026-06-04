@@ -16,9 +16,21 @@ type PostDetail = {
   branch_name: string | null;
   image_urls_jsonb: unknown;
   audio_url: string | null;
+  grade_level_text?: string | null;
+  target_exam?: string | null;
+  learning_objective?: string | null;
+  urgency_level?: "normal" | "priority" | "urgent";
   answer_text: string | null;
   answer_image_urls_jsonb: unknown;
+  answer_video_url?: string | null;
   answered_at: string | null;
+  target_answer_minutes?: number;
+  quality_status?: string;
+  quality_score?: number | null;
+  revision_requested_at?: string | null;
+  accepted_quality_at?: string | null;
+  moderator_note?: string | null;
+  resolution_sla_due_at?: string | null;
   student_satisfied_at: string | null;
   homework_reward_minor: number | null;
   homework_reward_applied_at: string | null;
@@ -183,6 +195,9 @@ export default function OdevDetayPage() {
     ? (post!.answer_image_urls_jsonb as string[])
     : [];
 
+  const urgencyText =
+    post?.urgency_level === "urgent" ? "Acil" : post?.urgency_level === "priority" ? "Öncelikli" : "Normal";
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
@@ -220,6 +235,37 @@ export default function OdevDetayPage() {
                 {post.branch_name ?? "—"} · {homeworkPostStatusLabelTr(post.status)} ·{" "}
                 {post.teacher_display_name ? `Öğretmen: ${post.teacher_display_name}` : null}
               </p>
+              <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
+                <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                  Öncelik: {urgencyText}
+                </span>
+                {post.grade_level_text ? (
+                  <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                    {post.grade_level_text}
+                  </span>
+                ) : null}
+                {post.target_exam ? (
+                  <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                    {post.target_exam}
+                  </span>
+                ) : null}
+                {post.learning_objective ? (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
+                    {post.learning_objective}
+                  </span>
+                ) : null}
+                <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                  Hedef süre: {post.target_answer_minutes ?? 20} dk
+                </span>
+                <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                  Kalite: {post.quality_status ?? "not_reviewed"}
+                </span>
+                {post.quality_score ? (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
+                    Puan: {post.quality_score}/5
+                  </span>
+                ) : null}
+              </div>
               <p className="mt-4 whitespace-pre-wrap text-sm text-paper-800">{post.help_text}</p>
               {imgs.length > 0 && (
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -264,6 +310,16 @@ export default function OdevDetayPage() {
                   Öğretmen cevabı
                 </h2>
                 <p className="mt-3 whitespace-pre-wrap text-sm text-paper-900">{post.answer_text}</p>
+                {post.answer_video_url ? (
+                  <a
+                    href={post.answer_video_url}
+                    className="mt-3 inline-block text-sm font-medium text-blue-700 underline"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Çözüm videosunu aç
+                  </a>
+                ) : null}
                 {ansImgs.length > 0 && (
                   <div className="mt-4 grid gap-2 sm:grid-cols-2">
                     {ansImgs.map((src, i) => (

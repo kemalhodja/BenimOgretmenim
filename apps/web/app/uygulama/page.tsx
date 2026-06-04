@@ -4,6 +4,35 @@ import { publicSiteUrl } from "../lib/siteUrl";
 
 const uygulamaUrl = `${publicSiteUrl()}/uygulama`;
 
+const quickAccess = [
+  {
+    title: "Öğrenci hızlı başlangıç",
+    body: "Öğretmen ara, soru gönder, çalışma planını işaretle ve canlı ders linklerine telefondan ulaş.",
+    links: [
+      { href: "/student/panel", label: "Öğrenci paneli" },
+      { href: "/student/odev-sor", label: "Soru gönder" },
+      { href: "/student/calisma", label: "Çalışma planı" },
+    ],
+  },
+  {
+    title: "Öğretmen hızlı başlangıç",
+    body: "Profilini tamamla, teklifleri takip et, soru havuzuna gir ve derslerini yönet.",
+    links: [
+      { href: "/teacher", label: "Öğretmen paneli" },
+      { href: "/teacher/odev-havuzu", label: "Soru havuzu" },
+      { href: "/teacher/edit", label: "Profili tamamla" },
+    ],
+  },
+  {
+    title: "Veli hızlı takip",
+    body: "Öğrencinin plan ilerlemesini, deneme ortalamasını ve ders bildirimlerini gör.",
+    links: [
+      { href: "/guardian", label: "Veli paneli" },
+      { href: "/kayit?role=guardian", label: "Veli hesabı aç" },
+    ],
+  },
+] as const;
+
 export const metadata: Metadata = {
   title: "Telefona ekle",
   description:
@@ -29,6 +58,26 @@ export default function UygulamaPage() {
         BenimÖğretmenim bir <strong>web uygulaması</strong> (PWA): ana ekrana kısayol ekleyerek tam
         ekran kullanabilirsiniz. Android’de Chrome; iPhone’da Safari ile kurulum yapılır.
       </p>
+
+      <section className="mt-8 grid gap-4 md:grid-cols-3">
+        {quickAccess.map((item) => (
+          <div key={item.title} className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+            <h2 className="text-base font-semibold text-paper-950">{item.title}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-paper-800/75">{item.body}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {item.links.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-medium text-brand-900"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
 
       <section id="android" className="mt-10 scroll-mt-24">
         <h2 className="text-lg font-semibold text-paper-950">Android (Chrome)</h2>
@@ -125,6 +174,15 @@ export default function UygulamaPage() {
             .
           </p>
         </details>
+      </section>
+
+      <section className="mt-10 rounded-2xl border border-brand-200 bg-brand-50 p-5">
+        <h2 className="text-lg font-semibold text-brand-950">Telefonda en iyi kullanım</h2>
+        <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-brand-900/90">
+          <li>Canlı ders linklerine bildirimden veya paneldeki “Dersler” bölümünden girin.</li>
+          <li>Soru fotoğrafı için “Soru gönder” sayfasındaki kamera seçeneğini kullanın.</li>
+          <li>Öğretmenler için soru havuzu ve teklif ekranlarını ana ekrana eklenen uygulamadan kontrol etmek daha hızlıdır.</li>
+        </ul>
       </section>
 
       <div className="mt-10 rounded-xl border border-paper-200 bg-white p-5 text-sm">

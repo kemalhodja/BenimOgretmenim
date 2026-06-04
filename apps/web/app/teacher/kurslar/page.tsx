@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
@@ -19,10 +19,24 @@ type CourseRow = {
   branch_name: string | null;
   created_at: string;
   updated_at: string;
+  cohort_count: number;
+  active_cohort_count: number;
+  enrollment_count: number;
+  next_session_id: string | null;
+  next_session_index: number | null;
+  next_session_title: string | null;
+  next_scheduled_start: string | null;
+  next_meeting_url: string | null;
+  next_cohort_title: string | null;
 };
 
 function minorToTl(n: number): string {
   return (n / 100).toFixed(2);
+}
+
+function toLocal(dt: string | null): string {
+  if (!dt) return "Planlanmadı";
+  return new Date(dt).toLocaleString("tr-TR");
 }
 
 export default function TeacherKurslarPage() {
@@ -90,6 +104,55 @@ export default function TeacherKurslarPage() {
     }
   }
 
+  const stats = useMemo(() => {
+    const published = rows.filter((course) => course.status === "published").length;
+    const activeCohorts = rows.reduce((sum, course) => sum + Number(course.active_cohort_count ?? 0), 0);
+    const enrollments = rows.reduce((sum, course) => sum + Number(course.enrollment_count ?? 0), 0);
+    const scheduled = rows.filter((course) => course.next_session_id).length;
+    return { published, activeCohorts, enrollments, scheduled };
+  }, [rows]);
+
+  const nextCourse = useMemo(
+    () =>
+      rows
+        .filter((course) => course.next_session_id && course.next_scheduled_start)
+        .sort(
+          (a, b) =>
+            new Date(a.next_scheduled_start ?? 0).getTime() -
+            new Date(b.next_scheduled_start ?? 0).getTime(),
+        )[0] ?? rows.find((course) => course.next_session_id) ?? null,
+    [rows],
+  );
+
+  const nextAction =
+    rows.length === 0
+      ? {
+          title: "İlk kursunuzu oluşturun",
+          body: "Canlı dershane deneyimi için kurs, grup ve oturum planını tek akışta kurun.",
+          href: "/teacher/kurslar/yeni",
+          label: "Yeni kurs",
+        }
+      : nextCourse
+        ? {
+            title: `Sıradaki kurs oturumu: ${nextCourse.title}`,
+            body: `${nextCourse.next_cohort_title ?? "Grup"} · ${toLocal(nextCourse.next_scheduled_start)}. Sınıf linki hazır olduğunda buradan açabilirsiniz.`,
+            href: `/teacher/kurslar/${nextCourse.id}`,
+            label: "Oturumu yönet",
+          }
+        : rows.some((course) => course.status !== "published")
+          ? {
+              title: "Yayınlanmamış kurslar var",
+              body: "Hazır kursları yayınlayıp kayıt akışını başlatın; aktif gruplar görünürlüğü artırır.",
+              href: "/teacher/kurslar/yeni",
+              label: "Kursları düzenle",
+            }
+          : {
+              title: "Yeni cohort ve oturum planlayın",
+              body: "Yayınlanmış kurslar için grup açmak öğrenci kaydını ve canlı ders takvimini netleştirir.",
+              href: "/teacher/kurslar/yeni",
+              label: "Yeni kurs",
+            };
+
   if (!token) return null;
 
   return (
@@ -118,6 +181,41 @@ export default function TeacherKurslarPage() {
           </div>
         )}
 
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Kurs operasyonu</div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+            </div>
+            <Link
+              href={nextAction.href}
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-950 hover:bg-brand-100"
+            >
+              {nextAction.label}
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Yayında kurs</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.published}</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Aktif grup</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{stats.activeCohorts}</div>
+          </div>
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Kayıtlı öğrenci</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.enrollments}</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Planlı kurs</div>
+            <div className="mt-1 text-2xl font-semibold text-warm-950">{stats.scheduled}</div>
+          </div>
+        </section>
+
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (
             <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75 shadow-sm">
@@ -136,6 +234,25 @@ export default function TeacherKurslarPage() {
                       {c.status} · {c.delivery_mode} · {c.branch_name ?? "—"} ·{" "}
                       {minorToTl(c.price_minor)} {c.currency}
                     </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-medium">
+                      <span className="rounded-full bg-paper-100 px-2 py-0.5 text-paper-800">
+                        {c.cohort_count} grup
+                      </span>
+                      <span className="rounded-full bg-brand-50 px-2 py-0.5 text-brand-900">
+                        {c.enrollment_count} kayıt
+                      </span>
+                      {c.next_session_id ? (
+                        <span className="rounded-full bg-warm-50 px-2 py-0.5 text-warm-900">
+                          Sıradaki: {toLocal(c.next_scheduled_start)}
+                        </span>
+                      ) : null}
+                    </div>
+                    {c.next_session_id ? (
+                      <div className="mt-2 text-xs text-paper-800/75">
+                        {c.next_cohort_title ?? "Grup"} · Ders #{c.next_session_index}
+                        {c.next_session_title ? ` · ${c.next_session_title}` : ""}
+                      </div>
+                    ) : null}
                     <div className="mt-1 text-[11px] font-mono text-paper-800/45">{c.id}</div>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
@@ -151,6 +268,14 @@ export default function TeacherKurslarPage() {
                     >
                       Public sayfa
                     </Link>
+                    {c.next_session_id && (
+                      <Link
+                        href={`/classroom/course/${c.next_session_id}`}
+                        className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-950 hover:bg-brand-100"
+                      >
+                        Sınıfı aç
+                      </Link>
+                    )}
                     {c.status !== "published" && (
                       <button
                         type="button"

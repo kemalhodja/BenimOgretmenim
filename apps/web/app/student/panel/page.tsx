@@ -61,6 +61,15 @@ type ProgressSnapshot = {
   session_index: number;
 };
 
+type GuardianInvite = {
+  id: string;
+  code?: string;
+  expires_at: string;
+  accepted_at: string | null;
+  accepted_guardian_display_name: string | null;
+  created_at: string;
+};
+
 function tl(minor: number): string {
   return (minor / 100).toFixed(2);
 }
@@ -91,6 +100,8 @@ function StudentPanelPageInner() {
   const [busy, setBusy] = useState(false);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [progressSnapshots, setProgressSnapshots] = useState<ProgressSnapshot[]>([]);
+  const [guardianInvites, setGuardianInvites] = useState<GuardianInvite[]>([]);
+  const [guardianInviteBusy, setGuardianInviteBusy] = useState(false);
   const [notifBusyId, setNotifBusyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -103,7 +114,7 @@ function StudentPanelPageInner() {
   }, [router, pathWithQuery]);
 
   const load = useCallback(async (t: string) => {
-    const [s, w, l, h, n, p] = await Promise.all([
+    const [s, w, l, h, n, p, g] = await Promise.all([
       apiFetch<SubMe>("/v1/student-platform/subscription/me", { token: t }),
       apiFetch<Wallet>("/v1/wallet/me", { token: t }),
       apiFetch<{ entries: LedgerEntry[] }>("/v1/wallet/ledger?limit=25", { token: t }),
@@ -114,6 +125,9 @@ function StudentPanelPageInner() {
       apiFetch<{ snapshots: ProgressSnapshot[] }>("/v1/lesson-sessions/progress/mine", { token: t }).catch(
         () => ({ snapshots: [] as ProgressSnapshot[] }),
       ),
+      apiFetch<{ invites: GuardianInvite[] }>("/v1/guardians/invites/mine", { token: t }).catch(
+        () => ({ invites: [] as GuardianInvite[] }),
+      ),
     ]);
     setSub(s);
     setWallet(w);
@@ -122,7 +136,28 @@ function StudentPanelPageInner() {
     setHolds(h.holds ?? []);
     setNotifications(n.notifications);
     setProgressSnapshots(p.snapshots);
+    setGuardianInvites(g.invites);
   }, []);
+
+  async function createGuardianInvite() {
+    if (!token) return;
+    setGuardianInviteBusy(true);
+    setError(null);
+    setOk(null);
+    try {
+      const r = await apiFetch<{ invite: GuardianInvite }>("/v1/guardians/invites", {
+        method: "POST",
+        token,
+        body: JSON.stringify({}),
+      });
+      setGuardianInvites((prev) => [r.invite, ...prev].slice(0, 10));
+      setOk(`Veli davet kodu oluşturuldu: ${r.invite.code}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "guardian_invite_failed");
+    } finally {
+      setGuardianInviteBusy(false);
+    }
+  }
 
   async function markNotificationRead(id: string) {
     if (!token) return;
@@ -143,7 +178,19 @@ function StudentPanelPageInner() {
 
   function notificationHref(payload: unknown): string | null {
     if (!payload || typeof payload !== "object") return null;
-    const o = payload as { kind?: string; homeworkPostId?: string; lessonSessionId?: string };
+    const o = payload as {
+      kind?: string;
+      homeworkPostId?: string;
+      lessonSessionId?: string;
+      courseSessionId?: string;
+      classroomHref?: string;
+      requestId?: string;
+      groupLessonId?: string;
+      directBookingId?: string;
+    };
+    if (typeof o.classroomHref === "string" && o.classroomHref.startsWith("/classroom/")) {
+      return o.classroomHref;
+    }
     const isHomeworkKind =
       o.kind === "homework_claimed" ||
       o.kind === "homework_answered" ||
@@ -154,6 +201,31 @@ function StudentPanelPageInner() {
     }
     if (o.kind === "lesson_scheduled" || o.kind === "lesson_completed" || o.lessonSessionId) {
       return "/student/dersler";
+    }
+    if (
+      o.kind === "course_session_scheduled" ||
+      o.kind === "course_session_reminder_24h" ||
+      o.kind === "course_session_reminder_2h" ||
+      o.courseSessionId
+    ) {
+      return "/student/kurslar";
+    }
+    if (
+      (o.kind === "lesson_offer_received" || o.kind === "lesson_demo_offer_received") &&
+      typeof o.requestId === "string"
+    ) {
+      return `/student/requests/${o.requestId}`;
+    }
+    if (
+      o.kind === "group_lesson_teacher_assigned" ||
+      o.kind === "group_lesson_joined" ||
+      o.kind === "group_lesson_completed" ||
+      o.groupLessonId
+    ) {
+      return "/student/grup-dersler";
+    }
+    if (o.kind === "direct_booking_completed" || o.directBookingId) {
+      return "/student/dogrudan-dersler";
     }
     return null;
   }
@@ -237,6 +309,35 @@ function StudentPanelPageInner() {
 
   if (!token) return null;
 
+  const showOnboarding = searchParams.get("onboarding") === "1";
+  const nextBestAction = !sub?.active
+    ? {
+        title: "Platform aboneliğini başlat",
+        body: "Öğretmen talebi, soru havuzu ve takip akışlarını açmak için öğrenci aboneliğini tamamlayın.",
+        href: "#platform-aboneligi",
+        cta: "Aboneliğe git",
+      }
+    : wallet && wallet.balanceMinor - activeHoldMinor < 50_000
+      ? {
+          title: "Cüzdanı hazırla",
+          body: "Demo, paket veya doğrudan ders ödemesinde takılmamak için kullanılabilir bakiyeyi kontrol edin.",
+          href: "#bakiye",
+          cta: "Bakiye yükle",
+        }
+      : progressSnapshots.length === 0
+        ? {
+            title: "İlk çalışma izini oluştur",
+            body: "Bir soru gönderin veya çalışma planı açın; paneliniz ilerleme önerilerini buradan üretir.",
+            href: "/student/odev-sor",
+            cta: "Soru gönder",
+          }
+        : {
+            title: "Ders ve planı takip et",
+            body: "Son ders değerlendirmelerini ve haftalık planı kontrol edip sıradaki konuyu işaretleyin.",
+            href: "/student/calisma",
+            cta: "Plana git",
+          };
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
@@ -270,6 +371,10 @@ function StudentPanelPageInner() {
               Gönderilerim
             </Link>
             <span className="text-paper-800/40"> · </span>
+            <Link href="/student/calisma" className="text-paper-800/75 underline decoration-paper-300 underline-offset-2 hover:text-paper-900">
+              Çalışma planı
+            </Link>
+            <span className="text-paper-800/40"> · </span>
             <Link href="/courses" className="text-paper-800/75 underline decoration-paper-300 underline-offset-2 hover:text-paper-900">
               Kurs kataloğu
             </Link>
@@ -279,6 +384,77 @@ function StudentPanelPageInner() {
             </Link>
           </p>
         </div>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-2">
+          {[
+            { href: "/student/odev-sor", title: "Soru gönder", body: "Fotoğraf çek, aciliyet seç, çözümü takip et." },
+            { href: "/student/calisma", title: "Planı işaretle", body: "Haftalık görevleri tamamlandı/atlandı yap." },
+            { href: "/student/dersler", title: "Canlı dersler", body: "Yaklaşan ders ve sınıf linklerine hızlı gir." },
+            { href: "/ogretmenler?verifiedOnly=1&sort=recommended", title: "Öğretmen bul", body: "Doğrulanmış profilleri karşılaştır." },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm transition hover:border-brand-200 hover:bg-brand-50/30"
+            >
+              <div className="text-sm font-semibold text-paper-900">{item.title}</div>
+              <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+            </Link>
+          ))}
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                {showOnboarding ? "İlk kurulum" : "Sonraki en iyi işlem"}
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-paper-900">{nextBestAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">{nextBestAction.body}</p>
+            </div>
+            <Link
+              href={nextBestAction.href}
+              className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
+            >
+              {nextBestAction.cta}
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-paper-900">Veli davet kodu</h2>
+              <p className="mt-1 text-sm text-paper-800/65">
+                Veliniz bu kodu veli paneline girerek hesabınıza bağlanır. Kod 7 gün geçerlidir ve tek kullanımlıktır.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={guardianInviteBusy}
+              onClick={() => void createGuardianInvite()}
+              className="shrink-0 rounded-xl border border-paper-300 bg-white px-4 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50 disabled:opacity-50"
+            >
+              {guardianInviteBusy ? "…" : "Kod oluştur"}
+            </button>
+          </div>
+          {guardianInvites.length > 0 ? (
+            <ul className="mt-4 space-y-2 text-sm">
+              {guardianInvites.slice(0, 3).map((invite) => (
+                <li key={invite.id} className="rounded-xl border border-paper-100 bg-paper-50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-mono font-semibold text-paper-900">{invite.code ?? invite.id.slice(0, 8)}</span>
+                    <span className="text-xs text-paper-800/55">
+                      {invite.accepted_at
+                        ? `Kullanıldı${invite.accepted_guardian_display_name ? ` · ${invite.accepted_guardian_display_name}` : ""}`
+                        : `Son: ${new Date(invite.expires_at).toLocaleString("tr-TR")}`}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
 
         {error && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
@@ -360,7 +536,7 @@ function StudentPanelPageInner() {
           </div>
         )}
 
-        <div className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+        <div id="bakiye" className="mt-8 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-paper-900">Bakiye</h2>
           {wallet && (
             <p className="mt-1 text-2xl font-mono text-paper-800">
@@ -405,7 +581,7 @@ function StudentPanelPageInner() {
           </div>
         </div>
 
-        <div className="mt-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
+        <div id="platform-aboneligi" className="mt-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-paper-900">Blokajlar</h2>
           <p className="mt-1 text-xs text-paper-800/55">
             Grup ders vb. için tutar bloke olabilir; ders bitene kadar sürebilir.

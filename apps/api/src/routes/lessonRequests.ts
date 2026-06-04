@@ -4,7 +4,7 @@ import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
-import { getWalletAvailableMinor } from "../lib/walletHolds.js";
+import { createWalletHold, getWalletAvailableMinor } from "../lib/walletHolds.js";
 import { getActiveStudentSubscription } from "../lib/studentSub.js";
 
 async function requestMessageParticipant(
@@ -53,6 +53,17 @@ const createRequestSchema = z.object({
   audioUrl: z.string().min(1).max(2000).nullable().optional(),
 });
 
+function shortlistTeacherIdsFromAvailability(value: Record<string, unknown> | undefined): string[] {
+  const raw = value?.shortlistTeacherIds;
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    const id = typeof item === "string" ? item.trim() : "";
+    if (z.string().uuid().safeParse(id).success) seen.add(id);
+  }
+  return [...seen].slice(0, 10);
+}
+
 lessonRequests.post("/", requireAuth, async (c) => {
   const userId = c.get("userId");
   const role = c.get("userRole");
@@ -68,6 +79,7 @@ lessonRequests.post("/", requireAuth, async (c) => {
   const { budgetMin, budgetMax } = parsed.data;
   const requestKind = parsed.data.requestKind;
   const targetTeacherId = parsed.data.targetTeacherId ?? null;
+  const shortlistTeacherIds = shortlistTeacherIdsFromAvailability(parsed.data.availability);
   if (
     (budgetMin != null && budgetMax == null) ||
     (budgetMin == null && budgetMax != null)
@@ -148,6 +160,43 @@ lessonRequests.post("/", requireAuth, async (c) => {
       targetTeacherId,
     ],
   );
+
+  const requestId = ins.rows[0].id as string;
+  const notifyTeacherIds = [...new Set([...(targetTeacherId ? [targetTeacherId] : []), ...shortlistTeacherIds])];
+  if (notifyTeacherIds.length > 0) {
+    const recipients = await pool.query(
+      `select distinct t.id as teacher_id, t.user_id, u.display_name
+       from teachers t
+       join users u on u.id = t.user_id
+       join teacher_branches tb on tb.teacher_id = t.id
+       where t.id = any($1::uuid[])
+         and tb.branch_id = $2`,
+      [notifyTeacherIds, parsed.data.branchId],
+    );
+    for (const recipient of recipients.rows as Array<{ teacher_id: string; user_id: string; display_name: string }>) {
+      const isTargetDemo = requestKind === "demo" && recipient.teacher_id === targetTeacherId;
+      await pool.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          recipient.user_id,
+          studentId,
+          isTargetDemo ? "Yeni demo ders talebi" : "Kısa listeli ders talebi",
+          isTargetDemo
+            ? `"${parsed.data.topic.trim()}" için size özel demo ders talebi geldi.`
+            : `"${parsed.data.topic.trim()}" talebinde öğrenci sizi kısa listesine aldı.`,
+          JSON.stringify({
+            kind: isTargetDemo ? "lesson_request_demo_targeted" : "lesson_request_shortlisted",
+            requestId,
+            branchId: parsed.data.branchId,
+            teacherId: recipient.teacher_id,
+          }),
+        ],
+      );
+    }
+  }
 
   return c.json({ request: ins.rows[0] }, 201);
 });
@@ -244,11 +293,15 @@ lessonRequests.get("/open", requireAuth, async (c) => {
            lr.topic_text,
            lr.note,
            lr.created_at,
+           (
+             jsonb_typeof(coalesce(lr.availability_jsonb->'shortlistTeacherIds', '[]'::jsonb)) = 'array'
+             and lr.availability_jsonb->'shortlistTeacherIds' ? $1::text
+           ) as is_shortlisted_for_teacher,
            (select count(*)::int from lesson_offers o where o.request_id = lr.id) as offers_count
     from lesson_requests lr
     left join branches b on b.id = lr.branch_id
     ${where}
-    order by lr.created_at desc
+    order by is_shortlisted_for_teacher desc, lr.created_at desc
     limit ${limitPh} offset ${offsetPh}
   `;
 
@@ -301,10 +354,17 @@ lessonRequests.get("/my-offers", requireAuth, async (c) => {
             lr.request_kind,
             lr.target_teacher_id,
             left(coalesce(lr.note, ''), 220) as request_note_preview,
-            lr.created_at as request_created_at
+            lr.created_at as request_created_at,
+            lp.id as package_id,
+            lp.status::text as package_status,
+            lp.payment_status::text as package_payment_status,
+            ls.id as first_session_id,
+            ls.status::text as first_session_status
      from lesson_offers o
      join lesson_requests lr on lr.id = o.request_id
      left join branches b on b.id = lr.branch_id
+     left join lesson_packages lp on lp.source_request_id = lr.id and lp.teacher_id = o.teacher_id
+     left join lesson_sessions ls on ls.package_id = lp.id and ls.session_index = 1
      where o.teacher_id = $1
      order by o.created_at desc
      limit $2 offset $3`,
@@ -396,11 +456,16 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
     return c.json({ error: "proposed_hourly_rate_too_high" }, 400);
   }
 
-  const tr = await pool.query(`select id from teachers where user_id = $1`, [
-    userId,
-  ]);
+  const tr = await pool.query(
+    `select t.id, u.display_name
+     from teachers t
+     join users u on u.id = t.user_id
+     where t.user_id = $1`,
+    [userId],
+  );
   if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
   const teacherId = tr.rows[0].id as string;
+  const teacherDisplayName = (tr.rows[0].display_name as string | undefined) ?? "Öğretmen";
 
   // Abonelik kontrolü: aktif abonelik varsa ücretsiz; yoksa teklif başına ücret (300 TL)
   const activeSub = await pool.query(
@@ -422,7 +487,18 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
     await client.query("begin");
 
     const reqRow = await client.query(
-      `select id, status, request_kind, target_teacher_id from lesson_requests where id = $1 for update`,
+      `select lr.id,
+              lr.status,
+              lr.request_kind,
+              lr.target_teacher_id,
+              lr.student_id,
+              lr.branch_id,
+              lr.topic_text,
+              s.user_id as student_user_id
+       from lesson_requests lr
+       join students s on s.id = lr.student_id
+       where lr.id = $1
+       for update`,
       [requestId],
     );
     if (!reqRow.rowCount) {
@@ -480,6 +556,28 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
       [requestId, offer.rows[0].id, userId, parsed.data.message],
     );
 
+    await client.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        reqRow.rows[0].student_user_id,
+        reqRow.rows[0].student_id,
+        isTargetedDemo ? "Demo ders yanıtı geldi" : "Yeni ders teklifi geldi",
+        isTargetedDemo
+          ? `${teacherDisplayName} demo ders talebinize yanıt verdi.`
+          : `${teacherDisplayName}, "${reqRow.rows[0].topic_text ?? "ders talebiniz"}" için teklif gönderdi.`,
+        JSON.stringify({
+          kind: isTargetedDemo ? "lesson_demo_offer_received" : "lesson_offer_received",
+          requestId,
+          offerId: offer.rows[0].id,
+          teacherId,
+          branchId: reqRow.rows[0].branch_id,
+        }),
+      ],
+    );
+
     await client.query("commit");
     return c.json(
       {
@@ -519,13 +617,80 @@ lessonRequests.get("/:requestId/offers", requireAuth, async (c) => {
   if (!own.rowCount) return c.json({ error: "forbidden_or_not_found" }, 403);
 
   const r = await pool.query(
-    `select o.id, o.teacher_id, o.status, o.message, o.proposed_hourly_rate_minor, o.created_at,
-            u.display_name
-     from lesson_offers o
-     join teachers t on t.id = o.teacher_id
-     join users u on u.id = t.user_id
-     where o.request_id = $1
-     order by o.created_at desc`,
+    `with enriched as (
+       select o.id,
+              o.teacher_id,
+              o.status,
+              o.message,
+              o.proposed_hourly_rate_minor,
+              o.created_at,
+              u.display_name,
+              t.rating_avg,
+              t.rating_count,
+              t.verification_status::text as verification_status,
+              (
+                (case when t.verification_status = 'verified' then 15 else 0 end) +
+                (case when t.city_id is not null then 10 else 0 end) +
+                (case when length(trim(coalesce(t.bio_raw, ''))) >= 80 then 20
+                      when length(trim(coalesce(t.bio_raw, ''))) >= 40 then 10
+                      else 0 end) +
+                (case when coalesce(trim(t.video_url), '') <> '' then 15 else 0 end) +
+                (case when exists (select 1 from teacher_branches tbq where tbq.teacher_id = t.id) then 15 else 0 end) +
+                (case when jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+                        and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0 then 10 else 0 end) +
+                (case when jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+                        and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0 then 5 else 0 end) +
+                (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
+              )::int as profile_quality_score,
+              coalesce(trim(t.video_url), '') <> '' as has_video,
+              (
+                jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+                and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0
+              ) as has_exam_docs,
+              (
+                select count(*)::int
+                from lesson_sessions ls
+                join lesson_packages lp on lp.id = ls.package_id
+                where lp.teacher_id = t.id and ls.status = 'completed'
+              ) as completed_sessions_count,
+              (
+                jsonb_typeof(coalesce(lr.availability_jsonb->'shortlistTeacherIds', '[]'::jsonb)) = 'array'
+                and lr.availability_jsonb->'shortlistTeacherIds' ? o.teacher_id::text
+              ) as is_shortlisted_teacher,
+              greatest(0, floor(extract(epoch from (o.created_at - lr.created_at)) / 60))::int as response_minutes,
+              min(o.proposed_hourly_rate_minor) filter (where o.proposed_hourly_rate_minor is not null) over () as lowest_proposed_hourly_rate_minor
+       from lesson_offers o
+       join lesson_requests lr on lr.id = o.request_id
+       join teachers t on t.id = o.teacher_id
+       join users u on u.id = t.user_id
+       where o.request_id = $1
+     )
+     select *,
+            (
+              (profile_quality_score * 0.45) +
+              (coalesce(rating_avg, 3.5)::numeric * 8) +
+              least(completed_sessions_count, 20) +
+              case when verification_status = 'verified' then 8 else 0 end +
+              case when has_video then 5 else 0 end +
+              case when is_shortlisted_teacher then 6 else 0 end +
+              case
+                when proposed_hourly_rate_minor is not null
+                 and lowest_proposed_hourly_rate_minor is not null
+                 and proposed_hourly_rate_minor = lowest_proposed_hourly_rate_minor
+                then 8
+                else 0
+              end +
+              case
+                when response_minutes <= 60 then 8
+                when response_minutes <= 240 then 4
+                else 0
+              end
+            )::int as comparison_score
+     from enriched
+     order by
+       case status when 'sent' then 0 when 'accepted' then 1 else 2 end,
+       comparison_score desc,
+       created_at asc`,
     [requestId],
   );
   return c.json({ offers: r.rows });
@@ -533,6 +698,8 @@ lessonRequests.get("/:requestId/offers", requireAuth, async (c) => {
 
 const decideOfferSchema = z.object({
   decision: z.enum(["accept", "reject"]),
+  packageLessonCount: z.number().int().min(1).max(60).optional(),
+  lessonDurationMinutes: z.number().int().min(30).max(180).optional(),
 });
 
 /** Öğrenci: teklifi kabul/ret (kabul → request matched) */
@@ -552,9 +719,15 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
     await client.query("begin");
 
     const own = await client.query(
-      `select lr.id, lr.delivery_mode, lr.student_id, lr.request_kind
+      `select lr.id,
+              lr.delivery_mode,
+              lr.student_id,
+              lr.request_kind,
+              lr.topic_text,
+              su.display_name as student_display_name
        from lesson_requests lr
        join students s on s.id = lr.student_id
+       join users su on su.id = s.user_id
        where lr.id = $1 and s.user_id = $2
        for update`,
       [requestId, userId],
@@ -565,9 +738,14 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
     }
 
     const offerRow = await client.query(
-      `select id, status, teacher_id
-       from lesson_offers
-       where id = $1 and request_id = $2
+      `select o.id,
+              o.status,
+              o.teacher_id,
+              o.proposed_hourly_rate_minor,
+              t.user_id as teacher_user_id
+       from lesson_offers o
+       join teachers t on t.id = o.teacher_id
+       where o.id = $1 and o.request_id = $2
        for update`,
       [offerId, requestId],
     );
@@ -581,10 +759,30 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
     }
 
     const decision = parsed.data.decision;
+    const studentDisplayName = (own.rows[0].student_display_name as string | undefined) ?? "Öğrenci";
+    const requestTopic = (own.rows[0].topic_text as string | null) ?? "ders talebi";
     if (decision === "reject") {
       await client.query(
         `update lesson_offers set status = 'rejected', updated_at = now() where id = $1`,
         [offerId],
+      );
+      await client.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          offerRow.rows[0].teacher_user_id,
+          own.rows[0].student_id,
+          "Teklifiniz reddedildi",
+          `${studentDisplayName}, "${requestTopic}" teklifinizi reddetti.`,
+          JSON.stringify({
+            kind: "lesson_offer_rejected",
+            requestId,
+            offerId,
+            teacherId: offerRow.rows[0].teacher_id,
+          }),
+        ],
       );
       await client.query("commit");
       return c.json({ ok: true });
@@ -598,7 +796,7 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
       `update lesson_requests set status = 'matched', updated_at = now() where id = $1`,
       [requestId],
     );
-    await client.query(
+    const autoRejectedOffers = await client.query(
       `update lesson_offers
        set status = 'rejected', updated_at = now()
        where request_id = $1 and id <> $2 and status = 'sent'`,
@@ -609,23 +807,90 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
     const isDemoRequest = own.rows[0].request_kind === "demo";
     const defaultTotal = Number(process.env.DEFAULT_PACKAGE_TOTAL_LESSONS ?? "4");
     const totalLessons =
-      isDemoRequest ? 1 : Number.isFinite(defaultTotal) && defaultTotal > 0 ? defaultTotal : 4;
-    const durationMinutes = isDemoRequest ? 30 : 60;
+      parsed.data.packageLessonCount ??
+      (isDemoRequest ? 1 : Number.isFinite(defaultTotal) && defaultTotal > 0 ? defaultTotal : 4);
+    const durationMinutes = parsed.data.lessonDurationMinutes ?? (isDemoRequest ? 30 : 60);
 
     const studentId = own.rows[0].student_id as string;
     const teacherId = offerRow.rows[0].teacher_id as string;
+    const hourlyRateMinor = Number(offerRow.rows[0].proposed_hourly_rate_minor ?? 0);
+    const totalAmountMinor =
+      Number.isFinite(hourlyRateMinor) && hourlyRateMinor > 0
+        ? Math.round(hourlyRateMinor * totalLessons * (durationMinutes / 60))
+        : 0;
     const deliveryMode = (own.rows[0].delivery_mode as string) ?? "online";
+
+    if (totalAmountMinor > 0) {
+      const available = await getWalletAvailableMinor(userId, client);
+      if (available < BigInt(totalAmountMinor)) {
+        await client.query("rollback");
+        return c.json(
+          {
+            error: "insufficient_wallet_available",
+            requiredMinor: totalAmountMinor,
+            availableMinor: available.toString(),
+          },
+          409,
+        );
+      }
+    }
 
     const pkg = await client.query(
       `insert into lesson_packages (
          teacher_id, student_id, total_lessons, completed_lessons,
          status, payment_status, currency, total_amount_minor, escrow_release_policy_jsonb,
          source_request_id, request_kind
-       ) values ($1, $2, $3, 0, 'active', 'pending', 'TRY', 0, '{}'::jsonb, $4, $5)
+       ) values ($1, $2, $3, 0, 'active', $6::payment_status, 'TRY', $7, $8::jsonb, $4, $5)
        returning id`,
-      [teacherId, studentId, totalLessons, requestId, isDemoRequest ? "demo" : "regular"],
+      [
+        teacherId,
+        studentId,
+        totalLessons,
+        requestId,
+        isDemoRequest ? "demo" : "regular",
+        totalAmountMinor > 0 ? "held_in_escrow" : "pending",
+        totalAmountMinor,
+        JSON.stringify({
+          method: totalAmountMinor > 0 ? "student_wallet_hold" : "manual_followup",
+          release: "per_completed_lesson",
+          lessonDurationMinutes: durationMinutes,
+          hourlyRateMinor,
+        }),
+      ],
     );
     const packageId = pkg.rows[0].id as string;
+
+    let holdId: string | null = null;
+    if (totalAmountMinor > 0) {
+      const hold = await createWalletHold(
+        {
+          userId,
+          amountMinor: totalAmountMinor,
+          reason: "lesson_package_escrow",
+          refType: "lesson_packages",
+          refId: packageId,
+        },
+        client,
+      );
+      holdId = hold.holdId;
+      await client.query(
+        `insert into payment_ledger_entries (
+           package_id, amount_minor, currency, entry_type, external_ref, metadata_jsonb
+         ) values ($1, $2, 'TRY', 'wallet_hold_created', $3, $4::jsonb)`,
+        [
+          packageId,
+          totalAmountMinor,
+          holdId,
+          JSON.stringify({
+            offerId,
+            requestId,
+            hourlyRateMinor,
+            totalLessons,
+            durationMinutes,
+          }),
+        ],
+      );
+    }
 
     const sess = await client.query(
       `insert into lesson_sessions (
@@ -636,8 +901,76 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
     );
     const lessonSessionId = sess.rows[0].id as string;
 
+    await client.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        offerRow.rows[0].teacher_user_id,
+        studentId,
+        isDemoRequest ? "Demo teklifiniz kabul edildi" : "Teklifiniz kabul edildi",
+        `${studentDisplayName}, "${requestTopic}" teklifinizi kabul etti. Paket ve ilk ders oturumu oluşturuldu.`,
+        JSON.stringify({
+          kind: "lesson_offer_accepted",
+          requestId,
+          offerId,
+          packageId,
+          lessonSessionId,
+          teacherId,
+        }),
+      ],
+    );
+
+    if ((autoRejectedOffers.rowCount ?? 0) > 0) {
+      await client.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         )
+         select t.user_id,
+                $2,
+                null,
+                'in_app',
+                'Talep başka öğretmenle eşleşti',
+                $3,
+                jsonb_build_object(
+                  'kind', 'lesson_offer_matched_elsewhere',
+                  'requestId', $1::uuid,
+                  'teacherId', o.teacher_id
+                ),
+                'sent',
+                now()
+         from lesson_offers o
+         join teachers t on t.id = o.teacher_id
+         where o.request_id = $1
+           and o.id <> $4
+           and o.status = 'rejected'
+           and o.updated_at >= now() - interval '1 minute'`,
+        [
+          requestId,
+          studentId,
+          `${studentDisplayName}, "${requestTopic}" talebinde başka bir teklifi kabul etti.`,
+          offerId,
+        ],
+      );
+    }
+
     await client.query("commit");
-    return c.json({ ok: true, packageId, lessonSessionId });
+    return c.json({
+      ok: true,
+      packageId,
+      lessonSessionId,
+      payment: {
+        status: totalAmountMinor > 0 ? "held_in_escrow" : "pending",
+        totalAmountMinor,
+        holdId,
+      },
+      package: {
+        totalLessons,
+        durationMinutes,
+      },
+    });
   } catch (e) {
     await client.query("rollback").catch(() => {});
     throw e;

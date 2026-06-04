@@ -43,6 +43,16 @@ function parseIsoLocalToUtcIso(input: string): string {
   return d.toISOString();
 }
 
+function paymentStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    held_in_escrow: "Cüzdanda blokeli",
+    pending: "Ödeme bekliyor",
+    released: "Aktarıldı",
+    refunded: "İade edildi",
+  };
+  return labels[status] ?? status;
+}
+
 export default function TeacherDerslerPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -123,6 +133,11 @@ export default function TeacherDerslerPage() {
     () => rows.find((x) => x.id === selectedPkg) ?? null,
     [rows, selectedPkg],
   );
+
+  useEffect(() => {
+    if (selectedPkg || rows.length === 0) return;
+    setSelectedPkg(rows[0].id);
+  }, [rows, selectedPkg]);
 
   useEffect(() => {
     if (!selected) return;
@@ -258,6 +273,35 @@ export default function TeacherDerslerPage() {
 
   if (!token) return null;
 
+  const activePackageCount = rows.filter((pkg) => pkg.status === "active").length;
+  const escrowPackageCount = rows.filter((pkg) => pkg.payment_status === "held_in_escrow").length;
+  const demoPackageCount = rows.filter((pkg) => pkg.request_kind === "demo").length;
+  const plannedSessionCount = sessions.filter((session) => session.scheduled_start != null).length;
+  const nextScheduledSession =
+    sessions
+      .filter((session) => session.status === "scheduled" && session.scheduled_start)
+      .sort((a, b) => new Date(a.scheduled_start ?? 0).getTime() - new Date(b.scheduled_start ?? 0).getTime())[0] ?? null;
+  const openSession = sessions.find((session) => session.status === "scheduled") ?? null;
+  const nextAction = !selected
+    ? {
+        title: "Önce bir paket seçin",
+        body: "Kabul edilen tekliflerden oluşan paketleri seçerek ilk dersi planlayabilirsiniz.",
+      }
+    : nextScheduledSession
+      ? {
+          title: `Sıradaki ders: #${nextScheduledSession.session_index}`,
+          body: `${toLocal(nextScheduledSession.scheduled_start)} tarihinde sınıf linki hazır.`,
+        }
+      : openSession
+        ? {
+            title: "İlk açık oturumu planlayın",
+            body: "Tarih ve süre seçip öğrencinin paneline meeting linkini düşürün.",
+          }
+        : {
+            title: "Paket akışını kontrol edin",
+            body: "Tüm oturumlar tamamlandıysa ders sonu değerlendirme ve ödeme akışını izleyin.",
+          };
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-5xl px-6 py-8">
@@ -279,6 +323,43 @@ export default function TeacherDerslerPage() {
             {error ?? ok}
           </div>
         )}
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Ders operasyonu</div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+            </div>
+            {selected?.source_request_id ? (
+              <Link
+                href={`/teacher/requests/${selected.source_request_id}`}
+                className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-950 hover:bg-brand-100"
+              >
+                Talep sohbeti
+              </Link>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Aktif paket</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{activePackageCount}</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Blokeli ödeme</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{escrowPackageCount}</div>
+          </div>
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Demo paket</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{demoPackageCount}</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Planlı oturum</div>
+            <div className="mt-1 text-2xl font-semibold text-warm-950">{plannedSessionCount}</div>
+          </div>
+        </section>
 
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
@@ -308,7 +389,7 @@ export default function TeacherDerslerPage() {
                       </div>
                     )}
                     <div className="mt-0.5 text-xs text-paper-800/55">
-                      {p.status} · ödeme: {p.payment_status} ·{" "}
+                      {p.status} · ödeme: {paymentStatusLabel(p.payment_status)} ·{" "}
                       {new Date(p.created_at).toLocaleString("tr-TR")}
                     </div>
                     <div className="mt-1 text-[11px] font-mono text-paper-800/45">
@@ -332,7 +413,8 @@ export default function TeacherDerslerPage() {
                   </div>
                   <div className="mt-1 text-xs text-paper-800/75">
                     {selected.request_kind === "demo" ? "Demo ders" : "Paket"}:{" "}
-                    {selected.completed_lessons}/{selected.total_lessons} · {selected.status}
+                    {selected.completed_lessons}/{selected.total_lessons} · {selected.status} ·{" "}
+                    {paymentStatusLabel(selected.payment_status)}
                   </div>
                   {selected.source_request_id && (
                     <div className="mt-2">
@@ -399,14 +481,22 @@ export default function TeacherDerslerPage() {
                           {s.delivery_mode} · süre: {s.duration_minutes ?? "—"} dk
                         </div>
                         {s.meeting_url && (
-                          <a
-                            href={s.meeting_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2 inline-block text-xs font-medium text-brand-800 underline"
-                          >
-                            Meeting linkini aç
-                          </a>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Link
+                              href={`/classroom/lesson/${s.id}`}
+                              className="inline-block rounded-lg bg-brand-800 px-2.5 py-1.5 text-xs font-medium text-white"
+                            >
+                              Sınıfı aç
+                            </Link>
+                            <a
+                              href={s.meeting_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-block text-xs font-medium text-brand-800 underline"
+                            >
+                              Harici link
+                            </a>
+                          </div>
                         )}
                         {s.status === "scheduled" && (
                           <button

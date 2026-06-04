@@ -16,7 +16,40 @@ type Overview = {
     pendingSubscriptionPayments: number;
     parentNotificationsUnread: number;
     homeworkPostsActive: number;
+    homeworkQualityQueue: number;
+    openSupportThreads: number;
+    classroomNoteCount: number;
+    classroomRecordingCount: number;
+    classroomMessageCount: number;
+    activeStudyPlans: number;
+    recentAssessmentAttempts: number;
+    guardianInvitesActive: number;
+    guardianInvitesAccepted: number;
+    guardianInvitesExpired: number;
   };
+};
+type HealthStatus = "ok" | "degraded" | "down";
+type SystemHealthCheck = {
+  name: string;
+  status: HealthStatus;
+  latencyMs?: number;
+  message?: string;
+  metadata?: Record<string, unknown>;
+};
+type SystemHealth = {
+  status: HealthStatus;
+  generatedAt: string;
+  runtime: {
+    nodeEnv: string;
+    nodeVersion: string;
+    uptimeSeconds: number;
+    memory: {
+      rssMb: number;
+      heapUsedMb: number;
+      heapTotalMb: number;
+    };
+  };
+  checks: SystemHealthCheck[];
 };
 
 const SECTIONS: { title: string; items: Item[] }[] = [
@@ -50,6 +83,11 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { href: "/admin/direct-bookings", title: "Doğrudan ders anlaşmaları", desc: "Liste ve iptal" },
       { href: "/admin/group-lessons", title: "Grup ders talepleri", desc: "Durum ve iptal" },
       { href: "/admin/homework", title: "Ödev / soru havuzu", desc: "Liste ve iptal" },
+      { href: "/admin/veri?k=homework", title: "Soru kalite kuyruğu", desc: "Cevap kalite / revizyon takibi" },
+      { href: "/admin/veri?k=classroom", title: "Canlı sınıf notları", desc: "Tahta ve ders içi not kayıtları" },
+      { href: "/admin/veri?k=recordings", title: "Sınıf kayıtları", desc: "Tekrar izleme linkleri ve kayıt durumu" },
+      { href: "/admin/veri?k=messages", title: "Sınıf mesajları", desc: "Sohbet, soru, cevap ve duyurular" },
+      { href: "/admin/veri?k=learning", title: "Çalışma ve deneme", desc: "Planlar ve assessment kayıtları" },
     ],
   },
   {
@@ -57,14 +95,62 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     items: [
       { href: "/admin/veri?k=teacher-subs", title: "Öğretmen abonelikleri", desc: "teacher_subscriptions" },
       { href: "/admin/veri?k=notifications", title: "Veli bildirimleri", desc: "parent_notifications" },
+      { href: "/admin/veri?k=guardian-invites", title: "Veli davet kodları", desc: "Aktif, kullanılan ve süresi dolan kodlar" },
     ],
   },
 ];
 
+function healthLabel(status: HealthStatus): string {
+  if (status === "ok") return "Sağlıklı";
+  if (status === "degraded") return "Uyarı var";
+  return "Kritik";
+}
+
+function healthClass(status: HealthStatus): string {
+  if (status === "ok") return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  if (status === "degraded") return "border-amber-200 bg-amber-50 text-amber-900";
+  return "border-red-200 bg-red-50 text-red-800";
+}
+
+function uptimeLabel(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}dk`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}s`;
+  return `${Math.floor(hours / 24)}g`;
+}
+
+function checkHint(check: SystemHealthCheck): string {
+  const metadata = check.metadata ?? {};
+  if (check.message) return check.message;
+  if (check.name === "database") {
+    const db = typeof metadata.database_name === "string" ? metadata.database_name : "database";
+    const version = typeof metadata.server_version === "string" ? metadata.server_version : "";
+    return [db, version ? `PostgreSQL ${version}` : "", check.latencyMs != null ? `${check.latencyMs}ms` : ""]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  if (check.name === "migrations") {
+    const count = typeof metadata.applied_count === "number" ? metadata.applied_count : "-";
+    const latest = typeof metadata.latest_migration === "string" ? metadata.latest_migration : "yok";
+    return `Uygulanan: ${count} · Son: ${latest}`;
+  }
+  if (check.name === "configuration") {
+    const warnings = Array.isArray(metadata.warnings) ? metadata.warnings : [];
+    return warnings.length ? `${warnings.length} konfigürasyon uyarısı` : "Zorunlu kontroller temiz";
+  }
+  return "Kontrol tamamlandı";
+}
+
 export default function AdminMerkezPage() {
   const token = useRequireAdmin();
   const [overview, setOverview] = useState<Overview | null>(null);
+  const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const [reminderBusy, setReminderBusy] = useState(false);
+  const [reminderResult, setReminderResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -76,6 +162,13 @@ export default function AdminMerkezPage() {
       .catch((e) => {
         if (!cancelled) setError(e instanceof Error ? e.message : "overview_failed");
       });
+    apiFetch<SystemHealth>("/api/admin/system-health", { token })
+      .then((r) => {
+        if (!cancelled) setSystemHealth(r);
+      })
+      .catch((e) => {
+        if (!cancelled) setHealthError(e instanceof Error ? e.message : "system_health_failed");
+      });
     return () => {
       cancelled = true;
     };
@@ -84,6 +177,24 @@ export default function AdminMerkezPage() {
   if (!token) return null;
 
   const c = overview?.counts;
+
+  async function runReminders() {
+    if (!token) return;
+    setReminderBusy(true);
+    setReminderResult(null);
+    setError(null);
+    try {
+      const r = (await apiFetch("/api/admin/reminders/run", {
+        method: "POST",
+        token,
+      })) as { result?: { created?: number } };
+      setReminderResult(`${r.result?.created ?? 0} yeni ders hatırlatması üretildi.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "reminders_failed");
+    } finally {
+      setReminderBusy(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -106,6 +217,87 @@ export default function AdminMerkezPage() {
           </div>
         ) : null}
 
+        {healthError ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            Sistem sağlığı yüklenemedi: {healthError}
+          </div>
+        ) : null}
+
+        {systemHealth ? (
+          <section className="mt-6 rounded-xl border border-paper-200 bg-white p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-paper-900">Sistem sağlığı</h2>
+                <p className="mt-1 text-xs text-paper-800/55">
+                  DB, migration, runtime ve konfigürasyon kontrolleri. Son kontrol:{" "}
+                  {new Date(systemHealth.generatedAt).toLocaleString("tr-TR")}
+                </p>
+              </div>
+              <span
+                className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${healthClass(systemHealth.status)}`}
+              >
+                {healthLabel(systemHealth.status)}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs text-paper-800/55">Runtime</div>
+                <div className="mt-1 text-sm font-semibold text-paper-900">
+                  {systemHealth.runtime.nodeEnv} · {systemHealth.runtime.nodeVersion}
+                </div>
+                <div className="mt-1 text-xs text-paper-800/55">
+                  Uptime {uptimeLabel(systemHealth.runtime.uptimeSeconds)}
+                </div>
+              </div>
+              <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs text-paper-800/55">Bellek</div>
+                <div className="mt-1 text-sm font-semibold text-paper-900">
+                  RSS {systemHealth.runtime.memory.rssMb} MB
+                </div>
+                <div className="mt-1 text-xs text-paper-800/55">
+                  Heap {systemHealth.runtime.memory.heapUsedMb}/{systemHealth.runtime.memory.heapTotalMb} MB
+                </div>
+              </div>
+              <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs text-paper-800/55">Kontrol sayısı</div>
+                <div className="mt-1 text-sm font-semibold text-paper-900">{systemHealth.checks.length} sinyal</div>
+                <div className="mt-1 text-xs text-paper-800/55">Admin-only görünürlük</div>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              {systemHealth.checks.map((check) => (
+                <div key={check.name} className={`rounded-xl border p-3 ${healthClass(check.status)}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide">{check.name}</div>
+                    <div className="text-[11px] font-semibold">{healthLabel(check.status)}</div>
+                  </div>
+                  <p className="mt-1 text-xs opacity-80">{checkHint(check)}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="mt-6 rounded-xl border border-paper-200 bg-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-paper-900">Otomatik ders hatırlatmaları</h2>
+              <p className="mt-1 text-xs text-paper-800/55">
+                Yaklaşan birebir ve kurs dersleri için 24 saat / 2 saat kala bildirim üretir.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={reminderBusy}
+              onClick={() => void runReminders()}
+              className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {reminderBusy ? "Çalışıyor…" : "Hatırlatmaları üret"}
+            </button>
+          </div>
+          {reminderResult ? <p className="mt-3 text-xs font-medium text-brand-800">{reminderResult}</p> : null}
+        </section>
+
         {c ? (
           <section className="mt-8">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-paper-800/55">
@@ -119,6 +311,18 @@ export default function AdminMerkezPage() {
                 ["Ödeme bekliyor", c.pendingBankPayments + c.pendingSubscriptionPayments, "Havale + abonelik", "/admin/payments"],
                 ["Okunmamış bildirim", c.parentNotificationsUnread, "Veli/öğrenci in-app", "/admin/veri?k=notifications"],
                 ["Açık ödev", c.homeworkPostsActive, "Ödev/soru operasyonu", "/admin/homework"],
+                ["Kalite kuyruğu", c.homeworkQualityQueue, "Cevap revizyonları", "/admin/veri?k=homework"],
+                ["Açık destek", c.openSupportThreads, "SLA takibi", "/admin/support"],
+                ["Sınıf notu", c.classroomNoteCount, "Tahta kayıtları", "/admin/veri?k=classroom"],
+                ["Sınıf kaydı", c.classroomRecordingCount, "Tekrar izleme arşivi", "/admin/veri?k=recordings"],
+                ["Sınıf mesajı", c.classroomMessageCount, "Soru/cevap akışı", "/admin/veri?k=messages"],
+                ["Çalışma planı", c.activeStudyPlans, `7g deneme: ${c.recentAssessmentAttempts}`, "/admin/veri?k=learning"],
+                [
+                  "Veli daveti",
+                  c.guardianInvitesActive,
+                  `Kabul: ${c.guardianInvitesAccepted} · Süresi dolan: ${c.guardianInvitesExpired}`,
+                  "/admin/veri?k=guardian-invites",
+                ],
               ].map(([label, value, hint, href]) => (
                 <Link
                   key={String(label)}

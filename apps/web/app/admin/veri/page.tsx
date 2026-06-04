@@ -38,6 +38,36 @@ const DATASETS: Record<string, Cfg> = {
     path: "/api/admin/parent-notifications",
     arrayKey: "notifications",
   },
+  "guardian-invites": {
+    title: "Veli davet kodları",
+    path: "/api/admin/guardian-invites",
+    arrayKey: "invites",
+  },
+  classroom: {
+    title: "Sınıf notları ve tahta kayıtları",
+    path: "/api/admin/classroom-notes",
+    arrayKey: "notes",
+  },
+  recordings: {
+    title: "Sınıf kayıtları ve tekrar izleme",
+    path: "/api/admin/classroom-recordings",
+    arrayKey: "recordings",
+  },
+  messages: {
+    title: "Sınıf sohbet ve soru mesajları",
+    path: "/api/admin/classroom-messages",
+    arrayKey: "messages",
+  },
+  learning: {
+    title: "Çalışma planı ve deneme kayıtları",
+    path: "/api/admin/learning",
+    arrayKey: "rows",
+  },
+  homework: {
+    title: "Soru kalite kuyruğu",
+    path: "/api/admin/homework-quality",
+    arrayKey: "posts",
+  },
 };
 
 export default function AdminVeriPage() {
@@ -66,6 +96,7 @@ function AdminVeriInner() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const limit = 40;
 
@@ -102,6 +133,33 @@ function AdminVeriInner() {
   }, [key]);
 
   if (!token) return null;
+
+  async function markHomeworkQuality(id: string, qualityStatus: "accepted" | "revision_requested" | "flagged") {
+    if (!token) return;
+    setActionBusy(`${id}:${qualityStatus}`);
+    setError(null);
+    try {
+      await apiFetch(`/api/admin/homework-quality/${id}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({
+          qualityStatus,
+          qualityScore: qualityStatus === "accepted" ? 5 : null,
+          note:
+            qualityStatus === "accepted"
+              ? "Admin kalite kontrolünden geçti."
+              : qualityStatus === "revision_requested"
+                ? "Admin revizyon istedi."
+                : "Admin inceleme için işaretledi.",
+        }),
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "aksiyon başarısız");
+    } finally {
+      setActionBusy(null);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -170,6 +228,7 @@ function AdminVeriInner() {
                       {col}
                     </th>
                   ))}
+                  {key === "homework" ? <th className="whitespace-nowrap px-2 py-2">Aksiyon</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -180,6 +239,26 @@ function AdminVeriInner() {
                         {formatCell(row[col])}
                       </td>
                     ))}
+                    {key === "homework" ? (
+                      <td className="whitespace-nowrap px-2 py-1.5">
+                        <div className="flex flex-wrap gap-1">
+                          {(["accepted", "revision_requested", "flagged"] as const).map((status) => {
+                            const id = typeof row.id === "string" ? row.id : "";
+                            return (
+                              <button
+                                key={status}
+                                type="button"
+                                disabled={!id || actionBusy === `${id}:${status}`}
+                                onClick={() => void markHomeworkQuality(id, status)}
+                                className="rounded border border-paper-200 bg-white px-2 py-1 text-[11px] font-medium text-paper-900 disabled:opacity-40"
+                              >
+                                {actionBusy === `${id}:${status}` ? "…" : status}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../../../../lib/api";
@@ -83,6 +83,53 @@ export default function StudentCohortSessionsPage() {
     });
   }, [token, courseId, cohortId, load, router, pathname]);
 
+  const stats = useMemo(() => {
+    const planned = sessions.filter((session) => session.scheduled_start).length;
+    const ready = sessions.filter((session) => session.meeting_url).length;
+    return { planned, ready, waiting: Math.max(0, sessions.length - planned) };
+  }, [sessions]);
+
+  const nextSession = useMemo(
+    () =>
+      sessions
+        .filter((session) => session.scheduled_start)
+        .sort(
+          (a, b) =>
+            new Date(a.scheduled_start ?? 0).getTime() -
+            new Date(b.scheduled_start ?? 0).getTime(),
+        )[0] ?? sessions[0] ?? null,
+    [sessions],
+  );
+
+  const nextAction =
+    sessions.length === 0
+      ? {
+          title: "Öğretmen oturum planını hazırlıyor",
+          body: "Dersler eklendiğinde takvim ve sınıf linkleri burada görünecek.",
+          href: "/student/kurslar",
+          label: "Kurslarıma dön",
+        }
+      : nextSession?.meeting_url
+        ? {
+            title: `Sıradaki canlı ders: #${nextSession.session_index}`,
+            body: `${toLocal(nextSession.scheduled_start)} için sınıf linkiniz hazır.`,
+            href: `/classroom/course/${nextSession.id}`,
+            label: "Sınıfa gir",
+          }
+        : nextSession?.scheduled_start
+          ? {
+              title: `Sıradaki ders: #${nextSession.session_index}`,
+              body: `${toLocal(nextSession.scheduled_start)} için planlandı. Sınıf linki öğretmen tarafından paylaşılacak.`,
+              href: "/student/kurslar",
+              label: "Kurslarıma dön",
+            }
+          : {
+              title: "Oturum tarihi bekleniyor",
+              body: "Öğretmen takvimi netleştirdiğinde bildirim alacaksınız.",
+              href: "/student/kurslar",
+              label: "Kurslarıma dön",
+            };
+
   if (!token) return null;
 
   return (
@@ -129,6 +176,37 @@ export default function StudentCohortSessionsPage() {
           </div>
         )}
 
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Kurs ders asistanı</div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+            </div>
+            <Link
+              href={nextAction.href}
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-950 hover:bg-brand-100"
+            >
+              {nextAction.label}
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Planlı oturum</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.planned}</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Sınıf linki hazır</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{stats.ready}</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Tarih bekleyen</div>
+            <div className="mt-1 text-2xl font-semibold text-warm-950">{stats.waiting}</div>
+          </div>
+        </section>
+
         <section className="mt-8">
           <h2 className="text-sm font-semibold text-paper-900">Ders oturumları</h2>
           <p className="mt-1 text-xs text-paper-800/55">
@@ -154,14 +232,22 @@ export default function StudentCohortSessionsPage() {
                     {s.duration_minutes ? ` · ${s.duration_minutes} dk` : ""}
                   </div>
                   {s.meeting_url ? (
-                    <a
-                      href={s.meeting_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-block text-sm font-medium text-blue-700 underline"
-                    >
-                      Toplantıya katıl
-                    </a>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Link
+                        href={`/classroom/course/${s.id}`}
+                        className="inline-block rounded-lg bg-brand-800 px-2.5 py-1.5 text-xs font-medium text-white"
+                      >
+                        Sınıfa gir
+                      </Link>
+                      <a
+                        href={s.meeting_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block text-sm font-medium text-blue-700 underline"
+                      >
+                        Harici link
+                      </a>
+                    </div>
                   ) : (
                     <p className="mt-2 text-xs text-paper-800/55">Toplantı linki henüz yok.</p>
                   )}

@@ -6,10 +6,16 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
 import { assertAdminApiSecret } from "../lib/adminSecret.js";
+import { writeAdminAudit } from "../lib/adminAudit.js";
 
 export const subscriptions = new Hono<{ Variables: AppVariables }>();
 
-subscriptions.get("/plans", async (c) => {
+subscriptions.get("/plans", requireAuth, async (c) => {
+  const role = c.get("userRole");
+  if (role !== "teacher" && role !== "admin") {
+    return c.json({ error: "forbidden_teachers_only" }, 403);
+  }
+
   const r = await pool.query(
     `select code, title, duration_months, price_minor, currency, entitlements_jsonb
      from subscription_plans
@@ -347,6 +353,26 @@ subscriptions.post("/admin/approve-bank-transfer", requireAuth, async (c) => {
         `BANK-${p.id}`,
         p.id,
       ],
+    );
+
+    await writeAdminAudit(
+      {
+        actorUserId: userId,
+        actorRole: role,
+        requestId: c.req.header("x-request-id") ?? null,
+        action: "subscription.bank_transfer.approve",
+        entityType: "subscription_payment",
+        entityId: p.id,
+        reason: "admin_bank_transfer_approval",
+        before: { state: p.state },
+        after: {
+          state: "paid",
+          subscriptionId: sub.rows[0].id,
+          planCode: p.plan_code,
+          amountMinor: p.amount_minor,
+        },
+      },
+      client,
     );
 
     await client.query("commit");

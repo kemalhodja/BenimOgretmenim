@@ -18,6 +18,8 @@ import { admin } from "./routes/admin.js";
 import { paytr } from "./routes/paytr.js";
 import { packages } from "./routes/packages.js";
 import { courses } from "./routes/courses.js";
+import { classroom } from "./routes/classroom.js";
+import { learning } from "./routes/learning.js";
 import { studentPlatform } from "./routes/studentPlatform.js";
 import { userWallet } from "./routes/userWallet.js";
 import { groupLessons } from "./routes/groupLessons.js";
@@ -132,18 +134,23 @@ app.get("/", (c) => {
         "/v1/packages/teacher/mine, /student/mine, GET /:packageId/sessions, POST /:packageId/sessions/:sessionId/schedule",
       courses:
         "/v1/courses (public list), /:id (detail+cohorts), teacher: POST /, GET /mine, PATCH /:id/status, POST /:id/cohorts; student: GET /student/mine, POST /:id/cohorts/:cohortId/enroll",
+      classroom:
+        "/v1/classroom/lesson-sessions/:id, /course-sessions/:id (+ POST /notes) — platform içi canlı oda + tahta/not arşivi",
+      learning:
+        "/v1/learning/content, /overview, /study-plan, /exam-attempts — içerik, deneme ve kişisel çalışma planı",
       studentPlatform:
         "/v1/student-platform/subscription, /homework-posts (mine, view/:id, mark-satisfied, reject-answer, cancel; öğretmen: teacher/feed, teacher/claims, :id/claim|answer), /direct-bookings …",
       wallet: "/v1/wallet/me, GET /v1/wallet/ledger, POST /v1/wallet/topup; PayTR /v1/paytr/wallet-topup-checkout",
       subscriptions:
-        "/v1/subscriptions/plans, /me, POST /purchase; admin: GET /admin/pending-bank-transfers, POST /admin/approve-bank-transfer",
+        "/v1/subscriptions/plans (teacher/admin), /me, POST /purchase; admin: GET /admin/pending-bank-transfers, POST /admin/approve-bank-transfer",
       support:
         "/v1/support/me (GET), POST /me/messages (girişli); POST /guest/session, GET /guest/me, POST /guest/messages (X-Support-Guest-Token; misafir)",
       admin:
-        "/v1/admin/* — overview, users(+role,wallet), teachers(+PATCH verification), courses(+PATCH status), lesson-requests(+PATCH cancel), subscription-payments, group-lesson-requests(+PATCH status), wallet-ledger, homework(+PATCH cancel), direct-bookings(+PATCH cancel), lesson-packages, teacher-subscriptions, wallet-topups, student-sub-payments, course-enrollments, parent-notifications, support-threads(+messages)",
+        "/v1/admin/* — overview, users(+role,wallet), teachers(+PATCH verification), courses(+PATCH status), lesson-requests(+PATCH cancel), subscription-payments, group-lesson-requests(+PATCH status), wallet-ledger, homework(+PATCH cancel), direct-bookings(+PATCH cancel), lesson-packages, teacher-subscriptions, wallet-topups, student-sub-payments, course-enrollments, parent-notifications, guardian-invites, support-threads(+messages), POST /reminders/run",
       paytr:
         "/v1/paytr/checkout, /course-checkout, /student-sub-checkout, /wallet-topup-checkout, /callback",
-      guardians: "/v1/guardians/overview (GET veli), POST /v1/guardians/link (öğrenci)",
+      guardians:
+        "/v1/guardians/overview (GET veli), /invites/mine + POST /invites (öğrenci), POST /accept-invite (veli), POST /link (legacy öğrenci)",
       notifications: "/v1/notifications (GET), PATCH /v1/notifications/:id/read",
     },
   });
@@ -170,6 +177,8 @@ app.route("/v1/lesson-sessions", lessonEvaluations);
 app.route("/v1/lesson-requests", lessonRequests);
 app.route("/v1/packages", packages);
 app.route("/v1/courses", courses);
+app.route("/v1/classroom", classroom);
+app.route("/v1/learning", learning);
 app.route("/v1/student-platform", studentPlatform);
 app.route("/v1/wallet", userWallet);
 app.route("/v1/group-lessons", groupLessons);

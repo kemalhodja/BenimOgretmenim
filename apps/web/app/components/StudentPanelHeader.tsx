@@ -17,6 +17,7 @@ const nav = [
   { href: "/student/panel", label: "Özet" },
   { href: "/student/requests", label: "Talepler" },
   { href: "/student/dersler", label: "Dersler" },
+  { href: "/student/calisma", label: "Çalışma" },
   { href: "/student/kurslar", label: "Kurslar" },
   { href: "/student/odev-sor", label: "Ödev" },
   { href: "/student/dogrudan-dersler", label: "Doğrudan" },

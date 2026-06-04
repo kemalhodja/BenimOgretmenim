@@ -10,9 +10,21 @@ const querySchema = z.object({
   branchId: z.coerce.number().int().positive().optional(),
   cityId: z.coerce.number().int().positive().optional(),
   q: z.string().max(120).optional(),
+  sort: z.enum(["recommended", "rating", "newest", "price_asc", "experience"]).optional().default("recommended"),
+  verifiedOnly: z.preprocess((v) => v === "1" || v === "true", z.boolean()).optional(),
+  hasVideo: z.preprocess((v) => v === "1" || v === "true", z.boolean()).optional(),
+  hasDocs: z.preprocess((v) => v === "1" || v === "true", z.boolean()).optional(),
+  minRating: z.coerce.number().min(1).max(5).optional(),
+  maxHourlyRateMinor: z.coerce.number().int().min(0).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),
 });
+
+const teacherIdsSchema = z
+  .array(z.string().uuid())
+  .min(1)
+  .max(20)
+  .transform((ids) => [...new Set(ids)]);
 
 export const teachersPublic = new Hono();
 
@@ -22,6 +34,12 @@ teachersPublic.get("/", async (c) => {
     branchId: c.req.query("branchId"),
     cityId: c.req.query("cityId"),
     q: c.req.query("q"),
+    sort: c.req.query("sort"),
+    verifiedOnly: c.req.query("verifiedOnly"),
+    hasVideo: c.req.query("hasVideo"),
+    hasDocs: c.req.query("hasDocs"),
+    minRating: c.req.query("minRating"),
+    maxHourlyRateMinor: c.req.query("maxHourlyRateMinor"),
     limit: c.req.query("limit"),
     offset: c.req.query("offset"),
   });
@@ -29,7 +47,18 @@ teachersPublic.get("/", async (c) => {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
 
-  const { branchId, cityId, limit, offset } = parsed.data;
+  const {
+    branchId,
+    cityId,
+    sort,
+    verifiedOnly,
+    hasVideo,
+    hasDocs,
+    minRating,
+    maxHourlyRateMinor,
+    limit,
+    offset,
+  } = parsed.data;
   const qTrim = parsed.data.q?.trim() ?? "";
 
   const params: unknown[] = [];
@@ -46,6 +75,31 @@ teachersPublic.get("/", async (c) => {
   if (cityId !== undefined) {
     where += ` and t.city_id = $${i}`;
     params.push(cityId);
+    i++;
+  }
+  if (verifiedOnly) {
+    where += ` and t.verification_status = 'verified'`;
+  }
+  if (hasVideo) {
+    where += ` and coalesce(trim(t.video_url), '') <> ''`;
+  }
+  if (hasDocs) {
+    where += ` and jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+      and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0`;
+  }
+  if (minRating !== undefined) {
+    where += ` and coalesce(t.rating_avg, 0) >= $${i}`;
+    params.push(minRating);
+    i++;
+  }
+  if (maxHourlyRateMinor !== undefined) {
+    where += ` and exists (
+      select 1 from teacher_branches tbrate
+      where tbrate.teacher_id = t.id
+        and tbrate.hourly_rate_range is not null
+        and lower(tbrate.hourly_rate_range)::int <= $${i}
+    )`;
+    params.push(maxHourlyRateMinor);
     i++;
   }
   let patIdx = 0;
@@ -76,6 +130,17 @@ teachersPublic.get("/", async (c) => {
   const bayesExpr = `(coalesce(t.rating_count,0)::numeric * coalesce(t.rating_avg,0)::numeric + 14.0)
     / (coalesce(t.rating_count,0)::numeric + 4.0)`;
   const verifiedExpr = `(case when t.verification_status = 'verified' then 1 else 0 end)`;
+  const minRateExpr = `(
+    select min(lower(tbrate.hourly_rate_range)::int)
+    from teacher_branches tbrate
+    where tbrate.teacher_id = t.id and tbrate.hourly_rate_range is not null
+  )`;
+  const completedExpr = `(
+    select count(*)::int
+    from lesson_sessions ls
+    join lesson_packages lp on lp.id = ls.package_id
+    where lp.teacher_id = t.id and ls.status = 'completed'
+  )`;
   const qualityExpr = `(
     (case when t.verification_status = 'verified' then 15 else 0 end) +
     (case when t.city_id is not null then 10 else 0 end) +
@@ -91,21 +156,27 @@ teachersPublic.get("/", async (c) => {
     (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
   )`;
 
-  const orderBy =
+  const relevanceOrder =
     qTrim.length > 0
-      ? `order by
+      ? `
       case
         when lower(btrim(u.display_name)) = lower(btrim($${exactIdx}::text)) then 40
         when u.display_name ilike $${prefixIdx} escape '\\' then 30
         when u.display_name ilike $${patIdx} escape '\\' then 20
         when coalesce(t.bio_raw, '') ilike $${patIdx} escape '\\' then 10
         else 0
-      end desc,
-      ${bayesExpr} desc,
-      ${verifiedExpr} desc,
-      ${qualityExpr} desc,
-      t.created_at desc`
-      : `order by ${bayesExpr} desc, ${verifiedExpr} desc, ${qualityExpr} desc, t.created_at desc`;
+      end desc,`
+      : "";
+
+  const sortOrder: Record<typeof sort, string> = {
+    recommended: `${relevanceOrder} ${bayesExpr} desc, ${verifiedExpr} desc, ${qualityExpr} desc, t.created_at desc`,
+    rating: `${relevanceOrder} coalesce(t.rating_avg, 0) desc, coalesce(t.rating_count, 0) desc, ${qualityExpr} desc, t.created_at desc`,
+    newest: `${relevanceOrder} t.created_at desc, ${qualityExpr} desc`,
+    price_asc: `${relevanceOrder} ${minRateExpr} asc nulls last, ${qualityExpr} desc, ${bayesExpr} desc`,
+    experience: `${relevanceOrder} ${completedExpr} desc, ${qualityExpr} desc, ${bayesExpr} desc, t.created_at desc`,
+  };
+
+  const orderBy = `order by ${sortOrder[sort]}`;
 
   const sql = `
     select t.id,
@@ -126,6 +197,20 @@ teachersPublic.get("/", async (c) => {
              and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0
            ) as has_platform_links,
            (select count(*)::int from teacher_branches tb where tb.teacher_id = t.id) as branch_count,
+           ${minRateExpr} as min_hourly_rate_minor,
+           (
+             select max(upper(tbrate.hourly_rate_range)::int)
+             from teacher_branches tbrate
+             where tbrate.teacher_id = t.id and tbrate.hourly_rate_range is not null
+           ) as max_hourly_rate_minor,
+           (
+             select tb.branch_id
+             from teacher_branches tb
+             join branches b on b.id = tb.branch_id
+             where tb.teacher_id = t.id
+             order by tb.is_primary desc, b.name
+             limit 1
+           ) as primary_branch_id,
            (
              select b.name
              from teacher_branches tb
@@ -134,12 +219,7 @@ teachersPublic.get("/", async (c) => {
              order by tb.is_primary desc, b.name
              limit 1
            ) as primary_branch_name,
-           (
-             select count(*)::int
-             from lesson_sessions ls
-             join lesson_packages lp on lp.id = ls.package_id
-             where lp.teacher_id = t.id and ls.status = 'completed'
-           ) as completed_sessions_count,
+           ${completedExpr} as completed_sessions_count,
            t.created_at
     from teachers t
     join users u on u.id = t.user_id
@@ -149,11 +229,106 @@ teachersPublic.get("/", async (c) => {
     limit ${limitPh} offset ${offsetPh}
   `;
 
-  const r = await pool.query(sql, params);
-  return c.json({ teachers: r.rows, limit, offset });
+  const countSql = `
+    select count(*)::int as total
+    from teachers t
+    join users u on u.id = t.user_id
+    left join cities c on c.id = t.city_id
+    ${where}
+  `;
+
+  const [r, total] = await Promise.all([pool.query(sql, params), pool.query(countSql, params.slice(0, -2))]);
+  return c.json({ teachers: r.rows, total: total.rows[0]?.total ?? 0, limit, offset, sort });
 });
 
 const uuidParam = z.string().uuid();
+
+/** Favori/karşılaştırma gibi istemci listelerini güncel özet verisiyle doldurur. */
+teachersPublic.get("/batch", async (c) => {
+  const rawIds = (c.req.query("ids") ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  const parsed = teacherIdsSchema.safeParse(rawIds);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.flatten() }, 400);
+  }
+  const ids = parsed.data;
+
+  const r = await pool.query(
+    `select t.id,
+            u.display_name,
+            t.rating_avg,
+            t.rating_count,
+            t.city_id,
+            c.name as city_name,
+            t.verification_status,
+            (
+              (case when t.verification_status = 'verified' then 15 else 0 end) +
+              (case when t.city_id is not null then 10 else 0 end) +
+              (case when length(trim(coalesce(t.bio_raw, ''))) >= 80 then 20
+                    when length(trim(coalesce(t.bio_raw, ''))) >= 40 then 10
+                    else 0 end) +
+              (case when coalesce(trim(t.video_url), '') <> '' then 15 else 0 end) +
+              (case when exists (select 1 from teacher_branches tbq where tbq.teacher_id = t.id) then 15 else 0 end) +
+              (case when jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+                      and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0 then 10 else 0 end) +
+              (case when jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+                      and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0 then 5 else 0 end) +
+              (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
+            )::int as profile_quality_score,
+            coalesce(trim(t.video_url), '') <> '' as has_video,
+            (
+              jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+              and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0
+            ) as has_exam_docs,
+            (
+              jsonb_typeof(coalesce(t.platform_links_jsonb, '[]'::jsonb)) = 'array'
+              and jsonb_array_length(coalesce(t.platform_links_jsonb, '[]'::jsonb)) > 0
+            ) as has_platform_links,
+            (select count(*)::int from teacher_branches tb where tb.teacher_id = t.id) as branch_count,
+            (
+              select min(lower(tbrate.hourly_rate_range)::int)
+              from teacher_branches tbrate
+              where tbrate.teacher_id = t.id and tbrate.hourly_rate_range is not null
+            ) as min_hourly_rate_minor,
+            (
+              select max(upper(tbrate.hourly_rate_range)::int)
+              from teacher_branches tbrate
+              where tbrate.teacher_id = t.id and tbrate.hourly_rate_range is not null
+            ) as max_hourly_rate_minor,
+            (
+              select tb.branch_id
+              from teacher_branches tb
+              join branches b on b.id = tb.branch_id
+              where tb.teacher_id = t.id
+              order by tb.is_primary desc, b.name
+              limit 1
+            ) as primary_branch_id,
+            (
+              select b.name
+              from teacher_branches tb
+              join branches b on b.id = tb.branch_id
+              where tb.teacher_id = t.id
+              order by tb.is_primary desc, b.name
+              limit 1
+            ) as primary_branch_name,
+            (
+              select count(*)::int
+              from lesson_sessions ls
+              join lesson_packages lp on lp.id = ls.package_id
+              where lp.teacher_id = t.id and ls.status = 'completed'
+            ) as completed_sessions_count,
+            t.created_at
+     from teachers t
+     join users u on u.id = t.user_id
+     left join cities c on c.id = t.city_id
+     where t.id = any($1::uuid[])
+     order by array_position($1::uuid[], t.id)`,
+    [ids],
+  );
+  return c.json({ teachers: r.rows, total: r.rowCount ?? 0 });
+});
 
 /** Genel öğretmen profili (detay) — e-posta dönmez */
 teachersPublic.get("/:teacherId", async (c) => {

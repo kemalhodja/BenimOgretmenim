@@ -42,6 +42,36 @@ const checklistLabels: Record<string, string> = {
   curriculumStarted: "Müfredat planı başlat",
 };
 
+const availabilityPresets = [
+  {
+    label: "Hafta içi akşam",
+    value: {
+      monday: ["19:00-22:00"],
+      tuesday: ["19:00-22:00"],
+      wednesday: ["19:00-22:00"],
+      thursday: ["19:00-22:00"],
+      friday: ["19:00-22:00"],
+    },
+  },
+  {
+    label: "Hafta sonu yoğun",
+    value: {
+      saturday: ["10:00-13:00", "15:00-18:00"],
+      sunday: ["10:00-13:00", "15:00-18:00"],
+    },
+  },
+  {
+    label: "Sınav dönemi",
+    value: {
+      monday: ["18:00-21:00"],
+      wednesday: ["18:00-21:00"],
+      friday: ["18:00-21:00"],
+      saturday: ["09:00-12:00", "14:00-17:00"],
+      sunday: ["09:00-12:00"],
+    },
+  },
+] as const;
+
 export default function TeacherEditPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -637,6 +667,18 @@ export default function TeacherEditPage() {
               <label className="block" data-focus="availability">
                 <div className="mb-1 text-sm font-medium text-paper-800">
                   Müsaitlik (JSON)
+                </div>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {availabilityPresets.map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => setAvailability(JSON.stringify(preset.value, null, 2))}
+                      className="rounded-full border border-paper-200 bg-white px-3 py-1 text-xs font-medium text-paper-900 hover:border-brand-200 hover:bg-brand-50"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
                 </div>
                 <textarea
                   value={availability}

@@ -6,6 +6,7 @@ import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
 import { homeworkPostStatusLabelTr } from "../../lib/homeworkStatusLabel";
+import { prepareHomeworkImage } from "../../lib/homeworkMedia";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 type PoolPost = {
@@ -16,6 +17,13 @@ type PoolPost = {
   help_text: string;
   image_urls_jsonb: unknown;
   audio_url: string | null;
+  grade_level_text?: string | null;
+  target_exam?: string | null;
+  learning_objective?: string | null;
+  urgency_level?: "normal" | "priority" | "urgent";
+  target_answer_minutes?: number;
+  quality_status?: string;
+  resolution_sla_due_at?: string | null;
   student_display_name: string;
 };
 type ClaimPost = PoolPost & {
@@ -25,6 +33,11 @@ type ClaimPost = PoolPost & {
   answered_at: string | null;
   answer_text: string | null;
   answer_image_urls_jsonb: unknown;
+  answer_video_url?: string | null;
+  quality_score?: number | null;
+  revision_requested_at?: string | null;
+  accepted_quality_at?: string | null;
+  moderator_note?: string | null;
 };
 
 function formatRemaining(deadlineIso: string | null): string {
@@ -35,6 +48,18 @@ function formatRemaining(deadlineIso: string | null): string {
   const m = Math.floor(ms / 60_000);
   const s = Math.floor((ms % 60_000) / 1000);
   return `${m} dk ${s} sn`;
+}
+
+function urgencyLabel(level?: string | null): string {
+  if (level === "urgent") return "Acil";
+  if (level === "priority") return "Öncelikli";
+  return "Normal";
+}
+
+function urgencyClass(level?: string | null): string {
+  if (level === "urgent") return "bg-red-50 text-red-800";
+  if (level === "priority") return "bg-amber-50 text-amber-900";
+  return "bg-paper-100 text-paper-800";
 }
 
 export default function OdevHavuzuPage() {
@@ -53,6 +78,7 @@ export default function OdevHavuzuPage() {
   const [answerBusy, setAnswerBusy] = useState<string | null>(null);
   const [returnBusy, setReturnBusy] = useState<string | null>(null);
   const [answerDraft, setAnswerDraft] = useState<Record<string, string>>({});
+  const [answerVideoByPost, setAnswerVideoByPost] = useState<Record<string, string>>({});
   const [answerImagesByPost, setAnswerImagesByPost] = useState<Record<string, string[]>>({});
   const [tick, setTick] = useState(0);
 
@@ -167,13 +193,15 @@ export default function OdevHavuzuPage() {
     setAnswerBusy(id);
     setError(null);
     const imgs = answerImagesByPost[id] ?? [];
+    const video = answerVideoByPost[id]?.trim() ?? "";
     try {
       await apiFetch(`/v1/student-platform/homework-posts/${id}/answer`, {
         method: "POST",
         token,
-        body: JSON.stringify({ answerText: text, answerImageUrls: imgs }),
+        body: JSON.stringify({ answerText: text, answerImageUrls: imgs, answerVideoUrl: video || null }),
       });
       setAnswerDraft((d) => ({ ...d, [id]: "" }));
+      setAnswerVideoByPost((d) => ({ ...d, [id]: "" }));
       setAnswerImagesByPost((d) => {
         const next = { ...d };
         delete next[id];
@@ -283,10 +311,34 @@ export default function OdevHavuzuPage() {
                       {p.topic}{" "}
                       <span className="text-xs text-paper-800/55">· {p.student_display_name}</span>
                     </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                      <span className={`rounded-full px-2 py-0.5 font-medium ${urgencyClass(p.urgency_level)}`}>
+                        {urgencyLabel(p.urgency_level)}
+                      </span>
+                      {p.grade_level_text ? (
+                        <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                          {p.grade_level_text}
+                        </span>
+                      ) : null}
+                      {p.target_exam ? (
+                        <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                          {p.target_exam}
+                        </span>
+                      ) : null}
+                      {p.learning_objective ? (
+                        <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
+                          {p.learning_objective}
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-paper-800">{p.help_text}</p>
                     <div className="mt-1 text-xs text-paper-800/55">
                       {homeworkPostStatusLabelTr(p.status)} ·{" "}
                       {new Date(p.created_at).toLocaleString("tr-TR")}
+                      {p.target_answer_minutes ? ` · SLA: ${p.target_answer_minutes} dk` : ""}
+                    </div>
+                    <div className="mt-2 inline-flex rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                      Kalite: {p.quality_status ?? "not_reviewed"}
                     </div>
                     {Array.isArray(p.image_urls_jsonb) && (p.image_urls_jsonb as string[]).length > 0 && (
                       <ul className="mt-2 text-xs text-blue-700">
@@ -338,10 +390,48 @@ export default function OdevHavuzuPage() {
                   <div className="font-medium text-paper-900">
                     {p.topic} <span className="text-xs text-paper-800/55">· {p.student_display_name}</span>
                   </div>
+                  <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                    <span className={`rounded-full px-2 py-0.5 font-medium ${urgencyClass(p.urgency_level)}`}>
+                      {urgencyLabel(p.urgency_level)}
+                    </span>
+                    {p.grade_level_text ? (
+                      <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                        {p.grade_level_text}
+                      </span>
+                    ) : null}
+                    {p.target_exam ? (
+                      <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                        {p.target_exam}
+                      </span>
+                    ) : null}
+                    {p.learning_objective ? (
+                      <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
+                        {p.learning_objective}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="mt-1 text-xs text-paper-800/55">
                     {homeworkPostStatusLabelTr(p.status)}
                     {p.status === "claimed" && p.resolve_deadline_at ? (
                       <> · Kalan: {formatRemaining(p.resolve_deadline_at)}</>
+                    ) : null}
+                    {p.resolution_sla_due_at ? (
+                      <> · SLA: {formatRemaining(p.resolution_sla_due_at)}</>
+                    ) : null}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+                    <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                      Kalite: {p.quality_status ?? "not_reviewed"}
+                    </span>
+                    {p.quality_score ? (
+                      <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
+                        Puan: {p.quality_score}/5
+                      </span>
+                    ) : null}
+                    {p.revision_requested_at ? (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-950">
+                        Revizyon istendi
+                      </span>
                     ) : null}
                   </div>
                   <p className="mt-2 whitespace-pre-wrap text-paper-800">{p.help_text}</p>
@@ -371,7 +461,21 @@ export default function OdevHavuzuPage() {
                         }
                       />
                       <label className="block text-xs text-paper-800/75">
-                        Cevap görselleri (isteğe, en fazla 4, ~350 KB)
+                        Çözüm videosu URL (isteğe bağlı)
+                        <input
+                          value={answerVideoByPost[p.id] ?? ""}
+                          onChange={(e) =>
+                            setAnswerVideoByPost((d) => ({
+                              ...d,
+                              [p.id]: e.target.value,
+                            }))
+                          }
+                          className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                          placeholder="https://..."
+                        />
+                      </label>
+                      <label className="block text-xs text-paper-800/75">
+                        Cevap görselleri (isteğe, en fazla 4, otomatik sıkıştırılır)
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp"
@@ -380,27 +484,17 @@ export default function OdevHavuzuPage() {
                           onChange={(e) => {
                             const files = Array.from(e.target.files ?? []).slice(0, 4);
                             if (files.length === 0) return;
-                            void Promise.all(
-                              files.map(
-                                (file) =>
-                                  new Promise<string>((resolve, reject) => {
-                                    if (file.size > 350_000) {
-                                      reject(
-                                        new Error("Dosya çok büyük; sıkıştırın veya daha küçük görsel seçin."),
-                                      );
-                                      return;
-                                    }
-                                    const fr = new FileReader();
-                                    fr.onload = () => resolve(String(fr.result ?? ""));
-                                    fr.onerror = () => reject(new Error("okuma"));
-                                    fr.readAsDataURL(file);
-                                  }),
-                              ),
-                            )
-                              .then((urls) => {
+                            const remaining = Math.max(0, 4 - (answerImagesByPost[p.id] ?? []).length);
+                            if (remaining === 0) {
+                              setError("En fazla 4 cevap görseli ekleyebilirsiniz.");
+                              e.target.value = "";
+                              return;
+                            }
+                            void Promise.all(files.slice(0, remaining).map((file) => prepareHomeworkImage(file)))
+                              .then((items) => {
                                 setAnswerImagesByPost((prev) => ({
                                   ...prev,
-                                  [p.id]: [...(prev[p.id] ?? []), ...urls].slice(0, 4),
+                                  [p.id]: [...(prev[p.id] ?? []), ...items.map((item) => item.dataUrl)].slice(0, 4),
                                 }));
                                 setError(null);
                               })
@@ -412,8 +506,8 @@ export default function OdevHavuzuPage() {
                         />
                       </label>
                       {(answerImagesByPost[p.id] ?? []).length > 0 ? (
-                        <p className="text-xs text-paper-800/55">
-                          {answerImagesByPost[p.id]!.length} görsel eklendi.
+                        <div className="text-xs text-paper-800/55">
+                          <span>{answerImagesByPost[p.id]!.length} görsel eklendi.</span>
                           <button
                             type="button"
                             className="ml-2 text-brand-800 underline"
@@ -427,7 +521,15 @@ export default function OdevHavuzuPage() {
                           >
                             Temizle
                           </button>
-                        </p>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            {answerImagesByPost[p.id]!.map((src, idx) => (
+                              <div key={`${p.id}-${idx}`} className="rounded-lg border border-paper-200 bg-paper-50 p-1">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={src} alt={`Cevap önizleme ${idx + 1}`} className="h-24 w-full object-contain" />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       ) : null}
                       <button
                         type="button"

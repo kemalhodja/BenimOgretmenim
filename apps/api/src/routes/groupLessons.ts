@@ -19,6 +19,66 @@ function ceilDiv(a: number, b: number): number {
   return Math.floor((a + b - 1) / b);
 }
 
+type Queryable = Pick<typeof pool, "query">;
+
+function shortTopic(topic: string): string {
+  return topic.length > 96 ? `${topic.slice(0, 93)}...` : topic;
+}
+
+async function notifyGroupParticipants(
+  client: Queryable,
+  opts: {
+    requestId: string;
+    title: string;
+    body: string;
+    payload: Record<string, unknown>;
+  },
+) {
+  await client.query(
+    `insert into parent_notifications (
+       recipient_user_id, student_id, snapshot_id, channel,
+       title, body, payload_jsonb, delivery_status, sent_at
+     )
+     select recipient_user_id, student_id, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
+     from (
+       select st.user_id as recipient_user_id, st.id as student_id
+       from group_lesson_participants p
+       join students st on st.id = p.student_id
+       where p.request_id = $1
+       union
+       select sg.guardian_user_id as recipient_user_id, st.id as student_id
+       from group_lesson_participants p
+       join students st on st.id = p.student_id
+       join student_guardians sg on sg.student_id = st.id
+       where p.request_id = $1
+     ) recipients`,
+    [opts.requestId, opts.title, opts.body, JSON.stringify(opts.payload)],
+  );
+}
+
+async function notifyGroupTeacher(
+  client: Queryable,
+  opts: {
+    teacherId: string;
+    studentId: string;
+    title: string;
+    body: string;
+    payload: Record<string, unknown>;
+  },
+) {
+  await client.query(
+    `insert into parent_notifications (
+       recipient_user_id, student_id, snapshot_id, channel,
+       title, body, payload_jsonb, delivery_status, sent_at
+     )
+     select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
+     from teachers t
+     join users u on u.id = t.user_id
+     where t.id = $1`,
+    [opts.teacherId, opts.studentId, opts.title, opts.body, JSON.stringify(opts.payload)],
+  );
+}
+
 groupLessons.get("/teacher/open", requireAuth, async (c) => {
   const userId = c.get("userId");
   if (c.get("userRole") !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
@@ -57,14 +117,19 @@ groupLessons.post("/:id/teacher-accept", requireAuth, async (c) => {
     const teacherId = tr.rows[0].id as string;
 
     const rr = await client.query(
-      `select id, teacher_id, status
+      `select id, teacher_id, status, topic_text, planned_start
        from group_lesson_requests
        where id = $1
        for update`,
       [requestId],
     );
     if (!rr.rowCount) return c.json({ error: "not_found" }, 404);
-    const row = rr.rows[0] as { teacher_id: string | null; status: string };
+    const row = rr.rows[0] as {
+      teacher_id: string | null;
+      status: string;
+      topic_text: string;
+      planned_start: string;
+    };
 
     if (!["open", "teacher_assigned", "scheduled"].includes(row.status)) {
       await client.query("rollback");
@@ -84,6 +149,12 @@ groupLessons.post("/:id/teacher-accept", requireAuth, async (c) => {
        where id = $1`,
       [requestId, teacherId],
     );
+    await notifyGroupParticipants(client, {
+      requestId,
+      title: "Grup dersine öğretmen atandı",
+      body: `"${shortTopic(row.topic_text)}" grup dersi için öğretmen atandı. Planlanan saat: ${new Date(row.planned_start).toLocaleString("tr-TR")}.`,
+      payload: { kind: "group_lesson_teacher_assigned", groupLessonId: requestId },
+    });
     await client.query("commit");
     return c.json({ ok: true }, 200);
   } catch (e) {
@@ -172,6 +243,38 @@ groupLessons.post("/", requireAuth, async (c) => {
       [requestId, studentId, hold.holdId, String(share)],
     );
 
+    if (teacherId) {
+      await notifyGroupTeacher(client, {
+        teacherId,
+        studentId,
+        title: "Size hedefli grup dersi",
+        body: `"${shortTopic(parsed.data.topic.trim())}" konusu için hedefli bir grup ders talebi oluşturuldu.`,
+        payload: { kind: "group_lesson_targeted", groupLessonId: requestId },
+      });
+    } else {
+      await client.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         )
+         select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
+         from teacher_branches tb
+         join teachers t on t.id = tb.teacher_id
+         join users u on u.id = t.user_id
+         where tb.branch_id = $1
+           and u.role = 'teacher'
+         order by tb.created_at desc nulls last
+         limit 200`,
+        [
+          parsed.data.branchId,
+          studentId,
+          "Yeni grup ders talebi",
+          `"${shortTopic(parsed.data.topic.trim())}" konusu için yeni grup ders talebi var.`,
+          JSON.stringify({ kind: "group_lesson_created", groupLessonId: requestId }),
+        ],
+      );
+    }
+
     await client.query("commit");
     return c.json({ request: reqIns.rows[0], participant: { shareMinor: share } }, 201);
   } catch (e) {
@@ -216,19 +319,26 @@ groupLessons.post("/:id/join", requireAuth, async (c) => {
     const studentId = sr.rows[0].id as string;
 
     const reqRow = await client.query(
-      `select id, status, total_price_minor, planned_start
+      `select id, status, total_price_minor, planned_start, teacher_id, topic_text
        from group_lesson_requests
        where id = $1
        for update`,
       [requestId],
     );
     if (!reqRow.rowCount) return c.json({ error: "not_found" }, 404);
-    const status = reqRow.rows[0].status as string;
+    const request = reqRow.rows[0] as {
+      status: string;
+      total_price_minor: number;
+      planned_start: string;
+      teacher_id: string | null;
+      topic_text: string;
+    };
+    const status = request.status;
     if (!["open", "teacher_assigned", "scheduled"].includes(status)) {
       return c.json({ error: "not_joinable" }, 409);
     }
     // Derse 1 saat kala katılım kapanır (tahsilat penceresi)
-    const plannedStart = new Date(String(reqRow.rows[0].planned_start));
+    const plannedStart = new Date(String(request.planned_start));
     if (!Number.isFinite(plannedStart.getTime())) {
       return c.json({ error: "planned_start_invalid" }, 400);
     }
@@ -251,7 +361,7 @@ groupLessons.post("/:id/join", requireAuth, async (c) => {
     );
     const current = Number(cnt.rows[0].c ?? 0);
     const nAfter = current + 1;
-    const total = Number(reqRow.rows[0].total_price_minor ?? TOTAL_PRICE_MINOR);
+    const total = Number(request.total_price_minor ?? TOTAL_PRICE_MINOR);
     const share = ceilDiv(total, nAfter);
 
     const available = await getWalletAvailableMinor(userId, client);
@@ -277,6 +387,22 @@ groupLessons.post("/:id/join", requireAuth, async (c) => {
       [requestId, studentId, hold.holdId, String(share)],
     );
 
+    await notifyGroupParticipants(client, {
+      requestId,
+      title: "Grup dersine yeni katılım",
+      body: `"${shortTopic(request.topic_text)}" grup dersinde katılımcı sayısı ${nAfter} oldu. Güncel kişi başı tahmini pay: ${(share / 100).toFixed(2)} TL.`,
+      payload: { kind: "group_lesson_joined", groupLessonId: requestId, shareMinor: share, participantCount: nAfter },
+    });
+    if (request.teacher_id) {
+      await notifyGroupTeacher(client, {
+        teacherId: request.teacher_id,
+        studentId,
+        title: "Grup dersine yeni öğrenci katıldı",
+        body: `"${shortTopic(request.topic_text)}" grup dersinde katılımcı sayısı ${nAfter} oldu.`,
+        payload: { kind: "group_lesson_joined_teacher", groupLessonId: requestId, participantCount: nAfter },
+      });
+    }
+
     await client.query("commit");
     return c.json({ ok: true, shareMinor: share }, 201);
   } catch (e) {
@@ -301,14 +427,14 @@ groupLessons.post("/:id/complete", requireAuth, async (c) => {
     await client.query("begin");
 
     const rr = await client.query(
-      `select id, teacher_id, status
+      `select id, teacher_id, status, topic_text
        from group_lesson_requests
        where id = $1
        for update`,
       [requestId],
     );
     if (!rr.rowCount) return c.json({ error: "not_found" }, 404);
-    const row = rr.rows[0] as { teacher_id: string | null; status: string };
+    const row = rr.rows[0] as { teacher_id: string | null; status: string; topic_text: string };
 
     let canComplete = false;
     if (role === "admin") {
@@ -346,6 +472,13 @@ groupLessons.post("/:id/complete", requireAuth, async (c) => {
          )`,
       [requestId],
     );
+
+    await notifyGroupParticipants(client, {
+      requestId,
+      title: "Grup dersi tamamlandı",
+      body: `"${shortTopic(row.topic_text)}" grup dersi tamamlandı. Kalan blokajlar serbest bırakıldı.`,
+      payload: { kind: "group_lesson_completed", groupLessonId: requestId },
+    });
 
     await client.query("commit");
     return c.json({ ok: true });

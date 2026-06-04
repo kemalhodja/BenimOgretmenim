@@ -4,6 +4,14 @@ import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { assertAdminGate } from "../lib/adminGate.js";
+import { writeAdminAudit } from "../lib/adminAudit.js";
+import { runLessonReminderJob } from "../lib/lessonReminders.js";
+import {
+  configurationHealthWarnings,
+  runtimeHealthSnapshot,
+  summarizeSystemHealth,
+  type SystemHealthCheck,
+} from "../lib/systemHealth.js";
 import { registerAdminExtendedRoutes } from "./adminExtended.js";
 
 export const admin = new Hono<{ Variables: AppVariables }>();
@@ -32,6 +40,14 @@ admin.get("/overview", requireAuth, async (c) => {
     unansweredDemoRequests,
     pendingTeacherVerification,
     weakTeacherProfiles,
+    classroomNoteCount,
+    classroomRecordingCount,
+    classroomMessageCount,
+    homeworkQualityQueue,
+    openSupportThreads,
+    activeStudyPlans,
+    recentAssessmentAttempts,
+    guardianInviteStats,
   ] = await Promise.all([
     pool.query(`select role::text as role, count(*)::int as c from users group by role`),
     pool.query(`select count(*)::int as c from teachers`),
@@ -103,6 +119,28 @@ admin.get("/overview", requireAuth, async (c) => {
          (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
        ) < 40`,
     ),
+    pool.query(`select count(*)::int as c from classroom_session_notes`),
+    pool.query(`select count(*)::int as c from recording_assets where status <> 'deleted'`),
+    pool.query(`select count(*)::int as c from classroom_messages where deleted_at is null`),
+    pool.query(
+      `select count(*)::int as c
+       from student_homework_posts
+       where quality_status in ('pending_review', 'revision_requested', 'flagged')`,
+    ),
+    pool.query(`select count(*)::int as c from support_threads where status = 'open'`),
+    pool.query(`select count(*)::int as c from student_study_plans where status = 'active'`),
+    pool.query(
+      `select count(*)::int as c
+       from student_assessment_attempts
+       where created_at >= now() - interval '7 days'`,
+    ),
+    pool.query(
+      `select
+         count(*) filter (where accepted_at is null and expires_at > now())::int as active,
+         count(*) filter (where accepted_at is not null)::int as accepted,
+         count(*) filter (where accepted_at is null and expires_at <= now())::int as expired
+       from guardian_invite_codes`,
+    ).catch(() => ({ rows: [{ active: 0, accepted: 0, expired: 0 }] })),
   ]);
 
   const usersByRole: Record<string, number> = {};
@@ -154,9 +192,141 @@ admin.get("/overview", requireAuth, async (c) => {
       unansweredDemoRequests: (unansweredDemoRequests.rows[0] as { c: number }).c,
       pendingTeacherVerification: (pendingTeacherVerification.rows[0] as { c: number }).c,
       weakTeacherProfiles: (weakTeacherProfiles.rows[0] as { c: number }).c,
+      classroomNoteCount: (classroomNoteCount.rows[0] as { c: number }).c,
+      classroomRecordingCount: (classroomRecordingCount.rows[0] as { c: number }).c,
+      classroomMessageCount: (classroomMessageCount.rows[0] as { c: number }).c,
+      homeworkQualityQueue: (homeworkQualityQueue.rows[0] as { c: number }).c,
+      openSupportThreads: (openSupportThreads.rows[0] as { c: number }).c,
+      activeStudyPlans: (activeStudyPlans.rows[0] as { c: number }).c,
+      recentAssessmentAttempts: (recentAssessmentAttempts.rows[0] as { c: number }).c,
+      guardianInvitesActive: (guardianInviteStats.rows[0] as { active: number }).active,
+      guardianInvitesAccepted: (guardianInviteStats.rows[0] as { accepted: number }).accepted,
+      guardianInvitesExpired: (guardianInviteStats.rows[0] as { expired: number }).expired,
     },
     generatedAt: new Date().toISOString(),
   });
+});
+
+admin.get("/system-health", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+
+  const checks: Array<
+    SystemHealthCheck & {
+      latencyMs?: number;
+      message?: string;
+      metadata?: Record<string, unknown>;
+    }
+  > = [];
+
+  const dbStarted = Date.now();
+  try {
+    const r = await pool.query(
+      `select now() as db_now,
+              current_database() as database_name,
+              current_setting('server_version') as server_version`,
+    );
+    checks.push({
+      name: "database",
+      status: "ok",
+      latencyMs: Date.now() - dbStarted,
+      metadata: r.rows[0] ?? {},
+    });
+  } catch (e) {
+    checks.push({
+      name: "database",
+      status: "down",
+      latencyMs: Date.now() - dbStarted,
+      message: e instanceof Error ? e.message : "database_unavailable",
+    });
+  }
+
+  try {
+    const exists = await pool.query(`select to_regclass('public.schema_migrations') as table_name`);
+    if (!exists.rows[0]?.table_name) {
+      checks.push({
+        name: "migrations",
+        status: "degraded",
+        message: "schema_migrations tablosu bulunamadı.",
+      });
+    } else {
+      const migration = await pool.query(
+        `select count(*)::int as applied_count,
+                max(filename) as latest_migration,
+                max(applied_at) as latest_applied_at
+         from schema_migrations`,
+      );
+      checks.push({
+        name: "migrations",
+        status: "ok",
+        metadata: migration.rows[0] ?? {},
+      });
+    }
+  } catch (e) {
+    checks.push({
+      name: "migrations",
+      status: "degraded",
+      message: e instanceof Error ? e.message : "migration_check_failed",
+    });
+  }
+
+  try {
+    const ops = await pool.query(
+      `select
+         to_regclass('public.admin_audit_events') as audit_table,
+         to_regclass('public.payment_reconciliation_events') as reconciliation_table,
+         to_regclass('public.guardian_invite_codes') as guardian_invites_table`,
+    );
+    const auditReady = !!ops.rows[0]?.audit_table;
+    const reconciliationReady = !!ops.rows[0]?.reconciliation_table;
+    const guardianInvitesReady = !!ops.rows[0]?.guardian_invites_table;
+    const latest = reconciliationReady
+      ? await pool.query(
+          `select created_at, status, merchant_oid
+           from payment_reconciliation_events
+           order by created_at desc
+           limit 1`,
+        )
+      : { rows: [] };
+    checks.push({
+      name: "payment_ops",
+      status: auditReady && reconciliationReady && guardianInvitesReady ? "ok" : "degraded",
+      metadata: {
+        auditReady,
+        reconciliationReady,
+        guardianInvitesReady,
+        latestReconciliation: latest.rows[0] ?? null,
+      },
+    });
+  } catch (e) {
+    checks.push({
+      name: "payment_ops",
+      status: "degraded",
+      message: e instanceof Error ? e.message : "payment_ops_check_failed",
+    });
+  }
+
+  const warnings = configurationHealthWarnings();
+  checks.push({
+    name: "configuration",
+    status: warnings.length ? "degraded" : "ok",
+    metadata: { warnings },
+  });
+
+  const status = summarizeSystemHealth(checks);
+  return c.json({
+    status,
+    generatedAt: new Date().toISOString(),
+    runtime: runtimeHealthSnapshot(),
+    checks,
+  });
+});
+
+admin.post("/reminders/run", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const result = await runLessonReminderJob(pool);
+  return c.json({ ok: true, result });
 });
 
 const usersQuery = z.object({
@@ -220,6 +390,7 @@ admin.get("/users", requireAuth, async (c) => {
 
 const teachersQuery = z.object({
   q: z.string().max(120).optional(),
+  verificationStatus: z.enum(["unverified", "pending", "verified", "rejected", ""]).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).max(10_000).optional(),
 });
@@ -230,12 +401,14 @@ admin.get("/teachers", requireAuth, async (c) => {
 
   const parsed = teachersQuery.safeParse({
     q: c.req.query("q") ?? "",
+    verificationStatus: c.req.query("verificationStatus") ?? "",
     limit: c.req.query("limit") ?? "30",
     offset: c.req.query("offset") ?? "0",
   });
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
   const qTrim = parsed.data.q?.trim() ?? "";
+  const verificationStatus = parsed.data.verificationStatus?.trim() ?? "";
   const lim = parsed.data.limit ?? 30;
   const off = parsed.data.offset ?? 0;
 
@@ -245,6 +418,10 @@ admin.get("/teachers", requireAuth, async (c) => {
     args.push(`%${qTrim}%`);
     args.push(`%${qTrim.toLowerCase()}%`);
     where += ` and (u.display_name ilike $1 or u.email_normalized ilike $2)`;
+  }
+  if (verificationStatus) {
+    args.push(verificationStatus);
+    where += ` and t.verification_status = $${args.length}::teacher_verification_status`;
   }
 
   const countR = await pool.query(
@@ -294,7 +471,10 @@ admin.get("/teachers", requireAuth, async (c) => {
      join users u on u.id = t.user_id
      left join cities ci on ci.id = t.city_id
      where ${where}
-     order by t.created_at desc
+     order by
+       case t.verification_status when 'pending' then 0 when 'unverified' then 1 when 'rejected' then 2 else 3 end,
+       profile_quality_score asc,
+       t.created_at desc
      limit $${limIdx} offset $${offIdx}`,
     args,
   );
@@ -475,6 +655,66 @@ admin.get("/subscription-payments", requireAuth, async (c) => {
   return c.json({ payments: list.rows, total, limit: lim, offset: off });
 });
 
+admin.get("/audit-events", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? "50") || 50));
+  const offset = Math.min(10_000, Math.max(0, Number(c.req.query("offset") ?? "0") || 0));
+  const entityType = c.req.query("entityType")?.trim();
+  const args: unknown[] = [];
+  let where = "true";
+  if (entityType) {
+    args.push(entityType);
+    where += ` and entity_type = $${args.length}`;
+  }
+  const countR = await pool.query(`select count(*)::int as c from admin_audit_events where ${where}`, args);
+  args.push(limit, offset);
+  const li = args.length - 1;
+  const oi = args.length;
+  const rows = await pool.query(
+    `select e.id, e.actor_user_id, e.actor_role, e.request_id, e.action,
+            e.entity_type, e.entity_id, e.reason, e.before_jsonb, e.after_jsonb,
+            e.metadata_jsonb, e.created_at,
+            u.email as actor_email, u.display_name as actor_display_name
+     from admin_audit_events e
+     left join users u on u.id = e.actor_user_id
+     where ${where}
+     order by e.created_at desc
+     limit $${li} offset $${oi}`,
+    args,
+  );
+  return c.json({ events: rows.rows, total: (countR.rows[0] as { c: number }).c, limit, offset });
+});
+
+admin.get("/payment-reconciliation", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? "50") || 50));
+  const offset = Math.min(10_000, Math.max(0, Number(c.req.query("offset") ?? "0") || 0));
+  const status = c.req.query("status")?.trim();
+  const args: unknown[] = [];
+  let where = "true";
+  if (status) {
+    args.push(status);
+    where += ` and status = $${args.length}`;
+  }
+  const countR = await pool.query(`select count(*)::int as c from payment_reconciliation_events where ${where}`, args);
+  args.push(limit, offset);
+  const li = args.length - 1;
+  const oi = args.length;
+  const rows = await pool.query(
+    `select id, provider, merchant_oid, payment_table, payment_id,
+            expected_amount_minor, received_amount_minor, status,
+            details_jsonb, created_at
+     from payment_reconciliation_events
+     where ${where}
+     order by created_at desc
+     limit $${li} offset $${oi}`,
+    args,
+  );
+  return c.json({ events: rows.rows, total: (countR.rows[0] as { c: number }).c, limit, offset });
+});
+
 const patchRoleSchema = z.object({
   role: z.enum(["student", "teacher", "guardian", "admin"]),
 });
@@ -556,8 +796,302 @@ admin.patch("/users/:userId/role", requireAuth, async (c) => {
       userId,
     ]);
 
+    await writeAdminAudit(
+      {
+        actorUserId: actorId,
+        actorRole: c.get("userRole"),
+        requestId: c.req.header("x-request-id") ?? null,
+        action: "user.role.update",
+        entityType: "user",
+        entityId: userId,
+        reason: "admin_role_change",
+        before: { role: row.role },
+        after: { role: newRole },
+      },
+      client,
+    );
+
     await client.query("commit");
     return c.json({ ok: true, userId, role: newRole });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+});
+
+const opsQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(40),
+  offset: z.coerce.number().int().min(0).max(10_000).optional().default(0),
+});
+
+admin.get("/classroom-notes", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const parsed = opsQuery.safeParse({
+    limit: c.req.query("limit"),
+    offset: c.req.query("offset"),
+  });
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  const { limit, offset } = parsed.data;
+  const [rows, total] = await Promise.all([
+    pool.query(
+      `select n.id, n.subject_type, n.subject_id, n.body,
+              n.created_at, u.display_name as author_display_name
+       from classroom_session_notes n
+       left join users u on u.id = n.author_user_id
+       order by n.created_at desc
+       limit $1 offset $2`,
+      [limit, offset],
+    ),
+    pool.query(`select count(*)::int as c from classroom_session_notes`),
+  ]);
+  return c.json({ notes: rows.rows, total: (total.rows[0] as { c: number }).c });
+});
+
+admin.get("/classroom-recordings", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const parsed = opsQuery.safeParse({
+    limit: c.req.query("limit"),
+    offset: c.req.query("offset"),
+  });
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  const { limit, offset } = parsed.data;
+  const [rows, total] = await Promise.all([
+    pool.query(
+      `select ra.id,
+              coalesce(ra.subject_type, 'lesson_session') as subject_type,
+              coalesce(ra.subject_id, cs.lesson_session_id) as subject_id,
+              ra.status::text as status,
+              coalesce(ra.title, 'Ders kaydı') as title,
+              coalesce(ra.public_url, case when ra.storage_bucket = 'external_url' then ra.storage_object_key else null end) as public_url,
+              ra.duration_seconds,
+              ra.bytes::text as bytes,
+              ra.created_at,
+              u.display_name as created_by_display_name
+       from recording_assets ra
+       left join classroom_sessions cs on cs.id = ra.classroom_session_id
+       left join users u on u.id = ra.created_by_user_id
+       order by ra.created_at desc
+       limit $1 offset $2`,
+      [limit, offset],
+    ),
+    pool.query(`select count(*)::int as c from recording_assets`),
+  ]);
+  return c.json({ recordings: rows.rows, total: (total.rows[0] as { c: number }).c });
+});
+
+admin.get("/classroom-messages", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const parsed = opsQuery.safeParse({
+    limit: c.req.query("limit"),
+    offset: c.req.query("offset"),
+  });
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  const { limit, offset } = parsed.data;
+  const [rows, total] = await Promise.all([
+    pool.query(
+      `select id,
+              subject_type,
+              subject_id,
+              author_role,
+              author_display_name,
+              message_type,
+              body,
+              created_at
+       from classroom_messages
+       where deleted_at is null
+       order by created_at desc
+       limit $1 offset $2`,
+      [limit, offset],
+    ),
+    pool.query(`select count(*)::int as c from classroom_messages where deleted_at is null`),
+  ]);
+  return c.json({ messages: rows.rows, total: (total.rows[0] as { c: number }).c });
+});
+
+admin.get("/learning", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const parsed = opsQuery.safeParse({
+    limit: c.req.query("limit"),
+    offset: c.req.query("offset"),
+  });
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  const { limit, offset } = parsed.data;
+  const [rows, total] = await Promise.all([
+    pool.query(
+      `select 'study_plan' as kind, p.id, su.display_name as student_display_name,
+              p.target_exam as title, p.weekly_minutes::text as metric,
+              p.status, p.created_at
+       from student_study_plans p
+       join students s on s.id = p.student_id
+       join users su on su.id = s.user_id
+       union all
+       select 'assessment_attempt' as kind, a.id, su.display_name as student_display_name,
+              a.title, coalesce(a.score_percent::text, '') as metric,
+              'recorded' as status, a.created_at
+       from student_assessment_attempts a
+       join students s on s.id = a.student_id
+       join users su on su.id = s.user_id
+       order by created_at desc
+       limit $1 offset $2`,
+      [limit, offset],
+    ),
+    pool.query(
+      `select (
+         (select count(*) from student_study_plans) +
+         (select count(*) from student_assessment_attempts)
+       )::int as c`,
+    ),
+  ]);
+  return c.json({ rows: rows.rows, total: (total.rows[0] as { c: number }).c });
+});
+
+admin.get("/homework-quality", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const parsed = opsQuery.safeParse({
+    limit: c.req.query("limit"),
+    offset: c.req.query("offset"),
+  });
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  const { limit, offset } = parsed.data;
+  const [rows, total] = await Promise.all([
+    pool.query(
+      `select h.id, h.topic, h.status, h.help_text, h.answer_text, h.answer_video_url,
+              h.grade_level_text, h.target_exam, h.learning_objective, h.urgency_level,
+              h.target_answer_minutes, h.resolution_sla_due_at,
+              h.quality_status, h.quality_score, h.moderator_note,
+              h.revision_requested_at, h.accepted_quality_at, h.created_at,
+              su.display_name as student_display_name,
+              tu.display_name as teacher_display_name
+       from student_homework_posts h
+       join students s on s.id = h.student_id
+       join users su on su.id = s.user_id
+       left join teachers t on t.id = h.claimed_by_teacher_id
+       left join users tu on tu.id = t.user_id
+       where h.quality_status in ('pending_review', 'revision_requested', 'flagged')
+       order by h.updated_at desc
+       limit $1 offset $2`,
+      [limit, offset],
+    ),
+    pool.query(
+      `select count(*)::int as c
+       from student_homework_posts
+       where quality_status in ('pending_review', 'revision_requested', 'flagged')`,
+    ),
+  ]);
+  return c.json({ posts: rows.rows, total: (total.rows[0] as { c: number }).c });
+});
+
+const homeworkQualityPatchSchema = z.object({
+  qualityStatus: z.enum(["not_reviewed", "pending_review", "accepted", "revision_requested", "flagged"]),
+  qualityScore: z.number().int().min(1).max(5).optional().nullable(),
+  note: z.string().max(1000).optional().nullable(),
+});
+
+admin.patch("/homework-quality/:postId", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const postId = c.req.param("postId");
+  if (!z.string().uuid().safeParse(postId).success) return c.json({ error: "invalid_post_id" }, 400);
+  const parsed = homeworkQualityPatchSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const before = await client.query(
+      `select h.quality_status, h.topic, h.student_id, h.claimed_by_teacher_id,
+              su.id as student_user_id, tu.id as teacher_user_id
+       from student_homework_posts h
+       join students s on s.id = h.student_id
+       join users su on su.id = s.user_id
+       left join teachers t on t.id = h.claimed_by_teacher_id
+       left join users tu on tu.id = t.user_id
+       where h.id = $1
+       for update of h`,
+      [postId],
+    );
+    if (!before.rowCount) {
+      await client.query("rollback");
+      return c.json({ error: "not_found" }, 404);
+    }
+    const previous = String(before.rows[0].quality_status ?? "not_reviewed");
+    const status = parsed.data.qualityStatus;
+    const score = parsed.data.qualityScore ?? null;
+    const note = parsed.data.note?.trim() || null;
+    const updated = await client.query(
+      `update student_homework_posts
+       set quality_status = $2,
+           quality_score = $3,
+           moderator_note = $4,
+           accepted_quality_at = case when $2 = 'accepted' then coalesce(accepted_quality_at, now()) else accepted_quality_at end,
+           revision_requested_at = case when $2 = 'revision_requested' then now() else revision_requested_at end,
+           updated_at = now()
+       where id = $1
+       returning id, topic, status, quality_status, quality_score, moderator_note, updated_at`,
+      [postId, status, score, note],
+    );
+    await client.query(
+      `insert into homework_quality_reviews (
+         post_id, reviewer_user_id, previous_status, new_status, quality_score, note
+       ) values ($1, $2, $3, $4, $5, $6)`,
+      [postId, c.get("userId"), previous, status, score, note],
+    );
+    const qualityRow = before.rows[0] as {
+      topic: string;
+      student_id: string;
+      student_user_id: string;
+      teacher_user_id: string | null;
+    };
+    const shortTopic = qualityRow.topic.length > 100 ? `${qualityRow.topic.slice(0, 97)}…` : qualityRow.topic;
+    const payload = JSON.stringify({
+      kind: "homework_quality_review",
+      homeworkPostId: postId,
+      qualityStatus: status,
+      qualityScore: score,
+    });
+    const studentTitle =
+      status === "accepted"
+        ? "Soru çözümü kalite kontrolünden geçti"
+        : status === "revision_requested"
+          ? "Soru çözümü için revizyon istendi"
+          : "Soru çözümü kalite incelemede";
+    await client.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        qualityRow.student_user_id,
+        qualityRow.student_id,
+        studentTitle,
+        note ? `"${shortTopic}" için kalite notu: ${note}` : `"${shortTopic}" için kalite durumu güncellendi.`,
+        payload,
+      ],
+    );
+    if (qualityRow.teacher_user_id) {
+      await client.query(
+        `insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at
+         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+        [
+          qualityRow.teacher_user_id,
+          qualityRow.student_id,
+          status === "accepted" ? "Çözümünüz onaylandı" : "Çözümünüz kalite incelemesinden geçti",
+          note ? `"${shortTopic}" için moderasyon notu: ${note}` : `"${shortTopic}" için kalite durumu güncellendi.`,
+          payload,
+        ],
+      );
+    }
+    await client.query("commit");
+    return c.json({ post: updated.rows[0] });
   } catch (e) {
     await client.query("rollback").catch(() => {});
     throw e;

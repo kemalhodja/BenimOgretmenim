@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   homeworkResolveMinutes,
   homeworkSatisfactionRewardMinor,
+  homeworkTargetMinutesForUrgency,
   releaseExpiredHomeworkClaims,
 } from "./homeworkPosts.js";
 
@@ -79,6 +80,27 @@ describe("homeworkSatisfactionRewardMinor", () => {
   it("floors decimal", () => {
     process.env.HOMEWORK_SATISFACTION_REWARD_MINOR = "1500.7";
     expect(homeworkSatisfactionRewardMinor()).toBe(1500);
+  });
+});
+
+describe("homeworkTargetMinutesForUrgency", () => {
+  afterEach(() => {
+    delete process.env.HOMEWORK_CLAIM_RESOLVE_MINUTES;
+  });
+
+  it("uses configured default duration for normal urgency", () => {
+    process.env.HOMEWORK_CLAIM_RESOLVE_MINUTES = "35";
+    expect(homeworkTargetMinutesForUrgency("normal")).toBe(35);
+  });
+
+  it("uses fixed shorter SLA for priority urgency", () => {
+    process.env.HOMEWORK_CLAIM_RESOLVE_MINUTES = "45";
+    expect(homeworkTargetMinutesForUrgency("priority")).toBe(15);
+  });
+
+  it("uses fixed shortest SLA for urgent questions", () => {
+    process.env.HOMEWORK_CLAIM_RESOLVE_MINUTES = "45";
+    expect(homeworkTargetMinutesForUrgency("urgent")).toBe(10);
   });
 });
 

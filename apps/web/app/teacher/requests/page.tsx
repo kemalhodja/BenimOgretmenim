@@ -21,6 +21,7 @@ type OpenRequest = {
   delivery_mode: string;
   note: string | null;
   created_at: string;
+  is_shortlisted_for_teacher?: boolean;
   offers_count: number;
 };
 
@@ -148,7 +149,30 @@ export default function TeacherRequestsPage() {
     }
   }
 
+  function prepareMessageForRequest(request: OpenRequest) {
+    const branch = request.branch_name ?? "bu ders";
+    if (request.request_kind === "demo") {
+      setMessage(
+        `Merhaba, ${branch} için 30 dakikalık demo derste seviyenizi ve hedefinizi hızlıca analiz edip size uygun çalışma planını çıkarabiliriz.`,
+      );
+      return;
+    }
+    if (request.is_shortlisted_for_teacher) {
+      setMessage(
+        `Merhaba, beni kısa listenize aldığınız için teşekkür ederim. ${branch} konusunda hedefinize göre ilk derste seviye analizi, eksik konu haritası ve haftalık çalışma planı oluşturabiliriz.`,
+      );
+      return;
+    }
+    setMessage(
+      `Merhaba, ${branch} talebiniz için yardımcı olabilirim. İlk derste hedefinizi netleştirip konu anlatımı, soru çözümü ve takip planını birlikte oluşturabiliriz.`,
+    );
+  }
+
   if (!token) return null;
+
+  const demoCount = open.filter((request) => request.request_kind === "demo").length;
+  const shortlistedCount = open.filter((request) => request.is_shortlisted_for_teacher).length;
+  const regularCount = open.length - demoCount;
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -169,6 +193,24 @@ export default function TeacherRequestsPage() {
             {error ?? ok}
           </div>
         )}
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Toplam açık talep</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{open.length}</div>
+            <div className="mt-1 text-xs text-paper-800/55">Filtreye göre canlı liste</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Size özel demo</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{demoCount}</div>
+            <div className="mt-1 text-xs text-brand-900/70">Hızlı yanıt öncelikli</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Kısa liste sinyali</div>
+            <div className="mt-1 text-2xl font-semibold text-warm-950">{shortlistedCount}</div>
+            <div className="mt-1 text-xs text-warm-900/70">Normal talep: {regularCount}</div>
+          </div>
+        </section>
 
         <div className="mt-6 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -241,6 +283,11 @@ export default function TeacherRequestsPage() {
                         Size özel demo ders talebi
                       </div>
                     )}
+                    {r.is_shortlisted_for_teacher && r.request_kind !== "demo" && (
+                      <div className="mt-2 inline-flex rounded-full bg-warm-50 px-2 py-0.5 text-xs font-medium text-warm-900">
+                        Öğrencinin kısa listesinde varsınız
+                      </div>
+                    )}
                     {r.offers_count > 0 && (
                       <Link
                         href={`/teacher/requests/${r.id}`}
@@ -258,16 +305,25 @@ export default function TeacherRequestsPage() {
                       </div>
                     )}
                     {r.note && (
-                      <div className="mt-2 text-sm text-paper-800">{r.note}</div>
+                      <div className="mt-2 whitespace-pre-wrap text-sm text-paper-800">{r.note}</div>
                     )}
                   </div>
-                  <button
-                    onClick={() => sendOffer(r.id)}
-                    disabled={sendingFor === r.id}
-                    className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-                  >
-                    {sendingFor === r.id ? "Gönderiliyor..." : "Teklif gönder"}
-                  </button>
+                  <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                    <button
+                      type="button"
+                      onClick={() => prepareMessageForRequest(r)}
+                      className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
+                    >
+                      Mesajı hazırla
+                    </button>
+                    <button
+                      onClick={() => sendOffer(r.id)}
+                      disabled={sendingFor === r.id}
+                      className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    >
+                      {sendingFor === r.id ? "Gönderiliyor..." : "Teklif gönder"}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))

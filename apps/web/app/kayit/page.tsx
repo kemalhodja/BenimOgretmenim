@@ -13,9 +13,9 @@ type RegResponse = {
 };
 
 function defaultDestForRole(role: string): string {
-  if (role === "teacher") return "/teacher";
-  if (role === "student") return "/student/panel";
-  if (role === "guardian") return "/guardian";
+  if (role === "teacher") return "/teacher?onboarding=1";
+  if (role === "student") return "/student/panel?onboarding=1";
+  if (role === "guardian") return "/guardian?onboarding=1";
   return "/";
 }
 
@@ -43,11 +43,12 @@ function parseRegisterApiError(err: unknown): { message: string; emailTaken: boo
 function KayitForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const initialRole = searchParams.get("role");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<"student" | "teacher" | "guardian">(
-    "student",
+    initialRole === "teacher" || initialRole === "guardian" ? initialRole : "student",
   );
   const [error, setError] = useState<string | null>(null);
   const [emailTaken, setEmailTaken] = useState(false);
@@ -61,6 +62,12 @@ function KayitForm() {
   );
 
   const loginHref = returnUrl ? loginHrefWithReturn(returnUrl) : "/login";
+  const roleHint =
+    role === "teacher"
+      ? "Öğretmen hesabı ile profilinizi tamamlayıp teklif ve ders akışlarına katılabilirsiniz."
+      : role === "guardian"
+        ? "Veli hesabı ile öğrencinizin ders, çalışma ve bildirim özetlerini takip edebilirsiniz."
+        : "Öğrenci hesabı ile öğretmen arayabilir, soru sorabilir ve çalışma planı oluşturabilirsiniz.";
 
   const canSubmit = useMemo(
     () =>
@@ -104,6 +111,9 @@ function KayitForm() {
         <div className="mb-6">
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Kayıt ol</h1>
           <p className="mt-1 text-sm text-paper-800/75">Öğrenci, öğretmen veya veli hesabı</p>
+          <p className="mt-2 rounded-xl bg-brand-50 px-3 py-2 text-xs font-medium text-brand-900">
+            {roleHint}
+          </p>
           <p className="mt-3 text-sm text-paper-800/85">
             Zaten hesabınız var mı?{" "}
             <Link href={loginHref} className="font-medium text-brand-800 underline">

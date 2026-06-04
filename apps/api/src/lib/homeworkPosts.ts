@@ -13,6 +13,14 @@ export function homeworkSatisfactionRewardMinor(): number {
   return Math.floor(n);
 }
 
+export type HomeworkUrgencyLevel = "normal" | "priority" | "urgent";
+
+export function homeworkTargetMinutesForUrgency(urgency: HomeworkUrgencyLevel): number {
+  if (urgency === "urgent") return 10;
+  if (urgency === "priority") return 15;
+  return homeworkResolveMinutes();
+}
+
 /** Süresi dolmuş üstlenmeleri havuza iade eder (answered değilse). */
 export async function releaseExpiredHomeworkClaims(db: Pool | PoolClient): Promise<number> {
   const r = await db.query(

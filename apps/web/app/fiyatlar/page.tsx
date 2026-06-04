@@ -1,76 +1,74 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { headers } from "next/headers";
-import { AuthEntryLink } from "../components/AuthEntryLink";
-import { RegisterNavLink } from "../components/AuthNavLinks";
-import { getServerApiBaseUrl } from "../lib/api";
-import { makeRequestId } from "../lib/requestId";
 import { publicSiteUrl } from "../lib/siteUrl";
+import { RoleBasedPricing } from "./RoleBasedPricing";
 
 const fiyatlarUrl = `${publicSiteUrl()}/fiyatlar`;
 
 export const metadata: Metadata = {
-  title: "Abonelik fiyatları",
-  description: "Öğretmen abonelik planları, öğrenci demo ders akışı ve güncel fiyatlar.",
+  title: "Fiyatlandırma ve kullanım akışları",
+  description: "Öğrenci, öğretmen ve veli için üyelik sonrası role özel abonelik ve kullanım akışları.",
   alternates: { canonical: fiyatlarUrl },
   openGraph: {
-    title: "Abonelik fiyatları · BenimÖğretmenim",
-    description: "Demo ders, öğretmen aboneliği, plan süreleri ve ödeme seçenekleri.",
+    title: "Fiyatlandırma ve kullanım akışları · BenimÖğretmenim",
+    description: "Fiyatlar üyelikten sonra ilgili kullanıcı rolüne göre panel içinde gösterilir.",
     url: fiyatlarUrl,
     locale: "tr_TR",
     type: "website",
   },
 };
 
-type PlanRow = {
-  code: string;
-  title: string;
-  duration_months: number;
-  price_minor: number;
-  currency: string;
-};
+const audiencePlans = [
+  {
+    title: "Öğrenci",
+    price: "Fiyat öğrenci panelinde görünür",
+    body: "Öğretmen arama, teklif karşılaştırma, soru çözüm havuzu, çalışma planı ve canlı sınıf akışları öğrenci panelinde birleşir.",
+    href: "/kayit?role=student",
+    cta: "Öğrenci hesabı aç",
+  },
+  {
+    title: "Öğretmen",
+    price: "Planlar öğretmen panelinde görünür",
+    body: "Profil görünürlüğü, teklif verme, doğrudan ders, grup/kurs akışları ve soru çözüm havuzu ile gelir kanalı oluşturun.",
+    href: "/kayit?role=teacher",
+    cta: "Öğretmen olarak başvur",
+  },
+  {
+    title: "Veli",
+    price: "Takip hesabı",
+    body: "Öğrencinin ders bildirimleri, çalışma planı ilerlemesi, deneme ortalaması ve canlı sınıf linklerini takip edin.",
+    href: "/kayit?role=guardian",
+    cta: "Veli hesabı aç",
+  },
+] as const;
 
-function minorToTl(n: number): string {
-  return (n / 100).toFixed(2);
-}
-
-export default async function FiyatlarPage() {
-  const api = getServerApiBaseUrl();
-
-  let plans: PlanRow[] = [];
-  let loadError: string | null = null;
-  try {
-    const h = await headers();
-    const incomingRid = h.get("x-request-id")?.trim();
-    const requestId = incomingRid && incomingRid.length > 0 ? incomingRid : makeRequestId();
-
-    const res = await fetch(`${api}/v1/subscriptions/plans`, {
-      headers: {
-        accept: "application/json",
-        "x-request-id": requestId,
-      },
-      next: { revalidate: 300 },
-    });
-    if (!res.ok) {
-      loadError = `Planlar yüklenemedi (${res.status})`;
-    } else {
-      const body = (await res.json()) as { plans?: PlanRow[] };
-      plans = body.plans ?? [];
-    }
-  } catch {
-    loadError = "Planlar yüklenemedi. Sayfayı yenileyin veya öğretmen panelinden deneyin.";
-  }
-
+export default function FiyatlarPage() {
   return (
     <div className="min-h-screen bg-paper-50">
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
         <h1 className="text-3xl font-semibold tracking-tight text-paper-900">
-          Abonelik fiyatları
+          Fiyatlandırma ve kullanım akışları
         </h1>
         <p className="mt-2 max-w-xl text-sm text-paper-800/75">
-          Öğrenciler öğretmen profillerinden demo ders talebi gönderebilir. Öğretmenler için ücretsiz
-          planda sınırlı teklif; abonelikte sınırsız görünürlük ve teklif akışı vardır.
+          Öğrenci, öğretmen ve veli için akışlar ayrıdır; abonelik tutarları sadece giriş yapmış ilgili kullanıcıya
+          kendi panelinde gösterilir.
         </p>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {audiencePlans.map((plan) => (
+            <div key={plan.title} className="rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-paper-900">{plan.title}</h2>
+              <p className="mt-1 text-sm font-medium text-brand-900">{plan.price}</p>
+              <p className="mt-3 text-sm leading-relaxed text-paper-800/75">{plan.body}</p>
+              <Link
+                href={plan.href}
+                className="mt-4 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+              >
+                {plan.cta}
+              </Link>
+            </div>
+          ))}
+        </div>
 
         <div className="mt-8 rounded-xl border border-brand-200 bg-brand-50 p-5">
           <h2 className="text-base font-semibold text-brand-950">Öğrenci için demo ders akışı</h2>
@@ -94,49 +92,24 @@ export default async function FiyatlarPage() {
           </div>
         </div>
 
-        {loadError && (
-          <div className="mt-8 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            {loadError}
-          </div>
-        )}
-
-        {!loadError && plans.length === 0 && (
-          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-6 text-sm text-paper-800/75">
-            Şu an listelenecek aktif plan yok.
-          </div>
-        )}
-
-        <ul className="mt-8 space-y-3">
-          {plans.map((p) => (
-            <li
-              key={p.code}
-              className="rounded-xl border border-paper-200 bg-white p-5"
-            >
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
-                <div>
-                  <div className="text-lg font-semibold text-paper-900">{p.title}</div>
-                  <div className="mt-1 text-sm text-paper-800/55">
-                    {p.duration_months} ay · {p.code}
-                  </div>
-                </div>
-                <div className="text-xl font-semibold text-brand-800">
-                  {minorToTl(p.price_minor)} {p.currency}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <RoleBasedPricing />
 
         <div className="mt-10 flex flex-wrap items-center gap-3">
-          <RegisterNavLink className="rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900">
+          <Link href="/kayit?role=teacher" className="rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900">
             Öğretmen kaydı
-          </RegisterNavLink>
-          <AuthEntryLink
-            path="/teacher"
+          </Link>
+          <Link
+            href="/ogretmenler?verifiedOnly=1&sort=recommended"
+            className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm font-medium text-brand-900 hover:bg-brand-100"
+          >
+            Doğrulanmış öğretmenleri gör
+          </Link>
+          <Link
+            href="/teacher"
             className="rounded-xl border border-paper-300 bg-white px-4 py-2.5 text-sm font-medium text-paper-900 hover:bg-paper-50"
           >
             Öğretmen paneli
-          </AuthEntryLink>
+          </Link>
           <Link href="/" className="text-sm font-medium text-paper-800/65 underline-offset-4 hover:text-paper-900">
             Ana sayfa
           </Link>

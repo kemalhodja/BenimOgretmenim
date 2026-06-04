@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
@@ -111,6 +111,48 @@ export default function TeacherDogrudanDerslerPage() {
     }
   }
 
+  const stats = useMemo(() => {
+    const pending = rows.filter((b) => b.status === "pending_funding").length;
+    const funded = rows.filter((b) => b.status === "funded").length;
+    const completed = rows.filter((b) => b.status === "completed").length;
+    const payoutMinor = rows.reduce((sum, b) => sum + Number(b.teacher_payout_minor ?? 0), 0);
+    return { pending, funded, completed, payoutMinor };
+  }, [rows]);
+
+  const priorityBooking =
+    rows.find((b) => b.status === "funded") ??
+    rows.find((b) => b.status === "pending_funding") ??
+    rows[0] ??
+    null;
+  const nextAction =
+    rows.length === 0
+      ? {
+          title: "Henüz doğrudan anlaşma yok",
+          body: "Öğrenciler öğretmen profilinizden doğrudan ders başlattığında burada ödeme ve hak ediş akışını izleyeceksiniz.",
+          href: "/teacher/edit",
+          label: "Profili güçlendir",
+        }
+      : priorityBooking?.status === "funded"
+        ? {
+            title: "Tamamlanmayı bekleyen ders var",
+            body: `${priorityBooking.student_display_name ?? "Öğrenci"} ödemeyi yaptı. Dersi verdikten sonra tamamlayarak hak edişi cüzdanınıza aktarın.`,
+            href: "/teacher/cuzdan",
+            label: "Cüzdanı aç",
+          }
+        : priorityBooking?.status === "pending_funding"
+          ? {
+              title: "Öğrenci ödemesi bekleniyor",
+              body: "Ödeme tamamlandığında bu anlaşma tamamlanabilir duruma geçer.",
+              href: "/teacher",
+              label: "Panele dön",
+            }
+          : {
+              title: "Doğrudan anlaşmalar güncel",
+              body: "Tamamlanan hak edişler cüzdanınıza yansır; yeni anlaşmalar için profil görünürlüğünüzü koruyun.",
+              href: "/teacher/cuzdan",
+              label: "Cüzdanı aç",
+            };
+
   if (!token) return null;
 
   return (
@@ -138,6 +180,41 @@ export default function TeacherDogrudanDerslerPage() {
             {ok}
           </div>
         )}
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Hak ediş asistanı</div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+            </div>
+            <Link
+              href={nextAction.href}
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-950 hover:bg-brand-100"
+            >
+              {nextAction.label}
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Ödeme bekleyen</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.pending}</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Tamamlanacak</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{stats.funded}</div>
+          </div>
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Tamamlanan</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.completed}</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Hak ediş</div>
+            <div className="mt-1 text-sm font-semibold text-warm-950">{minorToTl(stats.payoutMinor)} TL</div>
+          </div>
+        </section>
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (

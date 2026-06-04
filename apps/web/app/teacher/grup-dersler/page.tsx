@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
@@ -122,6 +122,36 @@ export default function TeacherGroupLessonsPage() {
     }
   }
 
+  const stats = useMemo(() => {
+    const open = rows.filter((r) => r.status === "open").length;
+    const assigned = rows.filter((r) => r.status === "teacher_assigned" || r.teacher_id).length;
+    const scheduled = rows.filter((r) => r.status === "scheduled").length;
+    const participants = rows.reduce((sum, r) => sum + Math.max(1, Number(r.participants_count ?? 1)), 0);
+    return { open, assigned, scheduled, participants };
+  }, [rows]);
+
+  const nextRow =
+    rows
+      .filter((r) => r.status === "teacher_assigned" || r.teacher_id)
+      .sort((a, b) => new Date(a.planned_start).getTime() - new Date(b.planned_start).getTime())[0] ??
+    rows[0] ??
+    null;
+  const nextAction =
+    rows.length === 0
+      ? {
+          title: "Şu an grup ders ilanı yok",
+          body: "Yeni ilanlar geldiğinde açık, hedefli veya atanmış olarak burada görünecek.",
+        }
+      : nextRow?.teacher_id
+        ? {
+            title: "Atanmış grup dersinizi takip edin",
+            body: `${nextRow.topic_text} · ${toLocal(nextRow.planned_start)}. Ders bitince tamamlayarak blokaj akışını kapatın.`,
+          }
+        : {
+            title: "Kabul edilebilir grup dersleri var",
+            body: "Size uygun açık ilanları kabul ederek öğrenci grubuna öğretmen olarak atanabilirsiniz.",
+          };
+
   if (!token) return null;
 
   return (
@@ -146,6 +176,33 @@ export default function TeacherGroupLessonsPage() {
             {error ?? ok}
           </div>
         )}
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Grup ders operasyonu</div>
+            <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
+            <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-4">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Açık ilan</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.open}</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Atanmış</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{stats.assigned}</div>
+          </div>
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Planlı</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.scheduled}</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Katılımcı</div>
+            <div className="mt-1 text-2xl font-semibold text-warm-950">{stats.participants}</div>
+          </div>
+        </section>
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (

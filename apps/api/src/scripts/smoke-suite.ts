@@ -131,13 +131,29 @@ async function main() {
     });
   }
 
+  let firstTeacherId: string | undefined;
   await step("teachers_list", async () => {
     const r = await reqJson("/v1/teachers?limit=5");
     console.log("[smoke:suite] /v1/teachers", r.status);
     assert("teachers_ok", r.ok, r.json);
     assert("teachers_array", Array.isArray(r.json.teachers), r.json);
+    firstTeacherId =
+      Array.isArray(r.json.teachers) && typeof (r.json.teachers[0] as { id?: unknown } | undefined)?.id === "string"
+        ? (r.json.teachers[0] as { id: string }).id
+        : undefined;
     return r;
   });
+
+  const teacherIdForBatch = firstTeacherId;
+  if (teacherIdForBatch) {
+    await step("teachers_batch", async () => {
+      const r = await reqJson(`/v1/teachers/batch?ids=${encodeURIComponent(teacherIdForBatch)}`);
+      console.log("[smoke:suite] /v1/teachers/batch", r.status);
+      assert("teachers_batch_ok", r.ok, r.json);
+      assert("teachers_batch_array", Array.isArray(r.json.teachers), r.json);
+      return r;
+    });
+  }
 
   await step("teachers_validation_bad_uuid", async () => {
     const r = await reqJson("/v1/teachers/not-a-uuid");
@@ -153,10 +169,10 @@ async function main() {
     return r;
   });
 
-  await step("subscriptions_plans", async () => {
+  await step("subscriptions_plans_requires_auth", async () => {
     const r = await reqJson("/v1/subscriptions/plans");
     console.log("[smoke:suite] /v1/subscriptions/plans", r.status);
-    assert("plans_ok", r.ok, r.json);
+    assert("plans_401_without_auth", r.status === 401, r.json);
     return r;
   });
 
@@ -231,6 +247,21 @@ async function main() {
     null) as unknown;
   assert("guardian_user_id_string", typeof guardianUserId === "string" && guardianUserId.length > 0, guardianReg);
   const guardianAuth = { Authorization: `Bearer ${guardianToken}` };
+
+  await step("subscriptions_plans_teacher", async () => {
+    const r = await reqJson("/v1/subscriptions/plans", { headers: teacherAuth });
+    console.log("[smoke:suite] /v1/subscriptions/plans (teacher)", r.status);
+    assert("plans_teacher_ok", r.ok, r.json);
+    assert("plans_teacher_array", Array.isArray(r.json.plans), r.json);
+    return r;
+  });
+
+  await step("subscriptions_plans_student_forbidden", async () => {
+    const r = await reqJson("/v1/subscriptions/plans", { headers: studentAuth });
+    console.log("[smoke:suite] /v1/subscriptions/plans (student)", r.status);
+    assert("plans_student_403", r.status === 403, r.json);
+    return r;
+  });
 
   await step("login_teacher", async () => {
     const r = await reqJson("/v1/auth/login", {

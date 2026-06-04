@@ -12,7 +12,7 @@ const HERO_PHOTO =
   "https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=960&q=80";
 
 const HOME_OG_DESCRIPTION =
-  "Özel dersde öğretmen bulun, talep açın, teklifleri karşılaştırın.";
+  "Özel ders öğretmeni bulun, soru gönderin, canlı ders ve çalışma takibini tek panelden yönetin.";
 
 export const metadata: Metadata = {
   alternates: { canonical: `${publicSiteUrl()}/` },
@@ -37,7 +37,74 @@ export const metadata: Metadata = {
   },
 };
 
-const quickSubjects = ["Matematik", "İngilizce", "LGS", "Fizik"] as const;
+const quickSubjects = ["LGS Matematik", "YKS Fizik", "İngilizce konuşma", "İlkokul destek"] as const;
+
+const homeQuickActions = [
+  {
+    title: "Öğretmen ara",
+    body: "Branş, şehir, doğrulama ve puana göre öğretmenleri listeleyin.",
+    href: "/ogretmenler?verifiedOnly=1&sort=recommended",
+  },
+  {
+    title: "Soru / ödev gönder",
+    body: "Fotoğraflı sorunuzu konu, sınav hedefi ve aciliyetle havuza bırakın.",
+    href: "/student/odev-sor",
+  },
+  {
+    title: "Çalışma planı",
+    body: "Haftalık hedefleri, deneme sonuçlarını ve zayıf konuları takip edin.",
+    href: "/student/calisma",
+  },
+  {
+    title: "Öğretmen olun",
+    body: "Profilinizi oluşturun, taleplere teklif verin ve soru havuzuna katılın.",
+    href: "/kayit?role=teacher",
+  },
+] as const;
+
+const platformTracks = [
+  {
+    title: "Öğretmen seçimi",
+    body: "Öğretmenleri doğrulama, deneyim, puan ve ders ücretine göre karşılaştırın.",
+    href: "/student/requests",
+  },
+  {
+    title: "Hızlı soru çözüm",
+    body: "Fotoğraflı sorular konu, sınav hedefi ve aciliyet bilgisiyle doğru öğretmene ulaşır.",
+    href: "/student/odev-sor",
+  },
+  {
+    title: "Canlı ders düzeni",
+    body: "Ders odası, ortak tahta, mesajlar, materyaller ve kayıt linkleri tek yerde kalır.",
+    href: "/student/dersler",
+  },
+  {
+    title: "İlerleme takibi",
+    body: "Haftalık plan, deneme sonuçları, zayıf konu takibi ve veli görünürlüğü birlikte ilerler.",
+    href: "/student/calisma",
+  },
+] as const;
+
+const homeActionCards = [
+  {
+    title: "Öğrenciyim",
+    body: "Öğretmen bul, teklif topla, soru gönder veya çalışma planını takip et.",
+    href: "/kayit?role=student",
+    cta: "Öğrenci hesabı aç",
+  },
+  {
+    title: "Öğretmenim",
+    body: "Profilini güçlendir, taleplere teklif ver, soru havuzundan gelir oluştur.",
+    href: "/kayit?role=teacher",
+    cta: "Öğretmen başvurusu",
+  },
+  {
+    title: "Veliyim",
+    body: "Öğrencinin derslerini, bildirimlerini ve çalışma ilerlemesini takip et.",
+    href: "/kayit?role=guardian",
+    cta: "Veli hesabı aç",
+  },
+] as const;
 
 const homeHighlights: {
   title: string;
@@ -49,6 +116,47 @@ const homeHighlights: {
   { title: "Veli", body: "Özet ve bildirimler", icon: "users" },
   { title: "Ödeme", body: "Kart veya havale", icon: "card" },
 ];
+
+const avantPreviewCards = [
+  { label: "Canlı ders", value: "20:30", hint: "Tahta + kayıt hazır" },
+  { label: "Soru SLA", value: "10 dk", hint: "Acil havuz öncelikli" },
+  { label: "Plan", value: "%72", hint: "Haftalık ilerleme" },
+] as const;
+
+const socialProofStats = [
+  { value: "4 akış", label: "özel ders, soru çözüm, canlı sınıf, çalışma takibi" },
+  { value: "10 dk", label: "acil soru çözüm hedef SLA örneği" },
+  { value: "3 rol", label: "öğrenci, öğretmen ve veli paneli" },
+] as const;
+
+const trustQuotes = [
+  {
+    quote: "Öğretmeni aramak, soru göndermek ve çalışma planını izlemek aynı yerde olmalıydı.",
+    source: "Öğrenci deneyimi",
+  },
+  {
+    quote: "Profil kalitesi, doğrulama ve yanıt hızı görünür olunca doğru öğretmeni seçmek kolaylaşıyor.",
+    source: "Veli güven katmanı",
+  },
+] as const;
+
+const howSteps = [
+  {
+    step: "1",
+    title: "İhtiyacınızı seçin",
+    body: "Öğretmen arayın, soru gönderin veya çalışma planınızı açın.",
+  },
+  {
+    step: "2",
+    title: "Doğru akışa gidin",
+    body: "Öğrenci, öğretmen ve veli hesapları farklı panellere yönlenir.",
+  },
+  {
+    step: "3",
+    title: "Panelden takip edin",
+    body: "Ders, ödeme, bildirim, soru ve ilerleme bilgileri tek yerde kalır.",
+  },
+] as const;
 
 function HighlightIcon({ name }: { name: (typeof homeHighlights)[number]["icon"] }) {
   const cls = "h-4 w-4";
@@ -91,48 +199,103 @@ function HighlightIcon({ name }: { name: (typeof homeHighlights)[number]["icon"]
 
 export default function Home() {
   return (
-    <div className="bg-paper-50">
-      <section className="relative overflow-hidden border-b border-paper-200 bg-white">
+    <div className="bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_28%),radial-gradient(circle_at_88%_12%,rgba(255,122,77,0.14),transparent_30%),linear-gradient(180deg,#f4fafc_0%,#f6fafc_42%,#ffffff_100%)]">
+      <section className="relative overflow-hidden border-b border-white/10 bg-paper-950 text-white">
         <HeroArt />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(115deg,rgba(34,211,238,0.18),transparent_30%),linear-gradient(245deg,rgba(255,122,77,0.18),transparent_32%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.08),transparent_34%)]"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.14)_1px,transparent_1px)] [background-size:36px_36px]"
+          aria-hidden
+        />
         <div className="relative z-0 mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_min(44%,min(440px,100%))] lg:items-center lg:gap-12">
             <div className="max-lg:order-2 lg:order-none">
-          <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-paper-900 sm:text-[2.5rem] sm:leading-[1.12]">
-            Öğretmen bulun, talep açın, teklifleri karşılaştırın
-          </h1>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-paper-800/85">
-            Bir talep yeter: uygun öğretmenler teklif gönderir; siz karşılaştırıp güvenle ödersiniz.
-          </p>
-          <HomeHeroPersonalized />
-          <div className="mt-8">
-            <p className="text-xs font-medium text-paper-800/50">Örnek aramalar</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {quickSubjects.map((label) => (
-                <Link
-                  key={label}
-                  href={`/ogretmenler?q=${encodeURIComponent(label)}`}
-                  className="rounded-full border border-paper-200 bg-white px-3 py-1.5 text-xs font-medium text-paper-800 hover:border-brand-300 hover:bg-brand-50/50"
-                >
-                  {label}
-                </Link>
-              ))}
-            </div>
-          </div>
-          <dl className="mt-10 grid grid-cols-2 gap-3 border-t border-paper-200 pt-10 sm:grid-cols-4 sm:gap-4">
-            {homeHighlights.map((item) => (
-              <div key={item.title} className="rounded-xl border border-paper-200 bg-paper-50/80 p-4">
-                <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-brand-800 ring-1 ring-paper-200">
-                  <HighlightIcon name={item.icon} />
+              <p className="mb-3 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-brand-100 shadow-[0_0_32px_rgba(34,211,238,0.18)] backdrop-blur">
+                Avangard eğitim işletim sistemi
+              </p>
+              <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-white sm:text-[2.7rem] sm:leading-[1.05]">
+                Ders, soru çözüm ve çalışma takibini tek platformda yönetin
+              </h1>
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-white/80">
+                Ne yapacağınızı seçin: öğretmen arayın, soru gönderin, canlı derslerinizi takip edin veya
+                öğrencinizin ilerlemesini görün.
+              </p>
+              <form
+                action="/ogretmenler"
+                className="mt-6 rounded-3xl border border-white/15 bg-white/[0.08] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-100/75">
+                  Hızlı öğretmen arama
                 </div>
-                <dt className="mt-2 text-sm font-semibold text-paper-900">{item.title}</dt>
-                <dd className="mt-1 text-xs leading-relaxed text-paper-800/75">{item.body}</dd>
+                <div className="mt-2 sm:flex sm:items-center sm:gap-2">
+                  <label className="sr-only" htmlFor="home-teacher-search">
+                    Ders veya sınav ara
+                  </label>
+                  <input
+                    id="home-teacher-search"
+                    name="q"
+                    type="search"
+                    placeholder="Örn. LGS matematik, İngilizce konuşma"
+                    className="w-full rounded-2xl border border-white/15 bg-white/95 px-4 py-3 text-sm text-paper-950 outline-none ring-brand-300 placeholder:text-paper-800/50 focus:ring-2"
+                  />
+                  <button
+                    type="submit"
+                    className="mt-2 w-full rounded-2xl bg-gradient-to-r from-brand-300 via-brand-400 to-warm-400 px-5 py-3 text-sm font-bold text-paper-950 shadow-[0_12px_42px_rgba(34,211,238,0.32)] hover:brightness-105 sm:mt-0 sm:w-auto"
+                  >
+                    Ara
+                  </button>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {quickSubjects.map((label) => (
+                    <Link
+                      key={label}
+                      href={`/ogretmenler?q=${encodeURIComponent(label)}`}
+                      className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/80 hover:border-brand-200 hover:bg-white/15"
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              </form>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  href="/kayit?role=student"
+                  className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-paper-950 shadow-[0_14px_45px_rgba(255,255,255,0.16)] hover:bg-brand-50"
+                >
+                  Öğrenci olarak başla
+                </Link>
+                <Link
+                  href="/ogretmenler?verifiedOnly=1&sort=recommended"
+                  className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/15"
+                >
+                  Öğretmenleri keşfet
+                </Link>
+                <Link
+                  href="/kayit?role=teacher"
+                  className="rounded-2xl border border-warm-300/40 bg-warm-400/15 px-4 py-2.5 text-sm font-semibold text-warm-100 hover:bg-warm-400/20"
+                >
+                  Öğretmen başvurusu
+                </Link>
               </div>
-            ))}
-          </dl>
+              <HomeHeroPersonalized />
+              <dl className="mt-10 grid grid-cols-2 gap-3 border-t border-white/10 pt-10 sm:grid-cols-4 sm:gap-4">
+                {homeHighlights.map((item) => (
+                  <div key={item.title} className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur">
+                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-brand-100 ring-1 ring-white/10">
+                      <HighlightIcon name={item.icon} />
+                    </div>
+                    <dt className="mt-2 text-sm font-semibold text-white">{item.title}</dt>
+                    <dd className="mt-1 text-xs leading-relaxed text-white/60">{item.body}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
 
             <figure className="order-first mx-auto w-full max-w-md lg:order-none lg:mx-0 lg:max-w-none">
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-paper-200 bg-paper-100 shadow-sm">
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2rem] border border-white/15 bg-white/[0.08] p-3 shadow-[0_30px_110px_rgba(0,0,0,0.38)] backdrop-blur-xl">
                 <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[1rem]">
                   <Image
                     src={HERO_PHOTO}
@@ -142,14 +305,31 @@ export default function Home() {
                     sizes="(max-width: 1024px) 100vw, 440px"
                     priority
                   />
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-paper-950/20 via-transparent to-transparent" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-paper-950/90 via-paper-950/30 to-brand-300/15" />
+                  <div className="absolute left-4 top-4 rounded-2xl border border-white/15 bg-paper-950/60 px-4 py-3 text-white shadow-2xl backdrop-blur">
+                    <div className="text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-brand-100/75">
+                      Bugünün paneli
+                    </div>
+                    <div className="mt-1 text-xl font-semibold">3 akış hazır</div>
+                  </div>
+                  <div className="absolute bottom-4 left-4 right-4 grid gap-2 sm:grid-cols-3">
+                    {avantPreviewCards.map((card) => (
+                      <div key={card.label} className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white backdrop-blur-md">
+                        <div className="text-[0.65rem] uppercase tracking-wide text-white/60">{card.label}</div>
+                        <div className="mt-1 text-lg font-semibold">{card.value}</div>
+                        <div className="mt-1 text-[0.68rem] leading-tight text-white/60">{card.hint}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+                <div className="absolute -right-7 top-1/3 h-24 w-24 rounded-full bg-brand-300/25 blur-2xl" aria-hidden />
+                <div className="absolute -bottom-8 -left-8 h-28 w-28 rounded-full bg-warm-400/25 blur-2xl" aria-hidden />
               </div>
-              <figcaption className="mt-2 text-center text-[0.65rem] leading-snug text-paper-800/55 lg:text-left">
+              <figcaption className="mt-2 text-center text-[0.65rem] leading-snug text-white/50 lg:text-left">
                 Fotoğraf:{" "}
                 <a
                   href="https://unsplash.com/@brookecagle?utm_source=benimogretmenim&utm_medium=referral"
-                  className="underline decoration-paper-400/80 underline-offset-2 hover:text-brand-800"
+                  className="underline decoration-white/30 underline-offset-2 hover:text-brand-100"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -158,7 +338,7 @@ export default function Home() {
                 /{" "}
                 <a
                   href="https://unsplash.com/license?utm_source=benimogretmenim&utm_medium=referral"
-                  className="underline decoration-paper-400/80 underline-offset-2 hover:text-brand-800"
+                  className="underline decoration-white/30 underline-offset-2 hover:text-brand-100"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -170,23 +350,164 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="nasil" className="scroll-mt-20 border-b border-paper-200 bg-paper-50 py-14 sm:py-16">
+      <section className="border-b border-paper-200 bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-2xl font-semibold tracking-tight text-paper-900 sm:text-3xl">Nasıl çalışır?</h2>
-          <p className="mt-2 max-w-xl text-sm text-paper-800/80">Üç kısa adım.</p>
+          <div className="rounded-[2rem] border border-paper-200 bg-[linear-gradient(135deg,#ffffff_0%,#f4fafc_55%,#fff7f3_100%)] p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                  Güven sinyalleri
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-900">
+                  Sadece vitrin değil, takip edilebilir eğitim deneyimi
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                  Platform, öğrencinin ilk aramasından ders sonrası ilerleme takibine kadar görünür ve kayıtlı bir
+                  akış üretir. Fiyatlar ise giriş sonrası yalnızca ilgili kullanıcı rolüne gösterilir.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[28rem]">
+                {socialProofStats.map((stat) => (
+                  <div key={stat.value} className="rounded-2xl border border-paper-200 bg-white p-4">
+                    <div className="text-2xl font-semibold text-paper-950">{stat.value}</div>
+                    <div className="mt-1 text-xs leading-relaxed text-paper-800/60">{stat.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {trustQuotes.map((item) => (
+                <figure key={item.source} className="rounded-2xl border border-paper-200 bg-white/80 p-4">
+                  <blockquote className="text-sm leading-relaxed text-paper-800">“{item.quote}”</blockquote>
+                  <figcaption className="mt-3 text-xs font-semibold uppercase tracking-wide text-brand-800/70">
+                    {item.source}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative overflow-hidden border-b border-paper-200 bg-paper-50 py-10">
+        <div className="pointer-events-none absolute -left-24 top-8 h-48 w-48 rounded-full bg-brand-200/35 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -right-24 bottom-0 h-52 w-52 rounded-full bg-warm-200/35 blur-3xl" aria-hidden />
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-paper-900">En hızlı başlangıç</h2>
+              <p className="mt-1 text-sm text-paper-800/70">
+                Ana menüde kaybolmadan doğrudan yapmak istediğiniz işe gidin.
+              </p>
+            </div>
+            <Link href="/fiyatlar" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
+              Fiyatlar neden girişten sonra?
+            </Link>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {homeQuickActions.map((action) => (
+              <Link
+                key={action.title}
+                href={action.href}
+                className="group relative overflow-hidden rounded-[1.4rem] border border-paper-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_22px_60px_rgba(10,102,128,0.14)]"
+              >
+                <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-300 via-white to-warm-300 opacity-80" />
+                <h3 className="text-base font-semibold text-paper-900">{action.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-paper-800/70">{action.body}</p>
+                <span className="mt-4 inline-flex text-sm font-semibold text-brand-800 transition group-hover:translate-x-1">
+                  Başla →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-b border-paper-200 bg-white py-10">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-paper-900">Hangi hesap size uygun?</h2>
+              <p className="mt-1 text-sm text-paper-800/70">
+                Kayıt sonrası her rol kendi paneline gider; fiyat ve abonelik bilgileri sadece ilgili kişiye görünür.
+              </p>
+            </div>
+            <Link href="/login" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
+              Hesabım var, giriş yap
+            </Link>
+          </div>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {homeActionCards.map((card) => (
+              <Link
+                key={card.title}
+                href={card.href}
+                className="group rounded-[1.5rem] border border-paper-200 bg-[linear-gradient(135deg,#ffffff_0%,#f4fafc_62%,#ecfeff_100%)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_22px_70px_rgba(10,102,128,0.12)]"
+              >
+                <div className="mb-4 h-10 w-10 rounded-2xl bg-paper-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
+                  <div className="h-full w-full rounded-2xl bg-[radial-gradient(circle_at_25%_25%,#67e8f9,transparent_35%),radial-gradient(circle_at_78%_70%,#ff7a4d,transparent_34%)]" />
+                </div>
+                <h3 className="text-lg font-semibold text-paper-900">{card.title}</h3>
+                <p className="mt-2 min-h-[3rem] text-sm leading-relaxed text-paper-800/70">{card.body}</p>
+                <span className="mt-4 inline-flex rounded-2xl bg-paper-950 px-4 py-2 text-sm font-semibold text-white transition group-hover:bg-brand-800">
+                  {card.cta}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="nasil" className="scroll-mt-20 border-b border-paper-200 bg-paper-950 py-14 text-white sm:py-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Nasıl kullanılır?</h2>
+          <p className="mt-2 max-w-xl text-sm text-white/70">
+            Platformu kullanmak için önce amacınızı seçin, sonra tüm işlemleri kendi panelinizden takip edin.
+          </p>
           <ol className="mt-8 grid gap-6 sm:grid-cols-3">
-            {[
-              { step: "1", title: "Talep", body: "Branşınızı ve zamanı yazın." },
-              { step: "2", title: "Teklif", body: "Gelen teklifleri okuyup yazışın." },
-              { step: "3", title: "Başlayın", body: "Uygun teklifi seçip ödemeyi tamamlayın." },
-            ].map((item) => (
-              <li key={item.step} className="rounded-xl border border-paper-200 bg-white p-5">
-                <span className="text-sm font-bold text-brand-700">{item.step}</span>
-                <h3 className="mt-2 text-base font-semibold text-paper-900">{item.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-paper-800/80">{item.body}</p>
+            {howSteps.map((item) => (
+              <li key={item.step} className="rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-5 backdrop-blur">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-300 to-warm-400 text-sm font-bold text-paper-950">
+                  {item.step}
+                </span>
+                <h3 className="mt-4 text-base font-semibold text-white">{item.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-white/70">{item.body}</p>
               </li>
             ))}
           </ol>
+        </div>
+      </section>
+
+      <section className="border-b border-paper-200 bg-white py-14 sm:py-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight text-paper-900 sm:text-3xl">
+                Platformda neler var?
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm text-paper-800/75">
+                Özel ders, soru çözüm, canlı sınıf ve çalışma takibi ayrı ayrı da kullanılabilir; hepsi aynı hesap
+                yapısında birleşir.
+              </p>
+            </div>
+            <Link href="/fiyatlar" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
+              Üyelik akışını gör
+            </Link>
+          </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {platformTracks.map((track) => (
+              <Link
+                key={track.title}
+                href={track.href}
+                className="group rounded-[1.5rem] border border-paper-200 bg-paper-50 p-5 transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-white hover:shadow-[0_22px_70px_rgba(10,102,128,0.12)]"
+              >
+                <h3 className="text-base font-semibold text-paper-900">{track.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-paper-800/75">{track.body}</p>
+                <span className="mt-4 inline-flex text-sm font-semibold text-brand-800 transition group-hover:translate-x-1">
+                  İncele →
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -197,11 +518,33 @@ export default function Home() {
         />
       </section>
 
-      <section className="border-t border-paper-200 bg-white py-10">
+      <section className="border-t border-paper-200 bg-white py-12">
         <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-          <p className="text-sm text-paper-800/85">
-            Ödeme ve abonelik bilgileriniz panele giriş yaptığınızda görünür.
-          </p>
+          <div className="relative overflow-hidden rounded-[2rem] border border-paper-200 bg-paper-950 px-5 py-10 text-white shadow-[0_30px_100px_rgba(7,13,17,0.18)] sm:px-10">
+            <div className="pointer-events-none absolute -left-16 -top-16 h-44 w-44 rounded-full bg-brand-300/25 blur-3xl" aria-hidden />
+            <div className="pointer-events-none absolute -bottom-20 -right-14 h-52 w-52 rounded-full bg-warm-400/25 blur-3xl" aria-hidden />
+            <div className="relative">
+              <h2 className="text-2xl font-semibold tracking-tight text-white">Nereden başlayacağınızı seçin</h2>
+              <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-white/70">
+                Öğrenciyseniz öğretmen arayın veya soru gönderin; öğretmenseniz başvuru yapın. Abonelik tutarları
+                girişten sonra yalnızca ilgili kullanıcı panelinde görünür.
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-3">
+                <Link
+                  href="/kayit?role=student"
+                  className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-paper-950 hover:bg-brand-50"
+                >
+                  Ücretsiz kayıt ol
+                </Link>
+                <Link
+                  href="/fiyatlar"
+                  className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/15"
+                >
+                  Üyelik akışlarını gör
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

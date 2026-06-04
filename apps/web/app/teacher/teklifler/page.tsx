@@ -23,6 +23,11 @@ type OfferRow = {
   delivery_mode: string;
   request_note_preview: string | null;
   request_created_at: string;
+  package_id: string | null;
+  package_status: string | null;
+  package_payment_status: string | null;
+  first_session_id: string | null;
+  first_session_status: string | null;
 };
 
 function minorToTl(n: number): string {
@@ -125,6 +130,11 @@ export default function TeacherTekliflerPage() {
 
   if (!token) return null;
 
+  const sentCount = rows.filter((row) => row.offer_status === "sent").length;
+  const acceptedCount = rows.filter((row) => row.offer_status === "accepted").length;
+  const rejectedCount = rows.filter((row) => row.offer_status === "rejected").length;
+  const inFlightCount = rows.filter((row) => row.offer_status === "accepted" && row.package_status === "active").length;
+
   return (
     <div className="min-h-screen bg-paper-50">
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
@@ -147,6 +157,25 @@ export default function TeacherTekliflerPage() {
           {ok}
         </div>
       )}
+
+      <section className="mt-6 grid gap-3 sm:grid-cols-4">
+        <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Bekleyen</div>
+          <div className="mt-1 text-2xl font-semibold text-paper-900">{sentCount}</div>
+        </div>
+        <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Kabul</div>
+          <div className="mt-1 text-2xl font-semibold text-brand-950">{acceptedCount}</div>
+        </div>
+        <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Reddedilen</div>
+          <div className="mt-1 text-2xl font-semibold text-paper-900">{rejectedCount}</div>
+        </div>
+        <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+          <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Aktif paket</div>
+          <div className="mt-1 text-2xl font-semibold text-warm-950">{inFlightCount}</div>
+        </div>
+      </section>
 
       <div className="mt-8 space-y-3">
         {rows.length === 0 ? (
@@ -191,6 +220,15 @@ export default function TeacherTekliflerPage() {
                       Önerilen saatlik: {minorToTl(o.proposed_hourly_rate_minor)} TL
                     </div>
                   )}
+                  {o.offer_status === "accepted" && (
+                    <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50/70 p-3 text-xs text-brand-950">
+                      <div className="font-semibold">Paket akışı başladı</div>
+                      <div className="mt-1">
+                        Paket: {o.package_status ?? "—"} · ödeme: {o.package_payment_status ?? "—"} · ilk ders:{" "}
+                        {o.first_session_status ?? "—"}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex shrink-0 flex-col gap-2 sm:items-end">
                   {o.offer_status === "sent" && o.request_status === "open" && (
@@ -209,6 +247,14 @@ export default function TeacherTekliflerPage() {
                   >
                     Mesajlar
                   </Link>
+                  {o.offer_status === "accepted" && (
+                    <Link
+                      href="/teacher/dersler"
+                      className="rounded-xl bg-brand-800 px-3 py-2 text-center text-sm font-medium text-white hover:bg-brand-900"
+                    >
+                      Derslere git
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>

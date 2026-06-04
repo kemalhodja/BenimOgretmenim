@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
@@ -69,6 +69,47 @@ export default function StudentKurslarPage() {
     });
   }, [token, load, router, pathname]);
 
+  const stats = useMemo(() => {
+    const active = rows.filter((row) => row.cohort_status === "active").length;
+    const ready = rows.filter((row) => row.next_session_id && row.next_meeting_url).length;
+    const waiting = rows.filter((row) => !row.next_session_id).length;
+    return { active, ready, waiting };
+  }, [rows]);
+
+  const nextEnrollment = useMemo(
+    () =>
+      rows
+        .filter((row) => row.next_session_id && row.next_scheduled_start)
+        .sort(
+          (a, b) =>
+            new Date(a.next_scheduled_start ?? 0).getTime() -
+            new Date(b.next_scheduled_start ?? 0).getTime(),
+        )[0] ?? rows.find((row) => row.next_session_id) ?? null,
+    [rows],
+  );
+
+  const nextAction =
+    rows.length === 0
+      ? {
+          title: "Size uygun kursları keşfedin",
+          body: "Kayıt olduğunuz kursların canlı ders takvimi ve sınıf linkleri burada toplanır.",
+          href: "/courses",
+          label: "Kurs kataloğu",
+        }
+      : nextEnrollment
+        ? {
+            title: `Sıradaki kurs dersi: ${nextEnrollment.course_title}`,
+            body: `${nextEnrollment.cohort_title} · ${toLocal(nextEnrollment.next_scheduled_start)}. Sınıf linki hazır olduğunda tek tıkla katılabilirsiniz.`,
+            href: `/student/kurslar/${nextEnrollment.course_id}/cohort/${nextEnrollment.cohort_id}`,
+            label: "Oturumları gör",
+          }
+        : {
+            title: "Kurs planlamasını bekliyorsunuz",
+            body: "Öğretmen yeni oturum planladığında bildirim gelir ve sınıf linki bu ekranda görünür.",
+            href: "/courses",
+            label: "Katalogda keşfet",
+          };
+
   if (!token) return null;
 
   return (
@@ -94,6 +135,37 @@ export default function StudentKurslarPage() {
             {error}
           </div>
         )}
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Kurs asistanı</div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
+              <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
+            </div>
+            <Link
+              href={nextAction.href}
+              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-950 hover:bg-brand-100"
+            >
+              {nextAction.label}
+            </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Aktif kurs</div>
+            <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.active}</div>
+          </div>
+          <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Sınıf linki hazır</div>
+            <div className="mt-1 text-2xl font-semibold text-brand-950">{stats.ready}</div>
+          </div>
+          <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Plan bekleyen</div>
+            <div className="mt-1 text-2xl font-semibold text-warm-950">{stats.waiting}</div>
+          </div>
+        </section>
 
         <div className="mt-8 space-y-3">
           {rows.length === 0 ? (
@@ -129,14 +201,22 @@ export default function StudentKurslarPage() {
                       )}
                     </div>
                     {e.next_meeting_url ? (
-                      <a
-                        href={e.next_meeting_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-block text-sm font-medium text-blue-700 underline"
-                      >
-                        Toplantı linki (sıradaki)
-                      </a>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Link
+                          href={`/classroom/course/${e.next_session_id}`}
+                          className="rounded-lg bg-brand-800 px-2.5 py-1.5 text-xs font-medium text-white"
+                        >
+                          Sınıfa gir
+                        </Link>
+                        <a
+                          href={e.next_meeting_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-block text-xs font-medium text-brand-800 underline"
+                        >
+                          Harici link
+                        </a>
+                      </div>
                     ) : null}
                   </div>
                   <div className="flex shrink-0 flex-col gap-2 sm:items-end">
