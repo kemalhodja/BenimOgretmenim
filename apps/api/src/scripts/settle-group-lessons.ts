@@ -1,6 +1,7 @@
 import { pool } from "../db.js";
 import { settleGroupLessonRequest } from "../routes/groupLessons.js";
 import { formatDbConnectError } from "../lib/dbErrors.js";
+import { markJobFinished, markJobStarted } from "../lib/jobHeartbeat.js";
 
 /**
  * Planlanan dersten 1 saat önce tahsilat:
@@ -19,6 +20,7 @@ async function main() {
   }
 
   try {
+    await markJobStarted("group-lessons:settle", 10);
     const r = await client.query(
       `select id
        from group_lesson_requests
@@ -31,16 +33,22 @@ async function main() {
     );
 
     console.log(`[group-lessons:settle] due_count=${r.rowCount}`);
+    let failed = 0;
 
     for (const row of r.rows as Array<{ id: string }>) {
       try {
         const res = await settleGroupLessonRequest(row.id);
         console.log("[group-lessons:settle] ok", row.id, res);
       } catch (e) {
+        failed += 1;
         const msg = e instanceof Error ? e.message : String(e);
         console.error("[group-lessons:settle] failed", row.id, msg);
       }
     }
+    await markJobFinished("group-lessons:settle", failed > 0 ? "failed" : "success", {
+      dueCount: r.rowCount,
+      failed,
+    });
   } finally {
     client.release();
     await pool.end();
@@ -49,6 +57,7 @@ async function main() {
 
 main().catch((e) => {
   console.error(formatDbConnectError(e));
+  markJobFinished("group-lessons:settle", "failed", {}, e).catch(() => {});
   process.exit(1);
 });
 

@@ -37,6 +37,7 @@ type CourseAccountingSummary = {
   teacher_payout_amount_minor?: string | number;
   net_platform_amount_minor?: string | number;
 };
+type JobMonitoringSummary = { openAlerts?: number; total?: number };
 
 const DATASETS: Record<string, Cfg> = {
   ledger: { title: "Cüzdan defteri", path: "/api/admin/wallet-ledger", arrayKey: "entries" },
@@ -51,6 +52,16 @@ const DATASETS: Record<string, Cfg> = {
     title: "Öğretmen para çekme talepleri",
     path: "/api/admin/teacher-withdrawals",
     arrayKey: "withdrawals",
+  },
+  "job-monitoring": {
+    title: "Job / cron izleme",
+    path: "/api/admin/job-monitoring",
+    arrayKey: "jobs",
+  },
+  disputes: {
+    title: "Uyuşmazlık merkezi",
+    path: "/api/admin/disputes",
+    arrayKey: "disputes",
   },
   reconciliation: {
     title: "Ödeme mutabakatı",
@@ -145,9 +156,14 @@ function AdminVeriInner() {
   const [reconciliationResolutionStatus, setReconciliationResolutionStatus] = useState("open");
   const [teacherCampaignStatus, setTeacherCampaignStatus] = useState("pending_review");
   const [teacherWithdrawalStatus, setTeacherWithdrawalStatus] = useState("pending");
+  const [teacherWithdrawalQ, setTeacherWithdrawalQ] = useState("");
+  const [teacherWithdrawalFrom, setTeacherWithdrawalFrom] = useState("");
+  const [teacherWithdrawalTo, setTeacherWithdrawalTo] = useState("");
+  const [disputeStatus, setDisputeStatus] = useState("open");
   const [reconciliationSummary, setReconciliationSummary] = useState<ReconciliationSummary | null>(null);
   const [funnelSummary, setFunnelSummary] = useState<FunnelSummary | null>(null);
   const [courseAccountingSummary, setCourseAccountingSummary] = useState<CourseAccountingSummary | null>(null);
+  const [jobMonitoringSummary, setJobMonitoringSummary] = useState<JobMonitoringSummary | null>(null);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -171,8 +187,24 @@ function AdminVeriInner() {
     if (key === "teacher-withdrawals" && teacherWithdrawalStatus.trim()) {
       p.set("status", teacherWithdrawalStatus.trim());
     }
+    if (key === "teacher-withdrawals" && teacherWithdrawalQ.trim()) p.set("q", teacherWithdrawalQ.trim());
+    if (key === "teacher-withdrawals" && teacherWithdrawalFrom.trim()) p.set("from", teacherWithdrawalFrom.trim());
+    if (key === "teacher-withdrawals" && teacherWithdrawalTo.trim()) p.set("to", teacherWithdrawalTo.trim());
+    if (key === "disputes" && disputeStatus.trim()) p.set("status", disputeStatus.trim());
     return p.toString();
-  }, [key, offset, appliedUserId, reconciliationStatus, reconciliationResolutionStatus, teacherCampaignStatus, teacherWithdrawalStatus]);
+  }, [
+    key,
+    offset,
+    appliedUserId,
+    reconciliationStatus,
+    reconciliationResolutionStatus,
+    teacherCampaignStatus,
+    teacherWithdrawalStatus,
+    teacherWithdrawalQ,
+    teacherWithdrawalFrom,
+    teacherWithdrawalTo,
+    disputeStatus,
+  ]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -186,6 +218,7 @@ function AdminVeriInner() {
       setReconciliationSummary(key === "reconciliation" ? parseReconciliationSummary(r.summary) : null);
       setFunnelSummary(key === "funnel" ? (r as FunnelSummary) : null);
       setCourseAccountingSummary(key === "course-accounting" ? (r.summary as CourseAccountingSummary | null) : null);
+      setJobMonitoringSummary(key === "job-monitoring" ? (r.summary as JobMonitoringSummary | null) : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "yüklenemedi");
     } finally {
@@ -339,6 +372,55 @@ function AdminVeriInner() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "para çekme aksiyonu başarısız");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function exportTeacherWithdrawals() {
+    if (!token) return;
+    setActionBusy("teacher-withdrawals:export");
+    setError(null);
+    try {
+      const p = new URLSearchParams(qs);
+      p.set("export", "bank_csv");
+      const r = (await apiFetch(`/api/admin/teacher-withdrawals?${p.toString()}`, { token })) as {
+        export?: { filename: string; csv: string };
+      };
+      if (!r.export) throw new Error("export_failed");
+      const blob = new Blob([r.export.csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = r.export.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "export başarısız");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function updateDisputeStatus(id: string, status: "waiting_user" | "resolved" | "rejected") {
+    if (!token) return;
+    const resolutionNote =
+      status === "resolved" || status === "rejected"
+        ? window.prompt("Çözüm notu girin:", status === "resolved" ? "Uyuşmazlık çözüldü." : "Talep uygun bulunmadı.")
+        : window.prompt("Kullanıcıdan beklenen notu girin:", "Ek bilgi bekleniyor.");
+    if (resolutionNote === null) return;
+    setActionBusy(`${id}:dispute:${status}`);
+    setError(null);
+    try {
+      await apiFetch(`/api/admin/disputes/${id}/status`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ status, resolutionNote }),
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "dispute aksiyonu başarısız");
     } finally {
       setActionBusy(null);
     }
@@ -606,9 +688,95 @@ function AdminVeriInner() {
                 <option value="rejected">rejected</option>
               </select>
             </label>
+            <label className="text-sm">
+              <span className="font-medium text-paper-800">Arama</span>
+              <input
+                className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                value={teacherWithdrawalQ}
+                onChange={(e) => {
+                  setTeacherWithdrawalQ(e.target.value);
+                  setOffset(0);
+                }}
+                placeholder="öğretmen, e-posta, hesap sahibi"
+              />
+            </label>
+            <label className="text-sm">
+              <span className="font-medium text-paper-800">Başlangıç</span>
+              <input
+                type="date"
+                className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                value={teacherWithdrawalFrom}
+                onChange={(e) => {
+                  setTeacherWithdrawalFrom(e.target.value);
+                  setOffset(0);
+                }}
+              />
+            </label>
+            <label className="text-sm">
+              <span className="font-medium text-paper-800">Bitiş</span>
+              <input
+                type="date"
+                className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                value={teacherWithdrawalTo}
+                onChange={(e) => {
+                  setTeacherWithdrawalTo(e.target.value);
+                  setOffset(0);
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void exportTeacherWithdrawals()}
+              disabled={actionBusy === "teacher-withdrawals:export"}
+              className="rounded-xl bg-paper-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              {actionBusy === "teacher-withdrawals:export" ? "Hazırlanıyor…" : "Banka CSV export"}
+            </button>
             <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
               Öğretmen talep oluşturduğunda tutar cüzdandan ayrılır. Ödendi durumunda banka transferi tamamlanmış
               sayılır; reddedilirse tutar otomatik cüzdana geri döner.
+            </div>
+          </div>
+        ) : null}
+
+        {key === "job-monitoring" && jobMonitoringSummary ? (
+          <div className="mt-4 rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-paper-900">Cron sağlık özeti</h2>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div className={`rounded-xl border p-3 ${Number(jobMonitoringSummary.openAlerts ?? 0) > 0 ? "border-red-200 bg-red-50 text-red-950" : "border-emerald-200 bg-emerald-50 text-emerald-950"}`}>
+                <div className="text-xs font-semibold uppercase tracking-wide">Açık alarm</div>
+                <div className="mt-1 text-2xl font-semibold">{jobMonitoringSummary.openAlerts ?? 0}</div>
+              </div>
+              <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">İzlenen job</div>
+                <div className="mt-1 text-2xl font-semibold text-paper-950">{jobMonitoringSummary.total ?? 0}</div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {key === "disputes" ? (
+          <div className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <label className="text-sm">
+              <span className="font-medium text-paper-800">Uyuşmazlık durumu</span>
+              <select
+                className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                value={disputeStatus}
+                onChange={(e) => {
+                  setDisputeStatus(e.target.value);
+                  setOffset(0);
+                }}
+              >
+                <option value="">Tümü</option>
+                <option value="open">open</option>
+                <option value="waiting_user">waiting_user</option>
+                <option value="waiting_admin">waiting_admin</option>
+                <option value="resolved">resolved</option>
+                <option value="rejected">rejected</option>
+              </select>
+            </label>
+            <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
+              Öğrenci, veli, öğretmen ve admin uyuşmazlıkları tek kayıtlı merkezde takip edilir.
             </div>
           </div>
         ) : null}
@@ -639,6 +807,7 @@ function AdminVeriInner() {
                   key === "reconciliation" ||
                   key === "teacher-campaigns" ||
                   key === "teacher-withdrawals" ||
+                  key === "disputes" ||
                   key === "enrollments" ? (
                     <th className="whitespace-nowrap px-2 py-2">Aksiyon</th>
                   ) : null}
@@ -789,6 +958,47 @@ function AdminVeriInner() {
                                   className="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-900 disabled:opacity-40"
                                 >
                                   {actionBusy === `${id}:withdrawal:rejected` ? "…" : "Reddet"}
+                                </button>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </td>
+                    ) : null}
+                    {key === "disputes" ? (
+                      <td className="whitespace-nowrap px-2 py-1.5">
+                        <div className="flex flex-wrap gap-1">
+                          {(() => {
+                            const id = typeof row.id === "string" ? row.id : "";
+                            const status = typeof row.status === "string" ? row.status : "";
+                            if (!id || status === "resolved" || status === "rejected") {
+                              return <span className="text-[11px] text-paper-800/45">Aksiyon yok</span>;
+                            }
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={actionBusy === `${id}:dispute:waiting_user`}
+                                  onClick={() => void updateDisputeStatus(id, "waiting_user")}
+                                  className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-900 disabled:opacity-40"
+                                >
+                                  Bilgi iste
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={actionBusy === `${id}:dispute:resolved`}
+                                  onClick={() => void updateDisputeStatus(id, "resolved")}
+                                  className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-900 disabled:opacity-40"
+                                >
+                                  Çöz
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={actionBusy === `${id}:dispute:rejected`}
+                                  onClick={() => void updateDisputeStatus(id, "rejected")}
+                                  className="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-900 disabled:opacity-40"
+                                >
+                                  Reddet
                                 </button>
                               </>
                             );

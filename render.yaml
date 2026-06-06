@@ -125,6 +125,26 @@ services:
           name: benimogretmenim-db
           property: connectionString
 
+  - type: cron
+    name: benimogretmenim-courses-settle-started
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    rootDir: apps/api
+    schedule: "*/10 * * * *"
+    buildCommand: npm ci --include=dev
+    startCommand: npm run -s courses:settle-started
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: benimogretmenim-db
+          property: connectionString
+
   - type: web
     name: benimogretmenim-web
     runtime: node

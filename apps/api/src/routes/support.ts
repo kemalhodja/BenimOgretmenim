@@ -13,6 +13,23 @@ const messageBodySchema = z.object({
   pagePath: z.string().max(500).optional(),
 });
 
+const disputeCreateSchema = z.object({
+  subjectType: z.enum([
+    "course_enrollment",
+    "course_session",
+    "direct_booking",
+    "lesson_package",
+    "homework_post",
+    "wallet_transaction",
+    "teacher_withdrawal",
+    "other",
+  ]),
+  subjectId: z.string().trim().max(120).optional(),
+  reason: z.string().trim().min(3).max(200),
+  description: z.string().trim().min(5).max(4000),
+  requestedResolution: z.string().trim().max(1000).optional(),
+});
+
 const guestBootstrapSchema = z.object({
   email: z.string().email().max(320),
   pagePath: z.string().max(500).optional(),
@@ -91,6 +108,106 @@ support.post("/me/messages", requireAuth, async (c) => {
   await pool.query(`update support_threads set updated_at = now() where id = $1`, [thread.id]);
   const messages = await messagesForThread(thread.id);
   return c.json({ ok: true, thread, messages });
+});
+
+support.get("/disputes", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const r = await pool.query(
+    `select id, subject_type, subject_id, status, priority, reason, description,
+            requested_resolution, resolution_note, resolved_at, created_at, updated_at
+     from platform_disputes
+     where opened_by_user_id = $1
+     order by created_at desc
+     limit 50`,
+    [userId],
+  );
+  return c.json({ disputes: r.rows });
+});
+
+support.post("/disputes", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  const parsed = disputeCreateSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  const [student, teacher] = await Promise.all([
+    pool.query<{ id: string }>(`select id from students where user_id = $1`, [userId]),
+    pool.query<{ id: string }>(`select id from teachers where user_id = $1`, [userId]),
+  ]);
+  const r = await pool.query(
+    `insert into platform_disputes (
+       subject_type, subject_id, opened_by_user_id, opened_by_role,
+       student_id, teacher_id, priority, reason, description,
+       requested_resolution, metadata_jsonb
+     )
+     values ($1, $2, $3, $4, $5, $6, 'normal', $7, $8, $9, $10::jsonb)
+     returning id, subject_type, subject_id, status, priority, reason, description,
+               requested_resolution, created_at, updated_at`,
+    [
+      parsed.data.subjectType,
+      parsed.data.subjectId ?? null,
+      userId,
+      role,
+      student.rows[0]?.id ?? null,
+      teacher.rows[0]?.id ?? null,
+      parsed.data.reason,
+      parsed.data.description,
+      parsed.data.requestedResolution ?? null,
+      JSON.stringify({ source: "user_dispute_create" }),
+    ],
+  );
+  await pool.query(
+    `insert into platform_dispute_messages (dispute_id, sender_user_id, sender_role, body)
+     values ($1, $2, $3, $4)`,
+    [r.rows[0].id, userId, role, parsed.data.description],
+  );
+  return c.json({ dispute: r.rows[0] }, 201);
+});
+
+support.get("/disputes/:disputeId/messages", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const disputeId = c.req.param("disputeId");
+  if (!z.string().uuid().safeParse(disputeId).success) return c.json({ error: "invalid_dispute_id" }, 400);
+  const own = await pool.query(`select id from platform_disputes where id = $1 and opened_by_user_id = $2`, [
+    disputeId,
+    userId,
+  ]);
+  if (!own.rowCount) return c.json({ error: "not_found" }, 404);
+  const messages = await pool.query(
+    `select id, sender_user_id, sender_role, body, created_at
+     from platform_dispute_messages
+     where dispute_id = $1
+     order by created_at asc`,
+    [disputeId],
+  );
+  return c.json({ messages: messages.rows });
+});
+
+support.post("/disputes/:disputeId/messages", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  const disputeId = c.req.param("disputeId");
+  if (!z.string().uuid().safeParse(disputeId).success) return c.json({ error: "invalid_dispute_id" }, 400);
+  const parsed = messageBodySchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+  const own = await pool.query(`select id from platform_disputes where id = $1 and opened_by_user_id = $2`, [
+    disputeId,
+    userId,
+  ]);
+  if (!own.rowCount) return c.json({ error: "not_found" }, 404);
+  const msg = await pool.query(
+    `insert into platform_dispute_messages (dispute_id, sender_user_id, sender_role, body)
+     values ($1, $2, $3, $4)
+     returning id, sender_user_id, sender_role, body, created_at`,
+    [disputeId, userId, role, parsed.data.content.trim()],
+  );
+  await pool.query(
+    `update platform_disputes
+     set status = case when status in ('resolved', 'rejected') then status else 'waiting_admin' end,
+         updated_at = now()
+     where id = $1`,
+    [disputeId],
+  );
+  return c.json({ message: msg.rows[0] }, 201);
 });
 
 support.post("/guest/session", guestBootstrapLimit, async (c) => {

@@ -98,6 +98,8 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { href: "/admin/veri?k=teacher-withdrawals", title: "Öğretmen para çekme", desc: "IBAN talepleri, ödeme/red operasyonu" },
       { href: "/admin/veri?k=course-accounting", title: "Kurs muhasebesi", desc: "Tahsilat, iade, hakediş, net platform" },
       { href: "/admin/veri?k=reconciliation", title: "Ödeme mutabakatı", desc: "PayTR callback uyumsuzlukları" },
+      { href: "/admin/veri?k=job-monitoring", title: "Job / cron izleme", desc: "Settlement, release ve alarm takibi" },
+      { href: "/admin/veri?k=disputes", title: "Uyuşmazlık merkezi", desc: "Öğrenci, veli, öğretmen itirazları" },
       { href: "/admin/veri?k=student-sub-payments", title: "Öğrenci platform ödemeleri", desc: "student_sub_payments" },
     ],
   },

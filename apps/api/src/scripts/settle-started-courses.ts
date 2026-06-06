@@ -1,6 +1,7 @@
 import { pool } from "../db.js";
 import { settleStartedCourseCohort } from "../lib/courseEnrollmentWallet.js";
 import { formatDbConnectError } from "../lib/dbErrors.js";
+import { markJobFinished, markJobStarted } from "../lib/jobHeartbeat.js";
 
 async function main() {
   let client;
@@ -13,6 +14,7 @@ async function main() {
   }
 
   try {
+    await markJobStarted("courses:settle-started", 10);
     const r = await client.query<{ cohort_id: string; starts_at: string }>(
       `select due.cohort_id, due.starts_at
        from (
@@ -35,15 +37,21 @@ async function main() {
     );
 
     console.log(`[courses:settle-started] due_count=${r.rowCount}`);
+    let failed = 0;
     for (const row of r.rows) {
       try {
         const res = await settleStartedCourseCohort(row.cohort_id);
         console.log("[courses:settle-started] ok", row.cohort_id, res);
       } catch (e) {
+        failed += 1;
         const msg = e instanceof Error ? e.message : String(e);
         console.error("[courses:settle-started] failed", row.cohort_id, msg);
       }
     }
+    await markJobFinished("courses:settle-started", failed > 0 ? "failed" : "success", {
+      dueCount: r.rowCount,
+      failed,
+    });
   } finally {
     client.release();
     await pool.end();
@@ -52,5 +60,6 @@ async function main() {
 
 main().catch((e) => {
   console.error(formatDbConnectError(e));
+  markJobFinished("courses:settle-started", "failed", {}, e).catch(() => {});
   process.exit(1);
 });

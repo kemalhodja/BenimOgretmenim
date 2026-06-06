@@ -166,35 +166,274 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const rawStatus = c.req.query("status")?.trim();
+    const q = c.req.query("q")?.trim();
+    const from = c.req.query("from")?.trim();
+    const to = c.req.query("to")?.trim();
+    const exportMode = c.req.query("export")?.trim();
     const args: unknown[] = [];
     let where = "true";
     if (rawStatus && z.enum(["pending", "paid", "rejected"]).safeParse(rawStatus).success) {
       args.push(rawStatus);
       where += ` and w.status = $${args.length}`;
     }
-    const countR = await pool.query(`select count(*)::int as c from teacher_wallet_withdrawals w where ${where}`, args);
+    if (q) {
+      args.push(`%${q.toLowerCase()}%`);
+      where += ` and (lower(u.email) like $${args.length} or lower(u.display_name) like $${args.length} or lower(w.account_holder_name) like $${args.length})`;
+    }
+    if (from) {
+      args.push(from);
+      where += ` and w.requested_at >= $${args.length}::timestamptz`;
+    }
+    if (to) {
+      args.push(to);
+      where += ` and w.requested_at <= $${args.length}::timestamptz`;
+    }
+    const countR = await pool.query(
+      `select count(*)::int as c
+       from teacher_wallet_withdrawals w
+       join users u on u.id = w.teacher_user_id
+       where ${where}`,
+      args,
+    );
     const total = (countR.rows[0] as { c: number }).c;
-    args.push(limit, offset);
-    const li = args.length - 1;
-    const oi = args.length;
+    const pageArgs = [...args, limit, offset];
+    const li = pageArgs.length - 1;
+    const oi = pageArgs.length;
     const list = await pool.query(
       `select w.id, w.teacher_id, w.teacher_user_id, w.amount_minor, w.currency,
               w.iban, w.account_holder_name, w.bank_name, w.status,
               w.requested_at, w.decided_at, w.paid_at, w.admin_note, w.bank_receipt_ref,
+              w.payout_provider, w.payout_provider_ref, w.exported_at, w.export_batch_id,
               u.display_name as teacher_display_name, u.email as teacher_email
        from teacher_wallet_withdrawals w
        join users u on u.id = w.teacher_user_id
        where ${where}
        order by w.created_at desc
        limit $${li} offset $${oi}`,
-      args,
+      pageArgs,
     );
+    if (exportMode === "bank_csv") {
+      const batchId = `BANK-${new Date().toISOString().replace(/[-:.TZ]/g, "").slice(0, 14)}`;
+      const exportRows = await pool.query(
+        `select w.id, w.amount_minor, w.currency, w.iban, w.account_holder_name, w.bank_name,
+                u.email as teacher_email
+         from teacher_wallet_withdrawals w
+         join users u on u.id = w.teacher_user_id
+         where ${where} and w.status = 'pending'
+         order by w.created_at asc
+         limit 500`,
+        args,
+      );
+      const csv = [
+        "withdrawal_id,account_holder_name,iban,amount_minor,currency,bank_name,teacher_email",
+        ...exportRows.rows.map((row) =>
+          [
+            row.id,
+            row.account_holder_name,
+            row.iban,
+            row.amount_minor,
+            row.currency,
+            row.bank_name ?? "",
+            row.teacher_email,
+          ]
+            .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+            .join(","),
+        ),
+      ].join("\n");
+      await pool.query(
+        `update teacher_wallet_withdrawals
+         set exported_at = coalesce(exported_at, now()),
+             export_batch_id = coalesce(export_batch_id, $2),
+             updated_at = now()
+         where id = any($1::uuid[])`,
+        [exportRows.rows.map((row) => row.id), batchId],
+      );
+      return c.json({ export: { batchId, filename: `${batchId}-teacher-withdrawals.csv`, csv }, count: exportRows.rowCount });
+    }
     const summary = await pool.query(
       `select status, count(*)::int as count, coalesce(sum(amount_minor), 0)::text as amount_minor
        from teacher_wallet_withdrawals
        group by status`,
     );
     return c.json({ withdrawals: list.rows, summary: summary.rows, total, limit, offset });
+  });
+
+  admin.get("/job-monitoring", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const r = await pool.query(
+      `select job_name, expected_interval_minutes, status, last_started_at, last_finished_at,
+              last_success_at, last_error, run_count, fail_count, metadata_jsonb, updated_at,
+              case
+                when last_success_at is null then true
+                when last_success_at < now() - (expected_interval_minutes::text || ' minutes')::interval * 2 then true
+                else false
+              end as is_stale
+       from platform_job_heartbeats
+       order by is_stale desc, updated_at desc`,
+    );
+    const openAlerts = r.rows.filter((row) => row.is_stale || row.status === "failed").length;
+    return c.json({ jobs: r.rows, summary: { openAlerts, total: r.rowCount } });
+  });
+
+  const disputeCreateSchema = z.object({
+    subjectType: z.enum(["course_enrollment", "course_session", "direct_booking", "lesson_package", "homework_post", "wallet_transaction", "teacher_withdrawal", "other"]),
+    subjectId: z.string().trim().max(120).optional(),
+    priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+    reason: z.string().trim().min(3).max(200),
+    description: z.string().trim().min(5).max(4000),
+    requestedResolution: z.string().trim().max(1000).optional(),
+  });
+
+  admin.get("/disputes", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const { limit, offset } = parseLimitOffset(c, 40);
+    const status = c.req.query("status")?.trim();
+    const args: unknown[] = [];
+    let where = "true";
+    if (status && z.enum(["open", "waiting_user", "waiting_admin", "resolved", "rejected"]).safeParse(status).success) {
+      args.push(status);
+      where += ` and d.status = $${args.length}`;
+    }
+    const countR = await pool.query(`select count(*)::int as c from platform_disputes d where ${where}`, args);
+    const total = (countR.rows[0] as { c: number }).c;
+    args.push(limit, offset);
+    const li = args.length - 1;
+    const oi = args.length;
+    const disputes = await pool.query(
+      `select d.*, u.email as opened_by_email, u.display_name as opened_by_display_name
+       from platform_disputes d
+       left join users u on u.id = d.opened_by_user_id
+       where ${where}
+       order by d.created_at desc
+       limit $${li} offset $${oi}`,
+      args,
+    );
+    return c.json({ disputes: disputes.rows, total, limit, offset });
+  });
+
+  admin.post("/disputes", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const parsed = disputeCreateSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const r = await pool.query(
+      `insert into platform_disputes (
+         subject_type, subject_id, opened_by_user_id, opened_by_role,
+         priority, reason, description, requested_resolution, metadata_jsonb
+       )
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+       returning *`,
+      [
+        parsed.data.subjectType,
+        parsed.data.subjectId ?? null,
+        c.get("userId"),
+        c.get("userRole"),
+        parsed.data.priority ?? "normal",
+        parsed.data.reason,
+        parsed.data.description,
+        parsed.data.requestedResolution ?? null,
+        JSON.stringify({ source: "admin_dispute_create" }),
+      ],
+    );
+    await writeAdminAudit({
+      actorUserId: c.get("userId"),
+      actorRole: c.get("userRole"),
+      requestId: c.req.header("x-request-id") ?? null,
+      action: "platform_dispute.create",
+      entityType: "platform_dispute",
+      entityId: r.rows[0].id,
+      after: r.rows[0],
+    });
+    return c.json({ dispute: r.rows[0] }, 201);
+  });
+
+  const disputeDecisionSchema = z.object({
+    status: z.enum(["open", "waiting_user", "waiting_admin", "resolved", "rejected"]),
+    resolutionNote: z.string().trim().max(2000).optional(),
+    priority: z.enum(["low", "normal", "high", "urgent"]).optional(),
+  });
+
+  admin.patch("/disputes/:disputeId/status", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const disputeId = c.req.param("disputeId")?.trim();
+    if (!disputeId || !z.string().uuid().safeParse(disputeId).success) {
+      return c.json({ error: "invalid_dispute_id" }, 400);
+    }
+    const parsed = disputeDecisionSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const before = await pool.query(`select * from platform_disputes where id = $1`, [disputeId]);
+    if (!before.rowCount) return c.json({ error: "dispute_not_found" }, 404);
+    const updated = await pool.query(
+      `update platform_disputes
+       set status = $2,
+           priority = coalesce($3, priority),
+           assigned_admin_user_id = $4,
+           resolution_note = case when $2 in ('resolved', 'rejected') then $5 else resolution_note end,
+           resolved_at = case when $2 in ('resolved', 'rejected') then now() else null end,
+           updated_at = now()
+       where id = $1
+       returning *`,
+      [disputeId, parsed.data.status, parsed.data.priority ?? null, c.get("userId"), parsed.data.resolutionNote ?? null],
+    );
+    await writeAdminAudit({
+      actorUserId: c.get("userId"),
+      actorRole: c.get("userRole"),
+      requestId: c.req.header("x-request-id") ?? null,
+      action: "platform_dispute.status_update",
+      entityType: "platform_dispute",
+      entityId: disputeId,
+      before: before.rows[0],
+      after: updated.rows[0],
+    });
+    return c.json({ dispute: updated.rows[0] });
+  });
+
+  admin.get("/disputes/:disputeId/messages", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const disputeId = c.req.param("disputeId")?.trim();
+    if (!disputeId || !z.string().uuid().safeParse(disputeId).success) {
+      return c.json({ error: "invalid_dispute_id" }, 400);
+    }
+    const messages = await pool.query(
+      `select id, sender_user_id, sender_role, body, created_at
+       from platform_dispute_messages
+       where dispute_id = $1
+       order by created_at asc`,
+      [disputeId],
+    );
+    return c.json({ messages: messages.rows });
+  });
+
+  admin.post("/disputes/:disputeId/messages", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const disputeId = c.req.param("disputeId")?.trim();
+    if (!disputeId || !z.string().uuid().safeParse(disputeId).success) {
+      return c.json({ error: "invalid_dispute_id" }, 400);
+    }
+    const parsed = z.object({ content: z.string().trim().min(1).max(4000) }).safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const exists = await pool.query(`select id from platform_disputes where id = $1`, [disputeId]);
+    if (!exists.rowCount) return c.json({ error: "dispute_not_found" }, 404);
+    const msg = await pool.query(
+      `insert into platform_dispute_messages (dispute_id, sender_user_id, sender_role, body)
+       values ($1, $2, 'admin', $3)
+       returning id, sender_user_id, sender_role, body, created_at`,
+      [disputeId, c.get("userId"), parsed.data.content],
+    );
+    await pool.query(
+      `update platform_disputes
+       set status = case when status in ('resolved', 'rejected') then status else 'waiting_user' end,
+           assigned_admin_user_id = $2,
+           updated_at = now()
+       where id = $1`,
+      [disputeId, c.get("userId")],
+    );
+    return c.json({ message: msg.rows[0] }, 201);
   });
 
   const teacherWithdrawalDecisionSchema = z.object({
