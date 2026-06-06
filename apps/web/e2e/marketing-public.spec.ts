@@ -37,13 +37,38 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByRole("link", { name: "Soru havuzu" })).toBeVisible();
   });
 
-  test("/fiyatlar — ziyaretçiye abonelik tutarı göstermez", async ({ page }) => {
+  test("/fiyatlar — ziyaretçiye şeffaf temel ücretleri gösterir", async ({ page }) => {
     const res = await page.goto("/fiyatlar", { waitUntil: "domcontentloaded" });
     expect(res?.ok() ?? false).toBeTruthy();
     await expect(page.getByRole("heading", { name: "Üyelik ve kullanım akışları" })).toBeVisible();
-    await expect(page.getByText("1750 TL")).toHaveCount(0);
-    await expect(page.getByText("2500 TL")).toHaveCount(0);
+    await expect(page.getByText(/1750 TL \/ 30 ay/)).toBeVisible();
+    await expect(page.getByText(/2500 TL \/ 60 ay/)).toBeVisible();
+    await expect(page.getByText(/yıllık 1500 TL/)).toBeVisible();
   });
+
+  test("/ogretmenler — seçim sihirbazı filtreleri hazırlar", async ({ page }) => {
+    const res = await page.goto("/ogretmenler", { waitUntil: "domcontentloaded" });
+    expect(res?.ok() ?? false).toBeTruthy();
+    await expect(page.getByText("Öğretmen seçim sihirbazı")).toBeVisible();
+    await page.getByRole("button", { name: "YKS / TYT" }).click();
+    await page.getByRole("button", { name: "Bütçeye uygun" }).click();
+    await page.getByRole("button", { name: "Saatlik 750 TL altı" }).click();
+    await page.getByRole("button", { name: "Önerilen öğretmenleri göster" }).click();
+    await expect(page).toHaveURL(/q=TYT\+Matematik/);
+    await expect(page).toHaveURL(/sort=price_asc/);
+    await expect(page).toHaveURL(/maxHourlyRateMinor=75000/);
+  });
+
+  for (const path of ["/ogretmenler", "/courses", "/kampanyalar"]) {
+    test(`${path} — CollectionPage JSON-LD parse edilir`, async ({ page }) => {
+      const res = await page.goto(path, { waitUntil: "domcontentloaded" });
+      expect(res?.ok() ?? false).toBeTruthy();
+      const schemas = await page.locator('script[type="application/ld+json"]').evaluateAll((nodes) =>
+        nodes.map((node) => JSON.parse(node.textContent ?? "{}") as { "@type"?: string; mainEntity?: unknown }),
+      );
+      expect(schemas.some((schema) => schema["@type"] === "CollectionPage" && schema.mainEntity)).toBeTruthy();
+    });
+  }
 
   test("/manifest.webmanifest — PWA kısayolları güncel", async ({ page }) => {
     const res = await page.goto("/manifest.webmanifest", { waitUntil: "domcontentloaded" });
@@ -54,5 +79,15 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     expect(shortcutUrls.has("/student/odev-sor")).toBeTruthy();
     expect(shortcutUrls.has("/student/calisma")).toBeTruthy();
     expect(shortcutUrls.has("/teacher/odev-havuzu")).toBeTruthy();
+  });
+
+  test("/sitemap.xml — kamu URL envanteri parse edilir", async ({ page }) => {
+    const res = await page.goto("/sitemap.xml", { waitUntil: "domcontentloaded" });
+    expect(res?.ok() ?? false).toBeTruthy();
+    const xml = await page.locator("body").innerText();
+    expect(xml).toContain("<urlset");
+    expect(xml).toContain("/ogretmenler");
+    expect(xml).toContain("/courses");
+    expect(xml).toContain("/kampanyalar");
   });
 });

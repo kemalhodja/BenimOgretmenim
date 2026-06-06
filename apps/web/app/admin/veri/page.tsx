@@ -22,6 +22,21 @@ type ReconciliationSummary = {
   failed30d: number;
   latestIssueAt: string | null;
 };
+type FunnelSummary = {
+  days: number;
+  funnel: { eventName: string; count: number; conversionFromSearch: number | null }[];
+  operations?: {
+    quotaExceeded?: { event_name: string; count: number }[];
+    rateLimit?: { activeBuckets: number; limiters: { name: string; allowed: number; limited: number }[] };
+  };
+};
+type CourseAccountingSummary = {
+  held_amount_minor?: string | number;
+  gross_collected_amount_minor?: string | number;
+  refunded_amount_minor?: string | number;
+  teacher_payout_amount_minor?: string | number;
+  net_platform_amount_minor?: string | number;
+};
 
 const DATASETS: Record<string, Cfg> = {
   ledger: { title: "Cüzdan defteri", path: "/api/admin/wallet-ledger", arrayKey: "entries" },
@@ -32,6 +47,11 @@ const DATASETS: Record<string, Cfg> = {
     arrayKey: "subscriptions",
   },
   "wallet-topups": { title: "Cüzdan yüklemeleri", path: "/api/admin/wallet-topups", arrayKey: "topups" },
+  "teacher-withdrawals": {
+    title: "Öğretmen para çekme talepleri",
+    path: "/api/admin/teacher-withdrawals",
+    arrayKey: "withdrawals",
+  },
   reconciliation: {
     title: "Ödeme mutabakatı",
     path: "/api/admin/payment-reconciliation",
@@ -46,6 +66,11 @@ const DATASETS: Record<string, Cfg> = {
     title: "Kurs kayıtları",
     path: "/api/admin/course-enrollments",
     arrayKey: "enrollments",
+  },
+  "course-accounting": {
+    title: "Kurs muhasebesi",
+    path: "/api/admin/course-accounting",
+    arrayKey: "rows",
   },
   notifications: {
     title: "Veli bildirimleri",
@@ -87,6 +112,11 @@ const DATASETS: Record<string, Cfg> = {
     path: "/api/admin/teacher-campaigns",
     arrayKey: "campaigns",
   },
+  funnel: {
+    title: "Funnel ve operasyon metrikleri",
+    path: "/api/admin/funnel-summary",
+    arrayKey: "funnel",
+  },
 };
 
 export default function AdminVeriPage() {
@@ -114,7 +144,10 @@ function AdminVeriInner() {
   const [reconciliationStatus, setReconciliationStatus] = useState("");
   const [reconciliationResolutionStatus, setReconciliationResolutionStatus] = useState("open");
   const [teacherCampaignStatus, setTeacherCampaignStatus] = useState("pending_review");
+  const [teacherWithdrawalStatus, setTeacherWithdrawalStatus] = useState("pending");
   const [reconciliationSummary, setReconciliationSummary] = useState<ReconciliationSummary | null>(null);
+  const [funnelSummary, setFunnelSummary] = useState<FunnelSummary | null>(null);
+  const [courseAccountingSummary, setCourseAccountingSummary] = useState<CourseAccountingSummary | null>(null);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -135,8 +168,11 @@ function AdminVeriInner() {
     if (key === "teacher-campaigns" && teacherCampaignStatus.trim()) {
       p.set("status", teacherCampaignStatus.trim());
     }
+    if (key === "teacher-withdrawals" && teacherWithdrawalStatus.trim()) {
+      p.set("status", teacherWithdrawalStatus.trim());
+    }
     return p.toString();
-  }, [key, offset, appliedUserId, reconciliationStatus, reconciliationResolutionStatus, teacherCampaignStatus]);
+  }, [key, offset, appliedUserId, reconciliationStatus, reconciliationResolutionStatus, teacherCampaignStatus, teacherWithdrawalStatus]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -148,6 +184,8 @@ function AdminVeriInner() {
       setRows(Array.isArray(arr) ? (arr as Record<string, unknown>[]) : []);
       setTotal(typeof r.total === "number" ? r.total : 0);
       setReconciliationSummary(key === "reconciliation" ? parseReconciliationSummary(r.summary) : null);
+      setFunnelSummary(key === "funnel" ? (r as FunnelSummary) : null);
+      setCourseAccountingSummary(key === "course-accounting" ? (r.summary as CourseAccountingSummary | null) : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "yüklenemedi");
     } finally {
@@ -246,6 +284,61 @@ function AdminVeriInner() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "kampanya aksiyonu başarısız");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function cancelCourseEnrollment(id: string, paymentStatus: unknown) {
+    if (!token) return;
+    const statusText = String(paymentStatus ?? "");
+    const defaultReason =
+      statusText === "wallet_charged" || statusText === "external_paid"
+        ? "Admin kararıyla kurs kaydı iptal edildi; ücret öğrenci cüzdanına iade edildi."
+        : "Admin kararıyla kurs kaydı iptal edildi.";
+    const reason = window.prompt("İptal/iade notu girin:", defaultReason);
+    if (reason === null) return;
+    setActionBusy(`${id}:cancel`);
+    setError(null);
+    try {
+      await apiFetch(`/api/admin/course-enrollments/${id}/cancel`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ reason }),
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "kurs kaydı iptal/iade edilemedi");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function updateTeacherWithdrawalStatus(id: string, status: "paid" | "rejected") {
+    if (!token) return;
+    const note =
+      status === "paid"
+        ? window.prompt("Ödeme notu girin:", "Banka transferi tamamlandı.")
+        : window.prompt("Red notu girin:", "IBAN veya hesap bilgisi doğrulanamadı.");
+    if (note === null) return;
+    const bankReceiptRef =
+      status === "paid" ? window.prompt("Banka dekont / işlem referansı girin:", "Banka dekont no") : null;
+    if (status === "paid" && !bankReceiptRef) return;
+    setActionBusy(`${id}:withdrawal:${status}`);
+    setError(null);
+    try {
+      await apiFetch(`/api/admin/teacher-withdrawals/${id}/status`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({
+          status,
+          note,
+          bankReceiptRef: bankReceiptRef ?? undefined,
+        }),
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "para çekme aksiyonu başarısız");
     } finally {
       setActionBusy(null);
     }
@@ -399,6 +492,76 @@ function AdminVeriInner() {
           </div>
         ) : null}
 
+        {key === "funnel" && funnelSummary ? (
+          <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-paper-900">Funnel dönüşüm özeti</h2>
+              <p className="mt-1 text-xs text-paper-800/60">Son {funnelSummary.days} gün için arama → profil → kısa liste → talep/ödeme hattı.</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {funnelSummary.funnel.map((step) => (
+                  <div key={step.eventName} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-paper-800/50">{step.eventName}</div>
+                    <div className="mt-1 text-2xl font-semibold text-paper-950">{step.count}</div>
+                    <div className="text-xs text-paper-800/60">
+                      {step.conversionFromSearch == null ? "Dönüşüm yok" : `%${step.conversionFromSearch} aramadan`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-paper-900">Operasyon sinyalleri</h2>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="rounded-xl bg-paper-50 p-3">
+                  <div className="text-xs font-semibold text-paper-800/60">Aktif rate-limit bucket</div>
+                  <div className="mt-1 text-xl font-semibold text-paper-950">
+                    {funnelSummary.operations?.rateLimit?.activeBuckets ?? 0}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-paper-50 p-3">
+                  <div className="text-xs font-semibold text-paper-800/60">Quota/risk eventleri</div>
+                  <div className="mt-1 text-xs text-paper-800/70">
+                    {(funnelSummary.operations?.quotaExceeded ?? []).length
+                      ? (funnelSummary.operations?.quotaExceeded ?? []).map((item) => `${item.event_name}: ${item.count}`).join(", ")
+                      : "Açık quota sinyali yok"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {key === "course-accounting" && courseAccountingSummary ? (
+          <div className="mt-4 rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-paper-900">Kurs finans özeti</h2>
+                <p className="mt-1 text-xs text-paper-800/60">
+                  Brüt tahsilat, öğrenci iadeleri, öğretmen saatlik hakedişi ve platformda kalan net tutar.
+                </p>
+              </div>
+              <Link href="/admin/courses" className="text-xs font-medium text-brand-800 underline decoration-brand-300 underline-offset-4">
+                Kurs operasyonuna git
+              </Link>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-5">
+              {[
+                ["Blokede", courseAccountingSummary.held_amount_minor, "Öğrenci bakiyesinde bekleyen"],
+                ["Brüt tahsil", courseAccountingSummary.gross_collected_amount_minor, "Platforma gelen kurs ücreti"],
+                ["İade", courseAccountingSummary.refunded_amount_minor, "Öğrenci cüzdanına dönen"],
+                ["Öğretmen hakedişi", courseAccountingSummary.teacher_payout_amount_minor, "Komisyonsuz saatlik ödeme"],
+                ["Net platform", courseAccountingSummary.net_platform_amount_minor, "Tahsil - iade - hakediş"],
+              ].map(([label, value, hint]) => (
+                <div key={String(label)} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-paper-800/50">{label}</div>
+                  <div className="mt-1 text-lg font-semibold tabular-nums text-paper-950">{minorToTl(value)} TL</div>
+                  <div className="mt-1 text-xs text-paper-800/60">{hint}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {key === "teacher-campaigns" ? (
           <div className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
             <label className="text-sm">
@@ -425,6 +588,31 @@ function AdminVeriInner() {
           </div>
         ) : null}
 
+        {key === "teacher-withdrawals" ? (
+          <div className="mt-4 flex flex-wrap items-end gap-2 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
+            <label className="text-sm">
+              <span className="font-medium text-paper-800">Talep durumu</span>
+              <select
+                className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                value={teacherWithdrawalStatus}
+                onChange={(e) => {
+                  setTeacherWithdrawalStatus(e.target.value);
+                  setOffset(0);
+                }}
+              >
+                <option value="">Tümü</option>
+                <option value="pending">pending</option>
+                <option value="paid">paid</option>
+                <option value="rejected">rejected</option>
+              </select>
+            </label>
+            <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
+              Öğretmen talep oluşturduğunda tutar cüzdandan ayrılır. Ödendi durumunda banka transferi tamamlanmış
+              sayılır; reddedilirse tutar otomatik cüzdana geri döner.
+            </div>
+          </div>
+        ) : null}
+
         {error ? (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         ) : null}
@@ -447,7 +635,11 @@ function AdminVeriInner() {
                       {col}
                     </th>
                   ))}
-                  {key === "homework" || key === "reconciliation" || key === "teacher-campaigns" ? (
+                  {key === "homework" ||
+                  key === "reconciliation" ||
+                  key === "teacher-campaigns" ||
+                  key === "teacher-withdrawals" ||
+                  key === "enrollments" ? (
                     <th className="whitespace-nowrap px-2 py-2">Aksiyon</th>
                   ) : null}
                 </tr>
@@ -571,6 +763,61 @@ function AdminVeriInner() {
                         </div>
                       </td>
                     ) : null}
+                    {key === "teacher-withdrawals" ? (
+                      <td className="whitespace-nowrap px-2 py-1.5">
+                        <div className="flex flex-wrap gap-1">
+                          {(() => {
+                            const id = typeof row.id === "string" ? row.id : "";
+                            const status = typeof row.status === "string" ? row.status : "";
+                            if (!id || status !== "pending") {
+                              return <span className="text-[11px] text-paper-800/45">Aksiyon yok</span>;
+                            }
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={actionBusy === `${id}:withdrawal:paid`}
+                                  onClick={() => void updateTeacherWithdrawalStatus(id, "paid")}
+                                  className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-900 disabled:opacity-40"
+                                >
+                                  {actionBusy === `${id}:withdrawal:paid` ? "…" : "Ödendi"}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={actionBusy === `${id}:withdrawal:rejected`}
+                                  onClick={() => void updateTeacherWithdrawalStatus(id, "rejected")}
+                                  className="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-900 disabled:opacity-40"
+                                >
+                                  {actionBusy === `${id}:withdrawal:rejected` ? "…" : "Reddet"}
+                                </button>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </td>
+                    ) : null}
+                    {key === "enrollments" ? (
+                      <td className="whitespace-nowrap px-2 py-1.5">
+                        {(() => {
+                          const id = typeof row.id === "string" ? row.id : "";
+                          const paymentStatus = typeof row.payment_status === "string" ? row.payment_status : "";
+                          const finalized = paymentStatus === "cancelled" || paymentStatus === "refunded";
+                          if (!id || finalized) {
+                            return <span className="text-[11px] text-paper-800/45">Tamamlandı</span>;
+                          }
+                          return (
+                            <button
+                              type="button"
+                              disabled={actionBusy === `${id}:cancel`}
+                              onClick={() => void cancelCourseEnrollment(id, paymentStatus)}
+                              className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-950 disabled:opacity-40"
+                            >
+                              {actionBusy === `${id}:cancel` ? "…" : "İptal/iade"}
+                            </button>
+                          );
+                        })()}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -605,6 +852,11 @@ function formatCell(v: unknown): string {
   if (v === null || v === undefined) return "—";
   if (typeof v === "object") return JSON.stringify(v).slice(0, 80);
   return String(v);
+}
+
+function minorToTl(v: unknown): string {
+  const n = typeof v === "string" || typeof v === "number" ? Number(v) : 0;
+  return (Number.isFinite(n) ? n / 100 : 0).toFixed(2);
 }
 
 function parseReconciliationSummary(v: unknown): ReconciliationSummary | null {

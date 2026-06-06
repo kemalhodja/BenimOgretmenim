@@ -11,6 +11,7 @@ const NAV_PUBLIC = [
   { href: "/ogretmenler", label: "Öğretmen ara" },
   { href: "/courses", label: "Kurslar" },
   { href: "/fiyatlar", label: "Fiyatlar" },
+  { href: "/guven", label: "Güven" },
   { href: "/yardim", label: "Yardım" },
 ] as const;
 

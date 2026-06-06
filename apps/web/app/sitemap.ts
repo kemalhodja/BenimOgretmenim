@@ -4,7 +4,7 @@ import { publicSiteUrl } from "./lib/siteUrl";
 
 const MAX_TEACHER_SITEMAP_URLS = 2_000;
 const MAX_COURSE_SITEMAP_URLS = 2_000;
-const MAX_SEO_LANDING_URLS = 600;
+const MAX_SEO_LANDING_URLS = 1_500;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = publicSiteUrl();
@@ -15,12 +15,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/ogretmenler",
     "/courses",
     "/fiyatlar",
+    "/guven",
     "/uygulama",
     "/yardim",
     "/iletisim",
     "/gizlilik",
     "/kullanim-kosullari",
     "/kampanya",
+    "/kampanyalar",
   ].map((path) => ({
     url: `${base}${path}`,
     lastModified: new Date(),
@@ -31,7 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const teacherEntries: MetadataRoute.Sitemap = [];
   try {
     const api = getServerApiBaseUrl();
-    const pageSize = 100;
+    const pageSize = 50;
     for (let offset = 0; offset < MAX_TEACHER_SITEMAP_URLS; offset += pageSize) {
       const res = await fetch(
         `${api}/v1/teachers?limit=${pageSize}&offset=${offset}`,
@@ -101,11 +103,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { cities?: Array<{ slug: string }> },
         { branches?: Array<{ id: number; parent_id: number | null; slug: string }> },
       ];
-      const cities = (citiesBody.cities ?? []).slice(0, 20);
+      const cities = (citiesBody.cities ?? []).slice(0, 40);
       const branches = branchesBody.branches ?? [];
       const hasChild = new Set(branches.filter((b) => b.parent_id != null).map((b) => b.parent_id));
-      const leafBranches = branches.filter((b) => !hasChild.has(b.id)).slice(0, 30);
-      const exams = ["lgs", "yks"];
+      const leafBranches = branches.filter((b) => !hasChild.has(b.id)).slice(0, 40);
+      const exams = ["lgs", "tyt", "ayt", "yks"];
 
       for (const city of cities) {
         for (const branch of leafBranches) {

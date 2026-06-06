@@ -533,6 +533,36 @@ export default function ClassroomPage() {
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         ) : null}
 
+        <section className="mt-4 rounded-2xl border border-brand-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                Canlı ders kalite döngüsü
+              </div>
+              <h2 className="mt-1 text-base font-semibold text-paper-900">Ders öncesi, ders içi ve ders sonrası kontrol</h2>
+            </div>
+            <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-900">
+              {room?.status ?? "hazırlanıyor"}
+            </span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-4">
+            {[
+              ["Bağlantı", realtimeStatus === "live" ? "Canlı" : "Kontrol et"],
+              ["Materyal", materials.length ? `${materials.length} materyal` : "Ekle / iste"],
+              ["Tahta/not", notes.length ? `${notes.length} kayıt` : "Ders notu bekliyor"],
+              ["Tekrar/özet", recordings.length ? `${recordings.length} kayıt` : "Ders sonrası ekle"],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs text-paper-800/55">{label}</div>
+                <div className="mt-1 text-sm font-semibold text-paper-950">{value}</div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-paper-800/60">
+            Ders bitince öğretmen notu, konu etiketi, ödev ve sonraki adım teacher dersler ekranındaki mini değerlendirmeyle öğrenci/veli paneline düşer.
+          </p>
+        </section>
+
         <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
           <section className="overflow-hidden rounded-2xl border border-paper-200 bg-black">
             {room ? (

@@ -742,6 +742,10 @@ const answerHomeworkSchema = z.object({
     .nullable(),
 });
 
+function qualityScoreFivePoint(scorePercent: number): number {
+  return Math.max(1, Math.min(5, Math.ceil(scorePercent / 20)));
+}
+
 studentPlatform.post("/homework-posts/:postId/claim", requireAuth, async (c) => {
   const userId = c.get("userId");
   if (c.get("userRole") !== "teacher") {
@@ -976,7 +980,7 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
       JSON.stringify(parsed.data.answerImageUrls ?? []),
       teacherId,
       parsed.data.answerVideoUrl?.trim() || null,
-      answerQuality.qualityScore,
+      qualityScoreFivePoint(answerQuality.qualityScore),
       JSON.stringify(answerQuality.quality),
     ],
   );

@@ -40,6 +40,9 @@ export default async function OgretmenProfileLayout({
     name: t.display_name?.trim() || "Öğretmen",
     description: t.bio_raw,
     cityName: t.city_name,
+    branchName: t.profile_site?.primaryBranchName,
+    priceLabel: t.profile_site?.priceLabel,
+    faq: t.profile_site?.faq,
   });
 
   return (

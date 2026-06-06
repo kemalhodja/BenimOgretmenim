@@ -4,7 +4,7 @@ import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { assertAdminGate } from "../lib/adminGate.js";
-import { writeAdminAudit } from "../lib/adminAudit.js";
+import { getLastPaymentReconciliationWriteFailure, writeAdminAudit } from "../lib/adminAudit.js";
 import { runLessonReminderJob } from "../lib/lessonReminders.js";
 import {
   configurationHealthWarnings,
@@ -13,8 +13,231 @@ import {
   type SystemHealthCheck,
 } from "../lib/systemHealth.js";
 import { registerAdminExtendedRoutes } from "./adminExtended.js";
+import { rateLimitSnapshot } from "../middleware/rateLimit.js";
+import { holdCourseEnrollmentPayment, releaseCourseEnrollmentHold } from "../lib/courseEnrollmentWallet.js";
 
 export const admin = new Hono<{ Variables: AppVariables }>();
+
+const smokeRunSchema = z.object({
+  status: z.enum(["ok", "failed"]),
+  targetUrl: z.string().url().optional().nullable(),
+  workflow: z.string().max(160).optional().nullable(),
+  runId: z.string().max(80).optional().nullable(),
+  commitSha: z.string().max(80).optional().nullable(),
+  details: z.record(z.string(), z.unknown()).optional().default({}),
+});
+
+admin.post("/smoke-runs", async (c) => {
+  const secret = process.env.SMOKE_RUN_SECRET?.trim();
+  if (!secret) return c.json({ error: "smoke_run_secret_not_configured" }, 503);
+  if (c.req.header("x-smoke-run-secret") !== secret) {
+    return c.json({ error: "unauthorized" }, 401);
+  }
+  const parsed = smokeRunSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const table = await pool.query(`select to_regclass('public.operational_smoke_runs') as smoke_table`);
+  if (!table.rows[0]?.smoke_table) {
+    return c.json({ error: "smoke_runs_table_missing" }, 503);
+  }
+
+  const r = await pool.query(
+    `insert into operational_smoke_runs (
+       status, target_url, workflow, run_id, commit_sha, details_jsonb
+     ) values ($1, $2, $3, $4, $5, $6::jsonb)
+     returning id, status, created_at`,
+    [
+      parsed.data.status,
+      parsed.data.targetUrl ?? null,
+      parsed.data.workflow ?? null,
+      parsed.data.runId ?? null,
+      parsed.data.commitSha ?? null,
+      JSON.stringify(parsed.data.details ?? {}),
+    ],
+  );
+  return c.json({ run: r.rows[0] }, 201);
+});
+
+admin.get("/funnel/summary", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const days = Math.min(90, Math.max(1, Number(c.req.query("days") ?? "7") || 7));
+  const table = await pool.query(`select to_regclass('public.funnel_events') as funnel_table`);
+  if (!table.rows[0]?.funnel_table) {
+    return c.json({ days, events: [], funnel: [], operations: { quotaExceeded: [], rateLimit: rateLimitSnapshot() } });
+  }
+
+  const events = await pool.query(
+    `select event_name, count(*)::int as count
+     from funnel_events
+     where created_at >= now() - ($1::int * interval '1 day')
+     group by event_name
+     order by count desc`,
+    [days],
+  );
+  const counts = new Map(events.rows.map((row) => [row.event_name as string, Number(row.count ?? 0)]));
+  const stepNames = [
+    "teacher_search",
+    "teacher_profile_view",
+    "teacher_shortlist",
+    "demo_request_start",
+    "lesson_request_created",
+    "payment_checkout_start",
+  ];
+  const firstStep = counts.get(stepNames[0]) ?? 0;
+  const funnel = stepNames.map((name) => ({
+    eventName: name,
+    count: counts.get(name) ?? 0,
+    conversionFromSearch: firstStep > 0 ? Math.round(((counts.get(name) ?? 0) / firstStep) * 1000) / 10 : null,
+  }));
+  const quotaExceeded = await pool
+    .query(
+      `select event_name, count(*)::int as count
+       from funnel_events
+       where created_at >= now() - ($1::int * interval '1 day')
+         and metadata_jsonb::text ilike '%quota%'
+       group by event_name
+       order by count desc`,
+      [days],
+    )
+    .catch(() => ({ rows: [] }));
+
+  return c.json({
+    days,
+    events: events.rows,
+    funnel,
+    operations: {
+      quotaExceeded: quotaExceeded.rows,
+      rateLimit: rateLimitSnapshot(),
+    },
+  });
+});
+
+admin.get("/quality/weekly-report", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const sinceSql = `now() - interval '7 days'`;
+  const requiredTables = [
+    "funnel_events",
+    "subscription_payments",
+    "student_sub_payments",
+    "wallet_topup_payments",
+    "teacher_campaigns",
+    "payment_reconciliation_events",
+    "support_threads",
+    "teachers",
+    "courses",
+    "teacher_branches",
+  ];
+  const tableStatus = await pool
+    .query<{ table_name: string; exists: boolean }>(
+      `select table_name, to_regclass('public.' || table_name) is not null as exists
+       from unnest($1::text[]) as t(table_name)`,
+      [requiredTables],
+    )
+    .catch(() => ({ rows: requiredTables.map((table_name) => ({ table_name, exists: false })) }));
+  const missingTables = tableStatus.rows
+    .filter((row) => row.exists !== true)
+    .map((row) => row.table_name);
+  const [
+    funnel,
+    teacherRevenue,
+    studentRevenue,
+    walletTopups,
+    pendingCampaigns,
+    openReconciliation,
+    supportSla,
+    seoInventory,
+    activeLandings,
+  ] = await Promise.all([
+    pool
+      .query(
+        `select event_name, count(*)::int as count
+         from funnel_events
+         where created_at >= ${sinceSql}
+         group by event_name
+         order by count desc`,
+      )
+      .catch(() => ({ rows: [] })),
+    pool
+      .query(
+        `select coalesce(sum(amount_minor), 0)::bigint as amount_minor
+         from subscription_payments
+         where created_at >= ${sinceSql} and state = 'paid'`,
+      )
+      .catch(() => ({ rows: [{ amount_minor: 0 }] })),
+    pool
+      .query(
+        `select coalesce(sum(amount_minor), 0)::bigint as amount_minor
+         from student_sub_payments
+         where created_at >= ${sinceSql} and state = 'paid'`,
+      )
+      .catch(() => ({ rows: [{ amount_minor: 0 }] })),
+    pool
+      .query(
+        `select coalesce(sum(amount_minor), 0)::bigint as amount_minor
+         from wallet_topup_payments
+         where created_at >= ${sinceSql} and state = 'paid'`,
+      )
+      .catch(() => ({ rows: [{ amount_minor: 0 }] })),
+    pool.query(`select count(*)::int as count from teacher_campaigns where status = 'pending_review'`).catch(() => ({ rows: [{ count: 0 }] })),
+    pool
+      .query(
+        `select count(*)::int as count
+         from payment_reconciliation_events
+         where resolution_status = 'open' and status <> 'matched'`,
+      )
+      .catch(() => ({ rows: [{ count: 0 }] })),
+    pool
+      .query(
+        `select count(*)::int as count
+         from support_threads
+         where status = 'open' and updated_at < now() - interval '24 hours'`,
+      )
+      .catch(() => ({ rows: [{ count: 0 }] })),
+    pool
+      .query(
+        `select
+           (select count(*)::int from teachers) as teachers,
+           (select count(*)::int from courses where status = 'published') as courses,
+           (select count(*)::int from teacher_campaigns where status = 'published') as campaigns`,
+      )
+      .catch(() => ({ rows: [{ teachers: 0, courses: 0, campaigns: 0 }] })),
+    pool
+      .query(
+        `select count(*)::int as count
+         from teachers t
+         join teacher_branches tb on tb.teacher_id = t.id
+         where t.city_id is not null`,
+      )
+      .catch(() => ({ rows: [{ count: 0 }] })),
+  ]);
+
+  return c.json({
+    generatedAt: new Date().toISOString(),
+    periodDays: 7,
+    warnings: {
+      missingTables,
+      partial: missingTables.length > 0,
+    },
+    funnel: funnel.rows,
+    revenue: {
+      teacherSubscriptionsMinor: Number(teacherRevenue.rows[0]?.amount_minor ?? 0),
+      studentSubscriptionsMinor: Number(studentRevenue.rows[0]?.amount_minor ?? 0),
+      walletTopupsMinor: Number(walletTopups.rows[0]?.amount_minor ?? 0),
+    },
+    seo: {
+      inventory: seoInventory.rows[0] ?? {},
+      activeCityBranchTeacherCombos: activeLandings.rows[0]?.count ?? 0,
+    },
+    operations: {
+      openPaymentRisks: openReconciliation.rows[0]?.count ?? 0,
+      pendingCampaignModeration: pendingCampaigns.rows[0]?.count ?? 0,
+      supportSlaBreaches: supportSla.rows[0]?.count ?? 0,
+      rateLimit: rateLimitSnapshot(),
+    },
+  });
+});
 
 admin.get("/overview", requireAuth, async (c) => {
   const denied = assertAdminGate(c);
@@ -328,11 +551,13 @@ admin.get("/system-health", requireAuth, async (c) => {
       `select
          to_regclass('public.admin_audit_events') as audit_table,
          to_regclass('public.payment_reconciliation_events') as reconciliation_table,
-         to_regclass('public.guardian_invite_codes') as guardian_invites_table`,
+         to_regclass('public.guardian_invite_codes') as guardian_invites_table,
+         to_regclass('public.operational_smoke_runs') as smoke_runs_table`,
     );
     const auditReady = !!ops.rows[0]?.audit_table;
     const reconciliationReady = !!ops.rows[0]?.reconciliation_table;
     const guardianInvitesReady = !!ops.rows[0]?.guardian_invites_table;
+    const smokeRunsReady = !!ops.rows[0]?.smoke_runs_table;
     const latest = reconciliationReady
       ? await pool.query(
           `select created_at, status, merchant_oid
@@ -341,14 +566,41 @@ admin.get("/system-health", requireAuth, async (c) => {
            limit 1`,
         )
       : { rows: [] };
+    const latestSmoke = smokeRunsReady
+      ? await pool.query(
+          `select created_at, status, target_url, workflow, run_id, commit_sha
+           from operational_smoke_runs
+           order by created_at desc
+           limit 1`,
+        )
+      : { rows: [] };
+    const lastReconciliationWriteFailure = getLastPaymentReconciliationWriteFailure();
+    const latestSmokeRow = latestSmoke.rows[0] as { status?: string; created_at?: Date } | undefined;
+    const smokeStale =
+      latestSmokeRow?.created_at instanceof Date
+        ? Date.now() - latestSmokeRow.created_at.getTime() > 1000 * 60 * 60 * 24 * 8
+        : false;
     checks.push({
       name: "payment_ops",
-      status: auditReady && reconciliationReady && guardianInvitesReady ? "ok" : "degraded",
+      status:
+        auditReady &&
+        reconciliationReady &&
+        guardianInvitesReady &&
+        smokeRunsReady &&
+        !lastReconciliationWriteFailure &&
+        latestSmokeRow?.status !== "failed" &&
+        !smokeStale
+          ? "ok"
+          : "degraded",
       metadata: {
         auditReady,
         reconciliationReady,
         guardianInvitesReady,
+        smokeRunsReady,
         latestReconciliation: latest.rows[0] ?? null,
+        latestSmoke: latestSmoke.rows[0] ?? null,
+        smokeStale,
+        lastReconciliationWriteFailure,
       },
     });
   } catch (e) {
@@ -364,6 +616,12 @@ admin.get("/system-health", requireAuth, async (c) => {
     name: "configuration",
     status: warnings.length ? "degraded" : "ok",
     metadata: { warnings },
+  });
+
+  checks.push({
+    name: "rate_limit",
+    status: "ok",
+    metadata: rateLimitSnapshot(),
   });
 
   const status = summarizeSystemHealth(checks);
@@ -596,23 +854,178 @@ admin.get("/lesson-requests", requireAuth, async (c) => {
 
 const coursesListQuery = z.object({
   status: z.enum(["draft", "published", "archived", ""]).optional(),
+  origin: z.enum(["teacher_created", "admin_campaign", ""]).optional(),
+  teacherMissing: z.preprocess((v) => v === "1" || v === "true", z.boolean()).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).max(10_000).optional(),
 });
+
+const adminCourseCampaignSchema = z.object({
+  title: z.string().min(3).max(120),
+  description: z.string().max(10000).optional().nullable(),
+  branchId: z.number().int().positive().optional().nullable(),
+  deliveryMode: z.enum(["online", "in_person", "hybrid"]).optional().default("online"),
+  languageCode: z.string().min(2).max(10).optional().default("tr"),
+  studentPriceMinor: z.number().int().min(0),
+  teacherHourlyRateMinor: z.number().int().min(0),
+  currency: z.string().length(3).optional().default("TRY"),
+  status: z.enum(["draft", "published"]).optional().default("published"),
+  applicationStatus: z.enum(["open", "closed"]).optional().default("open"),
+  cohortTitle: z.string().min(3).max(120).optional().default("Ana grup"),
+  capacity: z.number().int().min(1).max(500).optional().nullable(),
+  startsAt: z.string().datetime().optional().nullable(),
+  endsAt: z.string().datetime().optional().nullable(),
+  schedule: z.record(z.string(), z.unknown()).optional().default({}),
+  details: z
+    .object({
+      targetAudience: z.string().max(1000).optional().nullable(),
+      outcomes: z.array(z.string().max(240)).max(12).optional().default([]),
+      requirements: z.array(z.string().max(240)).max(12).optional().default([]),
+      applicationNote: z.string().max(1000).optional().nullable(),
+    })
+    .optional()
+    .default({ outcomes: [], requirements: [] }),
+  sessions: z
+    .array(
+      z.object({
+        title: z.string().max(200).optional().nullable(),
+        scheduledStart: z.string().datetime(),
+        durationMinutes: z.number().int().min(15).max(240).optional().default(60),
+      }),
+    )
+    .max(80)
+    .optional()
+    .default([]),
+});
+
+const applicationDecisionSchema = z.object({
+  status: z.enum(["accepted", "rejected", "approved", "pending"]),
+});
+
+async function notifyCourseStudentApplicationDecision(application: {
+  course_id: string;
+  cohort_id: string | null;
+  student_id: string;
+  status: string;
+}) {
+  const course = await pool.query<{ title: string; price_minor: number; currency: string; cohort_title: string | null }>(
+    `select c.title, c.price_minor, c.currency, cc.title as cohort_title
+     from courses c
+     left join course_cohorts cc on cc.id = $2
+     where c.id = $1`,
+    [application.course_id, application.cohort_id],
+  );
+  const title = course.rows[0]?.title ?? "Kurs kampanyası";
+  const statusLabel =
+    application.status === "approved"
+      ? "onaylandı"
+      : application.status === "rejected"
+        ? "uygun bulunmadı"
+        : "değerlendirmeye alındı";
+  const body =
+    application.status === "approved"
+      ? `${title} ön kaydı onaylandı. Kurs, Kurslarım ekranına eklendi; ücret bakiyede bloke edildi ve kurs başlayınca tahsil edilecek.`
+      : application.status === "rejected"
+        ? `${title} ön kaydı şu an uygun bulunmadı. Kontenjan, seviye veya takvim nedeniyle farklı bir kampanya önerilebilir.`
+        : `${title} ön kaydı tekrar değerlendirmeye alındı.`;
+
+  await pool.query(
+    `insert into parent_notifications (
+       recipient_user_id, student_id, snapshot_id, channel, title, body, payload_jsonb, delivery_status, sent_at
+     )
+     select recipient_user_id, $1::uuid, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
+     from (
+       select st.user_id as recipient_user_id
+       from students st
+       where st.id = $1::uuid
+       union
+       select sg.guardian_user_id as recipient_user_id
+       from student_guardians sg
+       where sg.student_id = $1::uuid
+     ) recipients`,
+    [
+      application.student_id,
+      `Kurs ön kaydı ${statusLabel}`,
+      body,
+      JSON.stringify({
+        kind: "course_campaign_application_decision",
+        courseId: application.course_id,
+        cohortId: application.cohort_id,
+        status: application.status,
+        courseTitle: title,
+        href: application.status === "approved" ? "/student/kurslar" : `/courses/${application.course_id}`,
+      }),
+    ],
+  );
+}
+
+async function notifyCourseTeacherApplicationDecision(application: {
+  course_id: string;
+  teacher_id: string;
+  status: string;
+}) {
+  const r = await pool.query<{ title: string; recipient_user_id: string }>(
+    `select c.title, t.user_id as recipient_user_id
+     from course_teacher_applications cta
+     join courses c on c.id = cta.course_id
+     join teachers t on t.id = cta.teacher_id
+     where cta.course_id = $1 and cta.teacher_id = $2`,
+    [application.course_id, application.teacher_id],
+  );
+  const row = r.rows[0];
+  if (!row?.recipient_user_id) return;
+
+  const statusLabel =
+    application.status === "accepted"
+      ? "kabul edildi"
+      : application.status === "rejected"
+        ? "uygun bulunmadı"
+        : "tekrar değerlendirmeye alındı";
+  const body =
+    application.status === "accepted"
+      ? `${row.title} kampanyasında eğitmen olarak seçildiniz. Ders planı ve öğrenci ön kayıtlarını takip edebilirsiniz.`
+      : application.status === "rejected"
+        ? `${row.title} kampanyası için eğitmenlik başvurunuz şu an uygun bulunmadı. Yeni kampanyaları takip edebilirsiniz.`
+        : `${row.title} kampanyası başvurunuz tekrar değerlendirmeye alındı.`;
+
+  await pool.query(
+    `insert into user_notifications (
+       recipient_user_id, channel, title, body, payload_jsonb, delivery_status, sent_at
+     )
+     values ($1, 'in_app', $2, $3, $4::jsonb, 'sent', now())`,
+    [
+      row.recipient_user_id,
+      `Kurs eğitmenlik başvurusu ${statusLabel}`,
+      body,
+      JSON.stringify({
+        kind: "course_campaign_teacher_application_decision",
+        courseId: application.course_id,
+        teacherId: application.teacher_id,
+        status: application.status,
+        courseTitle: row.title,
+        href: `/teacher/kurslar`,
+      }),
+    ],
+  );
+}
 
 admin.get("/courses", requireAuth, async (c) => {
   const denied = assertAdminGate(c);
   if (denied) return denied;
 
   const rawSt = c.req.query("status")?.trim();
+  const rawOrigin = c.req.query("origin")?.trim();
   const parsed = coursesListQuery.safeParse({
     status: rawSt === "" ? undefined : rawSt,
+    origin: rawOrigin === "" ? undefined : rawOrigin,
+    teacherMissing: c.req.query("teacherMissing"),
     limit: c.req.query("limit") ?? "40",
     offset: c.req.query("offset") ?? "0",
   });
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
   const st = parsed.data.status?.trim() ?? "";
+  const origin = parsed.data.origin?.trim() ?? "";
   const lim = parsed.data.limit ?? 40;
   const off = parsed.data.offset ?? 0;
 
@@ -621,6 +1034,13 @@ admin.get("/courses", requireAuth, async (c) => {
   if (st) {
     args.push(st);
     where += ` and c.status = $${args.length}::course_status`;
+  }
+  if (origin) {
+    args.push(origin);
+    where += ` and c.origin = $${args.length}`;
+  }
+  if (parsed.data.teacherMissing) {
+    where += ` and c.origin = 'admin_campaign' and c.teacher_id is null`;
   }
 
   const countR = await pool.query(`select count(*)::int as c from courses c where ${where}`, args);
@@ -631,12 +1051,53 @@ admin.get("/courses", requireAuth, async (c) => {
   const offIdx = args.length;
   const list = await pool.query(
     `select c.id, c.title, c.status::text as status, c.price_minor, c.currency,
+            c.origin, c.teacher_hourly_rate_minor, c.application_status,
             c.created_at, c.delivery_mode::text as delivery_mode,
-            u.display_name as teacher_display_name, u.email as teacher_email,
-            t.id as teacher_id
+            coalesce(u.display_name, 'Öğretmen seçilecek') as teacher_display_name, u.email as teacher_email,
+            t.id as teacher_id,
+            (select count(*)::int from course_teacher_applications ta where ta.course_id = c.id) as teacher_application_count,
+            (select count(*)::int from course_student_applications sa where sa.course_id = c.id) as student_application_count,
+            (select count(*)::int from course_student_applications sa where sa.course_id = c.id and sa.status = 'pending') as student_application_pending_count,
+            (select count(*)::int from course_student_applications sa where sa.course_id = c.id and sa.status = 'approved') as student_application_approved_count,
+            (select count(*)::int from course_student_applications sa where sa.course_id = c.id and sa.status = 'rejected') as student_application_rejected_count,
+            (select count(*)::int
+             from course_enrollments ce
+             join course_cohorts cc on cc.id = ce.cohort_id
+             where cc.course_id = c.id
+               and ce.payment_status not in ('cancelled', 'refunded')) as enrollment_count,
+            (select count(*)::int
+             from course_enrollments ce
+             join course_cohorts cc on cc.id = ce.cohort_id
+             where cc.course_id = c.id and ce.payment_status = 'wallet_held') as wallet_held_count,
+            (select coalesce(sum(ce.price_minor), 0)::bigint
+             from course_enrollments ce
+             join course_cohorts cc on cc.id = ce.cohort_id
+             where cc.course_id = c.id and ce.payment_status = 'wallet_held') as wallet_held_amount_minor,
+            (select count(*)::int
+             from course_enrollments ce
+             join course_cohorts cc on cc.id = ce.cohort_id
+             where cc.course_id = c.id and ce.payment_status = 'wallet_charged') as wallet_charged_count,
+            (select coalesce(sum(ce.price_minor), 0)::bigint
+             from course_enrollments ce
+             join course_cohorts cc on cc.id = ce.cohort_id
+             where cc.course_id = c.id and ce.payment_status = 'wallet_charged') as wallet_charged_amount_minor,
+            (select count(*)::int
+             from course_enrollments ce
+             join course_cohorts cc on cc.id = ce.cohort_id
+             where cc.course_id = c.id and ce.payment_status = 'refunded') as refunded_count,
+            (select coalesce(sum(ce.refund_amount_minor), 0)::bigint
+             from course_enrollments ce
+             join course_cohorts cc on cc.id = ce.cohort_id
+             where cc.course_id = c.id and ce.payment_status = 'refunded') as refunded_amount_minor,
+            (select count(*)::int
+             from course_teacher_payouts tp
+             where tp.course_id = c.id and tp.status = 'wallet_paid') as teacher_payout_count,
+            (select coalesce(sum(tp.amount_minor), 0)::bigint
+             from course_teacher_payouts tp
+             where tp.course_id = c.id and tp.status = 'wallet_paid') as teacher_payout_amount_minor
      from courses c
-     join teachers t on t.id = c.teacher_id
-     join users u on u.id = t.user_id
+     left join teachers t on t.id = c.teacher_id
+     left join users u on u.id = t.user_id
      where ${where}
      order by c.created_at desc
      limit $${limIdx} offset $${offIdx}`,
@@ -644,6 +1105,452 @@ admin.get("/courses", requireAuth, async (c) => {
   );
 
   return c.json({ courses: list.rows, total, limit: lim, offset: off });
+});
+
+admin.post("/courses", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const parsed = adminCourseCampaignSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const body = parsed.data;
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const course = await client.query(
+      `insert into courses (
+         teacher_id, branch_id, title, description, delivery_mode, language_code,
+         price_minor, currency, status, created_by_admin_user_id, origin,
+         teacher_hourly_rate_minor, campaign_details_jsonb, application_status
+       ) values (
+         null, $1, $2, $3, $4::lesson_delivery_mode, $5,
+         $6, $7, $8::course_status, $9, 'admin_campaign',
+         $10, $11::jsonb, $12
+       )
+       returning id, title, status::text as status, origin, price_minor, teacher_hourly_rate_minor, currency`,
+      [
+        body.branchId ?? null,
+        body.title.trim(),
+        body.description?.trim() || null,
+        body.deliveryMode,
+        body.languageCode,
+        body.studentPriceMinor,
+        body.currency.toUpperCase(),
+        body.status,
+        c.get("userId"),
+        body.teacherHourlyRateMinor,
+        JSON.stringify(body.details ?? {}),
+        body.applicationStatus,
+      ],
+    );
+    const courseId = course.rows[0].id as string;
+    const cohort = await client.query(
+      `insert into course_cohorts (
+         course_id, title, capacity, starts_at, ends_at, schedule_jsonb, status
+       ) values ($1, $2, $3, $4, $5, $6::jsonb, 'planned')
+       returning id, title, capacity, starts_at, ends_at`,
+      [
+        courseId,
+        body.cohortTitle.trim(),
+        body.capacity ?? null,
+        body.startsAt ? new Date(body.startsAt) : null,
+        body.endsAt ? new Date(body.endsAt) : null,
+        JSON.stringify(body.schedule ?? {}),
+      ],
+    );
+    const cohortId = cohort.rows[0].id as string;
+    const sessions = [];
+    for (let index = 0; index < body.sessions.length; index++) {
+      const session = body.sessions[index];
+      const start = new Date(session.scheduledStart);
+      const end = new Date(start.getTime() + session.durationMinutes * 60_000);
+      const r = await client.query(
+        `insert into course_sessions (
+           cohort_id, session_index, title, scheduled_start, scheduled_end, duration_minutes,
+           delivery_mode, status
+         ) values ($1, $2, $3, $4, $5, $6, $7::lesson_delivery_mode, 'scheduled')
+         returning id, session_index, title, scheduled_start, scheduled_end, duration_minutes`,
+        [
+          cohortId,
+          index + 1,
+          session.title?.trim() || `Ders ${index + 1}`,
+          start,
+          end,
+          session.durationMinutes,
+          body.deliveryMode,
+        ],
+      );
+      sessions.push(r.rows[0]);
+    }
+    await client.query("commit");
+    await writeAdminAudit({
+      actorUserId: c.get("userId"),
+      actorRole: c.get("userRole"),
+      requestId: c.req.header("x-request-id") ?? null,
+      action: "course.admin_campaign.create",
+      entityType: "course",
+      entityId: courseId,
+      reason: "admin_course_campaign_create",
+      after: { course: course.rows[0], cohort: cohort.rows[0], sessions: sessions.length },
+    });
+    return c.json({ course: course.rows[0], cohort: cohort.rows[0], sessions }, 201);
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+});
+
+admin.get("/courses/:courseId/applications", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const courseId = c.req.param("courseId");
+  if (!z.string().uuid().safeParse(courseId).success) return c.json({ error: "invalid_course_id" }, 400);
+
+  const teacherApplications = await pool.query(
+    `select ta.id, ta.status, ta.message, ta.experience_note, ta.created_at, ta.updated_at,
+            t.id as teacher_id, u.display_name as teacher_display_name, u.email as teacher_email,
+            t.rating_avg, t.rating_count, t.verification_status
+     from course_teacher_applications ta
+     join teachers t on t.id = ta.teacher_id
+     join users u on u.id = t.user_id
+     where ta.course_id = $1
+     order by case ta.status when 'accepted' then 0 when 'pending' then 1 else 2 end, ta.created_at desc`,
+    [courseId],
+  );
+  const studentApplications = await pool.query(
+    `select sa.id, sa.status, sa.goal_note, sa.guardian_note, sa.created_at, sa.updated_at,
+            s.id as student_id, u.display_name as student_display_name, u.email as student_email,
+            cc.title as cohort_title,
+            ce.id as enrollment_id,
+            ce.price_minor as enrollment_price_minor,
+            ce.currency as enrollment_currency,
+            ce.payment_status as enrollment_payment_status,
+            ce.charged_at as enrollment_charged_at,
+            ce.wallet_hold_id,
+            wh.status::text as wallet_hold_status,
+            wh.amount_minor as wallet_hold_amount_minor,
+            coalesce(uw.balance_minor, 0)::bigint as wallet_balance_minor,
+            coalesce(holds.active_hold_minor, 0)::bigint as wallet_active_hold_minor,
+            greatest(coalesce(uw.balance_minor, 0)::bigint - coalesce(holds.active_hold_minor, 0)::bigint, 0)::bigint as wallet_available_minor
+     from course_student_applications sa
+     join students s on s.id = sa.student_id
+     join users u on u.id = s.user_id
+     left join course_cohorts cc on cc.id = sa.cohort_id
+     left join course_enrollments ce on ce.cohort_id = sa.cohort_id and ce.student_id = sa.student_id
+     left join user_wallet_holds wh on wh.id = ce.wallet_hold_id
+     left join user_wallets uw on uw.user_id = u.id
+     left join lateral (
+       select sum(amount_minor)::bigint as active_hold_minor
+       from user_wallet_holds h
+       where h.user_id = u.id and h.status = 'active'
+     ) holds on true
+     where sa.course_id = $1
+     order by case sa.status when 'pending' then 0 when 'approved' then 1 else 2 end, sa.created_at desc`,
+    [courseId],
+  );
+  return c.json({ teacherApplications: teacherApplications.rows, studentApplications: studentApplications.rows });
+});
+
+admin.patch("/courses/:courseId/teacher-applications/:applicationId/status", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const courseId = c.req.param("courseId");
+  const applicationId = c.req.param("applicationId");
+  if (!z.string().uuid().safeParse(courseId).success) return c.json({ error: "invalid_course_id" }, 400);
+  if (!z.string().uuid().safeParse(applicationId).success) return c.json({ error: "invalid_application_id" }, 400);
+  const parsed = applicationDecisionSchema.safeParse(await c.req.json());
+  if (!parsed.success || !["accepted", "rejected", "pending"].includes(parsed.data.status)) {
+    return c.json({ error: "invalid_teacher_application_status" }, 400);
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const course = await client.query(
+      `select id, teacher_id from courses where id = $1 and origin = 'admin_campaign' for update`,
+      [courseId],
+    );
+    if (!course.rowCount) {
+      await client.query("rollback");
+      return c.json({ error: "admin_campaign_not_found" }, 404);
+    }
+    const app = await client.query(
+      `update course_teacher_applications
+       set status = $1, decided_by_admin_user_id = $2, decided_at = now(), updated_at = now()
+       where id = $3 and course_id = $4
+       returning id, course_id, teacher_id, status`,
+      [parsed.data.status, c.get("userId"), applicationId, courseId],
+    );
+    if (!app.rowCount) {
+      await client.query("rollback");
+      return c.json({ error: "application_not_found" }, 404);
+    }
+    if (parsed.data.status !== "accepted" && course.rows[0].teacher_id === app.rows[0].teacher_id) {
+      await client.query(`update courses set teacher_id = null, updated_at = now() where id = $1`, [courseId]);
+    }
+    if (parsed.data.status === "accepted") {
+      await client.query(
+        `update course_teacher_applications
+         set status = 'rejected', decided_by_admin_user_id = $1, decided_at = now(), updated_at = now()
+         where course_id = $2 and id <> $3 and status = 'pending'`,
+        [c.get("userId"), courseId, applicationId],
+      );
+      await client.query(`update courses set teacher_id = $1, updated_at = now() where id = $2`, [
+        app.rows[0].teacher_id,
+        courseId,
+      ]);
+    }
+    await client.query("commit");
+    await notifyCourseTeacherApplicationDecision(app.rows[0] as {
+      course_id: string;
+      teacher_id: string;
+      status: string;
+    });
+    await writeAdminAudit({
+      actorUserId: c.get("userId"),
+      actorRole: c.get("userRole"),
+      requestId: c.req.header("x-request-id") ?? null,
+      action: "course.teacher_application.status",
+      entityType: "course_teacher_application",
+      entityId: applicationId,
+      reason: "admin_teacher_selection",
+      after: app.rows[0],
+    });
+    return c.json({ application: app.rows[0] });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+});
+
+admin.patch("/courses/:courseId/student-applications/:applicationId/status", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const courseId = c.req.param("courseId");
+  const applicationId = c.req.param("applicationId");
+  if (!z.string().uuid().safeParse(courseId).success) return c.json({ error: "invalid_course_id" }, 400);
+  if (!z.string().uuid().safeParse(applicationId).success) return c.json({ error: "invalid_application_id" }, 400);
+  const parsed = applicationDecisionSchema.safeParse(await c.req.json());
+  if (!parsed.success || !["approved", "rejected", "pending"].includes(parsed.data.status)) {
+    return c.json({ error: "invalid_student_application_status" }, 400);
+  }
+  const actorUserId = c.get("userId");
+  const client = await pool.connect();
+  let application: {
+    id: string;
+    course_id: string;
+    cohort_id: string | null;
+    student_id: string;
+    status: string;
+  } | null = null;
+  let enrollment: { id: string; enrolled_at: string; payment_status?: string; wallet_hold_id?: string | null } | null = null;
+  try {
+    await client.query("begin");
+    const course = await client.query<{ price_minor: number; currency: string }>(
+      `select price_minor, currency from courses where id = $1 and origin = 'admin_campaign' for update`,
+      [courseId],
+    );
+    if (!course.rowCount) {
+      await client.query("rollback");
+      return c.json({ error: "admin_campaign_not_found" }, 404);
+    }
+    const r = await client.query<{
+      id: string;
+      course_id: string;
+      cohort_id: string | null;
+      student_id: string;
+      status: string;
+    }>(
+      `update course_student_applications
+       set status = $1, decided_by_admin_user_id = $2, decided_at = now(), updated_at = now()
+       where id = $3 and course_id = $4
+       returning id, course_id, cohort_id, student_id, status`,
+      [parsed.data.status, actorUserId, applicationId, courseId],
+    );
+    if (!r.rowCount) {
+      await client.query("rollback");
+      return c.json({ error: "application_not_found" }, 404);
+    }
+    application = r.rows[0];
+
+    if (application.status === "approved") {
+      let cohortId = application.cohort_id;
+      if (!cohortId) {
+        const defaultCohort = await client.query<{ id: string }>(
+          `select id from course_cohorts
+           where course_id = $1 and status in ('planned', 'active')
+           order by starts_at nulls last, created_at asc
+           limit 1`,
+          [courseId],
+        );
+        cohortId = defaultCohort.rows[0]?.id ?? null;
+        if (!cohortId) {
+          await client.query("rollback");
+          return c.json({ error: "no_active_campaign_cohort" }, 409);
+        }
+        const updated = await client.query<{
+          id: string;
+          course_id: string;
+          cohort_id: string | null;
+          student_id: string;
+          status: string;
+        }>(
+          `update course_student_applications
+           set cohort_id = $1, updated_at = now()
+           where id = $2
+           returning id, course_id, cohort_id, student_id, status`,
+          [cohortId, application.id],
+        );
+        application = updated.rows[0];
+      }
+
+      const existing = await client.query<{
+        id: string;
+        enrolled_at: string;
+        payment_status: string;
+        wallet_hold_id: string | null;
+      }>(
+        `select id, enrolled_at, payment_status, wallet_hold_id from course_enrollments where cohort_id = $1 and student_id = $2`,
+        [cohortId, application.student_id],
+      );
+      enrollment = existing.rows[0] ?? null;
+      const enrollmentFinalized = enrollment?.payment_status === "cancelled" || enrollment?.payment_status === "refunded";
+      if (!enrollment || enrollmentFinalized) {
+        const cohort = await client.query<{ capacity: number | null; enrolled_count: number }>(
+          `select cc.capacity,
+                  (select count(*)::int
+                   from course_enrollments e
+                   where e.cohort_id = cc.id
+                     and e.payment_status not in ('cancelled', 'refunded')) as enrolled_count
+           from course_cohorts cc
+           where cc.id = $1 and cc.course_id = $2 and cc.status in ('planned', 'active')
+           for update`,
+          [cohortId, courseId],
+        );
+        if (!cohort.rowCount) {
+          await client.query("rollback");
+          return c.json({ error: "invalid_campaign_cohort" }, 400);
+        }
+        const capacity = cohort.rows[0].capacity;
+        if (capacity != null && cohort.rows[0].enrolled_count >= capacity) {
+          await client.query("rollback");
+          return c.json({ error: "cohort_full" }, 409);
+        }
+        const enrollmentMetadata = JSON.stringify({
+          source: "course_campaign_application",
+          applicationId: application.id,
+          courseId,
+          approvedByAdminUserId: actorUserId,
+        });
+        if (enrollmentFinalized && enrollment) {
+          const updated = await client.query<{ id: string; enrolled_at: string; payment_status: string; wallet_hold_id: string | null }>(
+            `update course_enrollments
+             set price_minor = $2,
+                 currency = $3,
+                 payment_status = 'manual',
+                 enrolled_at = now(),
+                 wallet_hold_id = null,
+                 charged_at = null,
+                 released_at = null,
+                 cancelled_at = null,
+                 refunded_at = null,
+                 refund_amount_minor = 0,
+                 cancellation_reason = null,
+                 metadata_jsonb = metadata_jsonb || $4::jsonb
+             where id = $1
+             returning id, enrolled_at, payment_status, wallet_hold_id`,
+            [enrollment.id, course.rows[0].price_minor, course.rows[0].currency, enrollmentMetadata],
+          );
+          enrollment = updated.rows[0] ?? null;
+        } else {
+          const inserted = await client.query<{ id: string; enrolled_at: string }>(
+            `insert into course_enrollments (cohort_id, student_id, price_minor, currency, payment_status, metadata_jsonb)
+             values ($1, $2, $3, $4, 'manual', $5::jsonb)
+             on conflict (cohort_id, student_id) do nothing
+             returning id, enrolled_at`,
+            [cohortId, application.student_id, course.rows[0].price_minor, course.rows[0].currency, enrollmentMetadata],
+          );
+          enrollment = inserted.rows[0] ?? null;
+        }
+      }
+      if (enrollment && Number(course.rows[0].price_minor ?? 0) > 0) {
+        const student = await client.query<{ user_id: string }>(`select user_id from students where id = $1`, [
+          application.student_id,
+        ]);
+        const userId = student.rows[0]?.user_id;
+        if (!userId) {
+          await client.query("rollback");
+          return c.json({ error: "student_profile_missing" }, 400);
+        }
+        const priceMinor = Number(course.rows[0].price_minor);
+        try {
+          await holdCourseEnrollmentPayment(
+            {
+              enrollmentId: enrollment.id,
+              userId,
+              studentId: application.student_id,
+              courseId,
+              cohortId,
+              amountMinor: priceMinor,
+              currency: course.rows[0].currency,
+              source: "course_campaign_application",
+            },
+            client,
+          );
+        } catch (e) {
+          if (e instanceof Error && e.message === "insufficient_balance") {
+            await client.query("rollback");
+            return c.json({ error: "insufficient_balance", neededMinor: priceMinor }, 409);
+          }
+          throw e;
+        }
+      }
+    } else if (application.cohort_id) {
+      const existing = await client.query<{ id: string }>(
+        `select id from course_enrollments
+         where cohort_id = $1
+           and student_id = $2
+           and metadata_jsonb->>'source' = 'course_campaign_application'
+           and metadata_jsonb->>'applicationId' = $3
+           and payment_status <> 'wallet_charged'`,
+        [application.cohort_id, application.student_id, application.id],
+      );
+      for (const row of existing.rows) {
+        await releaseCourseEnrollmentHold(row.id, client);
+      }
+      await client.query(
+        `delete from course_enrollments
+         where cohort_id = $1
+           and student_id = $2
+           and metadata_jsonb->>'source' = 'course_campaign_application'
+           and metadata_jsonb->>'applicationId' = $3`,
+        [application.cohort_id, application.student_id, application.id],
+      );
+    }
+
+    await client.query("commit");
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+
+  await notifyCourseStudentApplicationDecision(application);
+  await writeAdminAudit({
+    actorUserId,
+    actorRole: c.get("userRole"),
+    requestId: c.req.header("x-request-id") ?? null,
+    action: "course.student_application.status",
+    entityType: "course_student_application",
+    entityId: applicationId,
+    reason: "admin_student_application_decision",
+    after: { ...application, enrollment },
+  });
+  return c.json({ application, enrollment });
 });
 
 const subPayQuery = z.object({

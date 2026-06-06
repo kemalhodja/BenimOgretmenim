@@ -16,6 +16,119 @@ type LearningModule = {
   estimated_minutes: number | null;
 };
 
+type CurriculumCatalog = {
+  gradeLevel: number;
+  label: string;
+  branches: Array<{
+    branchSlug: string;
+    branchName: string;
+    units: Array<{ unitSlug: string; unitTitle: string; questionCount: number }>;
+  }>;
+};
+
+type CurriculumQuestion = {
+  id: string;
+  gradeLevel: number;
+  branchSlug: string;
+  branchName: string;
+  unitSlug: string;
+  unitTitle: string;
+  outcomeCode: string;
+  outcomeTitle: string;
+  prompt: string;
+  choices: Array<{ key: "A" | "B" | "C" | "D"; text: string }>;
+  difficulty: "easy" | "medium" | "hard";
+  sortOrder: number;
+  metadata?: {
+    skill: string;
+    misconception: string;
+    bloomLevel: string;
+    estimatedSeconds: number;
+    practiceHint: string;
+  };
+};
+
+type CurriculumTest = {
+  gradeLevel: number;
+  branchSlug: string;
+  branchName: string;
+  unitSlug: string;
+  unitTitle: string;
+  questionCount: number;
+  thresholdCorrect: number;
+  questions: CurriculumQuestion[];
+};
+
+type TeacherRecommendation = {
+  id: string;
+  displayName: string;
+  ratingAvg: string | number | null;
+  ratingCount: number;
+  cityName: string | null;
+  branchName: string | null;
+  minHourlyRateMinor: number | null;
+  recommendationScore: number;
+  reasons: string[];
+};
+
+type RecommendedAction = {
+  title: string;
+  body: string;
+};
+
+type CurriculumAttempt = {
+  id: string;
+  student_display_name?: string;
+  grade_level: number;
+  branch_slug: string;
+  branch_name: string;
+  unit_slug: string;
+  unit_title: string;
+  question_count: number;
+  correct_count: number;
+  score_percent: string | number;
+  weak_outcomes_jsonb: unknown;
+  teacher_support_recommended: boolean;
+  teacher_recommendations_jsonb?: unknown;
+  mastery_level?: string | null;
+  misconceptions_jsonb?: unknown;
+  recommended_actions_jsonb?: unknown;
+  answered_count?: number | null;
+  created_at: string;
+};
+
+type CurriculumResult = {
+  id: string;
+  title: string;
+  gradeLevel: number;
+  branchSlug: string;
+  branchName: string;
+  unitSlug: string;
+  unitTitle: string;
+  correctCount: number;
+  questionCount: number;
+  scorePercent: number;
+  masteryLevel: "kritik" | "destek_gerekli" | "pekistirme" | "guclu";
+  masteryLabel: string;
+  weakOutcomes: string[];
+  misconceptions: string[];
+  recommendedActions: RecommendedAction[];
+  teacherSupportRecommended: boolean;
+  teacherRecommendations: TeacherRecommendation[];
+  questionResults: Array<{
+    questionId: string;
+    outcomeTitle: string;
+    selectedChoice: "A" | "B" | "C" | "D" | null;
+    correctChoice: "A" | "B" | "C" | "D";
+    isCorrect: boolean;
+    explanation: string;
+    skill: string;
+    misconception: string;
+    practiceHint: string;
+  }>;
+  createdAt: string;
+};
+
 type StudyPlan = {
   id: string;
   target_exam: string | null;
@@ -39,6 +152,7 @@ type Overview = {
   plans: StudyPlan[];
   attempts: Attempt[];
   modules: LearningModule[];
+  curriculumAttempts: CurriculumAttempt[];
 };
 
 function topicList(value: unknown): string {
@@ -52,8 +166,31 @@ function topicsFrom(value: unknown): string[] {
   return value.map((x) => String(x).trim()).filter(Boolean);
 }
 
+function actionTitlesFrom(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return "";
+      const action = item as { title?: unknown; body?: unknown };
+      const title = typeof action.title === "string" ? action.title : "";
+      const body = typeof action.body === "string" ? action.body : "";
+      return title && body ? `${title}: ${body}` : title || body;
+    })
+    .filter(Boolean);
+}
+
 function percentLabel(value: number): string {
   return `${Math.round(value)}%`;
+}
+
+function teacherSearchHref(branchName: string, branchSlug?: string): string {
+  const query = branchSlug?.includes("matematik") ? "Matematik" : branchName;
+  return `/ogretmenler?verifiedOnly=1&sort=recommended&q=${encodeURIComponent(query)}`;
+}
+
+function moneyLabel(minor: number | null): string {
+  if (minor == null) return "Ücret bilgisi profilde";
+  return `${Math.round(minor / 100)} TL'den başlayan`;
 }
 
 function learningRiskLabel(progressPercent: number, averageScore: number | null, focusTopics: string[]): string {
@@ -79,6 +216,14 @@ export default function StudentCalismaPage() {
   const [attemptTitle, setAttemptTitle] = useState("Konu tarama testi");
   const [score, setScore] = useState(70);
   const [attemptWeakTopics, setAttemptWeakTopics] = useState("Problem");
+  const [catalog, setCatalog] = useState<CurriculumCatalog[]>([]);
+  const [selectedGrade, setSelectedGrade] = useState(5);
+  const [selectedBranch, setSelectedBranch] = useState("");
+  const [selectedUnit, setSelectedUnit] = useState("");
+  const [curriculumTest, setCurriculumTest] = useState<CurriculumTest | null>(null);
+  const [testAnswers, setTestAnswers] = useState<Record<string, "A" | "B" | "C" | "D">>({});
+  const [curriculumResult, setCurriculumResult] = useState<CurriculumResult | null>(null);
+  const [curriculumBusy, setCurriculumBusy] = useState(false);
 
   useEffect(() => {
     const t = getToken();
@@ -92,8 +237,12 @@ export default function StudentCalismaPage() {
   const load = useCallback(async () => {
     if (!token) return;
     setError(null);
-    const r = await apiFetch<Overview>("/v1/learning/overview", { token });
+    const [r, c] = await Promise.all([
+      apiFetch<Overview>("/v1/learning/overview", { token }),
+      apiFetch<{ catalog: CurriculumCatalog[] }>("/v1/learning/curriculum-tests/catalog", { token }),
+    ]);
     setData(r);
+    setCatalog(c.catalog ?? []);
   }, [token]);
 
   useEffect(() => {
@@ -111,6 +260,17 @@ export default function StudentCalismaPage() {
       setError(msg);
     });
   }, [load, router, pathname]);
+
+  useEffect(() => {
+    if (catalog.length === 0 || selectedBranch) return;
+    const grade = catalog.find((item) => item.gradeLevel === selectedGrade) ?? catalog[0];
+    const branch = grade?.branches[0];
+    const unit = branch?.units[0];
+    if (!grade || !branch || !unit) return;
+    setSelectedGrade(grade.gradeLevel);
+    setSelectedBranch(branch.branchSlug);
+    setSelectedUnit(unit.unitSlug);
+  }, [catalog, selectedBranch, selectedGrade]);
 
   async function createPlan() {
     if (!token) return;
@@ -180,6 +340,67 @@ export default function StudentCalismaPage() {
     }
   }
 
+  async function loadCurriculumTest() {
+    if (!token || !selectedBranch || !selectedUnit) return;
+    setCurriculumBusy(true);
+    setError(null);
+    setOk(null);
+    setCurriculumResult(null);
+    try {
+      const qs = new URLSearchParams({
+        gradeLevel: String(selectedGrade),
+        branchSlug: selectedBranch,
+        unitSlug: selectedUnit,
+      });
+      const r = await apiFetch<{ test: CurriculumTest }>(`/v1/learning/curriculum-tests?${qs.toString()}`, {
+        token,
+      });
+      setCurriculumTest(r.test);
+      setTestAnswers({});
+      setOk("20 soruluk kazanım testi hazırlandı.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "curriculum_test_load_failed");
+    } finally {
+      setCurriculumBusy(false);
+    }
+  }
+
+  async function submitCurriculumTest() {
+    if (!token || !curriculumTest) return;
+    const missingCount = curriculumTest.questions.filter((question) => !testAnswers[question.id]).length;
+    if (missingCount > 0) {
+      setError(`Sonucu göndermeden önce ${missingCount} cevapsız soruyu tamamlayın.`);
+      setOk(null);
+      return;
+    }
+    setCurriculumBusy(true);
+    setError(null);
+    setOk(null);
+    try {
+      const r = await apiFetch<{ attempt: CurriculumResult }>("/v1/learning/curriculum-test-attempts", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          gradeLevel: curriculumTest.gradeLevel,
+          branchSlug: curriculumTest.branchSlug,
+          unitSlug: curriculumTest.unitSlug,
+          answers: testAnswers,
+        }),
+      });
+      setCurriculumResult(r.attempt);
+      setOk(
+        r.attempt.teacherSupportRecommended
+          ? "Sonuç kaydedildi. 15 doğru altında olduğu için branş öğretmeni önerileri hazırlandı ve veliye bildirim gitti."
+          : "Sonuç kaydedildi ve veliye bildirim gönderildi.",
+      );
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "curriculum_test_submit_failed");
+    } finally {
+      setCurriculumBusy(false);
+    }
+  }
+
   if (!token) return null;
 
   const latestPlan = data?.plans[0] ?? null;
@@ -229,6 +450,15 @@ export default function StudentCalismaPage() {
           cta: focusTopics.length ? "Planı yenile" : "Sonuç ekle",
         };
   const learningRisk = learningRiskLabel(progressPercent, averageScore, focusTopics);
+  const selectedGradeData = catalog.find((item) => item.gradeLevel === selectedGrade) ?? catalog[0] ?? null;
+  const selectedBranchData = selectedGradeData?.branches.find((item) => item.branchSlug === selectedBranch) ?? selectedGradeData?.branches[0] ?? null;
+  const selectedUnitData = selectedBranchData?.units.find((item) => item.unitSlug === selectedUnit) ?? selectedBranchData?.units[0] ?? null;
+  const latestCurriculumAttempts = data?.curriculumAttempts ?? [];
+  const answeredCount = curriculumTest?.questions.filter((question) => testAnswers[question.id]).length ?? 0;
+  const unansweredCount = (curriculumTest?.questionCount ?? 0) - answeredCount;
+  const estimatedMinutes = curriculumTest
+    ? Math.max(12, Math.round(curriculumTest.questions.reduce((sum, question) => sum + (question.metadata?.estimatedSeconds ?? 60), 0) / 60))
+    : 0;
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -320,6 +550,269 @@ export default function StudentCalismaPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-800/70">
+                Kazanım testleri
+              </div>
+              <h2 className="mt-1 text-base font-semibold text-paper-900">20 soruluk ünite kontrolü</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                Sınıf, branş ve ünite seç; sonuç veliye gider. 15 doğru altında ilgili branştan öğretmen önerisi hemen açılır.
+              </p>
+            </div>
+            <div className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-900">
+              Eşik: 15/20
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <label className="block text-xs font-medium text-paper-800">
+              Sınıf
+              <select
+                value={selectedGrade}
+                onChange={(e) => {
+                  const gradeLevel = Number(e.target.value);
+                  const grade = catalog.find((item) => item.gradeLevel === gradeLevel) ?? null;
+                  const branch = grade?.branches[0] ?? null;
+                  const unit = branch?.units[0] ?? null;
+                  setSelectedGrade(gradeLevel);
+                  setSelectedBranch(branch?.branchSlug ?? "");
+                  setSelectedUnit(unit?.unitSlug ?? "");
+                  setCurriculumTest(null);
+                  setCurriculumResult(null);
+                  setTestAnswers({});
+                }}
+                className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm"
+              >
+                {catalog.map((grade) => (
+                  <option key={grade.gradeLevel} value={grade.gradeLevel}>
+                    {grade.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-paper-800">
+              Branş
+              <select
+                value={selectedBranchData?.branchSlug ?? ""}
+                onChange={(e) => {
+                  const branch = selectedGradeData?.branches.find((item) => item.branchSlug === e.target.value) ?? null;
+                  const unit = branch?.units[0] ?? null;
+                  setSelectedBranch(branch?.branchSlug ?? "");
+                  setSelectedUnit(unit?.unitSlug ?? "");
+                  setCurriculumTest(null);
+                  setCurriculumResult(null);
+                  setTestAnswers({});
+                }}
+                className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm"
+              >
+                {(selectedGradeData?.branches ?? []).map((branch) => (
+                  <option key={branch.branchSlug} value={branch.branchSlug}>
+                    {branch.branchName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-paper-800">
+              Ünite
+              <select
+                value={selectedUnitData?.unitSlug ?? ""}
+                onChange={(e) => {
+                  setSelectedUnit(e.target.value);
+                  setCurriculumTest(null);
+                  setCurriculumResult(null);
+                  setTestAnswers({});
+                }}
+                className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm"
+              >
+                {(selectedBranchData?.units ?? []).map((unit) => (
+                  <option key={unit.unitSlug} value={unit.unitSlug}>
+                    {unit.unitTitle}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={curriculumBusy || !selectedBranchData || !selectedUnitData}
+              onClick={() => void loadCurriculumTest()}
+              className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {curriculumBusy && !curriculumTest ? "Hazırlanıyor…" : "20 soruluk testi başlat"}
+            </button>
+            <div className="text-xs text-paper-800/60">
+              {selectedBranchData && selectedUnitData
+                ? `${selectedGrade}. sınıf · ${selectedBranchData.branchName} · ${selectedUnitData.unitTitle} · 20 soru · eşik 15 doğru`
+                : "Katalog yükleniyor"}
+            </div>
+          </div>
+
+          {curriculumTest ? (
+            <div className="mt-5 rounded-2xl border border-paper-200 bg-paper-50 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-paper-900">
+                    {curriculumTest.branchName} · {curriculumTest.unitTitle}
+                  </h3>
+                  <p className="mt-1 text-xs text-paper-800/60">
+                    {answeredCount}/{curriculumTest.questionCount} soru cevaplandı · tahmini {estimatedMinutes} dk · eşik {curriculumTest.thresholdCorrect}/20.
+                  </p>
+                  {unansweredCount > 0 ? (
+                    <p className="mt-1 text-xs font-medium text-amber-800">
+                      {unansweredCount} soru cevapsız. Sonuç kaydı için tüm soruları tamamlayın.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs font-medium text-brand-800">Tüm sorular cevaplandı; sonucu güvenle gönderebilirsiniz.</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={curriculumBusy || unansweredCount > 0}
+                  onClick={() => void submitCurriculumTest()}
+                  className="rounded-xl border border-brand-300 bg-white px-4 py-2 text-sm font-semibold text-brand-900 disabled:opacity-50"
+                >
+                  {curriculumBusy ? "Kaydediliyor…" : "Sonucu gönder"}
+                </button>
+              </div>
+              <ol className="mt-4 space-y-3">
+                {curriculumTest.questions.map((question, index) => (
+                  <li key={question.id} className="rounded-xl border border-paper-200 bg-white p-3">
+                    <div className="text-xs font-semibold text-paper-800/55">
+                      Soru {index + 1} · {question.outcomeTitle}
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-paper-900">{question.prompt}</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {question.choices.map((choice) => (
+                        <button
+                          key={choice.key}
+                          type="button"
+                          onClick={() =>
+                            setTestAnswers((prev) => ({
+                              ...prev,
+                              [question.id]: choice.key,
+                            }))
+                          }
+                          className={`rounded-lg border px-3 py-2 text-left text-xs ${
+                            testAnswers[question.id] === choice.key
+                              ? "border-brand-400 bg-brand-50 text-brand-950"
+                              : "border-paper-200 bg-paper-50 text-paper-800 hover:border-brand-200"
+                          }`}
+                        >
+                          <span className="font-semibold">{choice.key}) </span>
+                          {choice.text}
+                        </button>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ) : null}
+
+          {curriculumResult ? (
+            <div className="mt-5 rounded-2xl border border-brand-200 bg-brand-50/60 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">
+                    Sonuç
+                  </div>
+                  <h3 className="mt-1 text-lg font-semibold text-paper-900">
+                    {curriculumResult.correctCount}/{curriculumResult.questionCount} doğru · {percentLabel(curriculumResult.scorePercent)}
+                  </h3>
+                  <div className="mt-2 inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-900">
+                    {curriculumResult.masteryLabel}
+                  </div>
+                  <p className="mt-1 text-sm text-paper-800/70">
+                    {curriculumResult.teacherSupportRecommended
+                      ? "15 doğru altında olduğu için veliye risk bildirimi gitti ve branş öğretmeni önerileri hazırlandı."
+                      : "15 doğru ve üstü: ünite için pekiştirme ve sonraki kazanıma geçiş önerilir."}
+                  </p>
+                </div>
+                <Link
+                  href={teacherSearchHref(curriculumResult.branchName, curriculumResult.branchSlug)}
+                  className="w-fit rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+                >
+                  Branş öğretmenlerini gör
+                </Link>
+              </div>
+              <div className="mt-3 text-xs text-paper-800/65">
+                Zayıf kazanımlar: {curriculumResult.weakOutcomes.join(", ") || "Belirgin zayıf kazanım yok"}
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {curriculumResult.recommendedActions.map((action, index) => (
+                  <div key={`${action.title}-${index}`} className="rounded-xl border border-brand-100 bg-white p-3">
+                    <div className="text-xs font-semibold text-brand-900">
+                      {index + 1}. {action.title}
+                    </div>
+                    <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{action.body}</p>
+                  </div>
+                ))}
+              </div>
+              {curriculumResult.misconceptions.length > 0 ? (
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <div className="text-xs font-semibold text-amber-950">Yanılgı analizi</div>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-900">
+                    {curriculumResult.misconceptions.slice(0, 3).join(" · ")}
+                  </p>
+                </div>
+              ) : null}
+              <div className="mt-4 rounded-xl border border-paper-200 bg-white p-3">
+                <div className="text-xs font-semibold text-paper-900">Yanlışlardan öğren</div>
+                <div className="mt-2 space-y-2">
+                  {curriculumResult.questionResults.filter((result) => !result.isCorrect).slice(0, 4).map((result) => (
+                    <div key={result.questionId} className="rounded-lg bg-paper-50 p-2 text-xs text-paper-800/70">
+                      <div className="font-semibold text-paper-900">{result.outcomeTitle}</div>
+                      <div className="mt-1">
+                        Senin cevabın: {result.selectedChoice ?? "—"} · Doğru cevap: {result.correctChoice}
+                      </div>
+                      <div className="mt-1">{result.explanation}</div>
+                    </div>
+                  ))}
+                  {curriculumResult.questionResults.every((result) => result.isCorrect) ? (
+                    <p className="text-xs text-paper-800/60">Yanlış yok; süreli pekiştirme testiyle devam edebilirsiniz.</p>
+                  ) : null}
+                </div>
+              </div>
+              {curriculumResult.teacherSupportRecommended ? (
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {curriculumResult.teacherRecommendations.length === 0 ? (
+                    <Link
+                      href={teacherSearchHref(curriculumResult.branchName, curriculumResult.branchSlug)}
+                      className="rounded-xl border border-brand-200 bg-white p-3 text-sm font-semibold text-brand-900 hover:bg-brand-50"
+                    >
+                      Bu branşta doğrulanmış öğretmenleri listele
+                    </Link>
+                  ) : (
+                    curriculumResult.teacherRecommendations.map((teacher) => (
+                      <Link
+                        key={teacher.id}
+                        href={`/ogretmenler/${teacher.id}`}
+                        className="rounded-xl border border-brand-200 bg-white p-3 hover:bg-brand-50"
+                      >
+                        <div className="text-sm font-semibold text-paper-950">{teacher.displayName}</div>
+                        <div className="mt-1 text-xs text-paper-800/60">
+                          {teacher.branchName ?? curriculumResult.branchName} · {teacher.cityName ?? "Online"}
+                        </div>
+                        <div className="mt-1 text-xs text-brand-900">
+                          {teacher.ratingAvg ? `${teacher.ratingAvg}/5 · ` : ""}
+                          {moneyLabel(teacher.minHourlyRateMinor)}
+                        </div>
+                        <div className="mt-2 text-[11px] leading-relaxed text-paper-800/55">
+                          {teacher.reasons.slice(0, 3).join(" · ")}
+                        </div>
+                      </Link>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -435,6 +928,35 @@ export default function StudentCalismaPage() {
                 </div>
               </article>
             ))}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5">
+          <h2 className="text-base font-semibold text-paper-900">Son kazanım testleri</h2>
+          <div className="mt-3 space-y-2">
+            {latestCurriculumAttempts.length === 0 ? (
+              <p className="text-sm text-paper-800/55">Henüz kazanım testi çözülmedi.</p>
+            ) : (
+              latestCurriculumAttempts.slice(0, 5).map((attempt) => (
+                <div key={attempt.id} className="rounded-xl border border-paper-100 bg-paper-50 p-3 text-sm">
+                  <div className="font-medium text-paper-900">
+                    {attempt.grade_level}. sınıf {attempt.branch_name} · {attempt.unit_title} · {attempt.correct_count}/{attempt.question_count}
+                  </div>
+                  <div className="mt-1 text-xs text-paper-800/55">
+                    {attempt.mastery_level ? `${attempt.mastery_level} · ` : ""}
+                    {attempt.teacher_support_recommended
+                      ? "15 doğru altında: öğretmen desteği önerildi."
+                      : "15 doğru ve üstü: pekiştirme önerildi."}{" "}
+                    · {new Date(attempt.created_at).toLocaleString("tr-TR")}
+                  </div>
+                  {actionTitlesFrom(attempt.recommended_actions_jsonb)[0] ? (
+                    <div className="mt-1 text-xs text-paper-800/55">
+                      İlk aksiyon: {actionTitlesFrom(attempt.recommended_actions_jsonb)[0]}
+                    </div>
+                  ) : null}
+                </div>
+              ))
+            )}
           </div>
         </section>
 

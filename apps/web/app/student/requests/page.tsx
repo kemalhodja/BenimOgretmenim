@@ -6,6 +6,7 @@ import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { trackEvent } from "../../lib/trackEvent";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 
@@ -198,6 +199,11 @@ export default function StudentRequestsPage() {
           note: structuredDetails.length > 0 ? structuredDetails.join("\n") : null,
           imageUrls: [],
         }),
+      });
+      trackEvent("lesson_request_created", {
+        entityType: requestKind === "demo" ? "demo_request" : "lesson_request",
+        entityId: targetTeacherId ?? undefined,
+        metadata: { branchId, requestKind, shortlistCount: shortlistTeachers.length },
       });
       setOk(requestKind === "demo" ? "Demo ders talebi öğretmene gönderildi." : "Talep oluşturuldu.");
       setNote("");

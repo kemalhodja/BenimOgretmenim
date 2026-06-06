@@ -20,6 +20,8 @@ type CampaignRow = {
   starts_at: string | null;
   listing_fee_minor: number;
   free_listing_used: boolean;
+  review_note: string | null;
+  reviewed_at: string | null;
   created_at: string;
   branch_name: string | null;
   city_name: string | null;
@@ -263,6 +265,25 @@ export default function TeacherCampaignsPage() {
                         {campaign.branch_name ?? "Branş seçilmedi"} · {minorToTl(campaign.price_minor)} {campaign.currency}
                       </div>
                       <p className="mt-2 line-clamp-2 text-sm text-paper-800/70">{campaign.description}</p>
+                      {campaign.status === "rejected" ? (
+                        <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+                          <div className="font-semibold">Admin red notu</div>
+                          <p className="mt-1 text-xs leading-relaxed">
+                            {campaign.review_note?.trim() ||
+                              "Kampanya onaylanmadı. Başlık, açıklama, fiyat veya vaatleri netleştirip yeniden incelemeye gönderin."}
+                          </p>
+                          {campaign.reviewed_at ? (
+                            <p className="mt-1 text-[11px] text-red-900/65">
+                              İnceleme zamanı: {new Date(campaign.reviewed_at).toLocaleString("tr-TR")}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {campaign.status === "pending_review" ? (
+                        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">
+                          Kampanya admin incelemesinde. Onaylanınca public vitrinde görünür; reddedilirse sebep burada gösterilir.
+                        </div>
+                      ) : null}
                       <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-medium">
                         <span className="rounded-full bg-paper-100 px-2 py-0.5 text-paper-800">
                           {campaign.lesson_count ?? "Esnek"} ders

@@ -4,6 +4,8 @@ import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { verifyAccessToken } from "../auth/jwt.js";
+import { settleCourseEnrollmentHold } from "../lib/courseEnrollmentWallet.js";
+import { settleCourseSessionTeacherPayout } from "../lib/courseTeacherPayout.js";
 
 export const classroom = new Hono<{ Variables: AppVariables }>();
 
@@ -195,15 +197,21 @@ async function resolveCourseAccess(sessionId: string, userId: string, role: stri
 
   let allowed = role === "admin" || row.teacher_user_id === userId;
   let studentIdForGuardian: string | null = null;
+  let enrollmentForAccess: { id: string; payment_status: string } | null = null;
   if (!allowed && role === "student") {
     const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
     const studentId = sr.rows[0]?.id as string | undefined;
     if (studentId) {
-      const en = await pool.query(
-        `select 1 from course_enrollments where cohort_id = $1 and student_id = $2`,
+      const en = await pool.query<{ id: string; payment_status: string }>(
+        `select id, payment_status
+         from course_enrollments
+         where cohort_id = $1
+           and student_id = $2
+           and payment_status not in ('cancelled', 'refunded')`,
         [row.cohort_id, studentId],
       );
       allowed = (en.rowCount ?? 0) > 0;
+      enrollmentForAccess = en.rows[0] ?? null;
     }
   }
   if (!allowed && role === "guardian") {
@@ -211,7 +219,9 @@ async function resolveCourseAccess(sessionId: string, userId: string, role: stri
       `select ce.student_id
        from course_enrollments ce
        join student_guardians sg on sg.student_id = ce.student_id
-       where ce.cohort_id = $1 and sg.guardian_user_id = $2
+       where ce.cohort_id = $1
+         and sg.guardian_user_id = $2
+         and ce.payment_status not in ('cancelled', 'refunded')
        limit 1`,
       [row.cohort_id, userId],
     );
@@ -220,12 +230,24 @@ async function resolveCourseAccess(sessionId: string, userId: string, role: stri
   }
   if (!allowed) return null;
 
+  if (
+    enrollmentForAccess?.payment_status === "wallet_held" &&
+    row.scheduled_start &&
+    new Date(row.scheduled_start).getTime() <= Date.now()
+  ) {
+    await settleCourseEnrollmentHold(enrollmentForAccess.id);
+  }
+  if (row.scheduled_start && new Date(row.scheduled_start).getTime() <= Date.now()) {
+    await settleCourseSessionTeacherPayout(row.id);
+  }
+
   const participants = await pool.query(
     `select 'student' as role, u.display_name
      from course_enrollments ce
      join students s on s.id = ce.student_id
      join users u on u.id = s.user_id
      where ce.cohort_id = $1
+       and ce.payment_status not in ('cancelled', 'refunded')
      order by u.display_name
      limit 80`,
     [row.cohort_id],

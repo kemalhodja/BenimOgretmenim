@@ -888,8 +888,14 @@ paytr.post("/callback", async (c) => {
     } else {
       try {
         await cclient.query(
-          `insert into course_enrollments (cohort_id, student_id) values ($1, $2)`,
-          [cRow.cohort_id, cRow.student_id],
+          `insert into course_enrollments (cohort_id, student_id, price_minor, currency, payment_status, metadata_jsonb)
+           values ($1, $2, $3, 'TRY', 'external_paid', $4::jsonb)`,
+          [
+            cRow.cohort_id,
+            cRow.student_id,
+            cRow.amount_minor,
+            JSON.stringify({ source: "paytr_course_enrollment", paymentId: cRow.id }),
+          ],
         );
       } catch (e) {
         const err = e as { code?: string };

@@ -11,6 +11,15 @@ type TeacherPublicPayload = {
     rating_avg: number | null;
     rating_count: number | null;
     verification_status: string;
+    profile_site?: {
+      headline?: string;
+      subheadline?: string;
+      primaryBranchName?: string | null;
+      locationLabel?: string;
+      priceLabel?: string;
+      ratingLabel?: string;
+      faq?: Array<{ question: string; answer: string }>;
+    };
   };
 };
 
@@ -42,6 +51,9 @@ export function teacherJsonLd(opts: {
   name: string;
   description: string | null;
   cityName: string | null;
+  branchName?: string | null;
+  priceLabel?: string | null;
+  faq?: Array<{ question: string; answer: string }> | null;
 }): Record<string, unknown> {
   const base = opts.siteUrl.replace(/\/$/, "");
   const url = `${base}/ogretmenler/${opts.teacherId}`;
@@ -51,7 +63,18 @@ export function teacherJsonLd(opts: {
     name: opts.name,
     description: opts.description?.trim().slice(0, 5000) || undefined,
     url,
+    knowsAbout: opts.branchName || undefined,
     ...(opts.cityName ? { homeLocation: { "@type": "Place", name: opts.cityName } } : {}),
+    ...(opts.priceLabel
+      ? {
+          makesOffer: {
+            "@type": "Offer",
+            name: `${opts.branchName ?? "Özel ders"} demo ve teklif akışı`,
+            priceCurrency: "TRY",
+            description: opts.priceLabel,
+          },
+        }
+      : {}),
   };
   const breadcrumbs = {
     "@type": "BreadcrumbList",
@@ -61,7 +84,18 @@ export function teacherJsonLd(opts: {
       { "@type": "ListItem", position: 3, name: opts.name, item: url },
     ],
   };
-  return { "@context": "https://schema.org", "@graph": [person, breadcrumbs] };
+  const faq =
+    opts.faq && opts.faq.length > 0
+      ? {
+          "@type": "FAQPage",
+          mainEntity: opts.faq.map((item) => ({
+            "@type": "Question",
+            name: item.question,
+            acceptedAnswer: { "@type": "Answer", text: item.answer },
+          })),
+        }
+      : null;
+  return { "@context": "https://schema.org", "@graph": faq ? [person, breadcrumbs, faq] : [person, breadcrumbs] };
 }
 
 export async function teacherPageMetadata(
@@ -76,18 +110,22 @@ export async function teacherPageMetadata(
   const t = data.teacher;
   const name = t.display_name?.trim() || "Öğretmen";
   const loc = [t.district_name, t.city_name].filter(Boolean).join(", ");
-  const title = loc ? `${name} (${loc})` : name;
+  const branch = t.profile_site?.primaryBranchName?.trim() || "özel ders";
+  const title = loc ? `${name} · ${branch} (${loc})` : `${name} · ${branch}`;
   const rawBio = (t.bio_raw ?? "").replace(/\s+/g, " ").trim();
   const stars =
     t.rating_avg != null && t.rating_count != null && t.rating_count > 0
       ? ` Ortalama ${Number(t.rating_avg).toFixed(1)} (${t.rating_count} değerlendirme).`
       : "";
+  const profileIntro = t.profile_site?.subheadline?.trim() || rawBio;
+  const price = t.profile_site?.priceLabel ? ` ${t.profile_site.priceLabel}.` : "";
   const description = (
-    rawBio.slice(0, 120) +
-    (rawBio.length > 120 ? "…" : "") +
+    profileIntro.slice(0, 110) +
+    (profileIntro.length > 110 ? "…" : "") +
     stars +
-    " BenimÖğretmenim'de profili inceleyin, talep açın veya teklif alın."
-  ).slice(0, 160);
+    price +
+    " Demo ders, güvenli ödeme ve veli takibiyle profili inceleyin."
+  ).slice(0, 170);
 
   const canonical = `${base}/ogretmenler/${teacherId}`;
 
@@ -98,13 +136,13 @@ export async function teacherPageMetadata(
     openGraph: {
       type: "profile",
       url: canonical,
-      title: `${name} · BenimÖğretmenim`,
+      title: `${name} · ${branch} · BenimÖğretmenim`,
       description: description.slice(0, 200),
       locale: "tr_TR",
     },
     twitter: {
       card: "summary",
-      title: `${name} · BenimÖğretmenim`,
+      title: `${name} · ${branch} · BenimÖğretmenim`,
       description: description.slice(0, 200),
     },
   };

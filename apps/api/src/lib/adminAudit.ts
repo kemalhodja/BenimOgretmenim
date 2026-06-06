@@ -3,6 +3,17 @@ import { pool } from "../db.js";
 
 type Queryable = PoolClient | typeof pool;
 
+let lastPaymentReconciliationWriteFailure: {
+  at: string;
+  merchantOid: string;
+  status: string;
+  error: string;
+} | null = null;
+
+export function getLastPaymentReconciliationWriteFailure() {
+  return lastPaymentReconciliationWriteFailure;
+}
+
 export async function writeAdminAudit(
   opts: {
     actorUserId?: string | null;
@@ -72,7 +83,18 @@ export async function writePaymentReconciliationEvent(
         JSON.stringify(opts.details ?? {}),
       ],
     );
-  } catch {
-    // Reconciliation logging is best-effort for backwards-compatible deploys.
+    lastPaymentReconciliationWriteFailure = null;
+  } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
+    lastPaymentReconciliationWriteFailure = {
+      at: new Date().toISOString(),
+      merchantOid: opts.merchantOid,
+      status: opts.status,
+      error,
+    };
+    console.error("[payment-reconciliation] write failed", lastPaymentReconciliationWriteFailure);
+    if (opts.status !== "matched") {
+      throw new Error("payment_reconciliation_write_failed");
+    }
   }
 }

@@ -15,6 +15,7 @@
 
 import { pool } from "../db.js";
 import { homeworkSatisfactionRewardMinor } from "../lib/homeworkPosts.js";
+import { resolvePlatformHomeworkWalletUserId } from "../lib/platformHomeworkWallet.js";
 import { runGuestSupportSmokeSteps } from "./smokeSupportGuestFlow.js";
 
 const defaultPort = process.env.PORT ?? "3002";
@@ -165,8 +166,7 @@ async function main() {
   await ensureActiveStudentPlatformSubscription(student.userId);
 
   const grantMinor = 500_000;
-  const homeworkPoolUserId =
-    process.env.PLATFORM_HOMEWORK_WALLET_USER_ID?.trim() || adminBody.user.id;
+  const homeworkPoolUserId = (await resolvePlatformHomeworkWalletUserId()) || adminBody.user.id;
   const grantPool = await fetch(`${base}/v1/wallet/admin/grant`, {
     method: "POST",
     headers: { ...adminAuth, "content-type": "application/json" },

@@ -191,6 +191,30 @@ const trustQuotes = [
   },
 ] as const;
 
+const successStories = [
+  {
+    role: "Öğrenci",
+    title: "LGS hedefi için doğru öğretmeni seçme",
+    body: "Öğrenci önce doğrulanmış matematik profillerini karşılaştırır, kısa liste oluşturur ve tek taleple teklif toplar.",
+    action: "Öğretmen sihirbazını aç",
+    href: "/ogretmenler?verifiedOnly=1&sort=recommended&q=LGS%20Matematik",
+  },
+  {
+    role: "Öğretmen",
+    title: "Profil kalitesini görünürlüğe çevirme",
+    body: "Öğretmen video, belge, branş ve ders sonrası notları tamamladıkça kalite programında net aksiyon görür.",
+    action: "Öğretmen başvurusu",
+    href: "/kayit?role=teacher",
+  },
+  {
+    role: "Veli",
+    title: "Haftalık risk ve ilerleme takibi",
+    body: "Veli ders, soru, öğretmen notu ve çalışma sinyalini tek raporda takip eder; risk varsa aksiyonu görür.",
+    action: "Veli hesabı aç",
+    href: "/kayit?role=guardian",
+  },
+] as const;
+
 const howSteps = [
   {
     step: "1",
@@ -533,7 +557,8 @@ export default function Home() {
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/70">
                   Platform, öğrencinin ilk aramasından ders sonrası ilerleme takibine kadar görünür ve kayıtlı bir
-                  akış üretir. Fiyatlar ise giriş sonrası yalnızca ilgili kullanıcı rolüne gösterilir.
+                  akış üretir. Temel fiyatlar şeffaftır; kişisel ödeme, cüzdan ve hakediş detayları ilgili panelde
+                  güvenli şekilde yönetilir.
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[28rem]">
@@ -555,6 +580,22 @@ export default function Home() {
                 </figure>
               ))}
             </div>
+            <div className="mt-5 grid gap-3 lg:grid-cols-3">
+              {successStories.map((story) => (
+                <Link
+                  key={story.title}
+                  href={story.href}
+                  className="group rounded-2xl border border-paper-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50/40"
+                >
+                  <div className="text-xs font-semibold uppercase tracking-wide text-brand-800/70">{story.role}</div>
+                  <h3 className="mt-2 text-base font-semibold text-paper-950">{story.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-paper-800/65">{story.body}</p>
+                  <span className="mt-4 inline-flex text-sm font-semibold text-brand-800 transition group-hover:translate-x-1">
+                    {story.action} →
+                  </span>
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -571,7 +612,7 @@ export default function Home() {
               </p>
             </div>
             <Link href="/fiyatlar" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
-              Fiyatlar neden girişten sonra?
+              Şeffaf fiyatları incele
             </Link>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -696,8 +737,8 @@ export default function Home() {
             <div className="relative">
               <h2 className="text-2xl font-semibold tracking-tight text-white">Nereden başlayacağınızı seçin</h2>
               <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-white/70">
-                Öğrenciyseniz öğretmen arayın veya soru gönderin; öğretmenseniz başvuru yapın. Abonelik tutarları
-                girişten sonra yalnızca ilgili kullanıcı panelinde görünür.
+                Öğrenciyseniz öğretmen arayın veya soru gönderin; öğretmenseniz başvuru yapın. Temel fiyatlar
+                şeffaftır, kişisel ödeme ve hakediş detayları ilgili panelde yönetilir.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <Link

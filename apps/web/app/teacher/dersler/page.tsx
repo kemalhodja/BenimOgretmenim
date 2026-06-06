@@ -65,6 +65,7 @@ export default function TeacherDerslerPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [mastery, setMastery] = useState<Record<string, number>>({});
   const [focusTopic, setFocusTopic] = useState<Record<string, string>>({});
+  const [homeworkNote, setHomeworkNote] = useState<Record<string, string>>({});
   const [nextStepNote, setNextStepNote] = useState<Record<string, string>>({});
 
   const [whenLocal, setWhenLocal] = useState<string>("");
@@ -213,19 +214,29 @@ export default function TeacherDerslerPage() {
 
   async function submitEvaluation(sessionId: string) {
     if (!token) return;
+    setError(null);
+    setOk(null);
     const m = mastery[sessionId];
     const topic = focusTopic[sessionId]?.trim() ?? "";
+    const homework = homeworkNote[sessionId]?.trim() ?? "";
+    const nextStep = nextStepNote[sessionId]?.trim() ?? "";
     if (!m || m < 1 || m > 5) {
-      setError("Ders değerlendirmesi için 1-5 arası seviye seçin.");
+      setError("Gelişim özeti için öğrencinin bu dersteki seviyesini 1-5 arası seçin.");
       return;
     }
     if (topic.length < 1) {
-      setError("Odak konu yazın.");
+      setError("Öğrenci ve veli raporunda görünecek odak konuyu yazın.");
+      return;
+    }
+    if (homework.length < 1) {
+      setError("Öğrencinin dersten sonra ne çalışacağını ödev / tekrar alanına yazın.");
+      return;
+    }
+    if (nextStep.length < 1) {
+      setError("Bir sonraki derste ne yapılacağını sonraki adım alanına yazın.");
       return;
     }
     setBusy(sessionId);
-    setError(null);
-    setOk(null);
     try {
       await apiFetch(`/v1/lesson-sessions/${sessionId}/evaluation`, {
         method: "POST",
@@ -234,7 +245,8 @@ export default function TeacherDerslerPage() {
           answers: {
             masteryLikert: m,
             focusTopic: topic,
-            nextStepNote: nextStepNote[sessionId]?.trim() || undefined,
+            homeworkNote: homework,
+            nextStepNote: nextStep,
           },
         }),
       });
@@ -245,6 +257,11 @@ export default function TeacherDerslerPage() {
         return next;
       });
       setFocusTopic((prev) => {
+        const next = { ...prev };
+        delete next[sessionId];
+        return next;
+      });
+      setHomeworkNote((prev) => {
         const next = { ...prev };
         delete next[sessionId];
         return next;
@@ -516,9 +533,10 @@ export default function TeacherDerslerPage() {
                               Ders sonu mini değerlendirme
                             </div>
                             <p className="mt-1 text-xs text-paper-800/55">
-                              Öğrenci panelinde gelişim özeti ve veli bildirimi olarak görünür.
+                              Bu üç not öğrenci panelinde gelişim özeti, veli panelinde haftalık rapor
+                              olarak görünür; boş bırakmayın.
                             </p>
-                            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-5">
+                            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-6">
                               <label className="block sm:col-span-1">
                                 <div className="mb-1 text-xs font-medium text-paper-800">Seviye</div>
                                 <select
@@ -548,9 +566,25 @@ export default function TeacherDerslerPage() {
                                   }
                                   className="w-full rounded-lg border border-paper-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400"
                                   placeholder="Örn. Kesir problemleri"
+                                  aria-label="Ders odak konusu"
                                 />
                               </label>
-                              <label className="block sm:col-span-2">
+                              <label className="block sm:col-span-3">
+                                <div className="mb-1 text-xs font-medium text-paper-800">Ödev / tekrar</div>
+                                <input
+                                  value={homeworkNote[s.id] ?? ""}
+                                  onChange={(e) =>
+                                    setHomeworkNote((prev) => ({ ...prev, [s.id]: e.target.value }))
+                                  }
+                                  className="w-full rounded-lg border border-paper-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400"
+                                  placeholder="Örn. 12 soru çöz, yanlışları işaretle"
+                                  aria-label="Ders sonrası ödev veya tekrar notu"
+                                />
+                                <p className="mt-1 text-[11px] text-paper-800/50">
+                                  Öğrencinin bugün hangi tekrar ya da ödevi yapacağını net yazın.
+                                </p>
+                              </label>
+                              <label className="block sm:col-span-6">
                                 <div className="mb-1 text-xs font-medium text-paper-800">Sonraki adım</div>
                                 <input
                                   value={nextStepNote[s.id] ?? ""}
@@ -558,8 +592,12 @@ export default function TeacherDerslerPage() {
                                     setNextStepNote((prev) => ({ ...prev, [s.id]: e.target.value }))
                                   }
                                   className="w-full rounded-lg border border-paper-200 px-2 py-1.5 text-xs outline-none focus:border-brand-400"
-                                  placeholder="Ödev / tekrar önerisi"
+                                  placeholder="Örn. Bir sonraki derste problem çözüm stratejisi tekrar edilecek"
+                                  aria-label="Bir sonraki ders adımı"
                                 />
+                                <p className="mt-1 text-[11px] text-paper-800/50">
+                                  Sonraki dersin hedefini yazın; veli ve öğrenci bunu aksiyon olarak görür.
+                                </p>
                               </label>
                             </div>
                             <button

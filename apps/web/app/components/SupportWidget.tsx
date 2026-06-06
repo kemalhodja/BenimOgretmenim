@@ -247,6 +247,20 @@ export function SupportWidget() {
     setMessages([]);
   }
 
+  const contextOptions = useMemo(() => {
+    const base = [
+      { label: "Ödeme / iade", text: `Ödeme veya iade konusunda destek istiyorum.\nSayfa: ${pagePath}` },
+      { label: "Ders sorunu", text: `Ders akışıyla ilgili destek istiyorum.\nSayfa: ${pagePath}` },
+      { label: "Kampanya", text: `Kampanya başvurusu veya kampanya incelemesi hakkında destek istiyorum.\nSayfa: ${pagePath}` },
+      { label: "Veli bağlantısı", text: `Veli/öğrenci bağlantısı hakkında destek istiyorum.\nSayfa: ${pagePath}` },
+    ];
+    if (pagePath.includes("kampanya")) return [base[2], base[0], base[1]];
+    if (pagePath.includes("guardian") || pagePath.includes("veli")) return [base[3], base[1], base[0]];
+    if (pagePath.includes("classroom") || pagePath.includes("ders")) return [base[1], base[0], base[3]];
+    if (pagePath.includes("cuzdan") || pagePath.includes("fiyat") || pagePath.includes("abonelik")) return [base[0], base[1], base[2]];
+    return base;
+  }, [pagePath]);
+
   if (hidden) return null;
 
   const loggedIn = !!authToken;
@@ -375,6 +389,18 @@ export function SupportWidget() {
                 </div>
 
                 <div className="border-t border-paper-100 p-3">
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {contextOptions.map((option) => (
+                      <button
+                        key={option.label}
+                        type="button"
+                        onClick={() => setText(option.text)}
+                        className="rounded-full border border-paper-200 bg-paper-50 px-2.5 py-1 text-[11px] font-medium text-paper-800 hover:border-brand-200 hover:bg-brand-50"
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex gap-2">
                     <textarea
                       value={text}

@@ -7,6 +7,7 @@ import { RegisterNavLink } from "../../components/AuthNavLinks";
 import { apiFetch } from "../../lib/api";
 import { clearToken, getToken } from "../../lib/auth";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
+import { trackEvent } from "../../lib/trackEvent";
 
 type TeacherDetail = {
   id: string;
@@ -29,6 +30,40 @@ type TeacherDetail = {
   branch_count: number;
   completed_sessions_count: number;
   created_at: string;
+  trust_summary?: {
+    verificationStatus: string;
+    verificationLabel: string;
+    evidence: {
+      hasExamDocs: boolean;
+      hasPlatformLinks: boolean;
+      hasVideo: boolean;
+      branchCount: number;
+      completedSessionsCount: number;
+      reviewCount: number;
+    };
+    pricing: {
+      minHourlyRateMinor: number | null;
+      maxHourlyRateMinor: number | null;
+      currency: string;
+      note: string;
+    };
+    paymentProtection: string;
+  };
+  profile_site?: {
+    headline: string;
+    subheadline: string;
+    primaryBranchName: string | null;
+    locationLabel: string;
+    priceLabel: string;
+    ratingLabel: string;
+    trustBadges: string[];
+    stats: Array<{ label: string; value: string }>;
+    methodSteps: Array<{ title: string; body: string }>;
+    availabilitySummary: string;
+    proofSummary: string[];
+    faq: Array<{ question: string; answer: string }>;
+    ctaReasons: string[];
+  };
 };
 
 type BranchRow = {
@@ -143,6 +178,20 @@ function profileDecisionLabel(teacher: TeacherDetail): string {
   return "Demo ile beklentiyi netleştirin";
 }
 
+function hourlyRateRangeLabel(branches: BranchRow[]): string | null {
+  const mins = branches
+    .map((branch) => branch.hourly_rate_min_minor)
+    .filter((value): value is number => typeof value === "number" && value > 0);
+  const maxs = branches
+    .map((branch) => branch.hourly_rate_max_minor)
+    .filter((value): value is number => typeof value === "number" && value > 0);
+  if (!mins.length && !maxs.length) return null;
+  const min = mins.length ? Math.min(...mins) : Math.min(...maxs);
+  const max = maxs.length ? Math.max(...maxs) : Math.max(...mins);
+  if (min === max) return `${minorToTl(min)} TL`;
+  return `${minorToTl(min)} - ${minorToTl(max)} TL`;
+}
+
 const sampleLessonFlow = [
   "Hedef ve seviye kontrolü",
   "Canlı anlatım + ortak tahta",
@@ -244,6 +293,8 @@ export default function OgretmenDetayPage() {
   const [directOk, setDirectOk] = useState<string | null>(null);
   const [pendingDirectId, setPendingDirectId] = useState<string | null>(null);
   const [directFundBusy, setDirectFundBusy] = useState(false);
+  const [shortlistBusy, setShortlistBusy] = useState(false);
+  const [shortlistOk, setShortlistOk] = useState<string | null>(null);
 
   const primaryBranchId = useMemo(() => {
     const p = branches.find((b) => b.is_primary);
@@ -261,6 +312,7 @@ export default function OgretmenDetayPage() {
   if (teacher?.display_name) demoTalepQuery.set("teacherName", teacher.display_name);
   const demoTalepPath = `/student/requests?${demoTalepQuery.toString()}`;
   const demoTalepEntryHref = authToken ? demoTalepPath : loginHrefWithReturn(demoTalepPath);
+  const hourlyRange = useMemo(() => hourlyRateRangeLabel(branches), [branches]);
 
   useEffect(() => {
     setAuthToken(getToken());
@@ -281,6 +333,11 @@ export default function OgretmenDetayPage() {
         setTeacher(r.teacher);
         setBranches(r.branches);
         setReviews(r.reviews ?? []);
+        trackEvent("teacher_profile_view", {
+          entityType: "teacher",
+          entityId: teacherId,
+          metadata: { teacherName: r.teacher.display_name },
+        });
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : "load_failed");
@@ -370,9 +427,124 @@ export default function OgretmenDetayPage() {
     }
   }
 
+  async function addToShortlist() {
+    if (!authToken || !teacherId) {
+      router.replace(loginReturnHref);
+      return;
+    }
+    setShortlistBusy(true);
+    setShortlistOk(null);
+    try {
+      await apiFetch("/v1/teachers/shortlist", {
+        method: "PATCH",
+        token: authToken,
+        body: JSON.stringify({ teacherId, action: "add" }),
+      });
+      setShortlistOk("Öğretmen kısa listenize eklendi.");
+      trackEvent("teacher_shortlist", {
+        entityType: "teacher",
+        entityId: teacherId,
+        metadata: { source: "teacher_profile_site" },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "shortlist_failed";
+      if (msg.includes("[401]")) {
+        clearToken();
+        setAuthToken(null);
+        router.replace(loginReturnHref);
+        return;
+      }
+      setShortlistOk("Kısa listeye ekleme tamamlanamadı.");
+    } finally {
+      setShortlistBusy(false);
+    }
+  }
+
+  const profileSchema = useMemo(() => {
+    if (!teacher) return null;
+    const primaryBranch = branches.find((b) => b.is_primary) ?? branches[0];
+    const offer =
+      teacher.trust_summary?.pricing.minHourlyRateMinor != null || teacher.trust_summary?.pricing.maxHourlyRateMinor != null
+        ? {
+            "@type": "Offer",
+            priceCurrency: teacher.trust_summary?.pricing.currency ?? "TRY",
+            lowPrice:
+              teacher.trust_summary?.pricing.minHourlyRateMinor != null
+                ? String(teacher.trust_summary.pricing.minHourlyRateMinor / 100)
+                : undefined,
+            highPrice:
+              teacher.trust_summary?.pricing.maxHourlyRateMinor != null
+                ? String(teacher.trust_summary.pricing.maxHourlyRateMinor / 100)
+                : undefined,
+            availability: "https://schema.org/InStock",
+            description: teacher.trust_summary?.pricing.note,
+          }
+        : undefined;
+    return {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      name: teacher.display_name,
+      description: teacher.bio_raw ?? `${teacher.display_name} öğretmen profili`,
+      areaServed: teacher.city_name ?? "Türkiye",
+      knowsAbout: primaryBranch?.branch_name,
+      hasCredential: teacher.trust_summary?.evidence.hasExamDocs ? "Paylaşılan sınav/doküman kanıtları" : undefined,
+      aggregateRating:
+        teacher.rating_count && teacher.rating_avg
+          ? {
+              "@type": "AggregateRating",
+              ratingValue: teacher.rating_avg,
+              reviewCount: teacher.rating_count,
+              bestRating: 5,
+              worstRating: 1,
+            }
+          : undefined,
+      makesOffer: offer,
+      review: reviews.slice(0, 5).map((review) => ({
+        "@type": "Review",
+        reviewRating: { "@type": "Rating", ratingValue: review.rating, bestRating: 5, worstRating: 1 },
+        author: { "@type": "Person", name: review.reviewer_label },
+        reviewBody: review.comment ?? undefined,
+        datePublished: review.created_at,
+      })),
+      subjectOf: teacher.profile_site?.faq?.length
+        ? {
+            "@type": "FAQPage",
+            mainEntity: teacher.profile_site.faq.map((item) => ({
+              "@type": "Question",
+              name: item.question,
+              acceptedAnswer: { "@type": "Answer", text: item.answer },
+            })),
+          }
+        : undefined,
+    };
+  }, [branches, reviews, teacher]);
+  const profileSite = teacher?.profile_site ?? null;
+  const primaryBranch = branches.find((b) => b.is_primary) ?? branches[0] ?? null;
+  const heroHeadline =
+    profileSite?.headline ??
+    `${teacher?.display_name ?? "Öğretmen"} ile ${primaryBranch?.branch_name ?? "özel ders"} için güvenli başlangıç`;
+  const heroSubheadline =
+    profileSite?.subheadline ??
+    "Demo ders, güvenli ödeme ve ders sonu takip notlarıyla öğrencinin ilerlemesi görünür kalır.";
+  const heroStats =
+    profileSite?.stats ??
+    [
+      { label: "Profil kalitesi", value: `${teacher?.profile_quality_score ?? 0}/100` },
+      { label: "Uzmanlık", value: primaryBranch?.branch_name ?? "Branş profilde" },
+      { label: "Konum", value: teacher?.city_name ?? "Online" },
+      { label: "Ücret", value: hourlyRange ?? "Teklif sonrası" },
+    ];
+  const quickDecisionReasons =
+    profileSite?.ctaReasons ??
+    [
+      "Demo ile öğretmeni tanı",
+      "Teklif ve fiyatı netleştir",
+      "Güvenli ödeme akışına geç",
+    ];
+
   return (
     <div className="min-h-screen bg-paper-50">
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/ogretmenler"
@@ -394,22 +566,116 @@ export default function OgretmenDetayPage() {
 
       {teacher && (
         <>
-          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-6">
-            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">
-              {teacher.display_name}
-            </h1>
+          {profileSchema ? (
+            <script
+              type="application/ld+json"
+              suppressHydrationWarning
+              dangerouslySetInnerHTML={{ __html: JSON.stringify(profileSchema) }}
+            />
+          ) : null}
+          <section className="mt-8 overflow-hidden rounded-[2rem] border border-brand-200 bg-[radial-gradient(circle_at_top_left,#dffafe_0%,#ffffff_42%,#fff7ed_100%)] shadow-sm">
+            <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:p-8">
+              <div>
+                <div className="flex flex-wrap gap-2">
+                  {(profileSite?.trustBadges ?? profileTrustReasons(teacher)).slice(0, 4).map((badge) => (
+                    <span key={badge} className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-100">
+                      {badge}
+                    </span>
+                  ))}
+                </div>
+                <h1 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-paper-950 sm:text-4xl">
+                  {heroHeadline}
+                </h1>
+                <p className="mt-4 max-w-3xl text-base leading-relaxed text-paper-800/75">
+                  {heroSubheadline}
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3 text-sm text-paper-800/70">
+                  <span>{profileSite?.locationLabel ?? ([teacher.district_name, teacher.city_name].filter(Boolean).join(", ") || "Online / Türkiye")}</span>
+                  <span>·</span>
+                  <span>{profileSite?.ratingLabel ?? (teacher.rating_count ? `★ ${Number(teacher.rating_avg ?? 0).toFixed(1)} (${teacher.rating_count})` : "Yeni profil")}</span>
+                  <span>·</span>
+                  <span>{profileSite?.priceLabel ?? hourlyRange ?? "Ücret teklif sonrası"}</span>
+                </div>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Link
+                    href={demoTalepEntryHref}
+                    onClick={() =>
+                      trackEvent("demo_request_start", {
+                        entityType: "teacher",
+                        entityId: teacher.id,
+                        metadata: { source: "teacher_profile_hero", teacherName: teacher.display_name },
+                      })
+                    }
+                    className="rounded-xl bg-brand-800 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-900"
+                  >
+                    Demo ders talep et
+                  </Link>
+                  <Link
+                    href={talepEntryHref}
+                    className="rounded-xl border border-brand-200 bg-white/85 px-5 py-3 text-sm font-semibold text-brand-900 hover:bg-white"
+                  >
+                    Teklif al
+                  </Link>
+                  <button
+                    type="button"
+                    disabled={shortlistBusy}
+                    onClick={() => void addToShortlist()}
+                    className="rounded-xl border border-paper-300 bg-white/80 px-5 py-3 text-sm font-semibold text-paper-900 hover:bg-white disabled:opacity-50"
+                  >
+                    {shortlistBusy ? "Ekleniyor…" : "Kısa listeye ekle"}
+                  </button>
+                </div>
+                {shortlistOk ? <p className="mt-2 text-xs font-medium text-brand-900">{shortlistOk}</p> : null}
+              </div>
+              <aside className="rounded-2xl border border-white/80 bg-white/85 p-4 shadow-sm">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                  Profil vitrini
+                </div>
+                <div className="mt-4 grid gap-3">
+                  {heroStats.map((stat) => (
+                    <div key={stat.label} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                      <div className="text-xs text-paper-800/55">{stat.label}</div>
+                      <div className="mt-1 text-sm font-semibold text-paper-950">{stat.value}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 rounded-xl border border-warm-200 bg-warm-50 p-3">
+                  <div className="text-xs font-semibold text-warm-950">BenimÖğretmenim farkı</div>
+                  <p className="mt-1 text-xs leading-relaxed text-warm-900/80">
+                    Demo, güvenli ödeme, canlı sınıf ve veliye görünür ders sonrası takip aynı akışta ilerler.
+                  </p>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <nav className="mt-4 flex gap-2 overflow-x-auto rounded-2xl border border-paper-200 bg-white p-2 text-sm">
+            {[
+              ["Hakkımda", "#hakkimda"],
+              ["Güven", "#guven"],
+              ["Uzmanlıklar", "#uzmanliklar"],
+              ["Ders yöntemi", "#ders-yontemi"],
+              ["Kanıtlar", "#kanitlar"],
+              ["Yorumlar", "#yorumlar"],
+              ["SSS", "#sss"],
+            ].map(([label, href]) => (
+              <a key={href} href={href} className="shrink-0 rounded-xl px-3 py-2 font-medium text-paper-800 hover:bg-brand-50 hover:text-brand-900">
+                {label}
+              </a>
+            ))}
+          </nav>
+
+          <div id="guven" className="mt-6 rounded-2xl border border-paper-200 bg-white p-6">
+            <h2 className="text-xl font-semibold tracking-tight text-paper-900">
+              Güven ve karar merkezi
+            </h2>
             <div className="mt-2 text-sm text-paper-800/75">
-              {teacher.city_name ?? "Şehir belirtilmemiş"}
+              {teacher.display_name} · {teacher.city_name ?? "Şehir belirtilmemiş"}
               {teacher.district_name ? ` · ${teacher.district_name}` : ""}
               {" · "}
               {teacher.verification_status === "verified"
                 ? "Doğrulanmış profil"
                 : `Profil: ${teacher.verification_status}`}
-            </div>
-            <div className="mt-2 text-sm text-paper-800/75">
-              {teacher.rating_count != null && Number(teacher.rating_count) > 0
-                ? `★ ${Number(teacher.rating_avg ?? 0).toFixed(1)} (${teacher.rating_count} değerlendirme)`
-                : "Henüz değerlendirme yok"}
             </div>
             <div className="mt-4 rounded-xl border border-paper-100 bg-paper-50 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -474,9 +740,38 @@ export default function OgretmenDetayPage() {
                   ))}
                 </div>
               </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <div className="rounded-xl border border-paper-200 bg-white p-3">
+                  <div className="text-xs font-semibold text-paper-900">Doğrulama anlamı</div>
+                  <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
+                    {teacher.trust_summary?.verificationLabel ??
+                      (teacher.verification_status === "verified"
+                        ? "Platform, profil bilgilerini ve güven sinyallerini incelemiş."
+                        : "Profil henüz tam doğrulanmamış; demo ve ek bilgi isteği önerilir.")}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-paper-200 bg-white p-3">
+                  <div className="text-xs font-semibold text-paper-900">Fiyat sinyali</div>
+                  <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
+                    {hourlyRange
+                      ? `Branşlarda saatlik aralık: ${hourlyRange}.`
+                      : (teacher.trust_summary?.pricing.note ?? "Net ücret demo/talep sonrası öğretmen teklifiyle belirlenir.")}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-paper-200 bg-white p-3">
+                  <div className="text-xs font-semibold text-paper-900">Ödeme koruması</div>
+                  <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
+                    {teacher.trust_summary?.paymentProtection ??
+                      "Paket ve ders ödemeleri kayıtlı ilerler; uyuşmazlıkta ödeme ve ders kayıtları birlikte incelenir."}
+                  </p>
+                  <Link href="/guven" className="mt-2 inline-flex text-xs font-semibold text-brand-900 underline">
+                    Güven merkezini oku
+                  </Link>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <div id="ders-yontemi" className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
               <div className="rounded-2xl border border-brand-200 bg-[radial-gradient(circle_at_top_left,#ecfeff_0%,#ffffff_42%,#fff7ed_100%)] p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">
                   Premium profil özeti
@@ -509,17 +804,21 @@ export default function OgretmenDetayPage() {
               <div className="rounded-2xl border border-paper-200 bg-white p-4">
                 <h2 className="text-sm font-semibold text-paper-900">Örnek ders akışı</h2>
                 <ol className="mt-3 space-y-2">
-                  {sampleLessonFlow.map((item, index) => (
-                    <li key={item} className="flex gap-2 text-sm text-paper-800">
+                  {(profileSite?.methodSteps ?? sampleLessonFlow.map((item) => ({ title: item, body: "" }))).map((item, index) => (
+                    <li key={item.title} className="flex gap-2 text-sm text-paper-800">
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-900">
                         {index + 1}
                       </span>
-                      <span>{item}</span>
+                      <span>
+                        <span className="font-semibold text-paper-900">{item.title}</span>
+                        {item.body ? <span className="mt-0.5 block text-xs leading-relaxed text-paper-800/60">{item.body}</span> : null}
+                      </span>
                     </li>
                   ))}
                 </ol>
                 <p className="mt-3 text-xs text-paper-800/55">
-                  Demo derste öğretmenin yöntemi görülür; paket kararı sonrasında cüzdan blokajı ile ödeme güvenceye alınır.
+                  {profileSite?.availabilitySummary ??
+                    "Demo derste öğretmenin yöntemi görülür; paket kararı sonrasında cüzdan blokajı ile ödeme güvenceye alınır."}
                 </p>
               </div>
             </div>
@@ -549,9 +848,66 @@ export default function OgretmenDetayPage() {
               </div>
             </div>
 
+            <section className="mt-4 rounded-2xl border border-brand-200 bg-brand-50/50 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-900/70">
+                    Sadece ilan değil, yönetilen ders süreci
+                  </div>
+                  <h2 className="mt-2 text-base font-semibold text-paper-950">
+                    Öğretmeni seçtikten sonra süreç platform içinde görünür kalır.
+                  </h2>
+                </div>
+                <Link href="/guven" className="text-xs font-semibold text-brand-900 underline">
+                  Güven akışını incele
+                </Link>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                {[
+                  {
+                    title: "Demo ile başla",
+                    body: "Öğretmenin anlatımı, öğrencinin seviyesi ve hedef planı paket öncesi netleşir.",
+                  },
+                  {
+                    title: "Ödeme koruması",
+                    body: "Cüzdan ve blokaj kayıtlarıyla ders tamamlanmadan ödeme doğrudan aktarılmaz.",
+                  },
+                  {
+                    title: "Canlı sınıf kaydı",
+                    body: "Ders oturumları, katılım ve ders sonrası notlar tek panelde takip edilir.",
+                  },
+                  {
+                    title: "Veli görünürlüğü",
+                    body: "Ödev, kazanım testi ve ders sonu sinyalleri aile kararını veriyle destekler.",
+                  },
+                ].map((item) => (
+                  <article key={item.title} className="rounded-xl border border-brand-100 bg-white p-3">
+                    <h3 className="text-sm font-semibold text-paper-950">{item.title}</h3>
+                    <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+                  </article>
+                ))}
+              </div>
+              {profileSite?.proofSummary?.length ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {profileSite.proofSummary.map((proof) => (
+                    <span key={proof} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-100">
+                      {proof}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </section>
+
             <div className="mt-6 flex flex-wrap gap-3">
               <Link
                 href={demoTalepEntryHref}
+                onClick={() =>
+                  trackEvent("demo_request_start", {
+                    entityType: "teacher",
+                    entityId: teacher.id,
+                    metadata: { source: "teacher_profile", teacherName: teacher.display_name },
+                  })
+                }
                 className="inline-flex rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
               >
                 Demo ders talep et
@@ -634,7 +990,7 @@ export default function OgretmenDetayPage() {
               teacher.instagram_url ||
               (teacher.platform_links_jsonb?.length ?? 0) > 0 ||
               (teacher.exam_docs_jsonb?.length ?? 0) > 0) && (
-              <div className="mt-8">
+              <div id="kanitlar" className="mt-8">
                 <h2 className="text-sm font-semibold text-paper-900">
                   Bağlantılar
                 </h2>
@@ -778,7 +1134,7 @@ export default function OgretmenDetayPage() {
             )}
 
             {teacher.bio_raw && (
-              <div className="mt-8">
+              <div id="hakkimda" className="mt-8">
                 <h2 className="text-sm font-semibold text-paper-900">Hakkında</h2>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-paper-800/85">
                   {teacher.bio_raw}
@@ -786,7 +1142,7 @@ export default function OgretmenDetayPage() {
               </div>
             )}
 
-            <div className="mt-8">
+            <div id="uzmanliklar" className="mt-8">
               <h2 className="text-sm font-semibold text-paper-900">Branşlar</h2>
               {branches.length === 0 ? (
                 <p className="mt-2 text-sm text-paper-800/55">Branş kaydı yok.</p>
@@ -820,7 +1176,42 @@ export default function OgretmenDetayPage() {
             </div>
           </div>
 
-          <div className="mt-8 rounded-xl border border-paper-200 bg-white p-6">
+          <section id="sss" className="mt-8 rounded-2xl border border-paper-200 bg-white p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                  Sık sorulan sorular
+                </div>
+                <h2 className="mt-1 text-lg font-semibold text-paper-900">Derse başlamadan önce bilmeniz gerekenler</h2>
+              </div>
+              <Link href={demoTalepEntryHref} className="text-sm font-semibold text-brand-800 underline">
+                Demo talebiyle netleştir
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {(profileSite?.faq ?? [
+                {
+                  question: "Derse başlamadan önce öğretmeni tanıyabilir miyim?",
+                  answer: "Evet. Demo talebiyle yöntem, seviye ve beklenti netleşir.",
+                },
+                {
+                  question: "Ödeme nasıl ilerler?",
+                  answer: "Platform içi ödeme ve ders kayıtları birlikte takip edilir.",
+                },
+                {
+                  question: "Veli gelişimi takip eder mi?",
+                  answer: "Ders sonu notları ve ödev sinyalleri veli panelinde görünür.",
+                },
+              ]).map((item) => (
+                <article key={item.question} className="rounded-xl border border-paper-200 bg-paper-50 p-4">
+                  <h3 className="text-sm font-semibold text-paper-950">{item.question}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.answer}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <div id="yorumlar" className="mt-8 rounded-xl border border-paper-200 bg-white p-6">
             <h2 className="text-lg font-semibold text-paper-900">Yorumlar</h2>
             <p className="mt-1 text-xs text-paper-800/55">
               Tamamlanan derslerden; yorumcu adı gizlilik için kısaltılır.
@@ -852,6 +1243,77 @@ export default function OgretmenDetayPage() {
                 ))}
               </ul>
             )}
+          </div>
+          <aside className="fixed bottom-6 right-6 z-30 hidden w-80 rounded-2xl border border-brand-200 bg-white/95 p-4 shadow-xl shadow-paper-900/10 backdrop-blur sm:block">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+              Hızlı karar
+            </div>
+            <h2 className="mt-1 text-base font-semibold text-paper-950">
+              {teacher.display_name} ile başlamadan önce demo veya teklif alın
+            </h2>
+            <div className="mt-2 text-xs text-paper-800/60">
+              {profileSite?.priceLabel ?? hourlyRange ?? "Ücret teklif sonrası"} · {profileSite?.locationLabel ?? teacher.city_name ?? "Online"}
+            </div>
+            <ul className="mt-3 space-y-1.5">
+              {quickDecisionReasons.slice(0, 3).map((reason) => (
+                <li key={reason} className="flex gap-2 text-xs text-paper-800/70">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
+                  <span>{reason}</span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Link
+                href={demoTalepEntryHref}
+                onClick={() =>
+                  trackEvent("demo_request_start", {
+                    entityType: "teacher",
+                    entityId: teacher.id,
+                    metadata: { source: "teacher_profile_desktop_sticky", teacherName: teacher.display_name },
+                  })
+                }
+                className="rounded-xl bg-brand-800 px-3 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-900"
+              >
+                Demo al
+              </Link>
+              <Link
+                href={talepEntryHref}
+                className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5 text-center text-sm font-semibold text-brand-900 hover:bg-brand-100"
+              >
+                Teklif al
+              </Link>
+            </div>
+            <button
+              type="button"
+              disabled={shortlistBusy}
+              onClick={() => void addToShortlist()}
+              className="mt-2 w-full rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-semibold text-paper-900 hover:bg-paper-50 disabled:opacity-50"
+            >
+              {shortlistBusy ? "Kısa listeye ekleniyor…" : "Kısa listeye ekle"}
+            </button>
+          </aside>
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-paper-200 bg-white/95 px-4 py-3 backdrop-blur sm:hidden">
+            <div className="mx-auto flex max-w-md gap-2">
+              <Link
+                href={demoTalepEntryHref}
+                onClick={() =>
+                  trackEvent("demo_request_start", {
+                    entityType: "teacher",
+                    entityId: teacher.id,
+                    metadata: { source: "teacher_profile_sticky", teacherName: teacher.display_name },
+                  })
+                }
+                className="flex-1 rounded-xl bg-brand-800 px-3 py-2.5 text-center text-sm font-semibold text-white"
+              >
+                Demo talep et
+              </Link>
+              <Link
+                href={talepEntryHref}
+                className="flex-1 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5 text-center text-sm font-semibold text-brand-900"
+              >
+                Teklif al
+              </Link>
+            </div>
           </div>
         </>
       )}

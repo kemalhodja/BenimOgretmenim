@@ -19,6 +19,7 @@ type RateLimitOptions = {
 type Bucket = { resetAt: number; count: number };
 
 const buckets = new Map<string, Bucket>();
+const hitsByLimiter = new Map<string, { allowed: number; limited: number }>();
 
 function nowMs() {
   return Date.now();
@@ -39,6 +40,9 @@ export function rateLimit(opts: RateLimitOptions) {
     const existing = buckets.get(key);
     if (!existing || existing.resetAt <= t) {
       buckets.set(key, { resetAt: t + opts.windowMs, count: 1 });
+      const stats = hitsByLimiter.get(opts.name) ?? { allowed: 0, limited: 0 };
+      stats.allowed += 1;
+      hitsByLimiter.set(opts.name, stats);
       await next();
       return;
     }
@@ -47,6 +51,9 @@ export function rateLimit(opts: RateLimitOptions) {
     buckets.set(key, existing);
 
     if (existing.count > opts.limit) {
+      const stats = hitsByLimiter.get(opts.name) ?? { allowed: 0, limited: 0 };
+      stats.limited += 1;
+      hitsByLimiter.set(opts.name, stats);
       const retryAfterSec = Math.max(1, Math.ceil((existing.resetAt - t) / 1000));
       c.header("retry-after", String(retryAfterSec));
       const requestId = c.get("requestId");
@@ -56,7 +63,17 @@ export function rateLimit(opts: RateLimitOptions) {
       );
     }
 
+    const stats = hitsByLimiter.get(opts.name) ?? { allowed: 0, limited: 0 };
+    stats.allowed += 1;
+    hitsByLimiter.set(opts.name, stats);
     await next();
   });
+}
+
+export function rateLimitSnapshot() {
+  return {
+    activeBuckets: buckets.size,
+    limiters: [...hitsByLimiter.entries()].map(([name, stats]) => ({ name, ...stats })),
+  };
 }
 

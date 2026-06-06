@@ -30,6 +30,22 @@ type CourseRow = {
   next_cohort_title: string | null;
 };
 
+type AdminCampaignRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  teacher_hourly_rate_minor: number;
+  currency: string;
+  branch_name: string | null;
+  cohort_title: string | null;
+  capacity: number | null;
+  starts_at: string | null;
+  application_status: string;
+  teacher_application_id: string | null;
+  teacher_application_status: string | null;
+  sessions_jsonb?: Array<{ sessionIndex: number; title: string | null; scheduledStart: string | null; scheduledEnd: string | null; label: string | null }>;
+};
+
 function minorToTl(n: number): string {
   return (n / 100).toFixed(2);
 }
@@ -39,11 +55,26 @@ function toLocal(dt: string | null): string {
   return new Date(dt).toLocaleString("tr-TR");
 }
 
+function teacherApplicationLabel(status: string | null): string {
+  if (status === "accepted") return "Seçildiniz";
+  if (status === "rejected") return "Uygun bulunmadı";
+  if (status === "pending") return "Admin değerlendirmesinde";
+  return "Başvuru bekleniyor";
+}
+
+function teacherApplicationHelp(status: string | null): string {
+  if (status === "accepted") return "Admin sizi bu kampanyanın öğretmeni olarak seçti.";
+  if (status === "rejected") return "Bu kampanya için başka bir öğretmen tercih edilmiş olabilir.";
+  if (status === "pending") return "Başvurunuz admin tarafından inceleniyor.";
+  return "Saat ücretini, ders planını ve kapsamı inceleyip başvurabilirsiniz.";
+}
+
 export default function TeacherKurslarPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
   const [token, setToken] = useState<string | null>(null);
   const [rows, setRows] = useState<CourseRow[]>([]);
+  const [campaigns, setCampaigns] = useState<AdminCampaignRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -58,8 +89,12 @@ export default function TeacherKurslarPage() {
 
   const load = useCallback(async (t: string) => {
     setError(null);
-    const r = await apiFetch<{ courses: CourseRow[] }>("/v1/courses/mine", { token: t });
-    setRows(r.courses);
+    const [mine, adminCampaigns] = await Promise.all([
+      apiFetch<{ courses: CourseRow[] }>("/v1/courses/mine", { token: t }),
+      apiFetch<{ campaigns: AdminCampaignRow[] }>("/v1/courses/teacher/admin-campaigns", { token: t }),
+    ]);
+    setRows(mine.courses);
+    setCampaigns(adminCampaigns.campaigns);
   }, []);
 
   useEffect(() => {
@@ -98,6 +133,31 @@ export default function TeacherKurslarPage() {
       }
       if (msg.includes("[403]")) {
         setError("Bu kursun durumunu değiştirme izniniz yok.");
+      }
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function applyToCampaign(courseId: string) {
+    if (!token) return;
+    setBusyId(courseId);
+    setError(null);
+    try {
+      await apiFetch(`/v1/courses/${courseId}/teacher-applications`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          message: "Bu admin kurs kampanyasında eğitmen olarak görev almak istiyorum.",
+        }),
+      });
+      await load(token);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "application_failed";
+      setError(msg);
+      if (msg.includes("[401]")) {
+        clearToken();
+        router.replace(loginHrefWithReturn(pathname));
       }
     } finally {
       setBusyId(null);
@@ -213,6 +273,91 @@ export default function TeacherKurslarPage() {
           <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
             <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Planlı kurs</div>
             <div className="mt-1 text-2xl font-semibold text-warm-950">{stats.scheduled}</div>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">
+                Admin kurs kampanyaları
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-950">
+                Eğitmen başvurusu bekleyen kampanyalar
+              </h2>
+              <p className="mt-1 text-sm text-paper-800/65">
+                Bu alanda öğrenci fiyatı değil, size ödenecek ders saat ücreti ve ders gün/saatleri gösterilir.
+              </p>
+            </div>
+            <div className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-900">
+              {campaigns.length} kampanya
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {campaigns.length === 0 ? (
+              <div className="rounded-xl border border-paper-200 bg-paper-50 p-4 text-sm text-paper-800/65">
+                Şu an başvuruya açık admin kampanyası yok.
+              </div>
+            ) : (
+              campaigns.map((campaign) => (
+                <article key={campaign.id} className="rounded-xl border border-paper-200 bg-paper-50 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-paper-950">{campaign.title}</h3>
+                      <p className="mt-1 text-xs text-paper-800/60">
+                        {campaign.branch_name ?? "Branş seçilecek"} · {campaign.cohort_title ?? "Ana grup"} · Kontenjan {campaign.capacity ?? "—"}
+                      </p>
+                    </div>
+                    <div className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-100">
+                      Saat: {minorToTl(campaign.teacher_hourly_rate_minor)} {campaign.currency}
+                    </div>
+                  </div>
+                  {campaign.description ? (
+                    <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-paper-800/65">{campaign.description}</p>
+                  ) : null}
+                  <div className="mt-3 rounded-lg bg-white p-3 text-xs text-paper-800/70 ring-1 ring-paper-200">
+                    <div className="font-semibold text-paper-900">Ders günleri ve saatleri</div>
+                    {(campaign.sessions_jsonb?.length ?? 0) > 0 ? (
+                      <ul className="mt-1 space-y-1">
+                        {campaign.sessions_jsonb?.slice(0, 4).map((session) => (
+                          <li key={session.sessionIndex}>
+                            Ders {session.sessionIndex}: {session.label ?? (session.scheduledStart ? toLocal(session.scheduledStart) : "Planlanacak")}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-1">Saatler admin tarafından netleştirilecek.</div>
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="w-full rounded-lg bg-white px-3 py-2 text-xs text-paper-800/70 ring-1 ring-paper-200">
+                      <span className="font-semibold text-paper-950">
+                        {teacherApplicationLabel(campaign.teacher_application_status)}
+                      </span>
+                      <span className="ml-1">{teacherApplicationHelp(campaign.teacher_application_status)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={busyId === campaign.id || Boolean(campaign.teacher_application_status)}
+                      onClick={() => void applyToCampaign(campaign.id)}
+                      className="rounded-xl bg-brand-800 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      {campaign.teacher_application_status
+                        ? teacherApplicationLabel(campaign.teacher_application_status)
+                        : busyId === campaign.id
+                          ? "Gönderiliyor…"
+                          : "Eğitmenlik başvurusu yap"}
+                    </button>
+                    <Link
+                      href={`/courses/${campaign.id}`}
+                      className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900"
+                    >
+                      Kampanya detayını gör
+                    </Link>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </section>
 

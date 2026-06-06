@@ -9,7 +9,8 @@ import { requireAuth } from "../middleware/requireAuth.js";
 const answersSchema = z.object({
   masteryLikert: z.number().int().min(1).max(5),
   focusTopic: z.string().min(1).max(200),
-  nextStepNote: z.string().max(2000).optional(),
+  homeworkNote: z.string().min(1).max(2000),
+  nextStepNote: z.string().min(1).max(2000),
 });
 
 const createEvaluationSchema = z.object({
@@ -297,7 +298,8 @@ lessonEvaluations.post(
     const answersJson = {
       q1_mastery_likert: answers.masteryLikert,
       q2_focus_topic: answers.focusTopic,
-      q3_next_step_note: answers.nextStepNote ?? "",
+      q3_homework_note: answers.homeworkNote,
+      q4_next_step_note: answers.nextStepNote,
     };
 
     const client = await pool.connect();
@@ -351,6 +353,14 @@ lessonEvaluations.post(
         focusTopic: answers.focusTopic,
         nextStepNote: answers.nextStepNote,
       });
+      const standardizedMetrics = {
+        ...lessonProgress.metrics,
+        topicTag: answers.focusTopic,
+        homeworkNote: answers.homeworkNote,
+        nextStepNote: answers.nextStepNote,
+        completionStandard: "topic_homework_next_step_v1",
+      };
+      const standardizedNarrative = `${lessonProgress.narrativeTr}\n\nKonu etiketi: ${answers.focusTopic}\nÖdev: ${answers.homeworkNote}\nSonraki adım: ${answers.nextStepNote}`;
 
       const snap = await client.query(
         `insert into ai_progress_snapshots (
@@ -363,8 +373,8 @@ lessonEvaluations.post(
           row.student_id,
           row.teacher_id,
           row.package_id,
-          JSON.stringify(lessonProgress.metrics),
-          lessonProgress.narrativeTr,
+          JSON.stringify(standardizedMetrics),
+          standardizedNarrative,
           lessonProgress.model,
         ],
       );
@@ -390,8 +400,14 @@ lessonEvaluations.post(
             row.student_id,
             snapshotId,
             "Ders sonu gelişim özeti",
-            lessonProgress.narrativeTr,
-            JSON.stringify({ evaluationId, lessonSessionId }),
+            standardizedNarrative,
+            JSON.stringify({
+              evaluationId,
+              lessonSessionId,
+              topicTag: answers.focusTopic,
+              homeworkNote: answers.homeworkNote,
+              nextStepNote: answers.nextStepNote,
+            }),
           ],
         );
         notifications.push(n.rows[0] as { id: string; recipient_user_id: string });
@@ -403,8 +419,8 @@ lessonEvaluations.post(
         {
           evaluationId,
           snapshotId,
-          narrativeTr: lessonProgress.narrativeTr,
-          metrics: lessonProgress.metrics,
+          narrativeTr: standardizedNarrative,
+          metrics: standardizedMetrics,
           notificationsCreated: notifications.length,
           notifications,
         },

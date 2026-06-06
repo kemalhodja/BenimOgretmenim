@@ -106,6 +106,8 @@ teacherCampaigns.get("/mine", requireAuth, async (c) => {
             tc.starts_at,
             tc.listing_fee_minor,
             tc.free_listing_used,
+            tc.review_note,
+            tc.reviewed_at,
             tc.created_at,
             tc.updated_at,
             b.name as branch_name,
@@ -251,6 +253,14 @@ teacherCampaigns.patch("/:campaignId/status", requireAuth, async (c) => {
          published_at = case
            when $3::teacher_campaign_status = 'pending_review' then null
            else published_at
+         end,
+         review_note = case
+           when $3::teacher_campaign_status = 'pending_review' then null
+           else review_note
+         end,
+         reviewed_at = case
+           when $3::teacher_campaign_status = 'pending_review' then null
+           else reviewed_at
          end
      where id = $1 and teacher_id = $2
      returning id, status, updated_at`,

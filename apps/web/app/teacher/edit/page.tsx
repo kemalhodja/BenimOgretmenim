@@ -337,6 +337,14 @@ export default function TeacherEditPage() {
   if (!token) return null;
 
   const missingChecklist = Object.entries(checklistLabels).filter(([key]) => !checklist[key]);
+  const websiteEssentials = [
+    { key: "bioFilled", focus: "bio", title: "Güçlü açılış metni", body: "Profil hero alanı biyografinizin ilk cümlelerinden beslenir." },
+    { key: "branchesSelected", focus: "branches", title: "Uzmanlık vitrini", body: "Birincil branş ve fiyat aralığı profilinizde net görünür." },
+    { key: "videoLinked", focus: "video", title: "Video tanıtım", body: "Kendi web siteniz gibi ilk güven temasını hızlandırır." },
+    { key: "examDocsAdded", focus: "examDocs", title: "Kanıt ve içerik", body: "Belgeler, yazılı hazırlık içerikleri ve örnek dokümanlar karar güvenini artırır." },
+    { key: "availabilitySet", focus: "availability", title: "Müsaitlik", body: "Veli/öğrenci derse başlama ihtimalini saat bilgisiyle daha hızlı değerlendirir." },
+  ];
+  const websiteReadyCount = websiteEssentials.filter((item) => checklist[item.key]).length;
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -388,6 +396,44 @@ export default function TeacherEditPage() {
             </p>
           )}
         </div>
+
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                Profil web sitesi hazırlığı
+              </div>
+              <h2 className="mt-1 text-base font-semibold text-paper-950">
+                Öğretmen profiliniz artık kişisel web siteniz gibi çalışır
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/65">
+                Hero alanı, güven vitrini, ders yöntemi, kanıtlar ve CTA’lar aşağıdaki bilgilerden beslenir.
+              </p>
+            </div>
+            <div className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-900">
+              {websiteReadyCount}/{websiteEssentials.length} hazır
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-5">
+            {websiteEssentials.map((item) => (
+              <a
+                key={item.key}
+                href={`/teacher/edit?focus=${item.focus}`}
+                className={`rounded-xl border p-3 ${
+                  checklist[item.key]
+                    ? "border-brand-200 bg-brand-50/60"
+                    : "border-paper-200 bg-paper-50 hover:border-brand-200 hover:bg-brand-50/40"
+                }`}
+              >
+                <div className="text-xs font-semibold text-paper-950">{item.title}</div>
+                <p className="mt-1 text-xs leading-relaxed text-paper-800/60">{item.body}</p>
+                <div className="mt-2 text-[11px] font-semibold text-brand-900">
+                  {checklist[item.key] ? "Hazır" : "Tamamla"}
+                </div>
+              </a>
+            ))}
+          </div>
+        </section>
 
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">

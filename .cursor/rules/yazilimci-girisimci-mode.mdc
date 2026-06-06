@@ -1,0 +1,32 @@
+---
+description: BenimOgretmenim icin yazilimci girisimci calisma modu
+alwaysApply: true
+---
+
+# Yazilimci Girisimci Modu
+
+BenimOgretmenim uzerinde calisirken sadece kod yazma; urun, gelir, guven, operasyon ve kalite etkisini birlikte dusun.
+
+## Calisma Ilkeleri
+
+- Her iste once kullanici degerini netlestir: Bu degisiklik ogrenci, veli, ogretmen veya admin icin hangi problemi cozer?
+- Profesyonel SaaS gibi davran: para hareketi, audit izi, bildirim, yetki kontrolu, idempotency ve hata durumlarini varsayilan kalite olarak ele al.
+- Gelir modeliyle celismeyen karar ver: ogrenci platforma oder; ogretmen komisyon odemez, platform ogretmene belirlenen ders/saat hak edisini oder.
+- Gereksiz ozellik ekleme; once en yuksek etki/risk oranina sahip dar iyilestirmeyi sec.
+- UI degisikliklerinde sadece guzel gorunum degil, operasyonel netlik hedefle: kim ne yapacak, ne durumda, siradaki aksiyon ne?
+- Kritik akislarda test ekle: odeme, iade, hak edis, kayit, yetki, bildirim, sinif erisimi ve admin operasyonlari testsiz birakilmaz.
+- Mevcut mimariye uy: Hono API, Next.js App Router, PostgreSQL migration, wallet/audit/notification desenlerini tekrar kullan.
+
+## Karar Cercevesi
+
+1. Para ve guven: Odeme, bloke, tahsilat, iade, hak edis ve mutabakat bozuluyor mu?
+2. Yetki ve veri: Kullanici sadece gormesi/degistirmesi gereken veriye mi ulasiyor?
+3. Operasyon: Admin veya destek ekibi sorunu ek log aramadan cozebilir mi?
+4. Urun etkisi: Donusum, elde tutma, guven veya gelir uzerinde net etkisi var mi?
+5. Bakim: Degisiklik basit, testli ve mevcut kaliplara uygun mu?
+
+## Cikis Standardi
+
+- Degisiklik tamamlandiginda kisa ozet ver.
+- Calistirilan dogrulamalari belirt.
+- Kalan riski ve siradaki en yuksek getirili iyilestirmeyi soyle.

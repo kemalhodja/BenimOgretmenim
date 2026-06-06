@@ -6,6 +6,7 @@ import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { ensureUserWalletRow } from "../lib/studentSub.js";
 import { applyWalletDelta } from "../lib/wallet.js";
+import { getWalletAvailableMinor } from "../lib/walletHolds.js";
 
 export const userWallet = new Hono<{ Variables: AppVariables }>();
 
@@ -19,16 +20,35 @@ const adminGrantSchema = z.object({
   reason: z.string().min(3).max(200).optional(),
 });
 
+const withdrawalSchema = z.object({
+  amountMinor: z.number().int().min(10_000).max(10_000_000_000),
+  iban: z.string().trim().transform((v) => v.replace(/\s+/g, "").toUpperCase()).pipe(z.string().regex(/^TR[0-9A-Z]{24}$/)),
+  accountHolderName: z.string().trim().min(3).max(120),
+  bankName: z.string().trim().max(120).optional(),
+});
+
 userWallet.get("/me", requireAuth, async (c) => {
   const userId = c.get("userId");
   await ensureUserWalletRow(userId);
-  const w = await pool.query(
+  const [w, h, available] = await Promise.all([
+    pool.query(
     `select balance_minor, currency, updated_at from user_wallets where user_id = $1`,
     [userId],
-  );
+    ),
+    pool.query(
+      `select coalesce(sum(amount_minor), 0)::bigint as active_hold_minor
+       from user_wallet_holds
+       where user_id = $1 and status = 'active'`,
+      [userId],
+    ),
+    getWalletAvailableMinor(userId),
+  ]);
   const b = w.rows[0] as { balance_minor: string; currency: string; updated_at: Date } | undefined;
+  const activeHoldMinor = Number(h.rows[0]?.active_hold_minor ?? 0);
   return c.json({
     balanceMinor: b ? Number(b.balance_minor) : 0,
+    activeHoldMinor,
+    availableMinor: Number(available),
     currency: b?.currency ?? "TRY",
     updatedAt: b?.updated_at ?? null,
   });
@@ -91,6 +111,152 @@ userWallet.get("/ledger", requireAuth, async (c) => {
     [userId, limit],
   );
   return c.json({ entries: r.rows });
+});
+
+userWallet.get("/course-payouts", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "teacher") return c.json({ error: "forbidden_teacher_only" }, 403);
+  const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? "30") || 30));
+  const teacher = await pool.query<{ id: string }>(`select id from teachers where user_id = $1`, [userId]);
+  const teacherId = teacher.rows[0]?.id;
+  if (!teacherId) return c.json({ payouts: [], summary: { paidCount: 0, paidAmountMinor: 0 } });
+
+  const [summary, payouts] = await Promise.all([
+    pool.query(
+      `select count(*) filter (where status = 'wallet_paid')::int as paid_count,
+              coalesce(sum(amount_minor) filter (where status = 'wallet_paid'), 0)::bigint as paid_amount_minor
+       from course_teacher_payouts
+       where teacher_id = $1`,
+      [teacherId],
+    ),
+    pool.query(
+      `select tp.id, tp.course_id, tp.cohort_id, tp.session_id,
+              c.title as course_title, cc.title as cohort_title, cs.title as session_title,
+              cs.scheduled_start, tp.hourly_rate_minor, tp.duration_minutes,
+              tp.amount_minor, tp.currency, tp.status, tp.paid_at, tp.created_at
+       from course_teacher_payouts tp
+       join courses c on c.id = tp.course_id
+       join course_cohorts cc on cc.id = tp.cohort_id
+       join course_sessions cs on cs.id = tp.session_id
+       where tp.teacher_id = $1
+       order by coalesce(tp.paid_at, tp.created_at) desc
+       limit $2`,
+      [teacherId, limit],
+    ),
+  ]);
+
+  const s = summary.rows[0] as { paid_count?: number; paid_amount_minor?: string | number } | undefined;
+  return c.json({
+    payouts: payouts.rows,
+    summary: {
+      paidCount: Number(s?.paid_count ?? 0),
+      paidAmountMinor: Number(s?.paid_amount_minor ?? 0),
+    },
+  });
+});
+
+userWallet.get("/withdrawals", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "teacher") return c.json({ error: "forbidden_teacher_only" }, 403);
+  const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? "30") || 30));
+  const r = await pool.query(
+    `select w.id, w.amount_minor, w.currency, w.iban, w.account_holder_name, w.bank_name,
+            w.status, w.requested_at, w.decided_at, w.paid_at, w.admin_note, w.bank_receipt_ref
+     from teacher_wallet_withdrawals w
+     where w.teacher_user_id = $1
+     order by w.created_at desc
+     limit $2`,
+    [userId, limit],
+  );
+  return c.json({ withdrawals: r.rows });
+});
+
+userWallet.post("/withdrawals", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "teacher") return c.json({ error: "forbidden_teacher_only" }, 403);
+  const parsed = withdrawalSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const teacher = await client.query<{ id: string }>(`select id from teachers where user_id = $1 for update`, [userId]);
+    const teacherId = teacher.rows[0]?.id;
+    if (!teacherId) {
+      await client.query("rollback");
+      return c.json({ error: "teacher_profile_not_found" }, 404);
+    }
+    const available = await getWalletAvailableMinor(userId, client);
+    if (available < BigInt(parsed.data.amountMinor)) {
+      await client.query("rollback");
+      return c.json({ error: "insufficient_available_balance", availableMinor: available.toString() }, 409);
+    }
+    const withdrawal = await client.query<{ id: string }>(
+      `insert into teacher_wallet_withdrawals (
+         teacher_id, teacher_user_id, amount_minor, currency, iban,
+         account_holder_name, bank_name, status, metadata_jsonb
+       )
+       values ($1, $2, $3, 'TRY', $4, $5, $6, 'pending', $7::jsonb)
+       returning id`,
+      [
+        teacherId,
+        userId,
+        parsed.data.amountMinor,
+        parsed.data.iban,
+        parsed.data.accountHolderName,
+        parsed.data.bankName ?? null,
+        JSON.stringify({ source: "teacher_wallet_withdrawal_request" }),
+      ],
+    );
+    await applyWalletDelta({
+      userId,
+      deltaMinor: -parsed.data.amountMinor,
+      kind: "teacher_withdrawal_reserved",
+      refType: "teacher_wallet_withdrawal",
+      refId: withdrawal.rows[0].id,
+      metadata: {
+        teacherId,
+        ibanLast4: parsed.data.iban.slice(-4),
+        accountHolderName: parsed.data.accountHolderName,
+      },
+      client,
+    });
+    await client.query(
+      `insert into user_notifications (
+         recipient_user_id, channel, title, body, payload_jsonb, delivery_status, sent_at
+       )
+       values ($1, 'in_app', $2, $3, $4::jsonb, 'sent', now())`,
+      [
+        userId,
+        "Para çekme talebi alındı",
+        `${(parsed.data.amountMinor / 100).toFixed(2)} TRY para çekme talebiniz alındı ve admin onayına gönderildi.`,
+        JSON.stringify({
+          kind: "teacher_wallet_withdrawal_requested",
+          withdrawalId: withdrawal.rows[0].id,
+          amountMinor: parsed.data.amountMinor,
+          currency: "TRY",
+          href: "/teacher/cuzdan",
+        }),
+      ],
+    );
+    await client.query("commit");
+    const created = await pool.query(
+      `select id, amount_minor, currency, iban, account_holder_name, bank_name,
+              status, requested_at, decided_at, paid_at, admin_note, bank_receipt_ref
+       from teacher_wallet_withdrawals
+       where id = $1`,
+      [withdrawal.rows[0].id],
+    );
+    return c.json({ withdrawal: created.rows[0] }, 201);
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 });
 
 userWallet.get("/holds", requireAuth, async (c) => {

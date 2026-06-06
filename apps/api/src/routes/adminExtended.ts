@@ -5,6 +5,8 @@ import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { assertAdminGate } from "../lib/adminGate.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
+import { cancelCourseEnrollmentPayment } from "../lib/courseEnrollmentWallet.js";
+import { applyWalletDelta } from "../lib/wallet.js";
 
 function parseLimitOffset(c: { req: { query: (k: string) => string | undefined } }, defLim: number) {
   const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? String(defLim)) || defLim));
@@ -156,6 +158,288 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
       topupsByState: topups.rows,
       directBookingsByStatus: directBookings.rows,
       studentPaymentsByState: studentPayments.rows,
+    });
+  });
+
+  admin.get("/teacher-withdrawals", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const { limit, offset } = parseLimitOffset(c, 40);
+    const rawStatus = c.req.query("status")?.trim();
+    const args: unknown[] = [];
+    let where = "true";
+    if (rawStatus && z.enum(["pending", "paid", "rejected"]).safeParse(rawStatus).success) {
+      args.push(rawStatus);
+      where += ` and w.status = $${args.length}`;
+    }
+    const countR = await pool.query(`select count(*)::int as c from teacher_wallet_withdrawals w where ${where}`, args);
+    const total = (countR.rows[0] as { c: number }).c;
+    args.push(limit, offset);
+    const li = args.length - 1;
+    const oi = args.length;
+    const list = await pool.query(
+      `select w.id, w.teacher_id, w.teacher_user_id, w.amount_minor, w.currency,
+              w.iban, w.account_holder_name, w.bank_name, w.status,
+              w.requested_at, w.decided_at, w.paid_at, w.admin_note, w.bank_receipt_ref,
+              u.display_name as teacher_display_name, u.email as teacher_email
+       from teacher_wallet_withdrawals w
+       join users u on u.id = w.teacher_user_id
+       where ${where}
+       order by w.created_at desc
+       limit $${li} offset $${oi}`,
+      args,
+    );
+    const summary = await pool.query(
+      `select status, count(*)::int as count, coalesce(sum(amount_minor), 0)::text as amount_minor
+       from teacher_wallet_withdrawals
+       group by status`,
+    );
+    return c.json({ withdrawals: list.rows, summary: summary.rows, total, limit, offset });
+  });
+
+  const teacherWithdrawalDecisionSchema = z.object({
+    status: z.enum(["paid", "rejected"]),
+    note: z.string().trim().max(500).optional(),
+    bankReceiptRef: z.string().trim().max(120).optional(),
+  });
+
+  admin.patch("/teacher-withdrawals/:withdrawalId/status", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const withdrawalId = c.req.param("withdrawalId")?.trim();
+    if (!withdrawalId || !z.string().uuid().safeParse(withdrawalId).success) {
+      return c.json({ error: "invalid_withdrawal_id" }, 400);
+    }
+    const parsed = teacherWithdrawalDecisionSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    if (parsed.data.status === "paid" && !parsed.data.bankReceiptRef?.trim()) {
+      return c.json({ error: "bank_receipt_ref_required" }, 400);
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const r = await client.query<{
+        id: string;
+        teacher_user_id: string;
+        teacher_id: string;
+        amount_minor: number;
+        currency: string;
+        status: string;
+      }>(
+        `select id, teacher_user_id, teacher_id, amount_minor, currency, status
+         from teacher_wallet_withdrawals
+         where id = $1
+         for update`,
+        [withdrawalId],
+      );
+      const row = r.rows[0];
+      if (!row) {
+        await client.query("rollback");
+        return c.json({ error: "withdrawal_not_found" }, 404);
+      }
+      if (row.status === parsed.data.status) {
+        await client.query("commit");
+        return c.json({ ok: true, alreadyFinalized: true, withdrawal: row });
+      }
+      if (row.status !== "pending") {
+        await client.query("rollback");
+        return c.json({ error: "withdrawal_already_finalized", status: row.status }, 409);
+      }
+
+      if (parsed.data.status === "rejected") {
+        await applyWalletDelta({
+          userId: row.teacher_user_id,
+          deltaMinor: Number(row.amount_minor),
+          kind: "teacher_withdrawal_rejected_refund",
+          refType: "teacher_wallet_withdrawal",
+          refId: row.id,
+          metadata: {
+            teacherId: row.teacher_id,
+            reason: parsed.data.note ?? null,
+            decidedByAdminUserId: c.get("userId"),
+          },
+          client,
+        });
+      }
+
+      const updated = await client.query(
+        `update teacher_wallet_withdrawals
+         set status = $2,
+             decided_at = now(),
+             decided_by_admin_user_id = $3,
+             paid_at = case when $2 = 'paid' then now() else paid_at end,
+             admin_note = $4,
+             bank_receipt_ref = $5,
+             updated_at = now(),
+             metadata_jsonb = metadata_jsonb || $6::jsonb
+         where id = $1
+         returning id, teacher_user_id, teacher_id, amount_minor, currency, status,
+                   requested_at, decided_at, paid_at, admin_note, bank_receipt_ref`,
+        [
+          row.id,
+          parsed.data.status,
+          c.get("userId"),
+          parsed.data.note ?? null,
+          parsed.data.bankReceiptRef ?? null,
+          JSON.stringify({
+            decidedByAdminUserId: c.get("userId"),
+            decisionStatus: parsed.data.status,
+            decidedAt: new Date().toISOString(),
+          }),
+        ],
+      );
+
+      await client.query(
+        `insert into user_notifications (
+           recipient_user_id, channel, title, body, payload_jsonb, delivery_status, sent_at
+         )
+         values ($1, 'in_app', $2, $3, $4::jsonb, 'sent', now())`,
+        [
+          row.teacher_user_id,
+          parsed.data.status === "paid" ? "Para çekme ödendi" : "Para çekme talebi reddedildi",
+          parsed.data.status === "paid"
+            ? `${(Number(row.amount_minor) / 100).toFixed(2)} ${row.currency} para çekme talebiniz ödendi.`
+            : `${(Number(row.amount_minor) / 100).toFixed(2)} ${row.currency} para çekme talebiniz reddedildi ve tutar cüzdanınıza geri yüklendi.`,
+          JSON.stringify({
+            kind: "teacher_wallet_withdrawal_decision",
+            withdrawalId: row.id,
+            status: parsed.data.status,
+            amountMinor: row.amount_minor,
+            currency: row.currency,
+            href: "/teacher/cuzdan",
+          }),
+        ],
+      );
+
+      await writeAdminAudit(
+        {
+          actorUserId: c.get("userId"),
+          actorRole: c.get("userRole"),
+          requestId: c.req.header("x-request-id") ?? null,
+          action: "teacher_wallet_withdrawal.decision",
+          entityType: "teacher_wallet_withdrawal",
+          entityId: row.id,
+          reason: parsed.data.note ?? null,
+          before: row,
+          after: updated.rows[0],
+        },
+        client,
+      );
+      await client.query("commit");
+      return c.json({ ok: true, withdrawal: updated.rows[0] });
+    } catch (e) {
+      await client.query("rollback").catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
+  });
+
+  admin.get("/course-accounting", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const { limit, offset } = parseLimitOffset(c, 40);
+    const rows = await pool.query(
+      `with course_money as (
+         select c.id as course_id,
+                count(ce.id)::int as enrollment_count,
+                count(ce.id) filter (where ce.payment_status not in ('cancelled', 'refunded'))::int as active_enrollment_count,
+                coalesce(sum(ce.price_minor) filter (where ce.payment_status = 'wallet_held'), 0)::bigint as held_amount_minor,
+                coalesce(sum(
+                  case
+                    when ce.payment_status in ('wallet_charged', 'external_paid') then ce.price_minor
+                    when ce.payment_status = 'refunded' then greatest(ce.price_minor, ce.refund_amount_minor)
+                    else 0
+                  end
+                ), 0)::bigint as gross_collected_amount_minor,
+                coalesce(sum(ce.refund_amount_minor) filter (where ce.payment_status = 'refunded'), 0)::bigint as refunded_amount_minor
+         from courses c
+         left join course_cohorts cc on cc.course_id = c.id
+         left join course_enrollments ce on ce.cohort_id = cc.id
+         group by c.id
+       ),
+       payout_money as (
+         select course_id,
+                count(*) filter (where status = 'wallet_paid')::int as teacher_payout_count,
+                coalesce(sum(amount_minor) filter (where status = 'wallet_paid'), 0)::bigint as teacher_payout_amount_minor
+         from course_teacher_payouts
+         group by course_id
+       )
+       select c.id, c.title, c.origin, c.status::text as status, c.currency,
+              u.display_name as teacher_display_name, u.email as teacher_email,
+              coalesce(cm.enrollment_count, 0) as enrollment_count,
+              coalesce(cm.active_enrollment_count, 0) as active_enrollment_count,
+              coalesce(cm.held_amount_minor, 0)::text as held_amount_minor,
+              coalesce(cm.gross_collected_amount_minor, 0)::text as gross_collected_amount_minor,
+              coalesce(cm.refunded_amount_minor, 0)::text as refunded_amount_minor,
+              coalesce(pm.teacher_payout_count, 0) as teacher_payout_count,
+              coalesce(pm.teacher_payout_amount_minor, 0)::text as teacher_payout_amount_minor,
+              (coalesce(cm.gross_collected_amount_minor, 0)
+                - coalesce(cm.refunded_amount_minor, 0)
+                - coalesce(pm.teacher_payout_amount_minor, 0))::text as net_platform_amount_minor
+       from courses c
+       left join teachers t on t.id = c.teacher_id
+       left join users u on u.id = t.user_id
+       left join course_money cm on cm.course_id = c.id
+       left join payout_money pm on pm.course_id = c.id
+       where coalesce(cm.enrollment_count, 0) > 0 or coalesce(pm.teacher_payout_count, 0) > 0
+       order by c.created_at desc
+       limit $1 offset $2`,
+      [limit, offset],
+    );
+    const total = await pool.query(
+      `select count(*)::int as c
+       from courses c
+       where exists (
+         select 1
+         from course_cohorts cc
+         join course_enrollments ce on ce.cohort_id = cc.id
+         where cc.course_id = c.id
+       )
+       or exists (
+         select 1 from course_teacher_payouts tp where tp.course_id = c.id
+       )`,
+    );
+    const summary = await pool.query(
+      `with course_money as (
+         select c.id as course_id,
+                coalesce(sum(ce.price_minor) filter (where ce.payment_status = 'wallet_held'), 0)::bigint as held_amount_minor,
+                coalesce(sum(
+                  case
+                    when ce.payment_status in ('wallet_charged', 'external_paid') then ce.price_minor
+                    when ce.payment_status = 'refunded' then greatest(ce.price_minor, ce.refund_amount_minor)
+                    else 0
+                  end
+                ), 0)::bigint as gross_collected_amount_minor,
+                coalesce(sum(ce.refund_amount_minor) filter (where ce.payment_status = 'refunded'), 0)::bigint as refunded_amount_minor
+         from courses c
+         left join course_cohorts cc on cc.course_id = c.id
+         left join course_enrollments ce on ce.cohort_id = cc.id
+         group by c.id
+       ),
+       payout_money as (
+         select course_id,
+                coalesce(sum(amount_minor) filter (where status = 'wallet_paid'), 0)::bigint as teacher_payout_amount_minor
+         from course_teacher_payouts
+         group by course_id
+       )
+       select coalesce(sum(cm.held_amount_minor), 0)::text as held_amount_minor,
+              coalesce(sum(cm.gross_collected_amount_minor), 0)::text as gross_collected_amount_minor,
+              coalesce(sum(cm.refunded_amount_minor), 0)::text as refunded_amount_minor,
+              coalesce(sum(pm.teacher_payout_amount_minor), 0)::text as teacher_payout_amount_minor,
+              (coalesce(sum(cm.gross_collected_amount_minor), 0)
+                - coalesce(sum(cm.refunded_amount_minor), 0)
+                - coalesce(sum(pm.teacher_payout_amount_minor), 0))::text as net_platform_amount_minor
+       from course_money cm
+       left join payout_money pm on pm.course_id = cm.course_id`,
+    );
+    return c.json({
+      rows: rows.rows,
+      summary: summary.rows[0],
+      total: (total.rows[0] as { c: number }).c,
+      limit,
+      offset,
     });
   });
 
@@ -332,15 +616,19 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const list = await pool.query(
-      `select ce.id, ce.enrolled_at,
+      `select ce.id, ce.enrolled_at, ce.payment_status, ce.price_minor, ce.currency,
+              ce.wallet_hold_id, ce.charged_at, ce.released_at, ce.cancelled_at, ce.refunded_at,
+              ce.refund_amount_minor, ce.cancellation_reason,
               c.id as course_id, c.title as course_title, c.status::text as course_status,
-              cc.title as cohort_title,
-              su.display_name as student_name, su.email as student_email
+              cc.id as cohort_id, cc.title as cohort_title,
+              st.id as student_id, su.id as student_user_id, su.display_name as student_name, su.email as student_email,
+              wh.status as wallet_hold_status
        from course_enrollments ce
        join course_cohorts cc on cc.id = ce.cohort_id
        join courses c on c.id = cc.course_id
        join students st on st.id = ce.student_id
        join users su on su.id = st.user_id
+       left join user_wallet_holds wh on wh.id = ce.wallet_hold_id
        order by ce.enrolled_at desc
        limit $1 offset $2`,
       [limit, offset],
@@ -352,6 +640,45 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
       limit,
       offset,
     });
+  });
+
+  const cancelCourseEnrollmentSchema = z.object({
+    reason: z.string().trim().max(500).optional(),
+  });
+
+  admin.patch("/course-enrollments/:enrollmentId/cancel", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const enrollmentId = c.req.param("enrollmentId")?.trim();
+    if (!enrollmentId || !z.string().uuid().safeParse(enrollmentId).success) {
+      return c.json({ error: "invalid_enrollment_id" }, 400);
+    }
+    const parsed = cancelCourseEnrollmentSchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+    const before = await pool.query(
+      `select id, payment_status, price_minor, refund_amount_minor, cancelled_at, refunded_at
+       from course_enrollments
+       where id = $1`,
+      [enrollmentId],
+    );
+    const result = await cancelCourseEnrollmentPayment(enrollmentId, {
+      reason: parsed.data.reason ?? "admin_course_enrollment_cancel",
+      actorUserId: c.get("userId"),
+    });
+    if (!result.ok) return c.json({ error: result.error }, 404);
+    await writeAdminAudit({
+      actorUserId: c.get("userId"),
+      actorRole: c.get("userRole"),
+      requestId: c.req.header("x-request-id") ?? null,
+      action: "course_enrollment.cancel_refund",
+      entityType: "course_enrollment",
+      entityId: enrollmentId,
+      reason: parsed.data.reason ?? "admin_course_enrollment_cancel",
+      before: before.rows[0] ?? {},
+      after: result,
+    });
+    return c.json({ ok: true, result });
   });
 
   admin.get("/parent-notifications", requireAuth, async (c) => {

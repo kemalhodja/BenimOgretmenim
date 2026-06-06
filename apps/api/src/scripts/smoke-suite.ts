@@ -169,6 +169,14 @@ async function main() {
     return r;
   });
 
+  await step("campaigns_public_list", async () => {
+    const r = await reqJson("/v1/teacher-campaigns?limit=5");
+    console.log("[smoke:suite] /v1/teacher-campaigns", r.status);
+    assert("campaigns_ok", r.ok, r.json);
+    assert("campaigns_array", Array.isArray(r.json.campaigns), r.json);
+    return r;
+  });
+
   await step("subscriptions_plans_requires_auth", async () => {
     const r = await reqJson("/v1/subscriptions/plans");
     console.log("[smoke:suite] /v1/subscriptions/plans", r.status);
@@ -296,6 +304,36 @@ async function main() {
     const r = await reqJson("/v1/auth/me", { headers: studentAuth });
     console.log("[smoke:suite] /v1/auth/me (student)", r.status);
     assert("me_student_ok", r.ok, r.json);
+    return r;
+  });
+
+  await step("analytics_event_student", async () => {
+    const r = await reqJson("/v1/analytics/events", {
+      method: "POST",
+      headers: { ...studentAuth, "content-type": "application/json" },
+      body: JSON.stringify({
+        eventName: "teacher_search",
+        entityType: "smoke",
+        entityId: `suite-${ts}`,
+        metadata: { source: "smoke-suite" },
+      }),
+    });
+    console.log("[smoke:suite] POST /v1/analytics/events", r.status);
+    assert("analytics_event_202", r.status === 202, r.json);
+    return r;
+  });
+
+  await step("admin_funnel_student_forbidden", async () => {
+    const r = await reqJson("/v1/admin/funnel/summary", { headers: studentAuth });
+    console.log("[smoke:suite] /v1/admin/funnel/summary (student)", r.status);
+    assert("admin_funnel_student_403", r.status === 403 || r.status === 401, r.json);
+    return r;
+  });
+
+  await step("admin_quality_report_student_forbidden", async () => {
+    const r = await reqJson("/v1/admin/quality/weekly-report", { headers: studentAuth });
+    console.log("[smoke:suite] /v1/admin/quality/weekly-report (student)", r.status);
+    assert("admin_quality_report_student_403", r.status === 403 || r.status === 401, r.json);
     return r;
   });
 
@@ -450,7 +488,7 @@ async function main() {
     return r;
   });
 
-  await step("lesson_requests_gate_no_sub", async () => {
+  await step("lesson_requests_free_quota_or_gate", async () => {
     const r = await reqJson("/v1/lesson-requests", {
       method: "POST",
       headers: { ...studentAuth, "content-type": "application/json" },
@@ -462,7 +500,10 @@ async function main() {
       }),
     });
     console.log("[smoke:suite] POST /v1/lesson-requests", r.status);
-    assert("lesson_requests_403", r.status === 403, r.json);
+    assert("lesson_requests_201_or_403", r.status === 201 || r.status === 403, r.json);
+    if (r.status === 201) {
+      assert("lesson_requests_created_shape", typeof r.json.request === "object" && r.json.request !== null, r.json);
+    }
     return r;
   });
 

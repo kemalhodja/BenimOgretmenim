@@ -7,6 +7,7 @@ import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
 import { prepareHomeworkImage, type HomeworkImageAttachment } from "../../lib/homeworkMedia";
+import { trackEvent } from "../../lib/trackEvent";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 
@@ -104,6 +105,9 @@ export default function OdevSorPage() {
           imageUrls: urls,
           audioUrl: audioUrl.trim() || null,
         }),
+      });
+      trackEvent("homework_post_created", {
+        metadata: { branchId, urgencyLevel, imageCount: urls.length, hasAudio: Boolean(audioUrl.trim()) },
       });
       setOk("Gönderildi. Branştaki öğretmenler havuza görebilir.");
       setTopic("");

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import { loginHrefWithReturn, safeInternalPath } from "../lib/authRedirect";
 import { setToken } from "../lib/auth";
+import { trackEvent } from "../lib/trackEvent";
 
 type RegResponse = {
   token: string;
@@ -40,6 +41,33 @@ function parseRegisterApiError(err: unknown): { message: string; emailTaken: boo
   return { message: noRid, emailTaken: false };
 }
 
+const roleOnboarding = {
+  student: {
+    title: "Öğrenci başlangıcı",
+    steps: [
+      "Hedefini seç: öğretmen bul, ders ilanı aç veya soru gönder.",
+      "Günlük ücretsiz haklarını panelden takip et; ihtiyaç artarsa yıllık aboneliğe geç.",
+      "Demo, teklif, canlı ders ve çalışma planını aynı panelden yönet.",
+    ],
+  },
+  teacher: {
+    title: "Öğretmen başlangıcı",
+    steps: [
+      "Profil kalite checklist'ini tamamla: branş, şehir, bio, fiyat, video ve belge.",
+      "Abonelikle sınırsız teklif, görünürlük ve ilk ücretsiz kampanya hakkını aç.",
+      "Kampanya başvuruları, ders talepleri, cüzdan ve öğrenci iletişimini panelden izle.",
+    ],
+  },
+  guardian: {
+    title: "Veli başlangıcı",
+    steps: [
+      "Öğrenci hesabını davet veya bağlantı akışıyla eşleştir.",
+      "Ders bildirimleri, ödev durumu, çalışma planı ve risk uyarılarını takip et.",
+      "Gerekirse destek ve ödeme süreçlerini kayıtlı şekilde incele.",
+    ],
+  },
+} as const;
+
 function KayitForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -55,6 +83,7 @@ function KayitForm() {
   const [error, setError] = useState<string | null>(null);
   const [emailTaken, setEmailTaken] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
 
   const returnUrl = useMemo(
     () =>
@@ -106,6 +135,7 @@ function KayitForm() {
         }),
       });
       setToken(r.token);
+      trackEvent("registration_completed", { entityType: "user", entityId: r.user.id, metadata: { role: r.user.role } });
       const dest = returnUrl ?? defaultDestForRole(r.user.role);
       router.push(dest);
     } catch (err) {
@@ -117,8 +147,62 @@ function KayitForm() {
     }
   }
 
+  const onboarding = roleOnboarding[role];
+  const activeOnboardingStep = onboarding.steps[Math.min(onboardingStep, onboarding.steps.length - 1)];
+
   return (
     <div className="flex min-h-[60vh] items-center justify-center bg-paper-50 px-4 py-12">
+      <div className="grid w-full max-w-5xl gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]">
+        <aside className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-brand-950">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-900/70">
+            Role özel başlangıç
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight">{onboarding.title}</h2>
+          <div className="mt-5 rounded-2xl bg-white/75 p-4">
+            <div className="flex items-center justify-between text-xs font-semibold text-brand-900/70">
+              <span>Adım {onboardingStep + 1}/{onboarding.steps.length}</span>
+              <span>{Math.round(((onboardingStep + 1) / onboarding.steps.length) * 100)}%</span>
+            </div>
+            <div className="mt-3 h-2 rounded-full bg-brand-100">
+              <div
+                className="h-2 rounded-full bg-brand-800"
+                style={{ width: `${((onboardingStep + 1) / onboarding.steps.length) * 100}%` }}
+              />
+            </div>
+            <p className="mt-4 text-sm leading-relaxed">{activeOnboardingStep}</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setOnboardingStep((step) => Math.max(0, step - 1))}
+                disabled={onboardingStep === 0}
+                className="rounded-xl border border-brand-200 bg-white px-3 py-2 text-xs font-semibold text-brand-900 disabled:opacity-45"
+              >
+                Geri
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnboardingStep((step) => Math.min(onboarding.steps.length - 1, step + 1))}
+                disabled={onboardingStep >= onboarding.steps.length - 1}
+                className="rounded-xl bg-brand-800 px-3 py-2 text-xs font-semibold text-white disabled:opacity-45"
+              >
+                İleri
+              </button>
+            </div>
+          </div>
+          <ol className="mt-4 space-y-2">
+            {onboarding.steps.map((step, index) => (
+              <li key={step} className={`flex gap-3 rounded-xl p-3 text-sm leading-relaxed ${index === onboardingStep ? "bg-white text-brand-950 ring-2 ring-brand-300" : "bg-white/55 text-brand-900/70"}`}>
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-800 text-xs font-semibold text-white">
+                  {index + 1}
+                </span>
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+          <Link href="/guven" className="mt-5 inline-flex text-sm font-semibold text-brand-900 underline">
+            Güven ve ödeme süreçlerini incele
+          </Link>
+        </aside>
       <div className="w-full max-w-md rounded-2xl border border-paper-200 bg-white p-6 shadow-sm">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Kayıt ol</h1>
@@ -144,9 +228,10 @@ function KayitForm() {
             <div className="mb-1 text-sm font-medium text-paper-800">Rol</div>
             <select
               value={role}
-              onChange={(e) =>
-                setRole(e.target.value as "student" | "teacher" | "guardian")
-              }
+              onChange={(e) => {
+                setRole(e.target.value as "student" | "teacher" | "guardian");
+                setOnboardingStep(0);
+              }}
               className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
             >
               <option value="student">Öğrenci</option>
@@ -247,6 +332,7 @@ function KayitForm() {
             {loading ? "Kaydediliyor…" : "Kayıt ol"}
           </button>
         </form>
+      </div>
       </div>
     </div>
   );

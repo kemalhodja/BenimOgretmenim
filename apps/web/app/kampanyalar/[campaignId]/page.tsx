@@ -7,6 +7,7 @@ import { AuthEntryLink } from "../../components/AuthEntryLink";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
+import { trackEvent } from "../../lib/trackEvent";
 
 type CampaignDetail = {
   id: string;
@@ -90,6 +91,11 @@ export default function CampaignDetailPage() {
         method: "POST",
         token,
         body: JSON.stringify({ message: message.trim() || null }),
+      });
+      trackEvent("campaign_application_created", {
+        entityType: "teacher_campaign",
+        entityId: campaignId,
+        metadata: { teacherId: campaign?.teacher_id, campaignTitle: campaign?.title },
       });
       setOk("Başvurunuz öğretmene iletildi. Öğretmen sizinle iletişime geçebilir.");
       setMessage("");

@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
+import { trackEvent } from "../../lib/trackEvent";
 
 type SubMe = {
   active: boolean;
@@ -282,6 +283,7 @@ function StudentPanelPageInner() {
         token,
         body: JSON.stringify({ amountMinor: topupKurus }),
       });
+      trackEvent("payment_checkout_start", { metadata: { flow: "wallet_topup", amountMinor: topupKurus } });
       const ck = await apiFetch<{ iframeUrl: string }>(r.next.checkout, { token });
       window.open(ck.iframeUrl, "_blank", "noopener,noreferrer");
       setOk("Cüzdan yükleme açıldı. Sonra sayfayı yenileyin.");
@@ -312,6 +314,7 @@ function StudentPanelPageInner() {
         token,
         body: JSON.stringify({ months }),
       });
+      trackEvent("student_subscription_purchase_start", { metadata: { months } });
       const ck = await apiFetch<{ iframeUrl: string }>(r.next.checkout, { token });
       window.open(ck.iframeUrl, "_blank", "noopener,noreferrer");
       setOk("Ödeme penceresi açıldı. Bitince sayfayı yenileyin.");
@@ -364,6 +367,25 @@ function StudentPanelPageInner() {
   const unreadNotifications = notifications.filter((n) => n.read_at == null).length;
   const latestNotification = notifications[0] ?? null;
   const latestNotificationHref = latestNotification ? notificationHref(latestNotification.payload_jsonb) : null;
+  const completedLessonSignals = new Set(progressSnapshots.map((snapshot) => snapshot.lesson_session_id)).size;
+  const weeklyTargetSignals = progressSnapshots.length;
+  const latestProgressSnapshot = progressSnapshots[0] ?? null;
+  const weakTopicHint =
+    latestProgressSnapshot?.narrative_tr
+      ?.split(/[.!?\n]/)
+      .map((part) => part.trim())
+      .find((part) => /zayıf|eksik|tekrar|çalış/i.test(part)) ?? "Zayıf konu için son ders notu veya soru çözümü bekleniyor.";
+  const nextStepHint =
+    latestProgressSnapshot?.narrative_tr
+      ?.split(/[.!?\n]/)
+      .map((part) => part.trim())
+      .find((part) => /sonraki|ödev|hedef|plan/i.test(part)) ?? "Bugün bir soru gönderin veya çalışma planını güncelleyin.";
+  const homeworkUsageText = sub?.usage
+    ? `${sub.usage.homeworkPostsToday}/${sub.policy.dailyHomeworkPostLimit}`
+    : "—";
+  const lessonRequestUsageText = sub?.usage
+    ? `${sub.usage.lessonRequestsToday}/${sub.policy.dailyLessonRequestLimit}`
+    : "—";
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -413,6 +435,117 @@ function StudentPanelPageInner() {
             </Link>
           </p>
         </div>
+
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-paper-800/55">
+                Bugün ne yapmalıyım?
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">Öğrenci için 3 adımlı hızlı plan</h2>
+              <p className="mt-1 text-sm leading-relaxed text-paper-800/65">
+                Öğretmen seçimi, soru çözümü ve çalışma takibi arasında kaybolmadan sıradaki aksiyonu tamamlayın.
+              </p>
+            </div>
+            <Link href="/ogretmenler" className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900">
+              Öğretmen sihirbazı
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {[
+              {
+                label: "1. Hedefi netleştir",
+                body: weeklyTargetSignals > 0 ? "Haftalık plan sinyaliniz var; sıradaki zayıf konuya odaklanın." : "Çalışma planı açıp sınav/hedef bilgisiyle ilk haftayı oluşturun.",
+                href: "/student/calisma",
+                cta: "Planı aç",
+              },
+              {
+                label: "2. Takıldığın soruyu gönder",
+                body: homeworkUsageText === "—" ? "Soru hakkı bilgisi yüklenince günlük hakkınızı takip edin." : `Bugünkü soru hakkı: ${homeworkUsageText}.`,
+                href: "/student/odev-sor",
+                cta: "Soru gönder",
+              },
+              {
+                label: "3. Öğretmen adaylarını karşılaştır",
+                body: "Doğrulanmış profil, ücret, yorum ve kalite sinyallerini kısa listede karşılaştırın.",
+                href: "/ogretmenler?verifiedOnly=1&sort=recommended",
+                cta: "Öğretmen ara",
+              },
+            ].map((item) => (
+              <Link key={item.label} href={item.href} className="rounded-xl border border-paper-200 bg-paper-50 p-4 hover:border-brand-200 hover:bg-brand-50/40">
+                <div className="text-sm font-semibold text-paper-950">{item.label}</div>
+                <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+                <span className="mt-3 inline-flex text-xs font-semibold text-brand-800 underline">{item.cta}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                Başarı paneli
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">
+                Ders, soru ve veli takibini tek bakışta ölçün
+              </h2>
+            </div>
+            <Link href="/student/calisma" className="text-sm font-semibold text-brand-800 underline">
+              Çalışma detayları
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            <div className="rounded-xl bg-brand-50 p-3">
+              <div className="text-2xl font-semibold text-brand-950">{completedLessonSignals}</div>
+              <div className="text-xs text-brand-900/70">Ders değerlendirme izi</div>
+            </div>
+            <div className="rounded-xl bg-paper-50 p-3">
+              <div className="text-2xl font-semibold text-paper-950">{weeklyTargetSignals}</div>
+              <div className="text-xs text-paper-800/65">Gelişim özeti</div>
+            </div>
+            <div className="rounded-xl bg-paper-50 p-3">
+              <div className="text-2xl font-semibold text-paper-950">{homeworkUsageText}</div>
+              <div className="text-xs text-paper-800/65">Bugünkü soru hakkı</div>
+            </div>
+            <div className="rounded-xl bg-warm-50 p-3">
+              <div className="text-2xl font-semibold text-warm-950">{lessonRequestUsageText}</div>
+              <div className="text-xs text-warm-900/70">Bugünkü talep hakkı</div>
+            </div>
+          </div>
+          <p className="mt-3 text-xs leading-relaxed text-paper-800/60">
+            Veli bağlantısı kurulduğunda bu sinyaller ders katılımı, ödev durumu ve öğretmen notlarıyla birlikte
+            takip edilebilir.
+          </p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <div className="rounded-xl border border-paper-200 bg-paper-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/50">Haftalık plan</div>
+              <div className="mt-1 text-sm font-semibold text-paper-950">
+                {weeklyTargetSignals > 0 ? `${weeklyTargetSignals} gelişim kaydı oluştu` : "İlk plan kaydı bekleniyor"}
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{nextStepHint}</p>
+            </div>
+            <div className="rounded-xl border border-paper-200 bg-paper-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/50">Öğretmen notu</div>
+              <div className="mt-1 text-sm font-semibold text-paper-950">
+                {latestProgressSnapshot
+                  ? `${latestProgressSnapshot.teacher_display_name} · ders #${latestProgressSnapshot.session_index}`
+                  : "Henüz ders notu yok"}
+              </div>
+              <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-paper-800/65">
+                {latestProgressSnapshot?.narrative_tr ?? "Ders tamamlandığında öğretmen notu burada özetlenecek."}
+              </p>
+            </div>
+            <div className="rounded-xl border border-paper-200 bg-paper-50 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/50">Zayıf konu ve aksiyon</div>
+              <div className="mt-1 text-sm font-semibold text-paper-950">Sıradaki odak</div>
+              <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{weakTopicHint}</p>
+              <Link href="/student/odev-sor" className="mt-3 inline-flex text-xs font-semibold text-brand-800 underline">
+                Bu konudan soru gönder
+              </Link>
+            </div>
+          </div>
+        </section>
 
         <section className="mt-6 grid gap-3 sm:grid-cols-2">
           {[

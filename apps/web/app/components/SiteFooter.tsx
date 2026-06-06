@@ -58,6 +58,11 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/guven" className="hover:underline">
+                  Güven merkezi
+                </Link>
+              </li>
+              <li>
                 <Link href="/kampanya" className="hover:underline">
                   Kampanya
                 </Link>

@@ -56,6 +56,26 @@ type SystemHealth = {
   };
   checks: SystemHealthCheck[];
 };
+type WeeklyQualityReport = {
+  generatedAt: string;
+  warnings?: {
+    missingTables?: string[];
+    partial?: boolean;
+  };
+  revenue: {
+    teacherSubscriptionsMinor: number;
+    studentSubscriptionsMinor: number;
+    walletTopupsMinor: number;
+  };
+  seo: {
+    activeCityBranchTeacherCombos: number;
+  };
+  operations: {
+    openPaymentRisks: number;
+    pendingCampaignModeration: number;
+    supportSlaBreaches: number;
+  };
+};
 
 const SECTIONS: { title: string; items: Item[] }[] = [
   {
@@ -75,6 +95,8 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { href: "/admin/wallet", title: "Cüzdan grant", desc: "Manuel bakiye ekleme" },
       { href: "/admin/veri?k=ledger", title: "Cüzdan defteri", desc: "Tüm ledger satırları" },
       { href: "/admin/veri?k=wallet-topups", title: "Cüzdan PayTR yüklemeleri", desc: "wallet_topup_payments" },
+      { href: "/admin/veri?k=teacher-withdrawals", title: "Öğretmen para çekme", desc: "IBAN talepleri, ödeme/red operasyonu" },
+      { href: "/admin/veri?k=course-accounting", title: "Kurs muhasebesi", desc: "Tahsilat, iade, hakediş, net platform" },
       { href: "/admin/veri?k=reconciliation", title: "Ödeme mutabakatı", desc: "PayTR callback uyumsuzlukları" },
       { href: "/admin/veri?k=student-sub-payments", title: "Öğrenci platform ödemeleri", desc: "student_sub_payments" },
     ],
@@ -94,6 +116,7 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { href: "/admin/veri?k=recordings", title: "Sınıf kayıtları", desc: "Tekrar izleme linkleri ve kayıt durumu" },
       { href: "/admin/veri?k=messages", title: "Sınıf mesajları", desc: "Sohbet, soru, cevap ve duyurular" },
       { href: "/admin/veri?k=learning", title: "Çalışma ve deneme", desc: "Planlar ve assessment kayıtları" },
+      { href: "/admin/veri?k=funnel", title: "Funnel raporu", desc: "Dönüşüm ve operasyon sinyalleri" },
     ],
   },
   {
@@ -165,8 +188,10 @@ export default function AdminMerkezPage() {
   const token = useRequireAdmin();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
+  const [weeklyReport, setWeeklyReport] = useState<WeeklyQualityReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
+  const [weeklyReportError, setWeeklyReportError] = useState<string | null>(null);
   const [reminderBusy, setReminderBusy] = useState(false);
   const [reminderResult, setReminderResult] = useState<string | null>(null);
 
@@ -186,6 +211,16 @@ export default function AdminMerkezPage() {
       })
       .catch((e) => {
         if (!cancelled) setHealthError(e instanceof Error ? e.message : "system_health_failed");
+      });
+    apiFetch<WeeklyQualityReport>("/api/admin/quality-weekly-report", { token })
+      .then((r) => {
+        if (!cancelled) {
+          setWeeklyReport(r);
+          setWeeklyReportError(null);
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) setWeeklyReportError(e instanceof Error ? e.message : "weekly_report_failed");
       });
     return () => {
       cancelled = true;
@@ -391,6 +426,50 @@ export default function AdminMerkezPage() {
                 </div>
               ))}
             </div>
+          </section>
+        ) : null}
+
+        {weeklyReportError ? (
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            Haftalık ürün kalite raporu hazırlanamadı: {weeklyReportError}
+          </div>
+        ) : null}
+
+        {weeklyReport ? (
+          <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                  Haftalık ürün kalite raporu
+                </div>
+                <h2 className="mt-1 text-lg font-semibold text-paper-900">Dönüşüm, gelir, SEO ve açık riskler</h2>
+                <p className="mt-1 text-xs text-paper-800/55">
+                  Üretim zamanı: {new Date(weeklyReport.generatedAt).toLocaleString("tr-TR")}
+                </p>
+              </div>
+              <Link href="/admin/veri?k=funnel" className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900">
+                Funnel detayları
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+              {[
+                ["Gelir sinyali", `${Math.round((weeklyReport.revenue.teacherSubscriptionsMinor + weeklyReport.revenue.studentSubscriptionsMinor + weeklyReport.revenue.walletTopupsMinor) / 100)} TL`],
+                ["SEO landing gücü", weeklyReport.seo.activeCityBranchTeacherCombos],
+                ["Açık ödeme riski", weeklyReport.operations.openPaymentRisks],
+                ["Bekleyen moderasyon", weeklyReport.operations.pendingCampaignModeration],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                  <div className="text-xs font-semibold text-paper-800/55">{label}</div>
+                  <div className="mt-1 text-xl font-semibold text-paper-950">{value}</div>
+                </div>
+              ))}
+            </div>
+            {weeklyReport.warnings?.partial ? (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                Rapor kısmi veriyle hazırlandı. Eksik kaynaklar:{" "}
+                {(weeklyReport.warnings.missingTables ?? []).join(", ") || "bilinmiyor"}.
+              </div>
+            ) : null}
           </section>
         ) : null}
 

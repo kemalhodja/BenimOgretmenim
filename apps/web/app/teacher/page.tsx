@@ -447,6 +447,17 @@ export default function TeacherHomePage() {
 
   const profileQualityScore = me?.profileQualityScore ?? 0;
   const qualitySignals = me?.profileQualitySignals ?? [];
+  const unreadNotifications = notifications.filter((n) => n.read_at == null).length;
+  const latestNotification = notifications[0] ?? null;
+  const latestNotificationHref = latestNotification ? teacherNotifHref(latestNotification.payload_jsonb) : null;
+  const reviewScore = me?.teacher.ratingCount
+    ? Math.min(20, Math.round(Number(me.teacher.ratingAvg ?? 0) * 4))
+    : 0;
+  const lessonCompletionScore = dash
+    ? Math.min(25, dash.sessionsCompletedLast30d * 5 + Math.min(10, dash.lifetimeCompletedLessonsInPackages))
+    : 0;
+  const proofScore = Math.round(profileQualityScore * 0.45);
+  const teacherOpsQualityScore = Math.min(100, proofScore + lessonCompletionScore + reviewScore + (unreadNotifications === 0 ? 10 : 0));
   const missingQualitySignals = [...qualitySignals]
     .filter((item) => item.points < item.maxPoints)
     .sort((a, b) => b.maxPoints - b.points - (a.maxPoints - a.points));
@@ -478,10 +489,6 @@ export default function TeacherHomePage() {
               href: "/teacher/dersler",
               cta: "Derslere git",
             };
-  const unreadNotifications = notifications.filter((n) => n.read_at == null).length;
-  const latestNotification = notifications[0] ?? null;
-  const latestNotificationHref = latestNotification ? teacherNotifHref(latestNotification.payload_jsonb) : null;
-
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-6 py-8">
@@ -570,6 +577,90 @@ export default function TeacherHomePage() {
             >
               {nextBestAction.cta}
             </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                Öğretmen kalite programı
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">
+                Operasyon kalite skoru · {teacherOpsQualityScore}/100
+              </h2>
+              <p className="mt-1 text-sm leading-relaxed text-paper-800/65">
+                Profil kanıtları, ders tamamlama, yorum ve bekleyen iş sinyalleri birlikte izlenir.
+              </p>
+            </div>
+            <Link href="/teacher/edit" className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900">
+              Kanıtları güçlendir
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            {[
+              ["Profil kanıtı", proofScore, "Video, belge, bio, branş"],
+              ["Ders tamamlama", lessonCompletionScore, `${dash?.sessionsCompletedLast30d ?? 0} ders / 30g`],
+              ["Yorum gücü", reviewScore, `${me?.teacher.ratingCount ?? 0} yorum`],
+              ["Bekleyen iş", unreadNotifications === 0 ? 10 : 0, unreadNotifications ? `${unreadNotifications} okunmamış` : "Temiz"],
+            ].map(([label, value, hint]) => (
+              <div key={String(label)} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs font-semibold text-paper-800/55">{label}</div>
+                <div className="mt-1 text-2xl font-semibold text-paper-950">{value}</div>
+                <div className="text-xs text-paper-800/60">{hint}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-warm-200 bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_62%,#ecfeff_100%)] p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-900/70">
+                Kazanç ve görünürlük içgörüsü
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">
+                Daha iyi profil, daha net teklif ve daha hızlı dönüş
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                Bu panel kesin kazanç taahhüdü vermez; profil kalitesi, tamamlanan ders, yorum ve bekleyen iş
+                sinyallerini görünürlük ve teklif hazırlığı açısından okur.
+              </p>
+            </div>
+            <Link href="/teacher/requests" className="rounded-xl bg-warm-600 px-3 py-2 text-xs font-semibold text-white hover:bg-warm-700">
+              Açık talepleri gör
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <div className="rounded-xl border border-warm-200 bg-white/80 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/50">Görünürlük seviyesi</div>
+              <div className="mt-1 text-xl font-semibold text-paper-950">
+                {profileQualityScore >= 80 ? "Güçlü vitrin" : profileQualityScore >= 60 ? "Gelişen vitrin" : "Tamamlanmalı"}
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-paper-800/65">
+                {missingQualitySignals[0]
+                  ? `İlk öneri: ${missingQualitySignals[0].label} alanını tamamlayın.`
+                  : "Profil sinyalleriniz güçlü; teklif yanıt hızını koruyun."}
+              </p>
+            </div>
+            <div className="rounded-xl border border-warm-200 bg-white/80 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/50">Ders ivmesi</div>
+              <div className="mt-1 text-xl font-semibold text-paper-950">
+                {dash?.sessionsCompletedLast30d ?? 0} ders / 30 gün
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-paper-800/65">
+                Tamamlanan ders ve düzenli değerlendirme, öğrenci/veli güvenini artıran en güçlü sinyallerden biridir.
+              </p>
+            </div>
+            <div className="rounded-xl border border-warm-200 bg-white/80 p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/50">Teklif hazırlığı</div>
+              <div className="mt-1 text-xl font-semibold text-paper-950">
+                {unreadNotifications === 0 ? "Takip temiz" : `${unreadNotifications} iş bekliyor`}
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-paper-800/65">
+                Hızlı yanıt, net ücret ve kısa ders planı teklif kabul ihtimalini güçlendirir.
+              </p>
+            </div>
           </div>
         </section>
 

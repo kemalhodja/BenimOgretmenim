@@ -12,6 +12,8 @@ type CourseRow = {
   language_code: string;
   price_minor: number;
   currency: string;
+  origin: string;
+  application_status: string;
   branch_name: string | null;
   teacher_display_name: string;
   created_at: string;
@@ -80,7 +82,14 @@ export default function CoursesPage() {
                 href={`/courses/${c.id}`}
                 className="block rounded-xl border border-paper-200 bg-white p-5 hover:border-brand-200 hover:bg-brand-50/30"
               >
-                <div className="text-sm font-semibold text-paper-900">{c.title}</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-sm font-semibold text-paper-900">{c.title}</div>
+                  {c.origin === "admin_campaign" ? (
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-900">
+                      Ön kayıtlı kampanya
+                    </span>
+                  ) : null}
+                </div>
                 <div className="mt-1 text-xs text-paper-800/55">
                   {c.teacher_display_name} · {c.branch_name ?? "—"} · {c.delivery_mode} ·{" "}
                   {minorToTl(c.price_minor)} {c.currency}

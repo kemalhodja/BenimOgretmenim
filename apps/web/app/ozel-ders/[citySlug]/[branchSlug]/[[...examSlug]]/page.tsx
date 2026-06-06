@@ -75,6 +75,21 @@ function priceLabel(min: number | null, max: number | null): string {
   return `${left} - ${right} / saat`;
 }
 
+function teacherStats(teachers: TeacherPreview[]) {
+  const rates = teachers
+    .flatMap((teacher) => [teacher.min_hourly_rate_minor, teacher.max_hourly_rate_minor])
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return {
+    teacherCount: teachers.length,
+    verifiedCount: teachers.filter((teacher) => teacher.verification_status === "verified").length,
+    completedLessons: teachers.reduce((sum, teacher) => sum + Number(teacher.completed_sessions_count ?? 0), 0),
+    priceRange:
+      rates.length > 0
+        ? priceLabel(Math.min(...rates), Math.max(...rates))
+        : "Fiyat aralığı öğretmen profilinde netleşir",
+  };
+}
+
 async function loadTeacherPreviews(cityId: number, branchId: number): Promise<TeacherPreview[]> {
   const api = getServerApiBaseUrl();
   const qs = new URLSearchParams({
@@ -179,6 +194,7 @@ export default async function SeoLandingPage({
     p.examSlug?.[0] ? `/${p.examSlug[0]}` : ""
   }`;
   const teachers = await loadTeacherPreviews(landing.city.id, landing.branch.id).catch(() => []);
+  const stats = teacherStats(teachers);
   const faq = [
     {
       question: `${landing.city.name} ${landing.branch.name} özel ders öğretmeni nasıl seçilir?`,
@@ -194,6 +210,16 @@ export default async function SeoLandingPage({
       question: "Sadece özel ders değil, soru çözümü de alabilir miyim?",
       answer:
         "Evet. Öğrenci panelinde fotoğraflı soru gönderme, aciliyet seçme, çözüm kalitesi takibi ve çalışma planı akışları birlikte kullanılabilir.",
+    },
+    {
+      question: `${landing.city.name} ${landing.branch.name} özel ders ücretleri nasıl netleşir?`,
+      answer:
+        "Öğretmen profilindeki saatlik aralık başlangıç bilgisidir. Net ücret; seviye, hedef sınav, ders sıklığı, online/yüz yüze tercih ve paket kapsamı görüşüldükten sonra ödeme adımından önce görünür.",
+    },
+    {
+      question: "Ödeme ve ders süreci nasıl güvenceye alınır?",
+      answer:
+        "Platform içinde ilerleyen paket ve ders akışlarında ödeme, ders kaydı, canlı ders bağlantısı, öğretmen notu ve destek kayıtları birlikte takip edilir.",
     },
   ];
 
@@ -215,10 +241,23 @@ export default async function SeoLandingPage({
           <p className="mt-4 max-w-2xl text-sm leading-6 text-paper-800/75">
             {landing.city.name} içinde {examText}
             {landing.branch.name} öğretmeni arayan öğrenciler için hızlı yol: öğretmen profillerini
-            karşılaştırın, kalite rozetlerini inceleyin, demo ders talep edin ve kabul sonrası meeting
-            linkiyle deneme oturumuna geçin. İsterseniz soru çözüm havuzu ve haftalık çalışma planıyla süreci
+            karşılaştırın, kalite rozetlerini inceleyin, demo ders talep edin ve kabul sonrası canlı ders
+            bağlantısıyla deneme oturumuna geçin. İsterseniz soru çözüm havuzu ve haftalık çalışma planıyla süreci
             ders dışında da takip edin.
           </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-4">
+            {[
+              ["Öne çıkan öğretmen", stats.teacherCount ? `${stats.teacherCount}+` : "Talep aç"],
+              ["Doğrulanmış profil", stats.verifiedCount ? `${stats.verifiedCount}` : "Filtrele"],
+              ["Fiyat aralığı", stats.priceRange],
+              ["Tamamlanan ders", stats.completedLessons ? `${stats.completedLessons}+` : "Profilde gör"],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-paper-800/50">{label}</div>
+                <div className="mt-1 text-sm font-semibold text-paper-950">{value}</div>
+              </div>
+            ))}
+          </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href={teacherVerifiedHref}

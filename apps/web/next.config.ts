@@ -35,11 +35,29 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const cspReportOnly = [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+      "style-src 'self' 'unsafe-inline'",
+      "connect-src 'self' https:",
+      "frame-src 'self' https:",
+      "form-action 'self' https:",
+      "upgrade-insecure-requests",
+    ].join("; ");
     const base = [
       { key: "X-Frame-Options", value: "DENY" },
       { key: "X-Content-Type-Options", value: "nosniff" },
       { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+      { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+      { key: "Origin-Agent-Cluster", value: "?1" },
+      { key: "X-DNS-Prefetch-Control", value: "off" },
+      { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
     ] as const;
 
     const security =

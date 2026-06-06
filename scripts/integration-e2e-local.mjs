@@ -106,19 +106,36 @@ async function main() {
 
   runNpm("build", appsApi);
 
-  const apiChild = spawn(
-    process.platform === "win32" ? "npm.cmd" : "npm",
-    ["run", "start"],
-    {
-      cwd: appsApi,
-      stdio: "inherit",
-      shell: process.platform === "win32",
-      env: { ...process.env, PORT: "3002" },
-    },
-  );
+  let apiChild = null;
+  let existingApiHealthy = false;
+  try {
+    const existing = await fetch(HEALTH, { signal: AbortSignal.timeout(1500) });
+    if (existing.ok) {
+      existingApiHealthy = true;
+      console.log("[e2e:integration] Mevcut local API sağlıklı; yeni API süreci başlatılmayacak.");
+    }
+  } catch {
+    existingApiHealthy = false;
+  }
+  if (!existingApiHealthy) {
+    apiChild = spawn(
+      process.platform === "win32" ? "npm.cmd" : "npm",
+      ["run", "start"],
+      {
+        cwd: appsApi,
+        stdio: "inherit",
+        shell: process.platform === "win32",
+        env: {
+          ...process.env,
+          PORT: "3002",
+          CORS_ORIGINS: process.env.CORS_ORIGINS ?? "http://127.0.0.1:3000,http://localhost:3000",
+        },
+      },
+    );
+  }
 
   const killApi = () => {
-    if (apiChild.pid && !apiChild.killed) {
+    if (apiChild?.pid && !apiChild.killed) {
       if (process.platform === "win32") {
         spawnSync("taskkill", ["/pid", String(apiChild.pid), "/T", "/F"], {
           stdio: "ignore",

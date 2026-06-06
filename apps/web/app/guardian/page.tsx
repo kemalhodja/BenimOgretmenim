@@ -49,6 +49,28 @@ type AttemptRow = {
   created_at: string;
 };
 
+type CurriculumAttemptRow = {
+  id: string;
+  student_id: string;
+  student_display_name: string;
+  grade_level: number;
+  branch_slug: string;
+  branch_name: string;
+  unit_slug: string;
+  unit_title: string;
+  question_count: number;
+  correct_count: number;
+  score_percent: string | number;
+  weak_outcomes_jsonb: unknown;
+  teacher_support_recommended: boolean;
+  teacher_recommendations_jsonb?: unknown;
+  mastery_level?: string | null;
+  misconceptions_jsonb?: unknown;
+  recommended_actions_jsonb?: unknown;
+  answered_count?: number | null;
+  created_at: string;
+};
+
 type NotifRow = {
   id: string;
   title: string;
@@ -64,8 +86,26 @@ function topicsFrom(value: unknown): string[] {
   return value.map((x) => String(x).trim()).filter(Boolean);
 }
 
+function actionTitlesFrom(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return "";
+      const action = item as { title?: unknown; body?: unknown };
+      const title = typeof action.title === "string" ? action.title : "";
+      const body = typeof action.body === "string" ? action.body : "";
+      return title && body ? `${title}: ${body}` : title || body;
+    })
+    .filter(Boolean);
+}
+
 function percentLabel(value: number): string {
   return `${Math.round(value)}%`;
+}
+
+function teacherSearchHref(branchName: string, branchSlug?: string): string {
+  const query = branchSlug?.includes("matematik") ? "Matematik" : branchName;
+  return `/ogretmenler?verifiedOnly=1&sort=recommended&q=${encodeURIComponent(query)}`;
 }
 
 function planProgress(plan: StudyPlanRow): { done: number; skipped: number; total: number; percent: number } {
@@ -100,12 +140,14 @@ export default function GuardianPage() {
   const [masteryGraph, setMasteryGraph] = useState<MasteryRow[]>([]);
   const [studyPlans, setStudyPlans] = useState<StudyPlanRow[]>([]);
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);
+  const [curriculumAttempts, setCurriculumAttempts] = useState<CurriculumAttemptRow[]>([]);
   const [notifications, setNotifications] = useState<NotifRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [readBusy, setReadBusy] = useState<string | null>(null);
+  const [weekStart] = useState(() => Date.now() - 1000 * 60 * 60 * 24 * 7);
 
   useEffect(() => {
     const t = getToken();
@@ -132,6 +174,7 @@ export default function GuardianPage() {
             masteryGraph: MasteryRow[];
             studyPlans: StudyPlanRow[];
             attempts: AttemptRow[];
+            curriculumAttempts: CurriculumAttemptRow[];
           }>(
             "/v1/guardians/overview",
             { token },
@@ -145,6 +188,7 @@ export default function GuardianPage() {
         setMasteryGraph(r.masteryGraph ?? []);
         setStudyPlans(r.studyPlans ?? []);
         setAttempts(r.attempts ?? []);
+        setCurriculumAttempts(r.curriculumAttempts ?? []);
         setNotifications(n.notifications);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "load_failed";
@@ -185,6 +229,7 @@ export default function GuardianPage() {
           masteryGraph: MasteryRow[];
           studyPlans: StudyPlanRow[];
           attempts: AttemptRow[];
+          curriculumAttempts: CurriculumAttemptRow[];
         }>("/v1/guardians/overview", { token }),
         apiFetch<{ notifications: NotifRow[] }>("/v1/notifications?limit=30", { token }),
       ]);
@@ -193,6 +238,7 @@ export default function GuardianPage() {
       setMasteryGraph(r.masteryGraph ?? []);
       setStudyPlans(r.studyPlans ?? []);
       setAttempts(r.attempts ?? []);
+      setCurriculumAttempts(r.curriculumAttempts ?? []);
       setNotifications(n.notifications);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "invite_accept_failed";
@@ -259,6 +305,28 @@ export default function GuardianPage() {
     .slice(0, 4)
     .map(([topic]) => topic);
   const unreadNotifications = notifications.filter((n) => !n.read_at).length;
+  const weeklyProgress = progress.filter((row) => new Date(row.created_at).getTime() >= weekStart);
+  const weeklyNotifications = notifications.filter((row) => new Date(row.created_at).getTime() >= weekStart);
+  const weeklyLessonSignals = weeklyNotifications.filter((row) =>
+    /ders|lesson|classroom/i.test(`${row.title} ${row.body}`),
+  ).length;
+  const weeklyHomeworkSignals = weeklyNotifications.filter((row) =>
+    /ödev|soru|homework/i.test(`${row.title} ${row.body}`),
+  ).length;
+  const weeklyCurriculumAttempts = curriculumAttempts.filter((row) => new Date(row.created_at).getTime() >= weekStart);
+  const lowCurriculumAttempts = curriculumAttempts.filter((row) => row.teacher_support_recommended);
+  const latestCurriculumAttempt = curriculumAttempts[0] ?? null;
+  const curriculumWeakCounts = new Map<string, number>();
+  for (const attempt of curriculumAttempts) {
+    for (const topic of topicsFrom(attempt.weak_outcomes_jsonb)) {
+      curriculumWeakCounts.set(topic, (curriculumWeakCounts.get(topic) ?? 0) + 1);
+    }
+  }
+  const topCurriculumWeakTopics = [...curriculumWeakCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([topic]) => topic);
+  const latestTeacherNote = weeklyProgress[0] ?? progress[0] ?? null;
   const familyRisk = guardianRiskLabel({
     students: students.length,
     unread: unreadNotifications,
@@ -274,6 +342,13 @@ export default function GuardianPage() {
           href: "#ogrenci-baglama",
           cta: "Bağlama rehberi",
         }
+      : lowCurriculumAttempts.length > 0
+        ? {
+            title: "Düşük kazanım testini birlikte kapatın",
+            body: `${lowCurriculumAttempts[0].branch_name} / ${lowCurriculumAttempts[0].unit_title} sonucunda öğretmen desteği önerildi. Önce yanlış kazanımı konuşun, sonra branş öğretmeni seçeneklerine bakın.`,
+            href: "#kazanim-takibi",
+            cta: "Test aksiyonuna git",
+          }
       : notifications.some((n) => !n.read_at)
         ? {
             title: "Okunmamış bildirimleri kontrol edin",
@@ -331,6 +406,160 @@ export default function GuardianPage() {
               {nextBestAction.cta}
             </Link>
           </div>
+        </section>
+
+        <section id="kazanim-takibi" className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                Haftalık veli raporu
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">Katılım, soru ve risk özeti</h2>
+              <p className="mt-1 text-sm leading-relaxed text-paper-800/65">
+                Son 7 günde oluşan ders, soru ve öğretmen notu sinyalleri.
+              </p>
+            </div>
+            <div className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-900">
+              {familyRisk}
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            {[
+              ["Katılım sinyali", weeklyNotifications.length],
+              ["Çözülen/iletilen soru", weeklyHomeworkSignals],
+              ["Kazanım testi", weeklyCurriculumAttempts.length],
+              ["Öğretmen notu", weeklyProgress.length + weeklyLessonSignals],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs text-paper-800/60">{label}</div>
+                <div className="mt-1 text-2xl font-semibold text-paper-950">{value}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/50">
+              Son öğretmen notu / aksiyon
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-paper-800/75">
+              {latestTeacherNote
+                ? `${latestTeacherNote.student_display_name} için ${latestTeacherNote.teacher_display_name}: ${latestTeacherNote.narrative_tr}`
+                : "Bu hafta öğretmen notu oluşmadı. Öğrenci ders veya soru tamamladığında burada görünecek."}
+            </p>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {[
+              {
+                title: "Ders katılımını kontrol et",
+                body: weeklyLessonSignals > 0 ? "Bu hafta ders sinyali var; öğretmen notunu okuyun." : "Bu hafta tamamlanan ders sinyali yoksa öğrenciyle takvim planını netleştirin.",
+                href: "#bildirimler",
+              },
+              {
+                title: "Soru/ödev temposunu takip et",
+                body: weeklyHomeworkSignals > 0 ? "Soru çözüm akışı oluşmuş; çözüm kalitesini ve tekrar notunu kontrol edin." : "Öğrenci takıldığı konuyu soru havuzuna göndermemiş olabilir.",
+                href: "#bildirimler",
+              },
+              {
+                title: "Gerekirse destek alın",
+                body: "Ödeme, erişim veya öğretmen iletişimi aksarsa destek talebinde bağlamı hazır iletin.",
+                href: "/yardim",
+              },
+            ].map((item) => (
+              <Link key={item.title} href={item.href} className="rounded-xl border border-paper-200 bg-paper-50 p-4 hover:border-brand-200 hover:bg-brand-50/40">
+                <div className="text-sm font-semibold text-paper-950">{item.title}</div>
+                <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                Kazanım testi takibi
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">
+                {latestCurriculumAttempt
+                  ? `${latestCurriculumAttempt.branch_name} · ${latestCurriculumAttempt.unit_title}`
+                  : "Ünite bazlı sonuç bekleniyor"}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/65">
+                Öğrenci 20 soruluk kazanım testi çözdüğünde sonuç burada görünür. 15 doğru altı sonuçlarda branş öğretmeni desteği önerilir.
+              </p>
+            </div>
+            <div className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-900">
+              {lowCurriculumAttempts.length} düşük skor · {curriculumAttempts.length} test
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {[
+              ["Bu hafta", `${weeklyCurriculumAttempts.length} test`, "Yeni çözüm ritmi"],
+              ["Düşük skor", `${lowCurriculumAttempts.length} sonuç`, "15 doğru altı takip"],
+              ["En sık zorlanılan", topCurriculumWeakTopics[0] ?? "Veri bekleniyor", "Kazanım odağı"],
+            ].map(([title, value, body]) => (
+              <div key={title} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs font-semibold text-paper-900">{title}</div>
+                <div className="mt-1 text-sm font-semibold text-brand-900">{value}</div>
+                <p className="mt-1 text-xs text-paper-800/60">{body}</p>
+              </div>
+            ))}
+          </div>
+          {latestCurriculumAttempt ? (
+            <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-paper-950">
+                    {latestCurriculumAttempt.student_display_name} · {latestCurriculumAttempt.grade_level}. sınıf · {latestCurriculumAttempt.correct_count}/{latestCurriculumAttempt.question_count}
+                  </div>
+                  <div className="mt-1 text-xs text-paper-800/60">
+                    {latestCurriculumAttempt.teacher_support_recommended
+                      ? "15 doğru altında: tekrar ve öğretmen desteği önerildi."
+                      : "15 doğru ve üstü: pekiştirme ile devam edebilir."}
+                  </div>
+                  {latestCurriculumAttempt.mastery_level ? (
+                    <div className="mt-1 text-xs font-semibold text-brand-900">
+                      Seviye: {latestCurriculumAttempt.mastery_level}
+                    </div>
+                  ) : null}
+                  <div className="mt-2 text-xs text-paper-800/60">
+                    Zayıf kazanımlar: {topicsFrom(latestCurriculumAttempt.weak_outcomes_jsonb).slice(0, 3).join(", ") || "—"}
+                  </div>
+                  <div className="mt-2 text-xs text-paper-800/60">
+                    Aile aksiyonu: {actionTitlesFrom(latestCurriculumAttempt.recommended_actions_jsonb)[0] ?? "Yanlış kazanımı birlikte okuyun ve tekrar planlayın."}
+                  </div>
+                </div>
+                {latestCurriculumAttempt.teacher_support_recommended ? (
+                  <Link
+                    href={teacherSearchHref(latestCurriculumAttempt.branch_name, latestCurriculumAttempt.branch_slug)}
+                    className="w-fit rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+                  >
+                    Branş öğretmeni bul
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-4 text-sm text-paper-800/65">
+              Öğrenci çalışma alanından ilk kazanım testini çözdüğünde veli bildirimi ve sonuç özeti burada oluşur.
+            </div>
+          )}
+          {curriculumAttempts.length > 1 ? (
+            <div className="mt-4">
+              <h3 className="text-sm font-semibold text-paper-900">Son 5 kazanım testi</h3>
+              <ul className="mt-2 space-y-2">
+                {curriculumAttempts.slice(0, 5).map((attempt) => (
+                  <li key={attempt.id} className="rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm">
+                    <div className="font-semibold text-paper-950">
+                      {attempt.student_display_name} · {attempt.branch_name} · {attempt.unit_title} · {attempt.correct_count}/{attempt.question_count}
+                    </div>
+                    <div className="mt-1 text-xs text-paper-800/60">
+                      {attempt.mastery_level ?? "seviye bekleniyor"} · {new Date(attempt.created_at).toLocaleString("tr-TR")}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
 
         <section id="ogrenci-baglama" className="mt-8">
@@ -585,6 +814,13 @@ export default function GuardianPage() {
                     ) {
                       return (
                         <p className="mt-2 text-xs text-paper-800/55">Detaylar öğrenci panelinde.</p>
+                      );
+                    }
+                    if (k === "curriculum_test_result_guardian") {
+                      return (
+                        <p className="mt-2 text-xs text-paper-800/55">
+                          Kazanım testi detayı üstteki test takibi bölümünde.
+                        </p>
                       );
                     }
                     if (

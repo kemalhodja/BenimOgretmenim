@@ -7,6 +7,7 @@ import { AuthEntryLink } from "../components/AuthEntryLink";
 import { apiFetch } from "../lib/api";
 import { getToken } from "../lib/auth";
 import { loginHrefWithReturn } from "../lib/authRedirect";
+import { trackEvent } from "../lib/trackEvent";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 type City = { id: number; name: string; slug: string; plate_code: number | null };
@@ -39,6 +40,26 @@ const searchPresets = [
   { label: "TYT Paragraf", q: "TYT Paragraf", verifiedOnly: false },
   { label: "İngilizce konuşma", q: "İngilizce", verifiedOnly: true },
   { label: "Acil soru çözümü", q: "Matematik", verifiedOnly: false },
+] as const;
+
+const advisorGoals = [
+  { id: "lgs", label: "LGS hazırlık", q: "LGS Matematik", minRating: "4", hasDocs: true },
+  { id: "yks", label: "YKS / TYT", q: "TYT Matematik", minRating: "4", hasDocs: true },
+  { id: "language", label: "Dil pratiği", q: "İngilizce konuşma", minRating: "", hasDocs: false },
+  { id: "school", label: "Okula destek", q: "Matematik", minRating: "", hasDocs: false },
+] as const;
+
+const advisorModes = [
+  { id: "trust", label: "En güvenli profil", sort: "recommended" as SortKey, verifiedOnly: true, hasVideo: false },
+  { id: "experience", label: "Ders geçmişi yüksek", sort: "experience" as SortKey, verifiedOnly: true, hasVideo: false },
+  { id: "video", label: "Videolu tanıtım", sort: "recommended" as SortKey, verifiedOnly: false, hasVideo: true },
+  { id: "budget", label: "Bütçeye uygun", sort: "price_asc" as SortKey, verifiedOnly: false, hasVideo: false },
+] as const;
+
+const advisorBudgets = [
+  { id: "open", label: "Bütçem esnek", maxHourlyTl: "" },
+  { id: "mid", label: "Saatlik 750 TL altı", maxHourlyTl: "750" },
+  { id: "value", label: "Saatlik 500 TL altı", maxHourlyTl: "500" },
 ] as const;
 
 const FAVORITE_TEACHERS_KEY = "bo:favorite-teachers";
@@ -211,6 +232,10 @@ function OgretmenlerPageInner() {
   const [favoriteTeacherIds, setFavoriteTeacherIds] = useState<Set<string>>(() => new Set());
   const [favoriteTeacherDetails, setFavoriteTeacherDetails] = useState<CompareTeacher[]>([]);
   const [compareTeachers, setCompareTeachers] = useState<CompareTeacher[]>([]);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [advisorGoal, setAdvisorGoal] = useState<(typeof advisorGoals)[number]["id"]>("lgs");
+  const [advisorMode, setAdvisorMode] = useState<(typeof advisorModes)[number]["id"]>("trust");
+  const [advisorBudget, setAdvisorBudget] = useState<(typeof advisorBudgets)[number]["id"]>("open");
 
   useEffect(() => {
     setSessionToken(getToken());
@@ -222,6 +247,22 @@ function OgretmenlerPageInner() {
       window.removeEventListener("storage", onAuth);
     };
   }, []);
+
+  useEffect(() => {
+    if (!sessionToken) return;
+    let cancelled = false;
+    apiFetch<{ teachers: Array<{ id: string }> }>("/v1/teachers/shortlist", { token: sessionToken })
+      .then((r) => {
+        if (cancelled) return;
+        const ids = r.teachers.map((teacher) => teacher.id);
+        setFavoriteTeacherIds(new Set(ids));
+        window.localStorage.setItem(FAVORITE_TEACHERS_KEY, JSON.stringify(ids));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionToken]);
 
   useEffect(() => {
     try {
@@ -306,8 +347,21 @@ function OgretmenlerPageInner() {
   function toggleFavoriteTeacher(teacher: TeacherRow) {
     setFavoriteTeacherIds((prev) => {
       const next = new Set(prev);
-      if (next.has(teacher.id)) next.delete(teacher.id);
+      const action = next.has(teacher.id) ? "remove" : "add";
+      if (action === "remove") next.delete(teacher.id);
       else next.add(teacher.id);
+      if (sessionToken) {
+        void apiFetch("/v1/teachers/shortlist", {
+          method: "PATCH",
+          token: sessionToken,
+          body: JSON.stringify({ teacherId: teacher.id, action }),
+        }).catch(() => {});
+      }
+      trackEvent("teacher_shortlist", {
+        entityType: "teacher",
+        entityId: teacher.id,
+        metadata: { action, teacherName: teacher.display_name },
+      });
       window.localStorage.setItem(FAVORITE_TEACHERS_KEY, JSON.stringify([...next]));
       setFavoriteTeacherDetails((detailPrev) => {
         const detailNext = next.has(teacher.id)
@@ -407,6 +461,37 @@ function OgretmenlerPageInner() {
     replaceAllFilters({ q: t });
   }
 
+  function applyAdvisor() {
+    const goal = advisorGoals.find((item) => item.id === advisorGoal) ?? advisorGoals[0];
+    const mode = advisorModes.find((item) => item.id === advisorMode) ?? advisorModes[0];
+    const budget = advisorBudgets.find((item) => item.id === advisorBudget) ?? advisorBudgets[0];
+    setSearchInput(goal.q);
+    setSearchApply(goal.q);
+    setSort(mode.sort);
+    setVerifiedOnly(mode.verifiedOnly);
+    setHasVideo(mode.hasVideo);
+    setHasDocs(goal.hasDocs);
+    setMinRating(goal.minRating);
+    setMaxHourlyTl(budget.maxHourlyTl);
+    replaceAllFilters({
+      q: goal.q,
+      sort: mode.sort,
+      verifiedOnly: mode.verifiedOnly,
+      hasVideo: mode.hasVideo,
+      hasDocs: goal.hasDocs,
+      minRating: goal.minRating,
+      maxHourlyTl: budget.maxHourlyTl,
+    });
+    trackEvent("teacher_search", {
+      metadata: {
+        source: "advisor",
+        advisorGoal,
+        advisorMode,
+        advisorBudget,
+      },
+    });
+  }
+
   useEffect(() => {
     const q = searchParams.get("q")?.trim() ?? "";
     setSearchInput(q);
@@ -460,6 +545,9 @@ function OgretmenlerPageInner() {
       setError(null);
       setListLoading(true);
       try {
+        trackEvent("teacher_search", {
+          metadata: { branchId, cityId, q: searchApply, sort, verifiedOnly, hasVideo, hasDocs, minRating, maxHourlyTl },
+        });
         const q = new URLSearchParams();
         if (branchId !== "") q.set("branchId", String(branchId));
         if (cityId !== "") q.set("cityId", String(cityId));
@@ -564,6 +652,86 @@ function OgretmenlerPageInner() {
           </div>
         </section>
 
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-paper-800/55">
+                Öğretmen seçim sihirbazı
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-950">Hedefinize göre filtreleri hazırlayalım</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/65">
+                Sınav hedefi, güven tercihi ve bütçe aralığına göre önerilen aramayı tek tıkla başlatın.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={applyAdvisor}
+              className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
+            >
+              Önerilen öğretmenleri göster
+            </button>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <div>
+              <div className="mb-2 text-xs font-semibold text-paper-800/60">Hedef</div>
+              <div className="flex flex-wrap gap-2">
+                {advisorGoals.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setAdvisorGoal(item.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      advisorGoal === item.id
+                        ? "border-brand-300 bg-brand-50 text-brand-950"
+                        : "border-paper-200 bg-paper-50 text-paper-800"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 text-xs font-semibold text-paper-800/60">Öncelik</div>
+              <div className="flex flex-wrap gap-2">
+                {advisorModes.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setAdvisorMode(item.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      advisorMode === item.id
+                        ? "border-brand-300 bg-brand-50 text-brand-950"
+                        : "border-paper-200 bg-paper-50 text-paper-800"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 text-xs font-semibold text-paper-800/60">Bütçe</div>
+              <div className="flex flex-wrap gap-2">
+                {advisorBudgets.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setAdvisorBudget(item.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                      advisorBudget === item.id
+                        ? "border-brand-300 bg-brand-50 text-brand-950"
+                        : "border-paper-200 bg-paper-50 text-paper-800"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         <div className="mt-6 rounded-xl border border-paper-200 bg-white p-4">
           <div className="mb-1 text-xs font-medium text-paper-800/65">Metin ara</div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -601,6 +769,19 @@ function OgretmenlerPageInner() {
               </button>
             )}
           </div>
+        </div>
+
+        <div className="mt-3 flex gap-2 sm:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen(true)}
+            className="flex-1 rounded-xl border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-900"
+          >
+            Filtreleri aç
+          </button>
+          <Link href={shortlistRequestHref(favoriteTeacherDetails)} className="flex-1 rounded-xl bg-brand-800 px-4 py-2 text-center text-sm font-semibold text-white">
+            Kısa listeden talep
+          </Link>
         </div>
 
         <div className="sticky top-14 z-10 -mx-6 mt-6 border-y border-paper-200 bg-paper-50/95 px-6 py-3 backdrop-blur-sm">
@@ -766,6 +947,98 @@ function OgretmenlerPageInner() {
             </div>
           )}
         </div>
+
+        {mobileFiltersOpen ? (
+          <div className="fixed inset-0 z-40 bg-paper-950/40 sm:hidden" role="dialog" aria-modal="true">
+            <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-semibold text-paper-950">Mobil filtreler</h2>
+                  <p className="text-xs text-paper-800/60">Branş, şehir ve kalite sinyallerini tek ekranda ayarlayın.</p>
+                </div>
+                <button type="button" onClick={() => setMobileFiltersOpen(false)} className="rounded-full border border-paper-200 px-3 py-1 text-sm">
+                  Kapat
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3">
+                <label className="block">
+                  <div className="mb-1 text-xs font-medium text-paper-800/65">Branş</div>
+                  <select
+                    value={branchId}
+                    onChange={(e) => {
+                      const v = e.target.value ? Number(e.target.value) : "";
+                      setBranchId(v);
+                      replaceAllFilters({ branchId: v });
+                    }}
+                    disabled={!metaReady || metaLoading}
+                    className="w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="">Tümü</option>
+                    {leafBranches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <div className="mb-1 text-xs font-medium text-paper-800/65">Şehir</div>
+                  <select
+                    value={cityId}
+                    onChange={(e) => {
+                      const v = e.target.value ? Number(e.target.value) : "";
+                      setCityId(v);
+                      replaceAllFilters({ cityId: v });
+                    }}
+                    disabled={!metaReady || metaLoading}
+                    className="w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="">Tümü</option>
+                    {cities.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    ["verifiedOnly", "Doğrulanmış", verifiedOnly] as const,
+                    ["hasVideo", "Video", hasVideo] as const,
+                    ["hasDocs", "Belge", hasDocs] as const,
+                  ].map(([key, label, active]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        if (key === "verifiedOnly") {
+                          setVerifiedOnly(!active);
+                          replaceAllFilters({ verifiedOnly: !active });
+                        }
+                        if (key === "hasVideo") {
+                          setHasVideo(!active);
+                          replaceAllFilters({ hasVideo: !active });
+                        }
+                        if (key === "hasDocs") {
+                          setHasDocs(!active);
+                          replaceAllFilters({ hasDocs: !active });
+                        }
+                      }}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                        active ? "border-brand-300 bg-brand-50 text-brand-900" : "border-paper-200 bg-white text-paper-800"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileFiltersOpen(false)}
+                  className="rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white"
+                >
+                  Sonuçları göster ({total})
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {error && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -1118,6 +1391,13 @@ function OgretmenlerPageInner() {
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-paper-100 pt-3">
                   <Link
                     href={demoHref}
+                    onClick={() =>
+                      trackEvent("demo_request_start", {
+                        entityType: "teacher",
+                        entityId: t.id,
+                        metadata: { source: "teacher_search", teacherName: t.display_name },
+                      })
+                    }
                     className="rounded-xl bg-brand-800 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-900"
                   >
                     Demo talep et
@@ -1149,6 +1429,23 @@ function OgretmenlerPageInner() {
               );
             })
           )}
+        </div>
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-paper-200 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur sm:hidden">
+          <div className="mx-auto flex max-w-md items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(true)}
+              className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-xs font-semibold text-paper-900"
+            >
+              Filtre
+            </button>
+            <Link href={shortlistRequestHref(favoriteTeacherDetails)} className="flex-1 rounded-xl bg-brand-800 px-3 py-2 text-center text-xs font-semibold text-white">
+              {favoriteTeacherIds.size ? `${favoriteTeacherIds.size} öğretmenle talep` : "Kısa listeyle talep"}
+            </Link>
+            <Link href={talepHref} className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900">
+              Tek talep
+            </Link>
+          </div>
         </div>
       </div>
     </div>

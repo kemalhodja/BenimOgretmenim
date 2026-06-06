@@ -56,6 +56,14 @@ jobs:
     # PR'larda sadece build; deploy yalnızca main push veya manuel tetikleme
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
       - name: Trigger Render deploy hooks
         env:
           HOOK_API: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
@@ -72,4 +80,64 @@ jobs:
           fi
           if [ -n "${HOOK_WEB:-}" ]; then
             curl -fsS "$HOOK_WEB"
+          fi
+
+      - name: Install API smoke dependencies
+        working-directory: apps/api
+        run: npm ci --include=dev
+
+      - name: Wait until API health is ready
+        env:
+          SMOKE_API_URL: https://benim-ogretmenim.onrender.com
+          SMOKE_RUN_SECRET: ${{ secrets.SMOKE_RUN_SECRET }}
+          GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
+          GITHUB_SHA_VALUE: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if curl -fsS "${SMOKE_API_URL}/health" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s); if (j.db !== true) process.exit(2);})"; then
+              echo "API health ready after attempt ${i}."
+              exit 0
+            fi
+            echo "API health not ready yet (${i}/30); waiting 10s..."
+            sleep 10
+          done
+          if [ -n "${SMOKE_RUN_SECRET:-}" ]; then
+            payload="$(node -e "console.log(JSON.stringify({status:'failed', targetUrl: process.env.SMOKE_API_URL, workflow: 'deploy-render', runId: process.env.GITHUB_RUN_ID_VALUE, commitSha: process.env.GITHUB_SHA_VALUE, details: {source:'deploy-render', suite:'health-wait', error:'api_health_not_ready'}}))")"
+            curl -fsS -X POST "${SMOKE_API_URL}/v1/admin/smoke-runs" \
+              -H "content-type: application/json" \
+              -H "x-smoke-run-secret: ${SMOKE_RUN_SECRET}" \
+              --data "${payload}" || true
+          fi
+          echo "::error::API health did not become ready before smoke."
+          exit 1
+
+      - name: Run production smoke and report result
+        working-directory: apps/api
+        env:
+          SMOKE_API_URL: https://benim-ogretmenim.onrender.com
+          SMOKE_RUN_SECRET: ${{ secrets.SMOKE_RUN_SECRET }}
+          GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
+          GITHUB_SHA_VALUE: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          status="ok"
+          details='{"source":"deploy-render","suite":"smoke:prod"}'
+          if ! npm run smoke:prod; then
+            status="failed"
+            details='{"source":"deploy-render","suite":"smoke:prod","error":"smoke_prod_failed"}'
+          fi
+          if [ -n "${SMOKE_RUN_SECRET:-}" ]; then
+            export SMOKE_STATUS="${status}"
+            export SMOKE_DETAILS="${details}"
+            payload="$(node -e "console.log(JSON.stringify({status: process.env.SMOKE_STATUS, targetUrl: process.env.SMOKE_API_URL, workflow: 'deploy-render', runId: process.env.GITHUB_RUN_ID_VALUE, commitSha: process.env.GITHUB_SHA_VALUE, details: JSON.parse(process.env.SMOKE_DETAILS || '{}')}))")"
+            curl -fsS -X POST "${SMOKE_API_URL}/v1/admin/smoke-runs" \
+              -H "content-type: application/json" \
+              -H "x-smoke-run-secret: ${SMOKE_RUN_SECRET}" \
+              --data "${payload}"
+          else
+            echo "::notice::SMOKE_RUN_SECRET tanımlı değil; smoke sonucu API health'e yazılmadı."
+          fi
+          if [ "${status}" = "failed" ]; then
+            exit 1
           fi

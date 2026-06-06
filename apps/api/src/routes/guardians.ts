@@ -31,6 +31,51 @@ async function createUniqueInviteCode(): Promise<{ code: string; hash: string }>
   throw new Error("guardian_invite_code_generate_failed");
 }
 
+function isMissingRelation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "42P01";
+}
+
+async function queryCurriculumAttemptsForGuardian(userId: string) {
+  try {
+    const r = await pool.query(
+      `select a.id,
+              a.student_id,
+              su.display_name as student_display_name,
+              a.grade_level,
+              a.branch_slug,
+              a.branch_name,
+              a.unit_slug,
+              a.unit_title,
+              a.question_count,
+              a.correct_count,
+              a.score_percent,
+              a.weak_outcomes_jsonb,
+              a.teacher_support_recommended,
+              a.teacher_recommendations_jsonb,
+              a.mastery_level,
+              a.misconceptions_jsonb,
+              a.recommended_actions_jsonb,
+              a.answered_count,
+              a.created_at
+       from student_curriculum_test_attempts a
+       join students s on s.id = a.student_id
+       join users su on su.id = s.user_id
+       where exists (
+         select 1 from student_guardians sg
+         where sg.student_id = a.student_id
+           and sg.guardian_user_id = $1
+       )
+       order by a.created_at desc
+       limit 20`,
+      [userId],
+    );
+    return r.rows;
+  } catch (e) {
+    if (isMissingRelation(e)) return [];
+    throw e;
+  }
+}
+
 export const guardians = new Hono<{ Variables: AppVariables }>();
 
 guardians.get("/invites/mine", requireAuth, async (c) => {
@@ -293,12 +338,15 @@ guardians.get("/overview", requireAuth, async (c) => {
     [userId],
   );
 
+  const curriculumAttempts = await queryCurriculumAttemptsForGuardian(userId);
+
   return c.json({
     students: students.rows,
     progress: progress.rows,
     masteryGraph: masteryGraph.rows,
     studyPlans: studyPlans.rows,
     attempts: attempts.rows,
+    curriculumAttempts,
   });
 });
 
