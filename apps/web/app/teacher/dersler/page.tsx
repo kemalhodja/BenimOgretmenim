@@ -45,12 +45,41 @@ function parseIsoLocalToUtcIso(input: string): string {
 
 function paymentStatusLabel(status: string): string {
   const labels: Record<string, string> = {
-    held_in_escrow: "Cüzdanda blokeli",
+    held_in_escrow: "Cüzdanda güvencede",
     pending: "Ödeme bekliyor",
     released: "Aktarıldı",
     refunded: "İade edildi",
   };
   return labels[status] ?? status;
+}
+
+function packageStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    active: "Aktif paket",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+    expired: "Süresi doldu",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
+function sessionStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    scheduled: "Planlandı",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+    missed: "Kaçırıldı",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
+function deliveryModeLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    online: "Online",
+    in_person: "Yüz yüze",
+    hybrid: "Online veya yüz yüze",
+  };
+  return labels[mode] ?? mode;
 }
 
 export default function TeacherDerslerPage() {
@@ -315,8 +344,8 @@ export default function TeacherDerslerPage() {
             body: "Tarih ve süre seçip öğrencinin paneline meeting linkini düşürün.",
           }
         : {
-            title: "Paket akışını kontrol edin",
-            body: "Tüm oturumlar tamamlandıysa ders sonu değerlendirme ve ödeme akışını izleyin.",
+            title: "Paket durumunu kontrol edin",
+            body: "Tüm oturumlar tamamlandıysa ders sonu değerlendirme ve ödeme durumunu izleyin.",
           };
 
   return (
@@ -367,7 +396,7 @@ export default function TeacherDerslerPage() {
             <div className="mt-1 text-2xl font-semibold text-paper-900">{activePackageCount}</div>
           </div>
           <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
-            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Blokeli ödeme</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Güvencedeki ödeme</div>
             <div className="mt-1 text-2xl font-semibold text-brand-950">{escrowPackageCount}</div>
           </div>
           <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
@@ -408,7 +437,7 @@ export default function TeacherDerslerPage() {
                       </div>
                     )}
                     <div className="mt-0.5 text-xs text-paper-800/55">
-                      {p.status} · ödeme: {paymentStatusLabel(p.payment_status)} ·{" "}
+                      {packageStatusLabel(p.status)} · ödeme: {paymentStatusLabel(p.payment_status)} ·{" "}
                       {new Date(p.created_at).toLocaleString("tr-TR")}
                     </div>
                     <div className="mt-1 text-[11px] font-mono text-paper-800/45">
@@ -432,7 +461,7 @@ export default function TeacherDerslerPage() {
                   </div>
                   <div className="mt-1 text-xs text-paper-800/75">
                     {selected.request_kind === "demo" ? "Demo ders" : "Paket"}:{" "}
-                    {selected.completed_lessons}/{selected.total_lessons} · {selected.status} ·{" "}
+                    {selected.completed_lessons}/{selected.total_lessons} · {packageStatusLabel(selected.status)} ·{" "}
                     {paymentStatusLabel(selected.payment_status)}
                   </div>
                   {selected.source_request_id && (
@@ -490,14 +519,14 @@ export default function TeacherDerslerPage() {
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="font-medium text-paper-900">
-                            Ders #{s.session_index} · {s.status}
+                            {s.session_index}. ders · {sessionStatusLabel(s.status)}
                           </div>
                           <div className="text-xs text-paper-800/55">
                             {toLocal(s.scheduled_start)}
                           </div>
                         </div>
                         <div className="mt-1 text-xs text-paper-800/75">
-                          {s.delivery_mode} · süre: {s.duration_minutes ?? "—"} dk
+                          {deliveryModeLabel(s.delivery_mode)} · süre: {s.duration_minutes ?? "—"} dk
                         </div>
                         {s.meeting_url && (
                           <div className="mt-2 flex flex-wrap gap-2">

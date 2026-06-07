@@ -43,6 +43,15 @@ function parseTlToMinorOptional(raw: string): number | null {
   return minor;
 }
 
+function deliveryModeLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    online: "Online",
+    in_person: "Yüz yüze",
+    hybrid: "Online veya yüz yüze",
+  };
+  return labels[mode] ?? mode;
+}
+
 export default function TeacherRequestsPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -206,7 +215,7 @@ export default function TeacherRequestsPage() {
             <div className="mt-1 text-xs text-brand-900/70">Hızlı yanıt öncelikli</div>
           </div>
           <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
-            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Kısa liste sinyali</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Kısa liste bilgisi</div>
             <div className="mt-1 text-2xl font-semibold text-warm-950">{shortlistedCount}</div>
             <div className="mt-1 text-xs text-warm-900/70">Normal talep: {regularCount}</div>
           </div>
@@ -274,8 +283,8 @@ export default function TeacherRequestsPage() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="text-sm font-semibold text-paper-900">
-                      {r.request_kind === "demo" ? "Demo talebi" : "Talep"} #{r.id.slice(0, 8)} ·{" "}
-                      {r.branch_name ?? `Branş #${r.branch_id}`} · teklif:{" "}
+                      {r.request_kind === "demo" ? "Demo talebi" : "Ders talebi"} ·{" "}
+                      {r.branch_name ?? "Branş bilgisi eksik"} · teklif:{" "}
                       {r.offers_count}
                     </div>
                     {r.request_kind === "demo" && (
@@ -297,7 +306,7 @@ export default function TeacherRequestsPage() {
                       </Link>
                     )}
                     <div className="mt-1 text-xs text-paper-800/55">
-                      {r.delivery_mode} · {new Date(r.created_at).toLocaleString("tr-TR")}
+                      {deliveryModeLabel(r.delivery_mode)} · {new Date(r.created_at).toLocaleString("tr-TR")}
                     </div>
                     {r.topic_text && (
                       <div className="mt-2 text-sm font-medium text-paper-900">

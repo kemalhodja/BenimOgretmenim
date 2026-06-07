@@ -34,6 +34,17 @@ type TeacherBatchRow = {
 
 type ShortlistTeacher = { id: string; name: string };
 
+function requestStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    open: "Açık",
+    matched: "Eşleşti",
+    cancelled: "İptal edildi",
+    expired: "Süresi doldu",
+    completed: "Tamamlandı",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
 export default function StudentRequestsPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -406,7 +417,9 @@ export default function StudentRequestsPage() {
             <p className="mt-1 text-xs text-paper-800/55">Detay ve teklifler için satıra tıklayın.</p>
             <div className="mt-3 space-y-2">
               {mine.length === 0 ? (
-                <div className="text-sm text-paper-800/65">Henüz talep yok.</div>
+                <div className="rounded-xl border border-paper-100 bg-paper-50 p-4 text-sm text-paper-800/70">
+                  Henüz talep yok. Branş, konu ve uygun zaman bilgisiyle ilk talebinizi oluşturabilirsiniz.
+                </div>
               ) : (
                 mine.map((r) => (
                   <Link
@@ -416,10 +429,10 @@ export default function StudentRequestsPage() {
                   >
                     <div>
                       <div className="text-sm font-medium text-paper-900">
-                        {r.request_kind === "demo" ? "Demo talebi" : "Talep"} #{r.id.slice(0, 8)}
+                        {r.request_kind === "demo" ? "Demo talebi" : "Ders talebi"}
                       </div>
                       <div className="text-xs text-paper-800/55">
-                        {r.status} · teklif: {r.offers_count}
+                        {requestStatusLabel(r.status)} · teklif: {r.offers_count}
                       </div>
                       {r.topic_text && (
                         <div className="mt-1 text-xs text-paper-800/65">{r.topic_text}</div>
@@ -437,14 +450,9 @@ export default function StudentRequestsPage() {
                 ))
               )}
             </div>
-            <details className="mt-4 rounded-lg border border-paper-200 bg-paper-50/80 px-3 py-2 text-xs text-paper-800/65">
-              <summary className="cursor-pointer select-none font-medium text-paper-800/75">
-                Yerel geliştirici girişi
-              </summary>
-              <p className="mt-2 font-mono text-[11px] text-paper-800/65">
-                student_dev@… / DevParola1
-              </p>
-            </details>
+            <div className="mt-4 rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2 text-xs leading-relaxed text-brand-950">
+              Talep detayında gelen teklifleri, öğretmen profillerini ve ödeme adımını birlikte görebilirsiniz.
+            </div>
           </div>
         </div>
       </div>

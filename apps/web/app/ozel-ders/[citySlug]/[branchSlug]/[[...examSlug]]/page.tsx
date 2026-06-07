@@ -199,7 +199,7 @@ export default async function SeoLandingPage({
     {
       question: `${landing.city.name} ${landing.branch.name} özel ders öğretmeni nasıl seçilir?`,
       answer:
-        "Öğretmen profillerinde doğrulama durumu, video tanıtım, belge/doküman, tamamlanan ders ve fiyat aralığı sinyallerini birlikte karşılaştırabilirsiniz.",
+        "Öğretmen profillerinde doğrulama durumu, video tanıtım, belge/doküman, tamamlanan ders ve fiyat aralığı bilgilerini birlikte karşılaştırabilirsiniz.",
     },
     {
       question: "Demo ders veya teklif karşılaştırma nasıl ilerler?",
@@ -209,7 +209,7 @@ export default async function SeoLandingPage({
     {
       question: "Sadece özel ders değil, soru çözümü de alabilir miyim?",
       answer:
-        "Evet. Öğrenci panelinde fotoğraflı soru gönderme, aciliyet seçme, çözüm kalitesi takibi ve çalışma planı akışları birlikte kullanılabilir.",
+        "Evet. Öğrenci panelinde fotoğraflı soru gönderme, aciliyet seçme, çözüm kalitesi takibi ve çalışma planı birlikte kullanılabilir.",
     },
     {
       question: `${landing.city.name} ${landing.branch.name} özel ders ücretleri nasıl netleşir?`,
@@ -219,7 +219,7 @@ export default async function SeoLandingPage({
     {
       question: "Ödeme ve ders süreci nasıl güvenceye alınır?",
       answer:
-        "Platform içinde ilerleyen paket ve ders akışlarında ödeme, ders kaydı, canlı ders bağlantısı, öğretmen notu ve destek kayıtları birlikte takip edilir.",
+        "Platform içinde ilerleyen paket ve derslerde ödeme, ders kaydı, canlı ders bağlantısı, öğretmen notu ve destek kayıtları birlikte takip edilir.",
     },
   ];
 
@@ -282,7 +282,7 @@ export default async function SeoLandingPage({
 
         <section className="mt-8 grid gap-4 sm:grid-cols-3">
           {[
-            ["1", "Kaliteli profilleri karşılaştır", "Video, belge, yorum ve tamamlanan ders sinyallerini gör."],
+            ["1", "Kaliteli profilleri karşılaştır", "Video, belge, yorum ve tamamlanan ders bilgilerini gör."],
             ["2", "Demo dersle dene", "Öğretmen yanıtından sonra 30 dakikalık online oturum planlanır."],
             ["3", "Pakete geç veya devam et", "Demo sonrası paket, kurs, ödev desteği veya farklı öğretmen seçimi yapılır."],
           ].map(([step, title, desc]) => (
@@ -388,7 +388,7 @@ export default async function SeoLandingPage({
           <h2 className="text-xl font-semibold text-brand-950">Hazır olduğunuzda tek talep yeter</h2>
           <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-brand-900/85">
             {landing.city.name} {landing.branch.name} özel ders için talep açın; öğretmenlerden gelen teklifleri
-            karşılaştırıp sizin için doğru akışı seçin.
+            karşılaştırıp sizin için doğru yolu seçin.
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-3">
             <Link href={requestHref} className="rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white">

@@ -18,6 +18,24 @@ type PayRow = {
   teacher_email: string;
 };
 
+function paymentStateLabel(state: string): string {
+  const labels: Record<string, string> = {
+    pending: "Onay bekliyor",
+    paid: "Ödendi",
+    failed: "Başarısız",
+    cancelled: "İptal edildi",
+  };
+  return labels[state] ?? state;
+}
+
+function paymentMethodLabel(method: string): string {
+  const labels: Record<string, string> = {
+    bank_transfer: "Havale/EFT",
+    paytr_iframe: "Kart ile ödeme",
+  };
+  return labels[method] ?? method;
+}
+
 export default function AdminSubscriptionPaymentsPage() {
   const token = useRequireAdmin();
   const [state, setState] = useState("");
@@ -84,10 +102,10 @@ export default function AdminSubscriptionPaymentsPage() {
               }}
             >
               <option value="">Tümü</option>
-              <option value="pending">pending</option>
-              <option value="paid">paid</option>
-              <option value="failed">failed</option>
-              <option value="cancelled">cancelled</option>
+              <option value="pending">Onay bekliyor</option>
+              <option value="paid">Ödendi</option>
+              <option value="failed">Başarısız</option>
+              <option value="cancelled">İptal edildi</option>
             </select>
           </label>
           <label className="block text-sm">
@@ -101,8 +119,8 @@ export default function AdminSubscriptionPaymentsPage() {
               }}
             >
               <option value="">Tümü</option>
-              <option value="bank_transfer">bank_transfer</option>
-              <option value="paytr_iframe">paytr_iframe</option>
+              <option value="bank_transfer">Havale/EFT</option>
+              <option value="paytr_iframe">Kart ile ödeme</option>
             </select>
           </label>
         </div>
@@ -124,7 +142,7 @@ export default function AdminSubscriptionPaymentsPage() {
                 <th className="px-3 py-2">Yöntem</th>
                 <th className="px-3 py-2">Durum</th>
                 <th className="px-3 py-2">Tutar</th>
-                <th className="px-3 py-2">Bank ref</th>
+                <th className="px-3 py-2">Banka referansı</th>
                 <th className="px-3 py-2">Tarih</th>
               </tr>
             </thead>
@@ -149,8 +167,8 @@ export default function AdminSubscriptionPaymentsPage() {
                       <div className="text-xs text-paper-800/75">{p.teacher_email}</div>
                     </td>
                     <td className="px-3 py-2 font-mono text-xs text-paper-800">{p.plan_code}</td>
-                    <td className="px-3 py-2 text-paper-800">{p.method}</td>
-                    <td className="px-3 py-2 capitalize text-paper-800">{p.state}</td>
+                    <td className="px-3 py-2 text-paper-800">{paymentMethodLabel(p.method)}</td>
+                    <td className="px-3 py-2 text-paper-800">{paymentStateLabel(p.state)}</td>
                     <td className="px-3 py-2 tabular-nums text-paper-800">
                       {(p.amount_minor / 100).toFixed(2)} {p.currency}
                     </td>

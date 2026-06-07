@@ -37,6 +37,16 @@ function parseIsoLocalToUtcIso(input: string): string {
   return d.toISOString();
 }
 
+function sessionStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    scheduled: "Planlandı",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+    missed: "Kaçırıldı",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
 export default function TeacherCohortSessionsPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -343,11 +353,11 @@ export default function TeacherCohortSessionsPage() {
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="text-sm font-semibold text-paper-900">
-                        #{s.session_index}
+                        {s.session_index}. oturum
                         {s.title ? ` · ${s.title}` : ""}
                       </div>
                       <div className="mt-1 text-xs text-paper-800/55">
-                        {s.status} · {toLocal(s.scheduled_start)}
+                        {sessionStatusLabel(s.status)} · {toLocal(s.scheduled_start)}
                         {s.duration_minutes ? ` · ${s.duration_minutes} dk` : ""}
                       </div>
                       {s.meeting_url ? (

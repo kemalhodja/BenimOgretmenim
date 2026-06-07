@@ -63,7 +63,7 @@ function priceLabel(min: number | null, max: number | null): string {
 export const metadata: Metadata = {
   title: "Öğretmen ara ve güvenle özel ders talep et",
   description:
-    "Branş, şehir, doğrulama, profil kalitesi ve değerlendirme sinyalleriyle öğretmenleri karşılaştırın.",
+    "Branş, şehir, doğrulama, profil kalitesi ve değerlendirme bilgileriyle öğretmenleri karşılaştırın.",
   alternates: { canonical: ogretmenlerUrl },
   openGraph: {
     title: "Öğretmen ara · BenimÖğretmenim",
@@ -83,7 +83,7 @@ export default async function OgretmenlerLayout({ children }: { children: ReactN
     name: "BenimÖğretmenim öğretmen arama",
     url: ogretmenlerUrl,
     description:
-      "Öğrenciler için branş, şehir, doğrulama ve güven sinyallerine göre öğretmen keşif sayfası.",
+      "Öğrenciler için branş, şehir, doğrulama ve güven bilgilerine göre öğretmen keşif sayfası.",
     mainEntity: {
       "@type": "ItemList",
       itemListElement: teachers.length
@@ -95,7 +95,7 @@ export default async function OgretmenlerLayout({ children }: { children: ReactN
           }))
         : [
             { "@type": "ListItem", position: 1, name: "Doğrulanmış öğretmen profilleri" },
-            { "@type": "ListItem", position: 2, name: "Demo ders ve teklif akışı" },
+            { "@type": "ListItem", position: 2, name: "Demo ders ve teklif süreci" },
             { "@type": "ListItem", position: 3, name: "Güvenli ödeme ve veli takibi" },
           ],
     },
@@ -114,10 +114,10 @@ export default async function OgretmenlerLayout({ children }: { children: ReactN
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
-                  SSR öne çıkan öğretmenler
+                  Öne çıkan öğretmenler
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-paper-950">
-                  Doğrulanmış profiller ilk HTML içinde görünür
+                  Doğrulanmış profilleri hızlıca karşılaştırın
                 </h2>
               </div>
               <Link href="/ogretmenler?verifiedOnly=1&sort=recommended" className="text-sm font-semibold text-brand-800 underline">

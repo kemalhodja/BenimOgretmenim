@@ -371,7 +371,7 @@ export default function TeacherEditPage() {
             <div>
               <h2 className="text-base font-semibold text-brand-950">Profil kalite puanı</h2>
               <p className="mt-1 text-sm text-brand-900">
-                Bu puan öğretmen kartlarında güven sinyali olarak kullanılır; eksikleri tamamladıkça görünürlük artar.
+                Bu puan öğretmen kartlarında güven bilgisi olarak kullanılır; eksikleri tamamladıkça görünürlük artar.
               </p>
             </div>
             <div className="text-3xl font-semibold text-brand-900">{completionScore}/100</div>
@@ -754,7 +754,7 @@ export default function TeacherEditPage() {
           >
             <h2 className="text-base font-semibold text-paper-900">Branşlar</h2>
             <p className="mt-1 text-sm text-paper-800/75">
-              Şimdilik sadece “leaf” (alt dalı olmayan) branşlar listelenir.
+              Sadece en alt seviyedeki branşlar listelenir. Örneğin “Matematik” yerine ilgili alt alanı seçebilirsiniz.
             </p>
 
             <div className="mt-4 space-y-4">

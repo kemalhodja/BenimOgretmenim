@@ -125,7 +125,10 @@ userWallet.get("/course-payouts", requireAuth, async (c) => {
   const [summary, payouts] = await Promise.all([
     pool.query(
       `select count(*) filter (where status = 'wallet_paid')::int as paid_count,
-              coalesce(sum(amount_minor) filter (where status = 'wallet_paid'), 0)::bigint as paid_amount_minor
+              coalesce(sum(teacher_net_amount_minor) filter (where status = 'wallet_paid'), 0)::bigint as paid_amount_minor,
+              count(*) filter (where status = 'pending')::int as pending_count,
+              coalesce(sum(teacher_net_amount_minor) filter (where status = 'pending'), 0)::bigint as pending_amount_minor,
+              coalesce(sum(platform_fee_minor) filter (where status = 'wallet_paid'), 0)::bigint as platform_fee_amount_minor
        from course_teacher_payouts
        where teacher_id = $1`,
       [teacherId],
@@ -134,7 +137,9 @@ userWallet.get("/course-payouts", requireAuth, async (c) => {
       `select tp.id, tp.course_id, tp.cohort_id, tp.session_id,
               c.title as course_title, cc.title as cohort_title, cs.title as session_title,
               cs.scheduled_start, tp.hourly_rate_minor, tp.duration_minutes,
-              tp.amount_minor, tp.currency, tp.status, tp.paid_at, tp.created_at
+              tp.amount_minor, tp.platform_fee_minor, tp.teacher_net_amount_minor,
+              tp.success_fee_bps, tp.refund_lock_status, tp.payable_after,
+              tp.currency, tp.status, tp.paid_at, tp.created_at
        from course_teacher_payouts tp
        join courses c on c.id = tp.course_id
        join course_cohorts cc on cc.id = tp.cohort_id
@@ -146,12 +151,21 @@ userWallet.get("/course-payouts", requireAuth, async (c) => {
     ),
   ]);
 
-  const s = summary.rows[0] as { paid_count?: number; paid_amount_minor?: string | number } | undefined;
+  const s = summary.rows[0] as {
+    paid_count?: number;
+    paid_amount_minor?: string | number;
+    pending_count?: number;
+    pending_amount_minor?: string | number;
+    platform_fee_amount_minor?: string | number;
+  } | undefined;
   return c.json({
     payouts: payouts.rows,
     summary: {
       paidCount: Number(s?.paid_count ?? 0),
       paidAmountMinor: Number(s?.paid_amount_minor ?? 0),
+      pendingCount: Number(s?.pending_count ?? 0),
+      pendingAmountMinor: Number(s?.pending_amount_minor ?? 0),
+      platformFeeAmountMinor: Number(s?.platform_fee_amount_minor ?? 0),
     },
   });
 });

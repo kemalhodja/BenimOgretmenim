@@ -104,7 +104,7 @@ export default async function KampanyalarLayout({ children }: { children: ReactN
       {campaigns.length > 0 ? (
         <section className="mx-auto max-w-5xl px-6 pt-8">
           <div className="rounded-2xl border border-paper-200 bg-white p-5">
-            <h2 className="text-lg font-semibold text-paper-950">SSR yayındaki kampanyalar</h2>
+            <h2 className="text-lg font-semibold text-paper-950">Yayındaki kampanyalar</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {campaigns.map((campaign) => (
                 <Link key={campaign.id} href={`/kampanyalar?campaign=${campaign.id}`} className="rounded-xl border border-paper-200 bg-paper-50 p-3 hover:border-brand-200">

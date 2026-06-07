@@ -33,7 +33,7 @@ export default function GizlilikPage() {
         <h2 className="text-base font-semibold text-paper-900">Toplanan veriler</h2>
         <p>
           Hesap oluştururken e-posta, görünen ad, rol ve oturum bilgileri; öğretmen profillerinde branş,
-          şehir, deneyim, belge, video ve profil açıklamaları; öğrenci akışlarında talep, teklif, ders,
+          şehir, deneyim, belge, video ve profil açıklamaları; öğrenci tarafında talep, teklif, ders,
           ödev, çalışma planı ve mesaj içerikleri işlenebilir. Veli hesaplarında öğrenci bağlantısı,
           bildirim ve ilerleme bilgileri görüntülenebilir.
         </p>
@@ -41,17 +41,17 @@ export default function GizlilikPage() {
         <p>
           Veriler; hesabı işletmek, öğretmen-öğrenci eşleşmesini sağlamak, ödeme ve cüzdan kayıtlarını
           tutmak, canlı ders ve ödev süreçlerini yönetmek, veli bildirimleri göndermek, destek taleplerini
-          çözmek, güvenlik/audit kayıtlarını oluşturmak ve mevzuat gerekliliklerini yerine getirmek için kullanılır.
+          çözmek, güvenlik kayıtlarını oluşturmak ve mevzuat gerekliliklerini yerine getirmek için kullanılır.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Ödeme ve güvenlik</h2>
         <p>
           Kart ödemelerinde PayTR gibi ödeme sağlayıcıları devreye girebilir; kart bilgileri BenimÖğretmenim
-          sunucularında saklanmaz. Platform, ödeme sonucu, tutar, işlem referansı, cüzdan hareketi ve
-          mutabakat olaylarını güvenlik ve finansal kayıt amacıyla işler.
+          sunucularında saklanmaz. Platform, ödeme sonucu, tutar, işlem numarası ve cüzdan hareketini
+          güvenlik ve finansal kayıt amacıyla işler.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Saklama ve paylaşım</h2>
         <p>
-          Veriler hizmet ilişkisi, yasal saklama süreleri, uyuşmazlık çözümü ve finansal kayıt gereklilikleri
+          Veriler hizmet ilişkisi, yasal saklama süreleri, sorun çözümü ve finansal kayıt gereklilikleri
           devam ettiği sürece saklanabilir. Yetkili kamu kurumları, ödeme sağlayıcıları ve teknik hizmet
           sağlayıcıları dışında üçüncü kişilerle gereksiz paylaşım yapılmaması esastır.
         </p>

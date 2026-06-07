@@ -6,6 +6,7 @@ import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
 import { holdCourseEnrollmentPayment } from "../lib/courseEnrollmentWallet.js";
+import { lockCourseEnrollmentRefundWindowForCohort, payEligibleCourseTeacherPayoutsForCohort } from "../lib/courseTeacherPayout.js";
 
 export const courses = new Hono<{ Variables: AppVariables }>();
 
@@ -87,6 +88,10 @@ const applicationNoteSchema = z.object({
   goalNote: z.string().max(2000).optional().nullable(),
   guardianNote: z.string().max(2000).optional().nullable(),
   cohortId: z.string().uuid().optional().nullable(),
+});
+
+const refundRequestSchema = z.object({
+  reason: z.string().trim().max(500).optional(),
 });
 
 function scheduleLabel(row: Record<string, unknown>): string {
@@ -218,7 +223,10 @@ courses.get("/student/mine", requireAuth, async (c) => {
             e.price_minor as enrollment_price_minor,
             e.currency as enrollment_currency,
             e.payment_status as enrollment_payment_status,
-            e.charged_at as enrollment_charged_at
+            e.charged_at as enrollment_charged_at,
+            e.refund_eligibility_status,
+            e.refund_requested_at,
+            e.refund_amount_minor
      from course_enrollments e
      join course_cohorts cc on cc.id = e.cohort_id
      join courses c on c.id = cc.course_id
@@ -893,6 +901,11 @@ courses.post("/:courseId/cohorts/:cohortId/enroll", requireAuth, async (c) => {
            cancelled_at = null,
            refunded_at = null,
            refund_amount_minor = 0,
+           refund_eligibility_status = 'not_started',
+           refund_requested_at = null,
+           refund_request_reason = null,
+           refund_decided_at = null,
+           refund_decided_by_user_id = null,
            cancellation_reason = null,
            metadata_jsonb = course_enrollments.metadata_jsonb || excluded.metadata_jsonb
        where course_enrollments.payment_status in ('cancelled', 'refunded')
@@ -928,6 +941,11 @@ courses.post("/:courseId/cohorts/:cohortId/enroll", requireAuth, async (c) => {
            cancelled_at = null,
            refunded_at = null,
            refund_amount_minor = 0,
+           refund_eligibility_status = 'not_started',
+           refund_requested_at = null,
+           refund_request_reason = null,
+           refund_decided_at = null,
+           refund_decided_by_user_id = null,
            cancellation_reason = null,
            metadata_jsonb = course_enrollments.metadata_jsonb || excluded.metadata_jsonb
        where course_enrollments.payment_status in ('cancelled', 'refunded')
@@ -953,6 +971,101 @@ courses.post("/:courseId/cohorts/:cohortId/enroll", requireAuth, async (c) => {
     );
     await client.query("commit");
     return c.json({ enrollment: ins.rows[0], walletHold: hold }, 201);
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+});
+
+/** Öğrenci: ilk ders sonrası iade talebi (ikinci ders başlamadan önce). */
+courses.post("/enrollments/:enrollmentId/refund-request", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+
+  const enrollmentId = c.req.param("enrollmentId");
+  if (!z.string().uuid().safeParse(enrollmentId).success) return c.json({ error: "invalid_enrollment_id" }, 400);
+  const parsed = refundRequestSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const row = await client.query<{
+      id: string;
+      cohort_id: string;
+      student_id: string;
+      payment_status: string;
+      refund_eligibility_status: string;
+    }>(
+      `select ce.id, ce.cohort_id, ce.student_id, ce.payment_status, ce.refund_eligibility_status
+       from course_enrollments ce
+       join students st on st.id = ce.student_id
+       where ce.id = $1
+         and st.user_id = $2
+       for update of ce`,
+      [enrollmentId, userId],
+    );
+    const enrollment = row.rows[0];
+    if (!enrollment) {
+      await client.query("rollback");
+      return c.json({ error: "not_found" }, 404);
+    }
+    if (enrollment.payment_status !== "wallet_charged" && enrollment.payment_status !== "external_paid") {
+      await client.query("rollback");
+      return c.json({ error: "refund_requires_charged_payment" }, 409);
+    }
+    const secondStarted = await client.query<{ exists: boolean }>(
+      `select exists (
+         select 1
+         from course_sessions
+         join classroom_attendance_events cae
+           on cae.subject_type = 'course_session'
+          and cae.subject_id = course_sessions.id
+         where cohort_id = $1
+           and session_index >= 2
+           and cae.user_id = $2
+           and cae.role = 'student'
+           and cae.event_type in ('join', 'heartbeat')
+       )`,
+      [enrollment.cohort_id, userId],
+    );
+    if (secondStarted.rows[0]?.exists) {
+      await lockCourseEnrollmentRefundWindowForCohort(enrollment.cohort_id, client, { reason: "second_lesson_started_before_refund_request" });
+      await payEligibleCourseTeacherPayoutsForCohort(enrollment.cohort_id, client);
+      await client.query("commit");
+      return c.json({ error: "refund_not_allowed_after_second_lesson" }, 409);
+    }
+    if (enrollment.refund_eligibility_status === "locked_after_second") {
+      await client.query("rollback");
+      return c.json({ error: "refund_not_allowed_after_second_lesson" }, 409);
+    }
+    if (!["eligible_after_first", "refund_requested"].includes(enrollment.refund_eligibility_status)) {
+      await client.query("rollback");
+      return c.json({ error: "refund_not_available_yet" }, 409);
+    }
+
+    const updated = await client.query(
+      `update course_enrollments
+       set refund_eligibility_status = 'refund_requested',
+           refund_requested_at = coalesce(refund_requested_at, now()),
+           refund_request_reason = $2,
+           metadata_jsonb = metadata_jsonb || $3::jsonb
+       where id = $1
+       returning id, refund_eligibility_status, refund_requested_at`,
+      [
+        enrollment.id,
+        parsed.data.reason ?? null,
+        JSON.stringify({
+          refundRequestedAt: new Date().toISOString(),
+          refundRequestReason: parsed.data.reason ?? null,
+        }),
+      ],
+    );
+    await client.query("commit");
+    return c.json({ refundRequest: updated.rows[0] }, 201);
   } catch (e) {
     await client.query("rollback").catch(() => {});
     throw e;

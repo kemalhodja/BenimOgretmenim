@@ -44,8 +44,24 @@ function statusTr(s: string): string {
     matched: "Eşleşti",
     cancelled: "İptal",
     expired: "Süresi doldu",
+    active: "Aktif",
+    completed: "Tamamlandı",
+    scheduled: "Planlandı",
+    held_in_escrow: "Cüzdanda güvencede",
+    pending: "Bekliyor",
+    released: "Aktarıldı",
+    refunded: "İade edildi",
   };
-  return m[s] ?? s;
+  return m[s] ?? "Durum güncellendi";
+}
+
+function deliveryModeLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    online: "Online",
+    in_person: "Yüz yüze",
+    hybrid: "Online veya yüz yüze",
+  };
+  return labels[mode] ?? mode;
 }
 
 export default function TeacherTekliflerPage() {
@@ -195,8 +211,7 @@ export default function TeacherTekliflerPage() {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="text-sm font-semibold text-paper-900">
-                    {o.request_kind === "demo" ? "Demo talebi" : "Talep"} #
-                    {o.request_id.slice(0, 8)} · {o.branch_name ?? `Branş ${o.branch_id}`}
+                    {o.request_kind === "demo" ? "Demo talebi" : "Ders talebi"} · {o.branch_name ?? "Branş bilgisi eksik"}
                   </div>
                   {o.request_kind === "demo" && (
                     <div className="mt-2 inline-flex rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-900">
@@ -208,7 +223,7 @@ export default function TeacherTekliflerPage() {
                     {statusTr(o.offer_status)}
                   </div>
                   <div className="mt-1 text-xs text-paper-800/55">
-                    {o.delivery_mode} · {new Date(o.offer_created_at).toLocaleString("tr-TR")}
+                    {deliveryModeLabel(o.delivery_mode)} · {new Date(o.offer_created_at).toLocaleString("tr-TR")}
                   </div>
                   {o.request_note_preview && (
                     <p className="mt-2 line-clamp-2 text-sm text-paper-800">
@@ -222,10 +237,11 @@ export default function TeacherTekliflerPage() {
                   )}
                   {o.offer_status === "accepted" && (
                     <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50/70 p-3 text-xs text-brand-950">
-                      <div className="font-semibold">Paket akışı başladı</div>
+                      <div className="font-semibold">Paket süreci başladı</div>
                       <div className="mt-1">
-                        Paket: {o.package_status ?? "—"} · ödeme: {o.package_payment_status ?? "—"} · ilk ders:{" "}
-                        {o.first_session_status ?? "—"}
+                        Paket: {o.package_status ? statusTr(o.package_status) : "—"} · ödeme:{" "}
+                        {o.package_payment_status ? statusTr(o.package_payment_status) : "—"} · ilk ders:{" "}
+                        {o.first_session_status ? statusTr(o.first_session_status) : "—"}
                       </div>
                     </div>
                   )}

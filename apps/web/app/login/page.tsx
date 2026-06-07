@@ -35,9 +35,6 @@ function parseLoginApiError(err: unknown): { message: string; showRegisterHint: 
   return { message: noRid, showRegisterHint: false };
 }
 
-/** Tam seed (`npm run db:seed`) — apps/api/src/scripts/seed-dev.ts */
-const SEED_PASSWORD = "DevParola1";
-/** Giriş “kullanıcı adı” = e-posta */
 type SeedPreset = {
   label: string;
   email: string;
@@ -47,15 +44,39 @@ type SeedPreset = {
 
 const SEED_ROLE_PRESETS: readonly SeedPreset[] = [
   {
-    label: "Admin (ilk seed)",
-    email: "seed_dev@benimogretmenim.local",
-    password: SEED_PASSWORD,
-    hint: "db:seed sonrası",
+    label: "Admin",
+    email: process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL ?? "",
+    password:
+      process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD ??
+      process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD ??
+      "",
+    hint: "test hesabı",
   },
-  { label: "Öğretmen", email: "teacher_dev@benimogretmenim.local", password: SEED_PASSWORD },
-  { label: "Öğrenci", email: "student_dev@benimogretmenim.local", password: SEED_PASSWORD },
-  { label: "Veli", email: "guardian_dev@benimogretmenim.local", password: SEED_PASSWORD },
-];
+  {
+    label: "Öğretmen",
+    email: process.env.NEXT_PUBLIC_DEV_TEACHER_EMAIL ?? "",
+    password:
+      process.env.NEXT_PUBLIC_DEV_TEACHER_PASSWORD ??
+      process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD ??
+      "",
+  },
+  {
+    label: "Öğrenci",
+    email: process.env.NEXT_PUBLIC_DEV_STUDENT_EMAIL ?? "",
+    password:
+      process.env.NEXT_PUBLIC_DEV_STUDENT_PASSWORD ??
+      process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD ??
+      "",
+  },
+  {
+    label: "Veli",
+    email: process.env.NEXT_PUBLIC_DEV_GUARDIAN_EMAIL ?? "",
+    password:
+      process.env.NEXT_PUBLIC_DEV_GUARDIAN_PASSWORD ??
+      process.env.NEXT_PUBLIC_DEV_LOGIN_PASSWORD ??
+      "",
+  },
+].filter((preset) => preset.email && preset.password);
 
 function LoginForm() {
   const router = useRouter();
@@ -69,14 +90,7 @@ function LoginForm() {
 
   useEffect(() => {
     const envOn = process.env.NEXT_PUBLIC_DEV_LOGIN_PRESETS === "1";
-    const isDev = process.env.NODE_ENV === "development";
-    const h = typeof window !== "undefined" ? window.location.hostname : "";
-    const local =
-      h === "localhost" ||
-      h === "127.0.0.1" ||
-      h === "[::1]" ||
-      h.endsWith(".local");
-    setShowRolePresets(envOn || isDev || local);
+    setShowRolePresets(envOn && SEED_ROLE_PRESETS.length > 0);
   }, []);
 
   const returnUrl = useMemo(
@@ -121,7 +135,7 @@ function LoginForm() {
           <p className="mt-1 text-sm text-paper-800/75">E-posta ve parolanızla devam edin.</p>
           {showRolePresets ? (
             <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3">
-              <p className="text-xs text-paper-800/65">Yerel ortam — tek tıkla doldur</p>
+              <p className="text-xs text-paper-800/65">Test hesaplarını doldur</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {SEED_ROLE_PRESETS.map((p) => (
                   <button

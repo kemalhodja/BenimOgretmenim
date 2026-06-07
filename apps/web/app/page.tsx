@@ -45,22 +45,22 @@ const heroSignals = ["Akıllı eşleşme", "Canlı sınıf", "Güvenli ödeme", 
 const homeQuickActions = [
   {
     title: "Öğretmen ara",
-    body: "Branş, şehir, doğrulama ve puana göre öğretmenleri listeleyin.",
+    body: "Branş, şehir, ücret ve yorumlara göre öğretmen bulun.",
     href: "/ogretmenler?verifiedOnly=1&sort=recommended",
   },
   {
     title: "Soru / ödev gönder",
-    body: "Fotoğraflı sorunuzu konu, sınav hedefi ve aciliyetle havuza bırakın.",
+    body: "Sorunuzu fotoğrafla gönderin. Uygun öğretmen görsün.",
     href: "/student/odev-sor",
   },
   {
     title: "Çalışma planı",
-    body: "Haftalık hedefleri, deneme sonuçlarını ve zayıf konuları takip edin.",
+    body: "Hedeflerinizi, denemelerinizi ve eksik konularınızı görün.",
     href: "/student/calisma",
   },
   {
     title: "Öğretmen olun",
-    body: "Profilinizi oluşturun, taleplere teklif verin ve soru havuzuna katılın.",
+    body: "Profil açın, öğrenci taleplerine cevap verin.",
     href: "/kayit?role=teacher",
   },
 ] as const;
@@ -68,22 +68,22 @@ const homeQuickActions = [
 const platformTracks = [
   {
     title: "Öğretmen seçimi",
-    body: "Öğretmenleri doğrulama, deneyim, puan ve ders ücretine göre karşılaştırın.",
+    body: "Öğretmenleri deneyim, yorum, ücret ve doğrulama bilgisiyle karşılaştırın.",
     href: "/student/requests",
   },
   {
     title: "Hızlı soru çözüm",
-    body: "Fotoğraflı sorular konu, sınav hedefi ve aciliyet bilgisiyle doğru öğretmene ulaşır.",
+    body: "Fotoğraflı sorunuz doğru branştaki öğretmenlere ulaşır.",
     href: "/student/odev-sor",
   },
   {
     title: "Canlı ders düzeni",
-    body: "Ders odası, ortak tahta, mesajlar, materyaller ve kayıt linkleri tek yerde kalır.",
+    body: "Ders linki, tahta, mesaj ve materyaller tek yerde kalır.",
     href: "/student/dersler",
   },
   {
     title: "İlerleme takibi",
-    body: "Haftalık plan, deneme sonuçları, zayıf konu takibi ve veli görünürlüğü birlikte ilerler.",
+    body: "Plan, deneme sonucu, eksik konu ve veli bildirimi birlikte görünür.",
     href: "/student/calisma",
   },
 ] as const;
@@ -91,19 +91,19 @@ const platformTracks = [
 const homeActionCards = [
   {
     title: "Öğrenciyim",
-    body: "Öğretmen bul, teklif topla, soru gönder veya çalışma planını takip et.",
+    body: "Öğretmen bulun, soru gönderin, kursa katılın ve çalışmanızı takip edin.",
     href: "/kayit?role=student",
     cta: "Öğrenci hesabı aç",
   },
   {
     title: "Öğretmenim",
-    body: "Profilini güçlendir, taleplere teklif ver, soru havuzundan gelir oluştur.",
+    body: "Profilinizi kurun, öğrenci taleplerini alın ve kazancınızı takip edin.",
     href: "/kayit?role=teacher",
     cta: "Öğretmen başvurusu",
   },
   {
     title: "Veliyim",
-    body: "Öğrencinin derslerini, bildirimlerini ve çalışma ilerlemesini takip et.",
+    body: "Çocuğunuzun derslerini, bildirimlerini ve gelişimini görün.",
     href: "/kayit?role=guardian",
     cta: "Veli hesabı aç",
   },
@@ -122,72 +122,72 @@ const homeHighlights: {
 
 const avantPreviewCards = [
   { label: "Canlı ders", value: "20:30", hint: "Tahta + kayıt hazır" },
-  { label: "Soru SLA", value: "10 dk", hint: "Acil havuz öncelikli" },
+  { label: "Soru yanıtı", value: "10 dk", hint: "Acil sorular öne çıkar" },
   { label: "Plan", value: "%72", hint: "Haftalık ilerleme" },
 ] as const;
 
 const commandDeckCards = [
   {
     eyebrow: "01",
-    title: "Eşleşme ve talep motoru",
-    body: "Öğrenci ihtiyacını branş, şehir, demo, kısa liste ve öğretmen kalite sinyalleriyle profesyonel bir seçim akışına çevirir.",
+    title: "Doğru öğretmeni bulma",
+    body: "Öğrenci öğretmenleri branş, şehir, ücret, yorum ve doğrulama bilgisiyle yan yana görür.",
     metric: "3 teklif",
     metricLabel: "karşılaştırılabilir",
   },
   {
     eyebrow: "02",
-    title: "Canlı ders operasyonu",
-    body: "Paket, oturum, sınıf linki, mesaj, materyal, kayıt ve ders sonu değerlendirme aynı operasyon hattında ilerler.",
+    title: "Dersi düzenli yürütme",
+    body: "Ders linki, mesaj, materyal, kayıt ve ders notları aynı yerde durur.",
     metric: "1 panel",
-    metricLabel: "tüm ders yaşam döngüsü",
+    metricLabel: "tüm ders süreci",
   },
   {
     eyebrow: "03",
-    title: "Öğrenme ve veli görünürlüğü",
-    body: "Haftalık plan, zayıf konu, ödev çözüm, bildirim ve veli bağlantısı öğrencinin ilerlemesini izlenebilir kılar.",
+    title: "İlerlemeyi takip etme",
+    body: "Plan, eksik konu, ödev çözümü ve veli bildirimi öğrencinin durumunu açık gösterir.",
     metric: "%72",
-    metricLabel: "örnek plan ilerlemesi",
+    metricLabel: "plan ilerlemesi örneği",
   },
 ] as const;
 
 const commandTimeline = [
-  "Öğrenci talebi açar",
-  "Öğretmenler teklif verir",
-  "Ödeme blokajı güvenceye alınır",
-  "Canlı sınıf ve gelişim özeti oluşur",
+  "Öğrenci ihtiyacını seçer",
+  "Uygun öğretmen veya kurs bulunur",
+  "Ödeme cüzdanda güvenceye alınır",
+  "Ders ve gelişim kaydı panelde görünür",
 ] as const;
 
 const socialProofStats = [
-  { value: "4 akış", label: "özel ders, soru çözüm, canlı sınıf, çalışma takibi" },
-  { value: "10 dk", label: "acil soru çözüm hedef SLA örneği" },
-  { value: "3 rol", label: "öğrenci, öğretmen ve veli paneli" },
+  { value: "4 alan", label: "özel ders, soru çözüm, canlı ders, çalışma takibi" },
+  { value: "10 dk", label: "acil sorular için hedef yanıt süresi" },
+  { value: "3 rol", label: "öğrenci, öğretmen ve veli hesabı" },
 ] as const;
 
 const leadershipStandards = [
   {
     title: "Güven",
-    body: "Doğrulanmış profil, kalite skoru, yorumlar ve güvenli ödeme akışı karar öncesi görünür olur.",
+    body: "Profil doğrulaması, yorumlar ve ödeme bilgisi karar vermeden önce görünür.",
     href: "/ogretmenler?verifiedOnly=1&sort=recommended",
   },
   {
     title: "Şeffaflık",
-    body: "Teklif, paket, cüzdan blokajı, canlı ders ve ders sonu takip aynı kayıtlı süreçte ilerler.",
+    body: "Teklif, ödeme, ders ve ders sonrası takip kayıt altında ilerler.",
     href: "/student/requests",
   },
   {
     title: "Ölçülebilir başarı",
-    body: "Çalışma planı, zayıf konu, ödev kalitesi ve veli görünürlüğü öğrenme sonucunu takip edilebilir kılar.",
+    body: "Plan, eksik konu, ödev ve veli bildirimi gelişimi takip etmeyi kolaylaştırır.",
     href: "/student/calisma",
   },
 ] as const;
 
 const trustQuotes = [
   {
-    quote: "Öğretmeni aramak, soru göndermek ve çalışma planını izlemek aynı yerde olmalıydı.",
+    quote: "Öğretmen aramak, soru göndermek ve planı takip etmek aynı yerde olmalı.",
     source: "Öğrenci deneyimi",
   },
   {
-    quote: "Profil kalitesi, doğrulama ve yanıt hızı görünür olunca doğru öğretmeni seçmek kolaylaşıyor.",
+    quote: "Doğrulama, yorum ve yanıt hızı görünür olunca öğretmen seçmek kolaylaşıyor.",
     source: "Veli güven katmanı",
   },
 ] as const;
@@ -195,22 +195,22 @@ const trustQuotes = [
 const successStories = [
   {
     role: "Öğrenci",
-    title: "LGS hedefi için doğru öğretmeni seçme",
-    body: "Öğrenci önce doğrulanmış matematik profillerini karşılaştırır, kısa liste oluşturur ve tek taleple teklif toplar.",
+    title: "LGS için öğretmen seçme",
+    body: "Öğrenci matematik öğretmenlerini karşılaştırır, kısa liste yapar ve tek taleple teklif alır.",
     action: "Öğretmen sihirbazını aç",
     href: "/ogretmenler?verifiedOnly=1&sort=recommended&q=LGS%20Matematik",
   },
   {
     role: "Öğretmen",
-    title: "Profil kalitesini görünürlüğe çevirme",
-    body: "Öğretmen video, belge, branş ve ders sonrası notları tamamladıkça kalite programında net aksiyon görür.",
+    title: "Öğretmen profilini güçlendirme",
+    body: "Öğretmen branş, ücret, video ve belge bilgilerini tamamlar. Öğrenciler daha net karar verir.",
     action: "Öğretmen başvurusu",
     href: "/kayit?role=teacher",
   },
   {
     role: "Veli",
-    title: "Haftalık risk ve ilerleme takibi",
-    body: "Veli ders, soru, öğretmen notu ve çalışma sinyalini tek raporda takip eder; risk varsa aksiyonu görür.",
+    title: "Veli için haftalık takip",
+    body: "Veli dersleri, soruları, öğretmen notlarını ve çalışma durumunu tek ekranda görür.",
     action: "Veli hesabı aç",
     href: "/kayit?role=guardian",
   },
@@ -219,19 +219,55 @@ const successStories = [
 const howSteps = [
   {
     step: "1",
-    title: "İhtiyacınızı seçin",
-    body: "Öğretmen arayın, soru gönderin veya çalışma planınızı açın.",
+    title: "Kim olduğunuzu seçin",
+    body: "Öğrenci, öğretmen veya veli hesabı seçin. Her hesap kendi panelini açar.",
   },
   {
     step: "2",
-    title: "Doğru akışa gidin",
-    body: "Öğrenci, öğretmen ve veli hesapları farklı panellere yönlenir.",
+    title: "İşinizi seçin",
+    body: "Öğretmen arayın, kursa katılın, soru gönderin veya çocuğunuzu takip edin.",
   },
   {
     step: "3",
-    title: "Panelden takip edin",
-    body: "Ders, ödeme, bildirim, soru ve ilerleme bilgileri tek yerde kalır.",
+    title: "Güvenli süreci izleyin",
+    body: "Ödeme, iade hakkı, ders linki ve bildirimler panelde kayıtlı durur.",
   },
+  {
+    step: "4",
+    title: "Sonucu görün",
+    body: "Ders, soru çözüm, çalışma planı ve veli bildirimleri tek geçmişte toplanır.",
+  },
+] as const;
+
+const plainRoleGuide = [
+  {
+    role: "Öğrenci",
+    title: "Ders almak veya soru sormak istiyorum",
+    points: ["Öğretmen veya kurs seç", "Ödemeyi cüzdanda güvenceye al", "Derse gir ve gelişimini takip et"],
+    href: "/kayit?role=student",
+    cta: "Öğrenci olarak başla",
+  },
+  {
+    role: "Öğretmen",
+    title: "Öğrenci bulmak ve kazancımı görmek istiyorum",
+    points: ["Profilini web siten gibi kur", "Talepleri, kursları ve kampanyaları yönet", "Net kazancını cüzdanda gör"],
+    href: "/kayit?role=teacher",
+    cta: "Öğretmen olarak başla",
+  },
+  {
+    role: "Veli",
+    title: "Çocuğumun sürecini takip etmek istiyorum",
+    points: ["Öğrenci hesabını eşleştir", "Ders, soru ve çalışma özetini gör", "Ödeme ve destek kayıtlarını izle"],
+    href: "/kayit?role=guardian",
+    cta: "Veli olarak başla",
+  },
+] as const;
+
+const simplePaymentFlow = [
+  "Öğrenci ödeme tutarını cüzdanında güvenceye alır.",
+  "İlk ders başlayınca ödeme tahsil edilir; öğretmen ödemesi bekler.",
+  "İlk ders sonrası öğrenci iade talebi açabilir.",
+  "İkinci derse girilirse iade hakkı kapanır. Net tutar öğretmene aktarılır.",
 ] as const;
 
 function HighlightIcon({ name }: { name: (typeof homeHighlights)[number]["icon"] }) {
@@ -275,36 +311,36 @@ function HighlightIcon({ name }: { name: (typeof homeHighlights)[number]["icon"]
 
 export default function Home() {
   return (
-    <div className="bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_28%),radial-gradient(circle_at_88%_12%,rgba(255,122,77,0.14),transparent_30%),linear-gradient(180deg,#f4fafc_0%,#f6fafc_42%,#ffffff_100%)]">
+    <div className="bg-[radial-gradient(circle_at_12%_0%,rgba(88,170,169,0.12),transparent_28%),radial-gradient(circle_at_88%_12%,rgba(235,163,107,0.12),transparent_30%),linear-gradient(180deg,#f7faf8_0%,#edf4f1_42%,#ffffff_100%)]">
       <HomeLaunchAnnouncement />
-      <section className="relative overflow-hidden border-b border-white/10 bg-paper-950 text-white">
+      <section className="relative overflow-hidden border-b border-brand-100 bg-[linear-gradient(135deg,#f7faf8_0%,#eef9f8_48%,#fff8f1_100%)] text-paper-950">
         <HeroArt />
         <div
-          className="pointer-events-none absolute inset-0 opacity-70 [background-image:linear-gradient(115deg,rgba(34,211,238,0.18),transparent_30%),linear-gradient(245deg,rgba(255,122,77,0.18),transparent_32%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.08),transparent_34%)]"
+          className="pointer-events-none absolute inset-0 opacity-80 [background-image:linear-gradient(115deg,rgba(88,170,169,0.14),transparent_30%),linear-gradient(245deg,rgba(235,163,107,0.13),transparent_32%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.42),transparent_34%)]"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:linear-gradient(rgba(255,255,255,0.14)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.14)_1px,transparent_1px)] [background-size:36px_36px]"
+          className="pointer-events-none absolute inset-0 opacity-[0.2] [background-image:linear-gradient(rgba(88,170,169,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(88,170,169,0.18)_1px,transparent_1px)] [background-size:36px_36px]"
           aria-hidden
         />
         <div className="relative z-0 mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_min(44%,min(440px,100%))] lg:items-center lg:gap-12">
             <div className="max-lg:order-2 lg:order-none">
-              <p className="mb-3 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold text-brand-100 shadow-[0_0_32px_rgba(34,211,238,0.18)] backdrop-blur">
+              <p className="mb-3 inline-flex rounded-full border border-brand-200 bg-white/75 px-3 py-1 text-xs font-semibold text-brand-900 shadow-[0_10px_30px_rgba(88,170,169,0.14)] backdrop-blur">
                 Dijital eğitim merkezi
               </p>
-              <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-white sm:text-[2.7rem] sm:leading-[1.05]">
-                Özel dersi kurumsal kaliteyle yöneten dijital eğitim merkezi
+              <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-paper-950 sm:text-[2.7rem] sm:leading-[1.05]">
+                Öğretmen bul, ders al, soru sor ve gelişimini takip et
               </h1>
-              <p className="mt-4 max-w-xl text-base leading-relaxed text-white/80">
-                Öğretmen arama, teklif karşılaştırma, canlı sınıf, soru çözüm, güvenli ödeme ve veli takibi tek
-                profesyonel akışta birleşir.
+              <p className="mt-4 max-w-xl text-base leading-relaxed text-paper-800">
+                BenimÖğretmenim; öğrenci, öğretmen ve veli için ders sürecini tek yerde toplar. Kim ne yapacak,
+                ödeme nasıl ilerleyecek ve dersler nereden takip edilecek açıkça görünür.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
                 {heroSignals.map((signal) => (
                   <span
                     key={signal}
-                    className="rounded-full border border-white/15 bg-white/[0.08] px-3 py-1.5 text-xs font-semibold text-white/75 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                    className="rounded-full border border-brand-200 bg-white/75 px-3 py-1.5 text-xs font-semibold text-brand-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
                   >
                     {signal}
                   </span>
@@ -312,25 +348,25 @@ export default function Home() {
               </div>
               <form
                 action="/ogretmenler"
-                className="mt-6 rounded-3xl border border-white/15 bg-white/[0.08] p-3 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+                className="mt-6 rounded-3xl border border-brand-100 bg-white/82 p-3 shadow-[0_24px_80px_rgba(88,170,169,0.16)] backdrop-blur-xl"
               >
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-100/75">
-                  Hızlı öğretmen arama
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/75">
+                  Ders, sınav veya konu ara
                 </div>
                 <div className="mt-2 sm:flex sm:items-center sm:gap-2">
                   <label className="sr-only" htmlFor="home-teacher-search">
-                    Ders veya sınav ara
+                    Ders, sınav veya konu ara
                   </label>
                   <input
                     id="home-teacher-search"
                     name="q"
                     type="search"
-                    placeholder="Örn. LGS matematik, İngilizce konuşma"
-                    className="w-full rounded-2xl border border-white/15 bg-white/95 px-4 py-3 text-sm text-paper-950 outline-none ring-brand-300 placeholder:text-paper-800/50 focus:ring-2"
+                    placeholder="Örn. LGS matematik, İngilizce konuşma, fizik"
+                    className="w-full rounded-2xl border border-brand-100 bg-white/95 px-4 py-3 text-sm text-paper-950 outline-none ring-brand-300 placeholder:text-paper-800/50 focus:ring-2"
                   />
                   <button
                     type="submit"
-                    className="mt-2 w-full rounded-2xl bg-gradient-to-r from-brand-300 via-brand-400 to-warm-400 px-5 py-3 text-sm font-bold text-paper-950 shadow-[0_12px_42px_rgba(34,211,238,0.32)] hover:brightness-105 sm:mt-0 sm:w-auto"
+                    className="mt-2 w-full rounded-2xl bg-gradient-to-r from-brand-500 via-brand-400 to-warm-300 px-5 py-3 text-sm font-bold text-white shadow-[0_12px_42px_rgba(88,170,169,0.22)] hover:brightness-105 sm:mt-0 sm:w-auto"
                   >
                     Ara
                   </button>
@@ -340,7 +376,7 @@ export default function Home() {
                     <Link
                       key={label}
                       href={`/ogretmenler?q=${encodeURIComponent(label)}`}
-                      className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white/80 hover:border-brand-200 hover:bg-white/15"
+                      className="rounded-full border border-brand-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-paper-800 hover:border-brand-300 hover:bg-white"
                     >
                       {label}
                     </Link>
@@ -350,39 +386,39 @@ export default function Home() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/kayit?role=student"
-                  className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-paper-950 shadow-[0_14px_45px_rgba(255,255,255,0.16)] hover:bg-brand-50"
+                  className="rounded-2xl bg-brand-800 px-4 py-2.5 text-sm font-bold text-white shadow-[0_14px_45px_rgba(88,170,169,0.2)] hover:bg-brand-900"
                 >
                   Öğrenci olarak başla
                 </Link>
                 <Link
                   href="/ogretmenler?verifiedOnly=1&sort=recommended"
-                  className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur hover:bg-white/15"
+                  className="rounded-2xl border border-brand-200 bg-white/75 px-4 py-2.5 text-sm font-semibold text-brand-900 backdrop-blur hover:bg-white"
                 >
                   Öğretmenleri keşfet
                 </Link>
                 <Link
                   href="/kayit?role=teacher"
-                  className="rounded-2xl border border-warm-300/40 bg-warm-400/15 px-4 py-2.5 text-sm font-semibold text-warm-100 hover:bg-warm-400/20"
+                  className="rounded-2xl border border-warm-200 bg-warm-50 px-4 py-2.5 text-sm font-semibold text-warm-900 hover:bg-warm-100"
                 >
                   Öğretmen başvurusu
                 </Link>
               </div>
               <HomeHeroPersonalized />
-              <dl className="mt-10 grid grid-cols-2 gap-3 border-t border-white/10 pt-10 sm:grid-cols-4 sm:gap-4">
+              <dl className="mt-10 grid grid-cols-2 gap-3 border-t border-brand-100 pt-10 sm:grid-cols-4 sm:gap-4">
                 {homeHighlights.map((item) => (
-                  <div key={item.title} className="rounded-2xl border border-white/10 bg-white/[0.07] p-4 backdrop-blur">
-                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-brand-100 ring-1 ring-white/10">
+                  <div key={item.title} className="rounded-2xl border border-brand-100 bg-white/70 p-4 backdrop-blur">
+                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand-50 text-brand-800 ring-1 ring-brand-100">
                       <HighlightIcon name={item.icon} />
                     </div>
-                    <dt className="mt-2 text-sm font-semibold text-white">{item.title}</dt>
-                    <dd className="mt-1 text-xs leading-relaxed text-white/60">{item.body}</dd>
+                    <dt className="mt-2 text-sm font-semibold text-paper-950">{item.title}</dt>
+                    <dd className="mt-1 text-xs leading-relaxed text-paper-800/70">{item.body}</dd>
                   </div>
                 ))}
               </dl>
             </div>
 
             <figure className="order-first mx-auto w-full max-w-md lg:order-none lg:mx-0 lg:max-w-none">
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2rem] border border-white/15 bg-white/[0.08] p-3 shadow-[0_30px_110px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2rem] border border-white/70 bg-white/80 p-3 shadow-[0_30px_110px_rgba(88,170,169,0.22)] backdrop-blur-xl">
                 <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[1rem]">
                   <Image
                     src={HERO_PHOTO}
@@ -392,19 +428,19 @@ export default function Home() {
                     sizes="(max-width: 1024px) 100vw, 440px"
                     priority
                   />
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-paper-950/90 via-paper-950/30 to-brand-300/15" />
-                  <div className="absolute left-4 top-4 rounded-2xl border border-white/15 bg-paper-950/60 px-4 py-3 text-white shadow-2xl backdrop-blur">
-                    <div className="text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-brand-100/75">
-                      Bugünün paneli
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-brand-950/55 via-brand-950/12 to-warm-100/20" />
+                  <div className="absolute left-4 top-4 rounded-2xl border border-white/55 bg-white/82 px-4 py-3 text-paper-950 shadow-xl backdrop-blur">
+                    <div className="text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-brand-800/75">
+                      Bugünkü özet
                     </div>
-                    <div className="mt-1 text-xl font-semibold">3 akış hazır</div>
+                    <div className="mt-1 text-xl font-semibold">3 işlem hazır</div>
                   </div>
                   <div className="absolute bottom-4 left-4 right-4 grid gap-2 sm:grid-cols-3">
                     {avantPreviewCards.map((card) => (
-                      <div key={card.label} className="rounded-2xl border border-white/15 bg-white/10 p-3 text-white backdrop-blur-md">
-                        <div className="text-[0.65rem] uppercase tracking-wide text-white/60">{card.label}</div>
+                      <div key={card.label} className="rounded-2xl border border-white/55 bg-white/80 p-3 text-paper-950 backdrop-blur-md">
+                        <div className="text-[0.65rem] uppercase tracking-wide text-paper-800/60">{card.label}</div>
                         <div className="mt-1 text-lg font-semibold">{card.value}</div>
-                        <div className="mt-1 text-[0.68rem] leading-tight text-white/60">{card.hint}</div>
+                        <div className="mt-1 text-[0.68rem] leading-tight text-paper-800/65">{card.hint}</div>
                       </div>
                     ))}
                   </div>
@@ -412,11 +448,11 @@ export default function Home() {
                 <div className="absolute -right-7 top-1/3 h-24 w-24 rounded-full bg-brand-300/25 blur-2xl" aria-hidden />
                 <div className="absolute -bottom-8 -left-8 h-28 w-28 rounded-full bg-warm-400/25 blur-2xl" aria-hidden />
               </div>
-              <figcaption className="mt-2 text-center text-[0.65rem] leading-snug text-white/50 lg:text-left">
+              <figcaption className="mt-2 text-center text-[0.65rem] leading-snug text-paper-800/55 lg:text-left">
                 Fotoğraf:{" "}
                 <a
                   href="https://unsplash.com/@brookecagle?utm_source=benimogretmenim&utm_medium=referral"
-                  className="underline decoration-white/30 underline-offset-2 hover:text-brand-100"
+                  className="underline decoration-paper-300 underline-offset-2 hover:text-brand-800"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -425,7 +461,7 @@ export default function Home() {
                 /{" "}
                 <a
                   href="https://unsplash.com/license?utm_source=benimogretmenim&utm_medium=referral"
-                  className="underline decoration-white/30 underline-offset-2 hover:text-brand-100"
+                  className="underline decoration-paper-300 underline-offset-2 hover:text-brand-800"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -437,18 +473,95 @@ export default function Home() {
         </div>
       </section>
 
+      <section id="nasil" className="scroll-mt-24 border-b border-paper-200 bg-white py-10">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="rounded-[2rem] border border-brand-200 bg-[linear-gradient(135deg,#ffffff_0%,#eef9f8_58%,#fff8f1_100%)] p-5 shadow-sm sm:p-6">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                  Platformu 30 saniyede anlayın
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-950">
+                  BenimÖğretmenim’de kim ne yapar?
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/75">
+                  Öğrenci ders alır. Öğretmen hizmet verir. Veli süreci takip eder. Ödeme, iade hakkı, ders linki
+                  ve bildirimler ilgili panelde açıkça görünür.
+                </p>
+              </div>
+              <Link
+                href="/kayit"
+                className="w-fit rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-900"
+              >
+                Rolümü seçip kayıt ol
+              </Link>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+              {plainRoleGuide.map((item) => (
+                <Link
+                  key={item.role}
+                  href={item.href}
+                  className="group rounded-2xl border border-paper-200 bg-white/88 p-5 transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-white hover:shadow-[0_18px_50px_rgba(88,170,169,0.14)]"
+                >
+                  <div className="text-xs font-semibold uppercase tracking-wide text-brand-800/70">{item.role}</div>
+                  <h3 className="mt-2 text-base font-semibold text-paper-950">{item.title}</h3>
+                  <ul className="mt-4 space-y-2">
+                    {item.points.map((point) => (
+                      <li key={point} className="flex gap-2 text-sm leading-relaxed text-paper-800/75">
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <span className="mt-5 inline-flex text-sm font-semibold text-brand-800 transition group-hover:translate-x-1">
+                    {item.cta} →
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-brand-200 bg-white/82 p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-base font-semibold text-paper-950">Ödeme ve iade en basit haliyle</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-paper-800/65">
+                    Öğrenci ödeme tutarını platform cüzdanında güvenceye alır. Ders ilerledikçe ödeme ve iade durumu
+                    panelde görünür.
+                  </p>
+                </div>
+                <Link href="/guven" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
+                  Güven sayfasını incele
+                </Link>
+              </div>
+              <ol className="mt-4 grid gap-3 md:grid-cols-4">
+                {simplePaymentFlow.map((step, index) => (
+                  <li key={step} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-900">
+                      {index + 1}
+                    </div>
+                    <p className="mt-3 text-xs leading-relaxed text-paper-800/75">{step}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="border-b border-paper-200 bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
-                Türkiye için liderlik standardı
+                Neden güvenilir?
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-900">
-                Güven, şeffaflık ve ölçülebilir öğrenme aynı yerde
+                Güven, şeffaflık ve takip aynı yerde
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/70">
-                BenimÖğretmenim sadece öğretmen listesi değil; doğru öğretmeni seçme, dersi güvenle başlatma ve sonucu takip etme merkezidir.
+                Burası sadece öğretmen listesi değildir. Öğretmen seçimi, ödeme, canlı ders ve gelişim takibi aynı
+                yerde ilerler.
               </p>
             </div>
             <Link
@@ -486,22 +599,22 @@ export default function Home() {
           <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
             <div>
               <p className="inline-flex rounded-full border border-brand-200/20 bg-brand-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-brand-100">
-                Profesyonel ürün katmanı
+                Ders süreci
               </p>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                Ders sürecini tek yerden yönetin
+                Ders sürecinde hangi adımda olduğunuzu görün
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-white/70">
-                Talep, teklif, ödeme, canlı ders ve takip adımları tek akışta birleşir.
+                Talep, öğretmen seçimi, ödeme, canlı ders ve takip bilgileri tek sırayla ilerler.
               </p>
             </div>
             <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-[0_30px_110px_rgba(0,0,0,0.26)] backdrop-blur">
               <div className="flex items-center justify-between gap-3 border-b border-white/10 pb-4">
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.24em] text-white/45">
-                    Canlı akış
+                    Ders süreci
                   </div>
-                  <div className="mt-1 text-lg font-semibold text-white">Ders yaşam döngüsü</div>
+                  <div className="mt-1 text-lg font-semibold text-white">Dersin adımları</div>
                 </div>
                 <div className="rounded-full border border-brand-200/25 bg-brand-300/10 px-3 py-1 text-xs font-semibold text-brand-100">
                   Online
@@ -552,15 +665,14 @@ export default function Home() {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
-                  Güven sinyalleri
+                  Güven bilgileri
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-900">
-                  Takip edilebilir eğitim deneyimi
+                  Her şey kayıtlı ve takip edilebilir
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/70">
-                  Platform, öğrencinin ilk aramasından ders sonrası ilerleme takibine kadar görünür ve kayıtlı bir
-                  akış üretir. Temel fiyatlar şeffaftır; kişisel ödeme, cüzdan ve hakediş detayları ilgili panelde
-                  güvenli şekilde yönetilir.
+                  Öğretmen arama, ders, soru, ödeme ve veli bildirimi ayrı ayrı kaybolmaz. Her işlem ilgili panelde
+                  sade bir kayıt olarak görünür.
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[28rem]">
@@ -610,7 +722,7 @@ export default function Home() {
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-paper-900">En hızlı başlangıç</h2>
               <p className="mt-1 text-sm text-paper-800/70">
-                Ana menüde kaybolmadan doğrudan yapmak istediğiniz işe gidin.
+                En sık kullanılan işlemlere buradan başlayın.
               </p>
             </div>
             <Link href="/fiyatlar" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
@@ -642,7 +754,7 @@ export default function Home() {
             <div>
               <h2 className="text-2xl font-semibold tracking-tight text-paper-900">Hangi hesap size uygun?</h2>
               <p className="mt-1 text-sm text-paper-800/70">
-                Kayıt sonrası her rol kendi paneline gider; fiyat ve abonelik bilgileri sadece ilgili kişiye görünür.
+                Öğrenci, öğretmen ve veli farklı araçlar kullanır. Size uygun hesabı seçin.
               </p>
             </div>
             <Link href="/login" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
@@ -670,11 +782,11 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="nasil" className="scroll-mt-20 border-b border-paper-200 bg-paper-950 py-14 text-white sm:py-16">
+      <section id="adimlar" className="scroll-mt-20 border-b border-paper-200 bg-paper-950 py-14 text-white sm:py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Nasıl kullanılır?</h2>
+          <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Kullanım adımları</h2>
           <p className="mt-2 max-w-xl text-sm text-white/70">
-            Platformu kullanmak için önce amacınızı seçin, sonra tüm işlemleri kendi panelinizden takip edin.
+            Önce hesabınızı seçin. Sonra ders, ödeme, soru ve bildirimleri kendi panelinizden takip edin.
           </p>
           <ol className="mt-8 grid gap-6 sm:grid-cols-3">
             {howSteps.map((item) => (
@@ -698,12 +810,12 @@ export default function Home() {
                 Platformda neler var?
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-paper-800/75">
-                Özel ders, soru çözüm, canlı sınıf ve çalışma takibi ayrı ayrı da kullanılabilir; hepsi aynı hesap
-                yapısında birleşir.
+                Özel ders, soru çözüm, canlı ders ve çalışma takibi ayrı ayrı kullanılabilir. Hepsi aynı hesapta
+                toplanır.
               </p>
             </div>
             <Link href="/fiyatlar" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
-              Üyelik akışını gör
+              Üyelikleri gör
             </Link>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -739,8 +851,8 @@ export default function Home() {
             <div className="relative">
               <h2 className="text-2xl font-semibold tracking-tight text-white">Nereden başlayacağınızı seçin</h2>
               <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-white/70">
-                Öğrenciyseniz öğretmen arayın veya soru gönderin; öğretmenseniz başvuru yapın. Temel fiyatlar
-                şeffaftır, kişisel ödeme ve hakediş detayları ilgili panelde yönetilir.
+                Öğrenciyseniz öğretmen arayın veya soru gönderin. Öğretmenseniz profil açın. Ödeme ve kazanç
+                bilgileri ilgili panelde görünür.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <Link
@@ -753,7 +865,7 @@ export default function Home() {
                   href="/fiyatlar"
                   className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/15"
                 >
-                  Üyelik akışlarını gör
+                  Üyelikleri gör
                 </Link>
               </div>
             </div>

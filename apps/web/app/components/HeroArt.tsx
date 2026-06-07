@@ -8,7 +8,7 @@ export function HeroArt() {
       aria-hidden
     >
       <div
-        className="absolute inset-0 opacity-[0.45] [background-image:radial-gradient(rgb(30_42_68/0.07)_1.2px,transparent_1.2px)] [background-size:22px_22px]"
+        className="absolute inset-0 opacity-[0.38] [background-image:radial-gradient(rgb(88_170_169/0.09)_1.2px,transparent_1.2px)] [background-size:22px_22px]"
       />
       <div className="absolute -right-20 -top-20 h-[380px] w-[380px] rounded-full bg-brand-100/35 blur-3xl" />
       <div className="absolute -bottom-28 -left-16 h-80 w-80 rounded-full bg-warm-100/30 blur-3xl" />
@@ -21,9 +21,9 @@ export function HeroArt() {
         >
           <defs>
             <linearGradient id="h1" x1="0" y1="0" x2="400" y2="400" gradientUnits="userSpaceOnUse">
-              <stop stopColor="rgb(44 71 114)" stopOpacity="0.2" />
-              <stop offset="0.5" stopColor="rgb(69 104 150)" stopOpacity="0.12" />
-              <stop offset="1" stopColor="rgb(183 90 63)" stopOpacity="0.06" />
+              <stop stopColor="rgb(63 147 152)" stopOpacity="0.2" />
+              <stop offset="0.5" stopColor="rgb(88 170 169)" stopOpacity="0.13" />
+              <stop offset="1" stopColor="rgb(235 163 107)" stopOpacity="0.08" />
             </linearGradient>
           </defs>
           <path
@@ -55,7 +55,7 @@ export function HeroArt() {
             cy="200"
             r="5"
             className="fill-warm-400/40"
-            stroke="rgb(44 71 114 / 0.2)"
+            stroke="rgb(63 147 152 / 0.2)"
             strokeWidth="0.5"
           />
         </svg>

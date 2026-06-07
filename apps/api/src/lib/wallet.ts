@@ -8,12 +8,33 @@ function feeBps(): number {
   return Math.floor(n);
 }
 
+export function platformSuccessFeeBps(): number {
+  const n = Number(process.env.PLATFORM_SUCCESS_FEE_BPS ?? "1000");
+  if (!Number.isFinite(n) || n < 0 || n > 10_000) return 1000;
+  return Math.floor(n);
+}
+
 /** Brüt tutardan öğretmen payı (kuruş) */
 export function teacherPayoutFromGross(grossMinor: number): { payout: number; fee: number } {
   const bps = feeBps();
   if (grossMinor <= 0) return { payout: 0, fee: 0 };
   const fee = Math.floor((grossMinor * bps) / 10_000);
   return { payout: grossMinor - fee, fee };
+}
+
+export function splitPlatformSuccessFee(
+  grossMinor: number,
+  bps = platformSuccessFeeBps(),
+): { grossMinor: number; platformFeeMinor: number; teacherNetMinor: number; successFeeBps: number } {
+  const gross = Math.max(0, Math.trunc(grossMinor));
+  const safeBps = Math.min(10_000, Math.max(0, Math.trunc(bps)));
+  const platformFeeMinor = Math.floor((gross * safeBps) / 10_000);
+  return {
+    grossMinor: gross,
+    platformFeeMinor,
+    teacherNetMinor: gross - platformFeeMinor,
+    successFeeBps: safeBps,
+  };
 }
 
 type ApplyOpts = {

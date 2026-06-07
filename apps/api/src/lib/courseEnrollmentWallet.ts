@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 import { pool } from "../db.js";
 import { applyWalletDelta } from "./wallet.js";
 import { chargeWalletHold, createWalletHold, getWalletAvailableMinor, releaseWalletHold } from "./walletHolds.js";
-import { settleCourseSessionTeacherPayout } from "./courseTeacherPayout.js";
+import { settleCourseSessionTeacherPayout, voidPendingCoursePayoutsForEnrollmentRefund } from "./courseTeacherPayout.js";
 
 export async function holdCourseEnrollmentPayment(
   opts: {
@@ -170,11 +170,13 @@ export async function cancelCourseEnrollmentPayment(
       refund_amount_minor: number;
       currency: string;
       payment_status: string;
+      refund_eligibility_status: string;
       user_id: string;
       course_id: string;
     }>(
       `select ce.id, ce.cohort_id, ce.student_id, ce.wallet_hold_id, ce.price_minor,
-              ce.refund_amount_minor, ce.currency, ce.payment_status, st.user_id, cc.course_id
+              ce.refund_amount_minor, ce.currency, ce.payment_status, ce.refund_eligibility_status,
+              st.user_id, cc.course_id
        from course_enrollments ce
        join students st on st.id = ce.student_id
        join course_cohorts cc on cc.id = ce.cohort_id
@@ -191,6 +193,9 @@ export async function cancelCourseEnrollmentPayment(
         paymentStatus: row.payment_status,
         refundAmountMinor: Number(row.refund_amount_minor ?? 0),
       };
+    }
+    if (row.refund_eligibility_status === "locked_after_second") {
+      return { ok: false as const, error: "refund_not_allowed_after_second_lesson" as const };
     }
 
     const beforeStatus = row.payment_status;
@@ -219,6 +224,7 @@ export async function cancelCourseEnrollmentPayment(
           client: c,
         });
         nextStatus = "refunded";
+        await voidPendingCoursePayoutsForEnrollmentRefund(row.id, c);
       }
     }
 
@@ -230,6 +236,12 @@ export async function cancelCourseEnrollmentPayment(
            released_at = case when $3::int = 1 then now() else released_at end,
            refund_amount_minor = $4,
            cancellation_reason = $5,
+           refund_eligibility_status = case
+             when $2 = 'refunded' then 'refunded'
+             else refund_eligibility_status
+           end,
+           refund_decided_at = now(),
+           refund_decided_by_user_id = $7,
            metadata_jsonb = metadata_jsonb || $6::jsonb
        where id = $1`,
       [
@@ -245,6 +257,7 @@ export async function cancelCourseEnrollmentPayment(
           originalPaymentStatus: beforeStatus,
           refundAmountMinor,
         }),
+        opts.actorUserId ?? null,
       ],
     );
 
@@ -383,6 +396,10 @@ export async function settleCourseEnrollmentHold(enrollmentId: string, client?: 
       `update course_enrollments
        set payment_status = 'wallet_charged',
            charged_at = now(),
+           refund_eligibility_status = case
+             when refund_eligibility_status = 'locked_after_second' then refund_eligibility_status
+             else 'eligible_after_first'
+           end,
            metadata_jsonb = metadata_jsonb || $2::jsonb
        where id = $1`,
       [
@@ -390,6 +407,7 @@ export async function settleCourseEnrollmentHold(enrollmentId: string, client?: 
         JSON.stringify({
           chargedAt: new Date().toISOString(),
           chargedAmountMinor: row.price_minor,
+          refundEligibilityStatus: "eligible_after_first",
         }),
       ],
     );

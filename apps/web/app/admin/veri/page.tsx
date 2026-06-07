@@ -35,9 +35,41 @@ type CourseAccountingSummary = {
   gross_collected_amount_minor?: string | number;
   refunded_amount_minor?: string | number;
   teacher_payout_amount_minor?: string | number;
+  platform_fee_amount_minor?: string | number;
   net_platform_amount_minor?: string | number;
 };
 type JobMonitoringSummary = { openAlerts?: number; total?: number };
+
+function reconciliationStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    matched: "Eşleşti",
+    failed: "Başarısız",
+    amount_mismatch: "Tutar uyuşmadı",
+    unknown_merchant_oid: "Sipariş eşleşmedi",
+    suspicious: "Kontrol gerekli",
+  };
+  return labels[status] ?? status;
+}
+
+function resolutionStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    open: "Açık",
+    investigating: "İnceleniyor",
+    resolved: "Çözüldü",
+    ignored: "İşlem gerekmiyor",
+    dismissed: "İşlem gerekmiyor",
+  };
+  return labels[status] ?? status;
+}
+
+function homeworkQualityActionLabel(status: string): string {
+  const labels: Record<string, string> = {
+    accepted: "Kabul et",
+    revision_requested: "Revizyon iste",
+    flagged: "İşaretle",
+  };
+  return labels[status] ?? status;
+}
 
 const DATASETS: Record<string, Cfg> = {
   ledger: { title: "Cüzdan defteri", path: "/api/admin/wallet-ledger", arrayKey: "entries" },
@@ -64,7 +96,7 @@ const DATASETS: Record<string, Cfg> = {
     arrayKey: "disputes",
   },
   reconciliation: {
-    title: "Ödeme mutabakatı",
+    title: "Ödeme kontrolü",
     path: "/api/admin/payment-reconciliation",
     arrayKey: "events",
   },
@@ -124,7 +156,7 @@ const DATASETS: Record<string, Cfg> = {
     arrayKey: "campaigns",
   },
   funnel: {
-    title: "Funnel ve operasyon metrikleri",
+    title: "Dönüşüm ve platform takibi",
     path: "/api/admin/funnel-summary",
     arrayKey: "funnel",
   },
@@ -288,7 +320,7 @@ function AdminVeriInner() {
       });
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "mutabakat aksiyonu başarısız");
+      setError(e instanceof Error ? e.message : "ödeme kontrol aksiyonu başarısız");
     } finally {
       setActionBusy(null);
     }
@@ -342,6 +374,31 @@ function AdminVeriInner() {
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "kurs kaydı iptal/iade edilemedi");
+    } finally {
+      setActionBusy(null);
+    }
+  }
+
+  async function decideCourseEnrollmentRefund(id: string, decision: "approve" | "reject") {
+    if (!token) return;
+    const reason = window.prompt(
+      decision === "approve" ? "İade onay notu girin:" : "İade red notu girin:",
+      decision === "approve"
+        ? "İlk ders sonrası iade hakkı kapsamında onaylandı."
+        : "İade talebi reddedildi; öğretmen kazancı netleştirildi.",
+    );
+    if (reason === null) return;
+    setActionBusy(`${id}:refund:${decision}`);
+    setError(null);
+    try {
+      await apiFetch(`/api/admin/course-enrollments/${id}/refund-decision`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ decision, reason }),
+      });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "iade kararı güncellenemedi");
     } finally {
       setActionBusy(null);
     }
@@ -450,7 +507,7 @@ function AdminVeriInner() {
         {key === "ledger" ? (
           <div className="mt-4 flex flex-wrap items-end gap-2">
             <label className="text-sm">
-              <span className="font-medium text-paper-800">userId (UUID)</span>
+              <span className="font-medium text-paper-800">Kullanıcı kayıt kodu</span>
               <input
                 className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 font-mono text-xs"
                 value={userIdFilter}
@@ -477,9 +534,9 @@ function AdminVeriInner() {
               <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h2 className="text-sm font-semibold text-paper-900">Mutabakat risk özeti</h2>
+                    <h2 className="text-sm font-semibold text-paper-900">Ödeme kontrol özeti</h2>
                     <p className="mt-1 text-xs text-paper-800/60">
-                      Son 30 günde para güvenini etkileyen PayTR callback olayları.
+                      Son 30 günde para güvenini etkileyen PayTR ödeme bildirimleri.
                     </p>
                   </div>
                   <div className="text-xs text-paper-800/55">
@@ -494,7 +551,7 @@ function AdminVeriInner() {
                     ["Açık risk", reconciliationSummary.openIssues, "", "Kapatılmamış olaylar"],
                     ["Tutar uyuşmazlığı", reconciliationSummary.amountMismatches30d, "amount_mismatch", "Bakiye/ödeme durdurulur"],
                     ["Bilinmeyen sipariş", reconciliationSummary.unknownMerchantOids30d, "unknown_merchant_oid", "PayTR kaydı eşleşmedi"],
-                    ["Başarısız callback", reconciliationSummary.failed30d, "failed", "Ödeme başarısız döndü"],
+                    ["Başarısız bildirim", reconciliationSummary.failed30d, "failed", "Ödeme başarısız döndü"],
                   ].map(([label, value, status, hint]) => (
                     <button
                       key={String(label)}
@@ -525,7 +582,7 @@ function AdminVeriInner() {
                       }}
                       className="rounded-full border border-paper-200 bg-paper-50 px-3 py-1 text-xs font-medium text-paper-800 hover:border-brand-200 hover:bg-brand-50"
                     >
-                      {item.status}/{item.resolution_status}: {item.count}
+                      {reconciliationStatusLabel(item.status)} / {resolutionStatusLabel(item.resolution_status)}: {item.count}
                     </button>
                   ))}
                 </div>
@@ -534,7 +591,7 @@ function AdminVeriInner() {
 
             <div className="flex flex-wrap items-end gap-2 rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
               <label className="text-sm">
-                <span className="font-medium text-paper-800">Mutabakat durumu</span>
+                <span className="font-medium text-paper-800">Ödeme kontrol durumu</span>
                 <select
                   className="mt-1 block rounded-xl border border-paper-200 px-3 py-2 text-sm"
                   value={reconciliationStatus}
@@ -544,10 +601,10 @@ function AdminVeriInner() {
                   }}
                 >
                   <option value="">Tümü</option>
-                  <option value="amount_mismatch">amount_mismatch</option>
-                  <option value="unknown_merchant_oid">unknown_merchant_oid</option>
-                  <option value="failed">failed</option>
-                  <option value="matched">matched</option>
+                  <option value="amount_mismatch">Tutar uyuşmadı</option>
+                  <option value="unknown_merchant_oid">Sipariş eşleşmedi</option>
+                  <option value="failed">Başarısız</option>
+                  <option value="matched">Eşleşti</option>
                 </select>
               </label>
               <label className="text-sm">
@@ -561,13 +618,13 @@ function AdminVeriInner() {
                   }}
                 >
                   <option value="">Tümü</option>
-                  <option value="open">open</option>
-                  <option value="resolved">resolved</option>
-                  <option value="dismissed">dismissed</option>
+                  <option value="open">Açık</option>
+                  <option value="resolved">Çözüldü</option>
+                  <option value="dismissed">İşlem gerekmiyor</option>
                 </select>
               </label>
               <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
-                PayTR callback olayları beklenen tutar, gelen tutar ve ödeme kaydıyla birlikte burada izlenir.
+                PayTR ödeme bildirimleri beklenen tutar, gelen tutar ve ödeme kaydıyla birlikte burada izlenir.
                 Uyumsuz kayıtlar para güveni için öncelikli incelenmelidir.
               </div>
             </div>
@@ -577,7 +634,7 @@ function AdminVeriInner() {
         {key === "funnel" && funnelSummary ? (
           <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-paper-900">Funnel dönüşüm özeti</h2>
+              <h2 className="text-sm font-semibold text-paper-900">Dönüşüm özeti</h2>
               <p className="mt-1 text-xs text-paper-800/60">Son {funnelSummary.days} gün için arama → profil → kısa liste → talep/ödeme hattı.</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 {funnelSummary.funnel.map((step) => (
@@ -592,20 +649,20 @@ function AdminVeriInner() {
               </div>
             </div>
             <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-paper-900">Operasyon sinyalleri</h2>
+              <h2 className="text-sm font-semibold text-paper-900">Platform takip bilgileri</h2>
               <div className="mt-3 space-y-2 text-sm">
                 <div className="rounded-xl bg-paper-50 p-3">
-                  <div className="text-xs font-semibold text-paper-800/60">Aktif rate-limit bucket</div>
+                  <div className="text-xs font-semibold text-paper-800/60">Aktif işlem sınırı kaydı</div>
                   <div className="mt-1 text-xl font-semibold text-paper-950">
                     {funnelSummary.operations?.rateLimit?.activeBuckets ?? 0}
                   </div>
                 </div>
                 <div className="rounded-xl bg-paper-50 p-3">
-                  <div className="text-xs font-semibold text-paper-800/60">Quota/risk eventleri</div>
+                  <div className="text-xs font-semibold text-paper-800/60">Limit ve risk kayıtları</div>
                   <div className="mt-1 text-xs text-paper-800/70">
                     {(funnelSummary.operations?.quotaExceeded ?? []).length
                       ? (funnelSummary.operations?.quotaExceeded ?? []).map((item) => `${item.event_name}: ${item.count}`).join(", ")
-                      : "Açık quota sinyali yok"}
+                      : "Açık limit uyarısı yok"}
                   </div>
                 </div>
               </div>
@@ -619,20 +676,20 @@ function AdminVeriInner() {
               <div>
                 <h2 className="text-sm font-semibold text-paper-900">Kurs finans özeti</h2>
                 <p className="mt-1 text-xs text-paper-800/60">
-                  Brüt tahsilat, öğrenci iadeleri, öğretmen saatlik hakedişi ve platformda kalan net tutar.
+                  Brüt tahsilat, öğrenci iadeleri, öğretmen net kazancı ve %10 platform başarı bedeli.
                 </p>
               </div>
               <Link href="/admin/courses" className="text-xs font-medium text-brand-800 underline decoration-brand-300 underline-offset-4">
-                Kurs operasyonuna git
+                Kurs yönetimine git
               </Link>
             </div>
             <div className="mt-3 grid gap-2 sm:grid-cols-5">
               {[
-                ["Blokede", courseAccountingSummary.held_amount_minor, "Öğrenci bakiyesinde bekleyen"],
+                ["Güvencede", courseAccountingSummary.held_amount_minor, "Öğrenci bakiyesinde bekleyen"],
                 ["Brüt tahsil", courseAccountingSummary.gross_collected_amount_minor, "Platforma gelen kurs ücreti"],
                 ["İade", courseAccountingSummary.refunded_amount_minor, "Öğrenci cüzdanına dönen"],
-                ["Öğretmen hakedişi", courseAccountingSummary.teacher_payout_amount_minor, "Komisyonsuz saatlik ödeme"],
-                ["Net platform", courseAccountingSummary.net_platform_amount_minor, "Tahsil - iade - hakediş"],
+                ["Öğretmen net", courseAccountingSummary.teacher_payout_amount_minor, "Cüzdana yatan net kazanç"],
+                ["Platform bedeli", courseAccountingSummary.platform_fee_amount_minor ?? courseAccountingSummary.net_platform_amount_minor, "%10 başarı bedeli"],
               ].map(([label, value, hint]) => (
                 <div key={String(label)} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-paper-800/50">{label}</div>
@@ -656,11 +713,11 @@ function AdminVeriInner() {
                   setOffset(0);
                 }}
               >
-                <option value="pending_review">pending_review</option>
-                <option value="published">published</option>
-                <option value="rejected">rejected</option>
-                <option value="paused">paused</option>
-                <option value="archived">archived</option>
+                <option value="pending_review">İnceleme bekliyor</option>
+                <option value="published">Yayında</option>
+                <option value="rejected">Reddedildi</option>
+                <option value="paused">Duraklatıldı</option>
+                <option value="archived">Arşivlendi</option>
               </select>
             </label>
             <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
@@ -683,9 +740,9 @@ function AdminVeriInner() {
                 }}
               >
                 <option value="">Tümü</option>
-                <option value="pending">pending</option>
-                <option value="paid">paid</option>
-                <option value="rejected">rejected</option>
+                <option value="pending">Bekliyor</option>
+                <option value="paid">Ödendi</option>
+                <option value="rejected">Reddedildi</option>
               </select>
             </label>
             <label className="text-sm">
@@ -730,7 +787,7 @@ function AdminVeriInner() {
               disabled={actionBusy === "teacher-withdrawals:export"}
               className="rounded-xl bg-paper-900 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
             >
-              {actionBusy === "teacher-withdrawals:export" ? "Hazırlanıyor…" : "Banka CSV export"}
+              {actionBusy === "teacher-withdrawals:export" ? "Hazırlanıyor…" : "Banka CSV dışa aktar"}
             </button>
             <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
               Öğretmen talep oluşturduğunda tutar cüzdandan ayrılır. Ödendi durumunda banka transferi tamamlanmış
@@ -741,14 +798,14 @@ function AdminVeriInner() {
 
         {key === "job-monitoring" && jobMonitoringSummary ? (
           <div className="mt-4 rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-paper-900">Cron sağlık özeti</h2>
+            <h2 className="text-sm font-semibold text-paper-900">Zamanlanmış işler sağlık özeti</h2>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <div className={`rounded-xl border p-3 ${Number(jobMonitoringSummary.openAlerts ?? 0) > 0 ? "border-red-200 bg-red-50 text-red-950" : "border-emerald-200 bg-emerald-50 text-emerald-950"}`}>
                 <div className="text-xs font-semibold uppercase tracking-wide">Açık alarm</div>
                 <div className="mt-1 text-2xl font-semibold">{jobMonitoringSummary.openAlerts ?? 0}</div>
               </div>
               <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">İzlenen job</div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">İzlenen iş</div>
                 <div className="mt-1 text-2xl font-semibold text-paper-950">{jobMonitoringSummary.total ?? 0}</div>
               </div>
             </div>
@@ -768,15 +825,15 @@ function AdminVeriInner() {
                 }}
               >
                 <option value="">Tümü</option>
-                <option value="open">open</option>
-                <option value="waiting_user">waiting_user</option>
-                <option value="waiting_admin">waiting_admin</option>
-                <option value="resolved">resolved</option>
-                <option value="rejected">rejected</option>
+                <option value="open">Açık</option>
+                <option value="waiting_user">Kullanıcı yanıtı bekliyor</option>
+                <option value="waiting_admin">Admin yanıtı bekliyor</option>
+                <option value="resolved">Çözüldü</option>
+                <option value="rejected">Reddedildi</option>
               </select>
             </label>
             <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
-              Öğrenci, veli, öğretmen ve admin uyuşmazlıkları tek kayıtlı merkezde takip edilir.
+              Öğrenci, veli, öğretmen ve admin sorun kayıtları tek merkezde takip edilir.
             </div>
           </div>
         ) : null}
@@ -834,7 +891,7 @@ function AdminVeriInner() {
                                 onClick={() => void markHomeworkQuality(id, status)}
                                 className="rounded border border-paper-200 bg-white px-2 py-1 text-[11px] font-medium text-paper-900 disabled:opacity-40"
                               >
-                                {actionBusy === `${id}:${status}` ? "…" : status}
+                                {actionBusy === `${id}:${status}` ? "…" : homeworkQualityActionLabel(status)}
                               </button>
                             );
                           })}
@@ -1011,19 +1068,42 @@ function AdminVeriInner() {
                         {(() => {
                           const id = typeof row.id === "string" ? row.id : "";
                           const paymentStatus = typeof row.payment_status === "string" ? row.payment_status : "";
+                          const refundStatus = typeof row.refund_eligibility_status === "string" ? row.refund_eligibility_status : "";
                           const finalized = paymentStatus === "cancelled" || paymentStatus === "refunded";
                           if (!id || finalized) {
                             return <span className="text-[11px] text-paper-800/45">Tamamlandı</span>;
                           }
                           return (
-                            <button
-                              type="button"
-                              disabled={actionBusy === `${id}:cancel`}
-                              onClick={() => void cancelCourseEnrollment(id, paymentStatus)}
-                              className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-950 disabled:opacity-40"
-                            >
-                              {actionBusy === `${id}:cancel` ? "…" : "İptal/iade"}
-                            </button>
+                            <div className="flex flex-wrap gap-1">
+                              {refundStatus === "refund_requested" ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={actionBusy === `${id}:refund:approve`}
+                                    onClick={() => void decideCourseEnrollmentRefund(id, "approve")}
+                                    className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-900 disabled:opacity-40"
+                                  >
+                                    İadeyi onayla
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={actionBusy === `${id}:refund:reject`}
+                                    onClick={() => void decideCourseEnrollmentRefund(id, "reject")}
+                                    className="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-900 disabled:opacity-40"
+                                  >
+                                    İadeyi reddet
+                                  </button>
+                                </>
+                              ) : null}
+                              <button
+                                type="button"
+                                disabled={actionBusy === `${id}:cancel`}
+                                onClick={() => void cancelCourseEnrollment(id, paymentStatus)}
+                                className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-950 disabled:opacity-40"
+                              >
+                                {actionBusy === `${id}:cancel` ? "…" : "İptal/iade"}
+                              </button>
+                            </div>
                           );
                         })()}
                       </td>

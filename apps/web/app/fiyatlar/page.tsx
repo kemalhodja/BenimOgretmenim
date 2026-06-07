@@ -6,12 +6,12 @@ import { RoleBasedPricing } from "./RoleBasedPricing";
 const fiyatlarUrl = `${publicSiteUrl()}/fiyatlar`;
 
 export const metadata: Metadata = {
-  title: "Fiyatlandırma ve kullanım akışları",
+  title: "Fiyatlar ve kullanım bilgileri",
   description: "Öğrenci yıllık aboneliği, öğretmen erken erişim paketleri ve kampanya ilan ücretleri.",
   alternates: { canonical: fiyatlarUrl },
   openGraph: {
-    title: "Fiyatlandırma ve kullanım akışları · BenimÖğretmenim",
-    description: "Öğrenci, öğretmen ve veli için fiyatlar, kotalar ve ödeme akışları.",
+    title: "Fiyatlar ve kullanım bilgileri · BenimÖğretmenim",
+    description: "Öğrenci, öğretmen ve veli için fiyatlar, haklar ve ödeme bilgileri.",
     url: fiyatlarUrl,
     locale: "tr_TR",
     type: "website",
@@ -23,7 +23,7 @@ const audiencePlans = [
     title: "Öğrenci",
     price: "Ücretsiz başla · yıllık 1500 TL",
     comparePrice: "12.000 TL",
-    campaignNote: "Lansman referansı: 8 kat liste fiyatı üstü çizili gösterilir; geçerli ödeme tutarı değişmedi.",
+    campaignNote: "Erken erişim: normal liste değeri üstü çizili gösterilir; bugün ödenecek tutar değişmedi.",
     body: "Ücretsiz kullanımda günlük 1 ders ilanı ve 5 soru; yıllık abonelikte günlük 5 ilan ve 10 soru hakkı.",
     href: "/kayit?role=student",
     cta: "Öğrenci hesabı aç",
@@ -32,8 +32,8 @@ const audiencePlans = [
     title: "Öğretmen",
     price: "1750 TL / 30 ay · 2500 TL / 60 ay",
     comparePrice: "14.000 TL / 30 ay · 20.000 TL / 60 ay",
-    campaignNote: "Erken erişim kampanyası: 9 Eylül’e kadar aldığınız sürenin 4 katı hediye süre eklenir.",
-    body: "Sınırsız teklif, öğretmen görünürlüğü ve kampanya ilan hakkı. İlk kampanya ücretsiz; sonraki yeni ilanlarda 8.000 TL liste referansı yerine 1000 TL.",
+    campaignNote: "Erken erişim: 9 Eylül’e kadar aldığınız sürenin 4 katı hediye süre eklenir.",
+    body: "Sınırsız teklif, öğretmen görünürlüğü ve kampanya ilan hakkı. İlk kampanya ücretsiz; sonraki yeni ilanlarda normal 8.000 TL liste değeri yerine 1000 TL.",
     href: "/kayit?role=teacher",
     cta: "Öğretmen olarak başvur",
   },
@@ -49,22 +49,22 @@ const audiencePlans = [
 const valuePillars = [
   {
     title: "Güvenli ödeme",
-    body: "Ders, grup ders ve doğrudan anlaşmalarda ödeme kayıtlı ilerler; blokaj ve aktarım akışı görünür kalır.",
+    body: "Ödeme kayıtlı ilerler. Tutarın ne zaman tutulduğu ve ne zaman aktarıldığı panelde görünür.",
   },
   {
-    title: "Operasyon paneli",
-    body: "Talep, teklif, canlı sınıf, ödev, kurs ve bildirimler role göre tek panelde takip edilir.",
+    title: "Tek panel",
+    body: "Talep, teklif, canlı ders, ödev, kurs ve bildirimler role göre tek panelde görünür.",
   },
   {
-    title: "Öğrenme çıktısı",
-    body: "Ders sonrası değerlendirme, çalışma planı, zayıf konu ve veli görünürlüğü fiyatın karşılığını ölçülebilir kılar.",
+    title: "Gelişim takibi",
+    body: "Ders sonrası not, çalışma planı, eksik konu ve veli bildirimi gelişimi takip etmeyi kolaylaştırır.",
   },
 ] as const;
 
 const conversionPromises = [
-  "Demo ve teklif akışıyla öğretmen seçimi netleşir.",
+  "Demo ve teklifler öğretmen seçimini netleştirir.",
   "Paket kabulünde ödeme ve ders adımları kayıtlı ilerler.",
-  "Ders sonrası çalışma, ödev ve veli takibi ölçülebilir kalır.",
+  "Ders sonrası çalışma, ödev ve veli takibi görünür kalır.",
 ] as const;
 
 const paymentTransparency = [
@@ -74,11 +74,11 @@ const paymentTransparency = [
   },
   {
     title: "Ödeme nasıl korunur?",
-    body: "Kart ödemeleri PayTR üzerinden ilerler; cüzdan ve ders kayıtları admin mutabakat ve audit kayıtlarıyla izlenir.",
+    body: "Kart ödemeleri PayTR ile alınır. Cüzdan ve ders kayıtları admin tarafından kontrol edilebilir.",
   },
   {
     title: "Sorun olursa ne olur?",
-    body: "Tutar uyumsuzluğu, başarısız bildirim veya bilinmeyen ödeme referansı mutabakat kuyruğuna alınır ve manuel incelemeye açılır.",
+    body: "Tutar uyuşmazlığı veya başarısız ödeme olursa kayıt admin incelemesine alınır.",
   },
   {
     title: "İptal/iade nasıl değerlendirilir?",
@@ -98,11 +98,11 @@ export default function FiyatlarPage() {
               Role özel üyelik
             </p>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              Üyelik ve kullanım akışları
+              Üyelik ve kullanım bilgileri
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">
-              Temel fiyat ve kota bilgileri şeffaftır; ödeme adımı, dekont, cüzdan ve kişisel durum detayları ilgili
-              rol panelinde yönetilir.
+              Temel fiyatlar ve kullanım hakları açıktır. Ödeme, dekont, cüzdan ve kişisel durum bilgileri ilgili
+              panelde görünür.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/kayit?role=student" className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-paper-950 hover:bg-brand-50">
@@ -134,7 +134,7 @@ export default function FiyatlarPage() {
                 Değer karşılığı
               </div>
               <h2 className="mt-1 text-lg font-semibold text-paper-900">
-                Ücret, sadece erişim değil; güvenli ders akışı ve takip altyapısı içindir.
+                Ücret, sadece giriş için değil; güvenli ödeme, ders ve takip araçları içindir.
               </h2>
             </div>
             <Link
@@ -165,7 +165,7 @@ export default function FiyatlarPage() {
               </h2>
               <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/70">
                 BenimÖğretmenim’de amaç yalnızca fiyat göstermek değil; ücretin hangi hizmete karşılık geldiğini,
-                ödeme sonucunun nasıl kaydedildiğini ve sorun halinde nasıl incelendiğini açıkça göstermektir.
+                ödeme sonucunun nerede göründüğünü ve sorun halinde nasıl incelendiğini açıkça göstermektir.
               </p>
             </div>
             <Link
@@ -212,7 +212,7 @@ export default function FiyatlarPage() {
         </div>
 
         <div className="mt-8 rounded-xl border border-brand-200 bg-brand-50 p-5">
-          <h2 className="text-base font-semibold text-brand-950">Öğrenci için demo ders akışı</h2>
+          <h2 className="text-base font-semibold text-brand-950">Öğrenci için demo ders süreci</h2>
           <p className="mt-2 text-sm text-brand-900">
             Öğrenci öğretmen seçer, demo talebi gönderir, öğretmen yanıtlar ve kabul sonrası 30 dakikalık
             online demo oturumu oluşur. Demo sonrası paket, kurs veya ödev desteğine geçilebilir.

@@ -102,7 +102,7 @@ export default function TeacherYeniKursPage() {
           </Link>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">Yeni kurs</h1>
           <p className="mt-1 text-sm text-paper-800/75">
-            Kursu taslak olarak oluşturun; sonra yayınlayıp cohort açın.
+            Kursu taslak olarak oluşturun; sonra yayınlayıp grup açın.
           </p>
         </div>
 
@@ -163,7 +163,7 @@ export default function TeacherYeniKursPage() {
                   placeholder="0"
                 />
                 <p className="mt-1 text-xs text-paper-800/55">
-                  Şimdilik kurs ücreti gösterim amaçlıdır; ödeme akışını sonraki adımda ekleyeceğiz.
+                  Bu tutar öğrenciye kayıt adımından önce gösterilir; ödeme durumu ilgili panelde takip edilir.
                 </p>
               </label>
             </div>

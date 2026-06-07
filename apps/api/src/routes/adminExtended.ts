@@ -6,6 +6,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { assertAdminGate } from "../lib/adminGate.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
 import { cancelCourseEnrollmentPayment } from "../lib/courseEnrollmentWallet.js";
+import { lockCourseEnrollmentRefundWindowForCohort, payEligibleCourseTeacherPayoutsForCohort } from "../lib/courseTeacherPayout.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 
 function parseLimitOffset(c: { req: { query: (k: string) => string | undefined } }, defLim: number) {
@@ -601,7 +602,8 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
        payout_money as (
          select course_id,
                 count(*) filter (where status = 'wallet_paid')::int as teacher_payout_count,
-                coalesce(sum(amount_minor) filter (where status = 'wallet_paid'), 0)::bigint as teacher_payout_amount_minor
+                coalesce(sum(teacher_net_amount_minor) filter (where status = 'wallet_paid'), 0)::bigint as teacher_payout_amount_minor,
+                coalesce(sum(platform_fee_minor) filter (where status = 'wallet_paid'), 0)::bigint as platform_fee_amount_minor
          from course_teacher_payouts
          group by course_id
        )
@@ -614,9 +616,8 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
               coalesce(cm.refunded_amount_minor, 0)::text as refunded_amount_minor,
               coalesce(pm.teacher_payout_count, 0) as teacher_payout_count,
               coalesce(pm.teacher_payout_amount_minor, 0)::text as teacher_payout_amount_minor,
-              (coalesce(cm.gross_collected_amount_minor, 0)
-                - coalesce(cm.refunded_amount_minor, 0)
-                - coalesce(pm.teacher_payout_amount_minor, 0))::text as net_platform_amount_minor
+              coalesce(pm.platform_fee_amount_minor, 0)::text as platform_fee_amount_minor,
+              coalesce(pm.platform_fee_amount_minor, 0)::text as net_platform_amount_minor
        from courses c
        left join teachers t on t.id = c.teacher_id
        left join users u on u.id = t.user_id
@@ -659,7 +660,8 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
        ),
        payout_money as (
          select course_id,
-                coalesce(sum(amount_minor) filter (where status = 'wallet_paid'), 0)::bigint as teacher_payout_amount_minor
+                coalesce(sum(teacher_net_amount_minor) filter (where status = 'wallet_paid'), 0)::bigint as teacher_payout_amount_minor,
+                coalesce(sum(platform_fee_minor) filter (where status = 'wallet_paid'), 0)::bigint as platform_fee_amount_minor
          from course_teacher_payouts
          group by course_id
        )
@@ -667,9 +669,8 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
               coalesce(sum(cm.gross_collected_amount_minor), 0)::text as gross_collected_amount_minor,
               coalesce(sum(cm.refunded_amount_minor), 0)::text as refunded_amount_minor,
               coalesce(sum(pm.teacher_payout_amount_minor), 0)::text as teacher_payout_amount_minor,
-              (coalesce(sum(cm.gross_collected_amount_minor), 0)
-                - coalesce(sum(cm.refunded_amount_minor), 0)
-                - coalesce(sum(pm.teacher_payout_amount_minor), 0))::text as net_platform_amount_minor
+              coalesce(sum(pm.platform_fee_amount_minor), 0)::text as platform_fee_amount_minor,
+              coalesce(sum(pm.platform_fee_amount_minor), 0)::text as net_platform_amount_minor
        from course_money cm
        left join payout_money pm on pm.course_id = cm.course_id`,
     );
@@ -857,7 +858,8 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
     const list = await pool.query(
       `select ce.id, ce.enrolled_at, ce.payment_status, ce.price_minor, ce.currency,
               ce.wallet_hold_id, ce.charged_at, ce.released_at, ce.cancelled_at, ce.refunded_at,
-              ce.refund_amount_minor, ce.cancellation_reason,
+              ce.refund_amount_minor, ce.refund_eligibility_status, ce.refund_requested_at,
+              ce.refund_request_reason, ce.refund_decided_at, ce.cancellation_reason,
               c.id as course_id, c.title as course_title, c.status::text as course_status,
               cc.id as cohort_id, cc.title as cohort_title,
               st.id as student_id, su.id as student_user_id, su.display_name as student_name, su.email as student_email,
@@ -885,6 +887,11 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
     reason: z.string().trim().max(500).optional(),
   });
 
+  const decideCourseEnrollmentRefundSchema = z.object({
+    decision: z.enum(["approve", "reject"]),
+    reason: z.string().trim().max(500).optional(),
+  });
+
   admin.patch("/course-enrollments/:enrollmentId/cancel", requireAuth, async (c) => {
     const denied = assertAdminGate(c);
     if (denied) return denied;
@@ -905,7 +912,10 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
       reason: parsed.data.reason ?? "admin_course_enrollment_cancel",
       actorUserId: c.get("userId"),
     });
-    if (!result.ok) return c.json({ error: result.error }, 404);
+    if (!result.ok) {
+      const status = result.error === "refund_not_allowed_after_second_lesson" ? 409 : 404;
+      return c.json({ error: result.error }, status);
+    }
     await writeAdminAudit({
       actorUserId: c.get("userId"),
       actorRole: c.get("userRole"),
@@ -918,6 +928,101 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
       after: result,
     });
     return c.json({ ok: true, result });
+  });
+
+  admin.patch("/course-enrollments/:enrollmentId/refund-decision", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const enrollmentId = c.req.param("enrollmentId")?.trim();
+    if (!enrollmentId || !z.string().uuid().safeParse(enrollmentId).success) {
+      return c.json({ error: "invalid_enrollment_id" }, 400);
+    }
+    const parsed = decideCourseEnrollmentRefundSchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+    const before = await pool.query(
+      `select id, cohort_id, payment_status, refund_eligibility_status, refund_requested_at
+       from course_enrollments
+       where id = $1`,
+      [enrollmentId],
+    );
+    if (!before.rowCount) return c.json({ error: "not_found" }, 404);
+
+    if (parsed.data.decision === "approve") {
+      const result = await cancelCourseEnrollmentPayment(enrollmentId, {
+        reason: parsed.data.reason ?? "admin_refund_request_approved",
+        actorUserId: c.get("userId"),
+      });
+      if (!result.ok) {
+        const status = result.error === "refund_not_allowed_after_second_lesson" ? 409 : 404;
+        return c.json({ error: result.error }, status);
+      }
+      await writeAdminAudit({
+        actorUserId: c.get("userId"),
+        actorRole: c.get("userRole"),
+        requestId: c.req.header("x-request-id") ?? null,
+        action: "course_enrollment.refund_approve",
+        entityType: "course_enrollment",
+        entityId: enrollmentId,
+        reason: parsed.data.reason ?? "admin_refund_request_approved",
+        before: before.rows[0] ?? {},
+        after: result,
+      });
+      return c.json({ ok: true, decision: "approve", result });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      const row = await client.query<{ cohort_id: string }>(
+        `select cohort_id
+         from course_enrollments
+         where id = $1
+         for update`,
+        [enrollmentId],
+      );
+      const cohortId = row.rows[0]?.cohort_id;
+      if (!cohortId) {
+        await client.query("rollback");
+        return c.json({ error: "not_found" }, 404);
+      }
+      await client.query(
+        `update course_enrollments
+         set refund_eligibility_status = 'locked_after_second',
+             refund_decided_at = now(),
+             refund_decided_by_user_id = $2,
+             metadata_jsonb = metadata_jsonb || $3::jsonb
+         where id = $1`,
+        [
+          enrollmentId,
+          c.get("userId"),
+          JSON.stringify({
+            refundRejectedAt: new Date().toISOString(),
+            refundRejectReason: parsed.data.reason ?? null,
+          }),
+        ],
+      );
+      await lockCourseEnrollmentRefundWindowForCohort(cohortId, client, { reason: "admin_refund_request_rejected" });
+      const paid = await payEligibleCourseTeacherPayoutsForCohort(cohortId, client);
+      await writeAdminAudit({
+        actorUserId: c.get("userId"),
+        actorRole: c.get("userRole"),
+        requestId: c.req.header("x-request-id") ?? null,
+        action: "course_enrollment.refund_reject",
+        entityType: "course_enrollment",
+        entityId: enrollmentId,
+        reason: parsed.data.reason ?? "admin_refund_request_rejected",
+        before: before.rows[0] ?? {},
+        after: { refundEligibilityStatus: "locked_after_second", paid },
+      }, client);
+      await client.query("commit");
+      return c.json({ ok: true, decision: "reject", paid });
+    } catch (e) {
+      await client.query("rollback").catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
   });
 
   admin.get("/parent-notifications", requireAuth, async (c) => {

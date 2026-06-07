@@ -27,6 +27,27 @@ function statusClass(status: string): string {
   return "bg-paper-100 text-paper-800";
 }
 
+function bookingStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    pending_funding: "Ödeme bekliyor",
+    funded: "Ödeme alındı",
+    completed: "Tamamlandı",
+    disputed: "Uyuşmazlık var",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? status;
+}
+
+function qualityStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    not_reviewed: "İnceleme bekliyor",
+    accepted: "Kabul edildi",
+    revision_requested: "Revizyon istendi",
+    flagged: "İşaretlendi",
+  };
+  return labels[status] ?? status;
+}
+
 export default function AdminDirectBookingsPage() {
   const token = useRequireAdmin();
   const [status, setStatus] = useState("");
@@ -66,7 +87,7 @@ export default function AdminDirectBookingsPage() {
 
   async function cancel(id: string) {
     if (!token) return;
-    if (!window.confirm("Bu anlaşmayı iptal (cancelled) olarak işaretlemek istiyor musunuz?")) return;
+    if (!window.confirm("Bu anlaşmayı iptal edildi olarak işaretlemek istiyor musunuz?")) return;
     setBusy(id);
     setError(null);
     try {
@@ -108,11 +129,11 @@ export default function AdminDirectBookingsPage() {
             }}
           >
             <option value="">Tümü</option>
-            <option value="pending_funding">pending_funding</option>
-            <option value="funded">funded</option>
-            <option value="completed">completed</option>
-            <option value="disputed">disputed</option>
-            <option value="cancelled">cancelled</option>
+            <option value="pending_funding">Ödeme bekliyor</option>
+            <option value="funded">Ödeme alındı</option>
+            <option value="completed">Tamamlandı</option>
+            <option value="disputed">Uyuşmazlık var</option>
+            <option value="cancelled">İptal edildi</option>
           </select>
         </label>
         {error ? (
@@ -169,10 +190,12 @@ export default function AdminDirectBookingsPage() {
                     </td>
                     <td className="px-3 py-2">
                       <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusClass(r.status)}`}>
-                        {r.status}
+                        {bookingStatusLabel(r.status)}
                       </span>
                       {r.quality_status ? (
-                        <div className="mt-1 text-xs text-paper-800/55">Kalite: {r.quality_status}</div>
+                        <div className="mt-1 text-xs text-paper-800/55">
+                          Kalite: {qualityStatusLabel(r.quality_status)}
+                        </div>
                       ) : null}
                       {r.dispute_reason ? (
                         <div className="mt-1 max-w-[14rem] text-xs text-red-800">

@@ -69,6 +69,25 @@ function teacherApplicationHelp(status: string | null): string {
   return "Saat ücretini, ders planını ve kapsamı inceleyip başvurabilirsiniz.";
 }
 
+function courseStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    draft: "Taslak",
+    published: "Yayında",
+    archived: "Arşivlendi",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
+function deliveryModeLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    online: "Online",
+    in_person: "Yüz yüze",
+    hybrid: "Karma",
+  };
+  return labels[mode] ?? mode;
+}
+
 export default function TeacherKurslarPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -188,7 +207,7 @@ export default function TeacherKurslarPage() {
     rows.length === 0
       ? {
           title: "İlk kursunuzu oluşturun",
-          body: "Canlı dershane deneyimi için kurs, grup ve oturum planını tek akışta kurun.",
+          body: "Canlı dershane deneyimi için kurs, grup ve oturum planını tek panelde kurun.",
           href: "/teacher/kurslar/yeni",
           label: "Yeni kurs",
         }
@@ -202,12 +221,12 @@ export default function TeacherKurslarPage() {
         : rows.some((course) => course.status !== "published")
           ? {
               title: "Yayınlanmamış kurslar var",
-              body: "Hazır kursları yayınlayıp kayıt akışını başlatın; aktif gruplar görünürlüğü artırır.",
+              body: "Hazır kursları yayınlayıp kayıt sürecini başlatın; aktif gruplar görünürlüğü artırır.",
               href: "/teacher/kurslar/yeni",
               label: "Kursları düzenle",
             }
           : {
-              title: "Yeni cohort ve oturum planlayın",
+              title: "Yeni grup ve oturum planlayın",
               body: "Yayınlanmış kurslar için grup açmak öğrenci kaydını ve canlı ders takvimini netleştirir.",
               href: "/teacher/kurslar/yeni",
               label: "Yeni kurs",
@@ -224,7 +243,7 @@ export default function TeacherKurslarPage() {
               Kurslar (online dershane)
             </h1>
             <p className="mt-1 text-sm text-paper-800/75">
-              Kurs oluşturun, yayınlayın; cohort açıp öğrencileri kaydedin.
+              Kurs oluşturun, yayınlayın; grup açıp öğrencileri kaydedin.
             </p>
           </div>
           <Link
@@ -244,7 +263,7 @@ export default function TeacherKurslarPage() {
         <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Kurs operasyonu</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Kurs yönetimi</div>
               <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
               <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
             </div>
@@ -376,7 +395,7 @@ export default function TeacherKurslarPage() {
                   <div>
                     <div className="text-sm font-semibold text-paper-900">{c.title}</div>
                     <div className="mt-1 text-xs text-paper-800/55">
-                      {c.status} · {c.delivery_mode} · {c.branch_name ?? "—"} ·{" "}
+                      {courseStatusLabel(c.status)} · {deliveryModeLabel(c.delivery_mode)} · {c.branch_name ?? "—"} ·{" "}
                       {minorToTl(c.price_minor)} {c.currency}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-medium">
@@ -394,7 +413,7 @@ export default function TeacherKurslarPage() {
                     </div>
                     {c.next_session_id ? (
                       <div className="mt-2 text-xs text-paper-800/75">
-                        {c.next_cohort_title ?? "Grup"} · Ders #{c.next_session_index}
+                        {c.next_cohort_title ?? "Grup"} · {c.next_session_index}. ders
                         {c.next_session_title ? ` · ${c.next_session_title}` : ""}
                       </div>
                     ) : null}

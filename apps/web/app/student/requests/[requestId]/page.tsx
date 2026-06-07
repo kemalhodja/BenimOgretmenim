@@ -139,7 +139,7 @@ export default function StudentRequestDetailPage() {
   const branchName = useMemo(() => {
     if (!summary) return "";
     const b = branches.find((x) => x.id === summary.branch_id);
-    return b?.name ?? `Branş #${summary.branch_id}`;
+    return b?.name ?? "Branş bilgisi eksik";
   }, [branches, summary]);
 
   const bestOffer = useMemo(() => {
@@ -255,7 +255,7 @@ export default function StudentRequestDetailPage() {
         decision === "accept"
           ? `Teklif kabul edildi; paket oluşturuldu${
               accepted.payment?.totalAmountMinor
-                ? ` ve ${tl(accepted.payment.totalAmountMinor)} cüzdanda bloke edildi`
+                ? ` ve ${tl(accepted.payment.totalAmountMinor)} cüzdanda güvenceye alındı`
                 : ""
             }.`
           : "Teklif reddedildi.",
@@ -271,7 +271,7 @@ export default function StudentRequestDetailPage() {
         setError("Bu teklif üzerinde işlem yapma yetkiniz yok.");
       }
       if (msg.includes("insufficient_wallet_available")) {
-        setError("Kullanılabilir cüzdan bakiyesi paket blokajı için yetersiz. Öğrenci panelinden bakiye yükleyin.");
+        setError("Kullanılabilir cüzdan bakiyesi paketi güvenceye almak için yetersiz. Öğrenci panelinden bakiye yükleyin.");
       }
     } finally {
       setBusyId(null);
@@ -353,7 +353,7 @@ export default function StudentRequestDetailPage() {
                     Şeffaf ilerleme
                   </div>
                   <h2 className="mt-1 text-base font-semibold text-paper-900">
-                    Teklifi kabul etmeden önce paket, ödeme blokajı ve sonraki adım netleşir.
+                    Teklifi kabul etmeden önce paket, ödeme güvencesi ve sonraki adım netleşir.
                   </h2>
                 </div>
                 {bestOffer ? (
@@ -369,7 +369,7 @@ export default function StudentRequestDetailPage() {
                 {[
                   ["1", "Teklifleri karşılaştır", "Puan, kalite, ücret ve yanıt hızı aynı kartta."],
                   ["2", "Paketi seç", `${packageLessonCount} ders · ${lessonDurationMinutes} dk ile toplam tutar hesaplanır.`],
-                  ["3", "Blokaj oluşur", "Kabulde tutar cüzdanda tutulur, ders bitmeden aktarılmaz."],
+                  ["3", "Tutar güvenceye alınır", "Kabulde tutar cüzdanda tutulur, ders bitmeden aktarılmaz."],
                   ["4", "Ders takibi başlar", "Canlı sınıf, özet ve veli görünürlüğü aynı panelde devam eder."],
                 ].map(([step, title, body]) => (
                   <div key={step} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
@@ -382,18 +382,18 @@ export default function StudentRequestDetailPage() {
             </section>
             {summary.status === "open" ? (
               <div className="rounded-xl border border-brand-200 bg-brand-50/70 p-4 text-sm text-brand-950">
-                <div className="font-semibold">Paket ve blokaj seçimi</div>
+                <div className="font-semibold">Paket ve ödeme güvencesi</div>
                 <p className="mt-1">
                   Teklif kabulünde paket oluşturulur; seçtiğiniz ders sayısı ve süreye göre toplam tutar cüzdanınızda
-                  bloke edilir. Dersler tamamlandıkça operasyon akışı ödeme defterinden izlenir.
+                  güvenceye alınır. Dersler tamamlandıkça ödeme kayıtlarından izlenir.
                 </p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
                     <div className="text-xs font-semibold text-brand-950">1. Kalite skoru</div>
-                    <p className="mt-1 text-xs text-brand-900/75">Önerilen teklif, karşılaştırma skoru ve kısa liste sinyaliyle öne çıkar.</p>
+                    <p className="mt-1 text-xs text-brand-900/75">Önerilen teklif, karşılaştırma skoru ve kısa liste bilgisiyle öne çıkar.</p>
                   </div>
                   <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
-                    <div className="text-xs font-semibold text-brand-950">2. Güvenli blokaj</div>
+                    <div className="text-xs font-semibold text-brand-950">2. Güvenli ödeme</div>
                     <p className="mt-1 text-xs text-brand-900/75">Ödeme ders tamamlanmadan öğretmene aktarılmaz; paket defterde izlenir.</p>
                   </div>
                   <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
@@ -526,8 +526,8 @@ export default function StudentRequestDetailPage() {
                             <span className="font-semibold text-paper-900">
                               {packageTotalLabel(o.proposed_hourly_rate_minor, packageLessonCount, lessonDurationMinutes)}
                             </span>{" "}
-                            · {packageLessonCount} ders · {lessonDurationMinutes} dk. Kabulde bu tutar cüzdanda bloke
-                            edilir.
+                            · {packageLessonCount} ders · {lessonDurationMinutes} dk. Kabulde bu tutar cüzdanda güvenceye
+                            alınır.
                           </div>
                         ) : null}
                         <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3">

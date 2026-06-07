@@ -1092,7 +1092,7 @@ admin.get("/courses", requireAuth, async (c) => {
             (select count(*)::int
              from course_teacher_payouts tp
              where tp.course_id = c.id and tp.status = 'wallet_paid') as teacher_payout_count,
-            (select coalesce(sum(tp.amount_minor), 0)::bigint
+            (select coalesce(sum(tp.teacher_net_amount_minor), 0)::bigint
              from course_teacher_payouts tp
              where tp.course_id = c.id and tp.status = 'wallet_paid') as teacher_payout_amount_minor
      from courses c

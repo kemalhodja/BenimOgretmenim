@@ -21,6 +21,18 @@ async function courseWalletColumnsAvailable(): Promise<boolean> {
           where table_schema = 'public'
             and table_name = 'course_enrollments'
             and column_name = 'refund_amount_minor'
+        )
+        and exists (
+          select 1 from information_schema.columns
+          where table_schema = 'public'
+            and table_name = 'course_enrollments'
+            and column_name = 'refund_eligibility_status'
+        )
+        and exists (
+          select 1 from information_schema.columns
+          where table_schema = 'public'
+            and table_name = 'course_teacher_payouts'
+            and column_name = 'teacher_net_amount_minor'
         ) as ok`,
   );
   return r.rows[0]?.ok === true;
@@ -201,6 +213,133 @@ describe("course enrollment wallet holds", () => {
       expect(String(accountingRow?.gross_collected_amount_minor)).toBe("120000");
       expect(String(accountingRow?.refunded_amount_minor)).toBe("120000");
       expect(String(accountingRow?.net_platform_amount_minor)).toBe("0");
+    } finally {
+      if (courseId) await pool.query(`delete from courses where id = $1`, [courseId]);
+      await pool.query(`delete from users where id = any($1::uuid[])`, [createdUserIds]);
+    }
+  });
+
+  it("locks refund after the second lesson and pays teacher net after platform success fee", async () => {
+    if (!(await courseWalletColumnsAvailable())) return;
+
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const createdUserIds: string[] = [];
+    let courseId: string | null = null;
+    try {
+      const teacher = await createUser("teacher", `${suffix}-net`);
+      const student = await createUser("student", `${suffix}-net`);
+      createdUserIds.push(teacher.userId, student.userId);
+      await applyWalletDelta({
+        userId: student.userId,
+        deltaMinor: 200_000,
+        kind: "test_wallet_grant",
+        refType: "course_refund_lock_test",
+        refId: suffix,
+      });
+
+      const course = await pool.query<{ id: string }>(
+        `insert into courses (teacher_id, title, description, price_minor, currency, status, teacher_hourly_rate_minor)
+         values ($1, 'İade Kilitli Kurs', 'İkinci ders sonrası iade kapanış testi', 200000, 'TRY', 'published', 100000)
+         returning id`,
+        [teacher.profileId],
+      );
+      courseId = course.rows[0].id;
+      const cohort = await pool.query<{ id: string }>(
+        `insert into course_cohorts (course_id, title, status, capacity, starts_at)
+         values ($1, 'Ana grup', 'planned', 8, now() - interval '1 day')
+         returning id`,
+        [courseId],
+      );
+      const first = await pool.query<{ id: string }>(
+        `insert into course_sessions (cohort_id, session_index, title, scheduled_start, scheduled_end, duration_minutes, status)
+         values ($1, 1, 'İlk ders', now() - interval '2 hours', now() - interval '1 hour', 60, 'scheduled')
+         returning id`,
+        [cohort.rows[0].id],
+      );
+      const second = await pool.query<{ id: string }>(
+        `insert into course_sessions (cohort_id, session_index, title, scheduled_start, scheduled_end, duration_minutes, status)
+         values ($1, 2, 'İkinci ders', now() + interval '1 day', now() + interval '1 day 1 hour', 60, 'scheduled')
+         returning id`,
+        [cohort.rows[0].id],
+      );
+
+      const enroll = await app.request(`http://localhost/v1/courses/${courseId}/cohorts/${cohort.rows[0].id}/enroll`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${student.token}` },
+      });
+      expect(enroll.status).toBe(201);
+      const enrollBody = (await enroll.json()) as { enrollment: { id: string } };
+
+      const firstAccess = await app.request(`http://localhost/v1/classroom/course-sessions/${first.rows[0].id}`, {
+        headers: { authorization: `Bearer ${student.token}` },
+      });
+      expect(firstAccess.status).toBe(200);
+      const firstAttendance = await app.request(`http://localhost/v1/classroom/course-sessions/${first.rows[0].id}/attendance`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${student.token}`, "content-type": "application/json" },
+        body: JSON.stringify({ eventType: "join" }),
+      });
+      expect(firstAttendance.status).toBe(200);
+      const pending = await pool.query<{ status: string; refund_lock_status: string; count: string }>(
+        `select min(status) as status, min(refund_lock_status) as refund_lock_status, count(*)::text as count
+         from course_teacher_payouts
+         where course_id = $1`,
+        [courseId],
+      );
+      expect(pending.rows[0]?.status).toBe("pending");
+      expect(pending.rows[0]?.refund_lock_status).toBe("pending_refund_window");
+      expect(pending.rows[0]?.count).toBe("1");
+
+      const refundRequest = await app.request(`http://localhost/v1/courses/enrollments/${enrollBody.enrollment.id}/refund-request`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${student.token}`, "content-type": "application/json" },
+        body: JSON.stringify({ reason: "İlk ders sonrası deneme" }),
+      });
+      expect(refundRequest.status).toBe(201);
+
+      await pool.query(
+        `update course_sessions
+         set scheduled_start = now() - interval '30 minutes',
+             scheduled_end = now() + interval '30 minutes'
+         where id = $1`,
+        [second.rows[0].id],
+      );
+      const secondAccess = await app.request(`http://localhost/v1/classroom/course-sessions/${second.rows[0].id}`, {
+        headers: { authorization: `Bearer ${student.token}` },
+      });
+      expect(secondAccess.status).toBe(200);
+      const secondAttendance = await app.request(`http://localhost/v1/classroom/course-sessions/${second.rows[0].id}/attendance`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${student.token}`, "content-type": "application/json" },
+        body: JSON.stringify({ eventType: "join" }),
+      });
+      expect(secondAttendance.status).toBe(200);
+
+      const lateRefund = await app.request(`http://localhost/v1/courses/enrollments/${enrollBody.enrollment.id}/refund-request`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${student.token}`, "content-type": "application/json" },
+        body: JSON.stringify({ reason: "Geç iade" }),
+      });
+      expect(lateRefund.status).toBe(409);
+
+      const teacherWallet = await pool.query<{ balance_minor: string }>(
+        `select balance_minor from user_wallets where user_id = $1`,
+        [teacher.userId],
+      );
+      expect(teacherWallet.rows[0]?.balance_minor).toBe("180000");
+      const payout = await pool.query<{ gross: string; platform: string; net: string; status: string }>(
+        `select coalesce(sum(amount_minor), 0)::text as gross,
+                coalesce(sum(platform_fee_minor), 0)::text as platform,
+                coalesce(sum(teacher_net_amount_minor), 0)::text as net,
+                min(status) as status
+         from course_teacher_payouts
+         where course_id = $1`,
+        [courseId],
+      );
+      expect(payout.rows[0]?.gross).toBe("200000");
+      expect(payout.rows[0]?.platform).toBe("20000");
+      expect(payout.rows[0]?.net).toBe("180000");
+      expect(payout.rows[0]?.status).toBe("wallet_paid");
     } finally {
       if (courseId) await pool.query(`delete from courses where id = $1`, [courseId]);
       await pool.query(`delete from users where id = any($1::uuid[])`, [createdUserIds]);

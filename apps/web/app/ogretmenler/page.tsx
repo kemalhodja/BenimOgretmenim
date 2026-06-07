@@ -954,7 +954,7 @@ function OgretmenlerPageInner() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-base font-semibold text-paper-950">Mobil filtreler</h2>
-                  <p className="text-xs text-paper-800/60">Branş, şehir ve kalite sinyallerini tek ekranda ayarlayın.</p>
+                  <p className="text-xs text-paper-800/60">Branş, şehir ve kalite bilgilerini tek ekranda ayarlayın.</p>
                 </div>
                 <button type="button" onClick={() => setMobileFiltersOpen(false)} className="rounded-full border border-paper-200 px-3 py-1 text-sm">
                   Kapat
@@ -1053,7 +1053,7 @@ function OgretmenlerPageInner() {
                 Güvenli öğretmen marketplace
               </div>
               <h2 className="mt-2 text-lg font-semibold text-paper-900">
-                Kalite ve güven sinyalleri
+                Kalite ve güven bilgileri
               </h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
                 Doğrulama, profil kalitesi, ders geçmişi ve güvenli ödeme bilgileri seçim yapmayı kolaylaştırır.
@@ -1078,7 +1078,7 @@ function OgretmenlerPageInner() {
             {[
               ["Güven puanı", `${marketplaceSignals.highTrust} güçlü aday`, "Doğrulama, yorum, ders geçmişi ve profil kanıtı birlikte okunur."],
               ["Karar rehberi", "Önce demo", "Emin olmadığınızda tek talep açıp teklifleri aynı ölçekte karşılaştırın."],
-              ["Ödeme güveni", "Blokajlı paket", "Kabul sonrası toplam tutar cüzdanda tutulur; ders akışı kayıtlı ilerler."],
+              ["Ödeme güveni", "Güvenceli paket", "Kabul sonrası toplam tutar cüzdanda tutulur; ders süreci kayıtlı ilerler."],
             ].map(([title, value, body]) => (
               <div key={title} className="rounded-xl border border-paper-200 bg-white/80 p-3 text-sm">
                 <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">{title}</div>
@@ -1198,7 +1198,7 @@ function OgretmenlerPageInner() {
               <div>
                 <h2 className="text-base font-semibold text-paper-900">Karşılaştırma tepsisi</h2>
                 <p className="mt-1 text-sm text-paper-800/65">
-                  En fazla {MAX_COMPARE_TEACHERS} öğretmeni kalite, ücret, puan ve güven sinyalleriyle yan yana inceleyin.
+                  En fazla {MAX_COMPARE_TEACHERS} öğretmeni kalite, ücret, puan ve güven bilgileriyle yan yana inceleyin.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -1368,7 +1368,7 @@ function OgretmenlerPageInner() {
                         </span>
                       )}
                       <span className="rounded-full bg-warm-50 px-2 py-0.5 text-[11px] font-medium text-warm-900">
-                        Güvenli ödeme akışı
+                        Güvenli ödeme süreci
                       </span>
                     </div>
                     <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3">

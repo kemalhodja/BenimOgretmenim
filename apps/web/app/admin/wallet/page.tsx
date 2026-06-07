@@ -55,6 +55,37 @@ function tl(minor: string | number | null | undefined): string {
   return `${(n / 100).toFixed(2)} TL`;
 }
 
+function topupStateLabel(state: string): string {
+  const labels: Record<string, string> = {
+    pending: "Onay bekliyor",
+    paid: "Ödendi",
+    failed: "Başarısız",
+    cancelled: "İptal edildi",
+  };
+  return labels[state] ?? state;
+}
+
+function paymentMethodLabel(method: string): string {
+  const labels: Record<string, string> = {
+    bank_transfer: "Havale/EFT",
+    paytr_iframe: "Kart ile ödeme",
+  };
+  return labels[method] ?? method;
+}
+
+function ledgerKindLabel(kind: string): string {
+  const labels: Record<string, string> = {
+    wallet_admin_grant: "Admin bakiye ekledi",
+    wallet_topup_paid: "Cüzdan yükleme",
+    wallet_hold_created: "Ödeme güvenceye alındı",
+    wallet_hold_captured: "Ödeme tahsil edildi",
+    wallet_hold_released: "Tutar serbest bırakıldı",
+    wallet_refund: "İade",
+    teacher_payout: "Öğretmen kazancı",
+  };
+  return labels[kind] ?? kind;
+}
+
 export default function AdminWalletPage() {
   const token = useRequireAdmin();
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -67,7 +98,7 @@ export default function AdminWalletPage() {
   const [loadingOps, setLoadingOps] = useState(false);
   const [grantUserId, setGrantUserId] = useState("");
   const [grantAmountMinor, setGrantAmountMinor] = useState("100000");
-  const [grantReason, setGrantReason] = useState("ops grant");
+  const [grantReason, setGrantReason] = useState("Admin bakiye ekleme");
   const [grantBusy, setGrantBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -118,14 +149,14 @@ export default function AdminWalletPage() {
     if (!token) return;
     const amt = Number(grantAmountMinor);
     if (!grantUserId.trim()) {
-      setError("userId gerekli (UUID).");
+      setError("Kullanıcı kayıt kodu gerekli.");
       return;
     }
     if (!Number.isFinite(amt) || amt <= 0) {
-      setError("amountMinor geçersiz.");
+      setError("Tutar kuruş değeri geçersiz.");
       return;
     }
-    if (!window.confirm(`${grantUserId} için ${grantTlPreview} TL (minor=${amt}) bakiye eklensin mi?`)) return;
+    if (!window.confirm(`${grantUserId} kullanıcısı için ${grantTlPreview} TL bakiye eklensin mi?`)) return;
 
     setGrantBusy(true);
     setError(null);
@@ -162,12 +193,11 @@ export default function AdminWalletPage() {
         </Link>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">Cüzdan operasyonları</h1>
         <p className="mt-2 text-sm text-paper-800/75">
-          Bir kullanıcı cüzdanına manuel bakiye ekler. Ledger&apos;a{" "}
-          <span className="font-mono">wallet_admin_grant</span> olarak yazılır.
+          Bir kullanıcı cüzdanına manuel bakiye ekler ve tüm hareketler kayıt altına alınır.
         </p>
         <p className="mt-2 text-sm text-paper-800/75">
           <strong>Ödev ödül havuzu:</strong> API&apos;de tanımlı{" "}
-          <span className="font-mono">PLATFORM_HOMEWORK_WALLET_USER_ID</span> kullanıcısına düzenli grant verin;
+              sistemde tanımlı ödev havuzu kullanıcısına düzenli bakiye ekleyin;
           öğrenci onayıyla öğretmene giden tutar bu bakiyeden düşer (öğrenci cüzdanından değil).
         </p>
 
@@ -192,7 +222,7 @@ export default function AdminWalletPage() {
             <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">24s giriş</div>
             <div className="mt-2 text-xl font-semibold text-brand-900">{tl(overview?.ledger24h.inflow_minor_24h)}</div>
             <div className="mt-1 text-xs text-paper-800/60">
-              {overview?.ledger24h.ledger_count_24h ?? 0} ledger hareketi
+              {overview?.ledger24h.ledger_count_24h ?? 0} cüzdan hareketi
             </div>
           </div>
           <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
@@ -205,7 +235,7 @@ export default function AdminWalletPage() {
           <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
             <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">En yüksek bakiye</div>
             <div className="mt-2 text-xl font-semibold text-paper-900">{tl(overview?.wallets.max_balance_minor)}</div>
-            <div className="mt-1 text-xs text-paper-800/60">Risk kontrol sinyali</div>
+            <div className="mt-1 text-xs text-paper-800/60">Risk kontrol bilgisi</div>
           </div>
         </section>
 
@@ -213,7 +243,7 @@ export default function AdminWalletPage() {
           <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold text-paper-900">Ledger hareketleri</h2>
+                <h2 className="text-base font-semibold text-paper-900">Cüzdan hareketleri</h2>
                 <p className="mt-1 text-xs text-paper-800/55">Varsayılan olarak 1.000 TL+ hareketleri gösterir.</p>
               </div>
               <button
@@ -230,13 +260,13 @@ export default function AdminWalletPage() {
                 value={ledgerUserId}
                 onChange={(e) => setLedgerUserId(e.target.value)}
                 className="rounded-xl border border-paper-200 px-3 py-2 font-mono text-xs"
-                placeholder="User ID ile filtrele"
+                placeholder="Kullanıcı kayıt kodu ile filtrele"
               />
               <input
                 value={ledgerKind}
                 onChange={(e) => setLedgerKind(e.target.value)}
                 className="rounded-xl border border-paper-200 px-3 py-2 text-xs"
-                placeholder="kind"
+                placeholder="Hareket türü"
               />
               <label className="inline-flex items-center gap-2 rounded-xl border border-paper-200 px-3 py-2 text-xs text-paper-800">
                 <input type="checkbox" checked={onlyLarge} onChange={(e) => setOnlyLarge(e.target.checked)} />
@@ -245,7 +275,7 @@ export default function AdminWalletPage() {
             </div>
             <div className="mt-4 space-y-2">
               {ledger.length === 0 ? (
-                <p className="text-sm text-paper-800/55">Ledger kaydı yok.</p>
+                <p className="text-sm text-paper-800/55">Cüzdan hareketi yok.</p>
               ) : (
                 ledger.map((entry) => (
                   <div key={entry.id} className="rounded-xl border border-paper-100 bg-paper-50 p-3 text-sm">
@@ -256,10 +286,10 @@ export default function AdminWalletPage() {
                       </div>
                     </div>
                     <div className="mt-1 text-xs text-paper-800/55">
-                      {entry.user_email} · {entry.kind} · bakiye {tl(entry.balance_after)}
+                      {entry.user_email} · {ledgerKindLabel(entry.kind)} · bakiye {tl(entry.balance_after)}
                     </div>
                     <div className="mt-1 font-mono text-[11px] text-paper-800/45">
-                      {entry.ref_type ?? "ref"}:{entry.ref_id ?? "—"} · {new Date(entry.created_at).toLocaleString("tr-TR")}
+                      {entry.ref_type ? "İlgili kayıt" : "Genel kayıt"} · {new Date(entry.created_at).toLocaleString("tr-TR")}
                     </div>
                   </div>
                 ))
@@ -270,8 +300,8 @@ export default function AdminWalletPage() {
           <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold text-paper-900">Cüzdan top-up</h2>
-                <p className="mt-1 text-xs text-paper-800/55">PayTR/havale yüklemeleri.</p>
+                <h2 className="text-base font-semibold text-paper-900">Cüzdan yüklemeleri</h2>
+                <p className="mt-1 text-xs text-paper-800/55">Kart ve havale/EFT yüklemeleri.</p>
               </div>
               <select
                 className="rounded-xl border border-paper-200 px-3 py-2 text-xs"
@@ -279,15 +309,15 @@ export default function AdminWalletPage() {
                 onChange={(e) => setTopupState(e.target.value)}
               >
                 <option value="">Tümü</option>
-                <option value="pending">pending</option>
-                <option value="paid">paid</option>
-                <option value="failed">failed</option>
-                <option value="cancelled">cancelled</option>
+                <option value="pending">Onay bekliyor</option>
+                <option value="paid">Ödendi</option>
+                <option value="failed">Başarısız</option>
+                <option value="cancelled">İptal edildi</option>
               </select>
             </div>
             <div className="mt-4 space-y-2">
               {topups.length === 0 ? (
-                <p className="text-sm text-paper-800/55">Top-up kaydı yok.</p>
+                <p className="text-sm text-paper-800/55">Cüzdan yükleme kaydı yok.</p>
               ) : (
                 topups.map((topup) => (
                   <div key={topup.id} className="rounded-xl border border-paper-100 bg-paper-50 p-3 text-sm">
@@ -296,7 +326,7 @@ export default function AdminWalletPage() {
                       <div className="font-semibold text-paper-900">{tl(topup.amount_minor)}</div>
                     </div>
                     <div className="mt-1 text-xs text-paper-800/55">
-                      {topup.email} · {topup.method} · {topup.state}
+                      {topup.email} · {paymentMethodLabel(topup.method)} · {topupStateLabel(topup.state)}
                     </div>
                     <div className="mt-1 font-mono text-[11px] text-paper-800/45">
                       {topup.merchant_oid ?? topup.id} · {new Date(topup.created_at).toLocaleString("tr-TR")}
@@ -309,10 +339,10 @@ export default function AdminWalletPage() {
         </section>
 
         <section className="mt-6 rounded-xl border border-paper-200 bg-white p-5">
-          <h2 className="text-base font-semibold text-paper-900">Manuel grant</h2>
+          <h2 className="text-base font-semibold text-paper-900">Manuel bakiye ekle</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block text-sm">
-              <span className="font-medium text-paper-800">User ID (UUID)</span>
+              <span className="font-medium text-paper-800">Kullanıcı kayıt kodu</span>
               <input
                 className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 font-mono text-xs"
                 value={grantUserId}
@@ -321,7 +351,7 @@ export default function AdminWalletPage() {
               />
             </label>
             <label className="block text-sm">
-              <span className="font-medium text-paper-800">Amount minor (kuruş)</span>
+              <span className="font-medium text-paper-800">Tutar (kuruş)</span>
               <input
                 className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 font-mono text-xs"
                 value={grantAmountMinor}
@@ -331,7 +361,7 @@ export default function AdminWalletPage() {
               <div className="mt-1 text-xs text-paper-800/55">Önizleme: {grantTlPreview} TL</div>
             </label>
             <label className="block text-sm sm:col-span-2">
-              <span className="font-medium text-paper-800">Reason</span>
+              <span className="font-medium text-paper-800">Açıklama</span>
               <input
                 className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm"
                 value={grantReason}

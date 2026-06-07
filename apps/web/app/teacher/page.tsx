@@ -86,10 +86,20 @@ function teacherCampaignSummary(planCode?: string, promoMultiplier?: number): st
   return promoMultiplier && promoMultiplier > 1 ? `Erken erişim kampanyası x${promoMultiplier}` : "Standart abonelik";
 }
 
+function verificationStatusLabel(status?: string | null): string {
+  const labels: Record<string, string> = {
+    unverified: "Doğrulanmadı",
+    pending: "İnceleme bekliyor",
+    verified: "Doğrulandı",
+    rejected: "Reddedildi",
+  };
+  return status ? labels[status] ?? "Durum güncelleniyor" : "Durum güncelleniyor";
+}
+
 const teacherSubscriptionBenefits = [
   "Öğrenci ders taleplerine sınırsız teklif verebilirsiniz.",
   "Kendi reklam kampanyanızı yayınlarsınız; ilk kampanya ücretsiz, sonraki yeni ilanlar 1000 TL cüzdan bakiyesiyle açılır.",
-  "Kurs, grup ders, doğrudan ders ve Akademi akışlarında öğretmen olarak görünürlük kazanırsınız.",
+  "Kurs, grup ders, doğrudan ders ve Akademi alanlarında öğretmen olarak görünürlük kazanırsınız.",
   "Başvuru, bildirim, cüzdan ve ödeme kayıtlarını öğretmen panelinden takip edersiniz.",
 ] as const;
 
@@ -465,14 +475,14 @@ export default function TeacherHomePage() {
     profileQualityScore < 80
       ? {
           title: "Vitrin kalite hedefini tamamla",
-          body: "Arama ve teklif ekranlarında öne çıkan gerçek kalite sinyallerini güçlendir.",
+          body: "Arama ve teklif ekranlarında öne çıkan kalite bilgilerini güçlendir.",
           href: "/teacher/edit",
           cta: "Kalite eksiklerini kapat",
         }
       : !sub?.active
         ? {
             title: "Öğretmen aboneliğini etkinleştir",
-            body: "Taleplere teklif verme ve görünürlük akışında kesinti yaşamamak için aboneliği tamamlayın.",
+            body: "Taleplere teklif verme ve görünürlükte kesinti yaşamamak için aboneliği tamamlayın.",
             href: "#ogretmen-aboneligi",
             cta: "Aboneliğe git",
           }
@@ -485,7 +495,7 @@ export default function TeacherHomePage() {
             }
           : {
               title: "Yaklaşan canlı derslerini hazırla",
-              body: "Sınıf linklerini, materyalleri ve ders sonrası değerlendirme akışını kontrol et.",
+              body: "Sınıf linklerini, materyalleri ve ders sonrası değerlendirmeyi kontrol et.",
               href: "/teacher/dersler",
               cta: "Derslere git",
             };
@@ -499,7 +509,7 @@ export default function TeacherHomePage() {
             <div className="mt-1 text-sm text-paper-800/75">
               Doğrulama:{" "}
               <span className="font-medium text-paper-900">
-                {me?.teacher.verificationStatus ?? "—"}
+                {verificationStatusLabel(me?.teacher.verificationStatus)}
               </span>
               {" · "}
               Tamamlanma:{" "}
@@ -590,7 +600,7 @@ export default function TeacherHomePage() {
                 Operasyon kalite skoru · {teacherOpsQualityScore}/100
               </h2>
               <p className="mt-1 text-sm leading-relaxed text-paper-800/65">
-                Profil kanıtları, ders tamamlama, yorum ve bekleyen iş sinyalleri birlikte izlenir.
+                Profil kanıtları, ders tamamlama, yorum ve bekleyen işler birlikte izlenir.
               </p>
             </div>
             <Link href="/teacher/edit" className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900">
@@ -624,7 +634,7 @@ export default function TeacherHomePage() {
               </h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
                 Bu panel kesin kazanç taahhüdü vermez; profil kalitesi, tamamlanan ders, yorum ve bekleyen iş
-                sinyallerini görünürlük ve teklif hazırlığı açısından okur.
+                bilgilerini görünürlük ve teklif hazırlığı açısından okur.
               </p>
             </div>
             <Link href="/teacher/requests" className="rounded-xl bg-warm-600 px-3 py-2 text-xs font-semibold text-white hover:bg-warm-700">
@@ -640,7 +650,7 @@ export default function TeacherHomePage() {
               <p className="mt-2 text-xs leading-relaxed text-paper-800/65">
                 {missingQualitySignals[0]
                   ? `İlk öneri: ${missingQualitySignals[0].label} alanını tamamlayın.`
-                  : "Profil sinyalleriniz güçlü; teklif yanıt hızını koruyun."}
+                  : "Profil bilgileriniz güçlü; teklif yanıt hızını koruyun."}
               </p>
             </div>
             <div className="rounded-xl border border-warm-200 bg-white/80 p-4">
@@ -649,7 +659,7 @@ export default function TeacherHomePage() {
                 {dash?.sessionsCompletedLast30d ?? 0} ders / 30 gün
               </div>
               <p className="mt-2 text-xs leading-relaxed text-paper-800/65">
-                Tamamlanan ders ve düzenli değerlendirme, öğrenci/veli güvenini artıran en güçlü sinyallerden biridir.
+                Tamamlanan ders ve düzenli değerlendirme, öğrenci/veli güvenini artıran en güçlü kayıtlardan biridir.
               </p>
             </div>
             <div className="rounded-xl border border-warm-200 bg-white/80 p-4">
@@ -674,8 +684,8 @@ export default function TeacherHomePage() {
                 {unreadNotifications > 0
                   ? `${unreadNotifications} okunmamış iş var`
                   : latestNotification
-                    ? "Son iş akışı kayıt altında"
-                    : "Yeni iş akışı yok"}
+                    ? "Son iş kaydı tutuldu"
+                    : "Yeni iş kaydı yok"}
               </h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
                 Teklif, ödev, ders, kurs ve doğrudan ders gelişmeleri tek sırada takip edilir.
@@ -721,7 +731,7 @@ export default function TeacherHomePage() {
               </h2>
               <p className="mt-1 text-sm leading-relaxed text-paper-800/70">
                 Bu skor öğrencinin gördüğü öğretmen kartlarında kullanılan doğrulama, biyografi, video,
-                branş, doküman ve yorum sinyallerinden hesaplanır.
+                branş, doküman ve yorum bilgilerinden hesaplanır.
               </p>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-paper-100">
                 <div

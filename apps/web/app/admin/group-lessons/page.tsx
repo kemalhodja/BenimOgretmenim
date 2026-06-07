@@ -19,6 +19,17 @@ type Row = {
 
 const STATUSES = ["open", "teacher_assigned", "scheduled", "completed", "cancelled"] as const;
 
+function groupLessonStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    open: "Açık",
+    teacher_assigned: "Öğretmen atandı",
+    scheduled: "Planlandı",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? status;
+}
+
 export default function AdminGroupLessonsPage() {
   const token = useRequireAdmin();
   const [rows, setRows] = useState<Row[]>([]);
@@ -60,7 +71,7 @@ export default function AdminGroupLessonsPage() {
 
   async function patchStatus(id: string, status: string) {
     if (!token) return;
-    if (!window.confirm(`Talep ${id.slice(0, 8)}… durumu "${status}" olarak güncellensin mi?`)) return;
+    if (!window.confirm(`Bu grup ders talebi "${groupLessonStatusLabel(status)}" olarak güncellensin mi?`)) return;
     setBusy(id);
     setError(null);
     try {
@@ -118,17 +129,17 @@ export default function AdminGroupLessonsPage() {
                       <div className="text-xs text-paper-800/55">{r.creator_email}</div>
                     </td>
                     <td className="px-3 py-2 text-paper-800/75">{new Date(r.planned_start).toLocaleString("tr-TR")}</td>
-                    <td className="px-3 py-2 capitalize text-paper-800">{r.status}</td>
+                    <td className="px-3 py-2 text-paper-800">{groupLessonStatusLabel(r.status)}</td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap items-center gap-1">
                         <select
-                          className="rounded border border-paper-200 px-1 py-1 text-xs capitalize"
+                          className="rounded border border-paper-200 px-1 py-1 text-xs"
                           value={draft[r.id] ?? r.status}
                           onChange={(e) => setDraft((d) => ({ ...d, [r.id]: e.target.value }))}
                         >
                           {STATUSES.map((s) => (
                             <option key={s} value={s}>
-                              {s}
+                              {groupLessonStatusLabel(s)}
                             </option>
                           ))}
                         </select>

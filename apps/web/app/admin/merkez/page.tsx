@@ -91,16 +91,16 @@ const SECTIONS: { title: string; items: Item[] }[] = [
     title: "Finans ve abonelik",
     items: [
       { href: "/admin/bank", title: "Havale onayı", desc: "Öğretmen aboneliği banka ödemeleri" },
-      { href: "/admin/payments", title: "Abonelik ödemeleri", desc: "Tüm subscription_payments" },
-      { href: "/admin/wallet", title: "Cüzdan grant", desc: "Manuel bakiye ekleme" },
-      { href: "/admin/veri?k=ledger", title: "Cüzdan defteri", desc: "Tüm ledger satırları" },
-      { href: "/admin/veri?k=wallet-topups", title: "Cüzdan PayTR yüklemeleri", desc: "wallet_topup_payments" },
-      { href: "/admin/veri?k=teacher-withdrawals", title: "Öğretmen para çekme", desc: "IBAN talepleri, ödeme/red operasyonu" },
-      { href: "/admin/veri?k=course-accounting", title: "Kurs muhasebesi", desc: "Tahsilat, iade, hakediş, net platform" },
-      { href: "/admin/veri?k=reconciliation", title: "Ödeme mutabakatı", desc: "PayTR callback uyumsuzlukları" },
-      { href: "/admin/veri?k=job-monitoring", title: "Job / cron izleme", desc: "Settlement, release ve alarm takibi" },
-      { href: "/admin/veri?k=disputes", title: "Uyuşmazlık merkezi", desc: "Öğrenci, veli, öğretmen itirazları" },
-      { href: "/admin/veri?k=student-sub-payments", title: "Öğrenci platform ödemeleri", desc: "student_sub_payments" },
+      { href: "/admin/payments", title: "Abonelik ödemeleri", desc: "Öğretmen abonelik ödeme kayıtları" },
+      { href: "/admin/wallet", title: "Manuel cüzdan işlemi", desc: "Gerekli durumda bakiye ekleme" },
+      { href: "/admin/veri?k=ledger", title: "Cüzdan hareketleri", desc: "Tüm bakiye hareketleri" },
+      { href: "/admin/veri?k=wallet-topups", title: "Cüzdan PayTR yüklemeleri", desc: "Kartla cüzdan yükleme kayıtları" },
+      { href: "/admin/veri?k=teacher-withdrawals", title: "Öğretmen para çekme", desc: "IBAN talepleri, ödeme ve red işlemleri" },
+      { href: "/admin/veri?k=course-accounting", title: "Kurs muhasebesi", desc: "Tahsilat, iade, öğretmen kazancı ve platform bedeli" },
+      { href: "/admin/veri?k=reconciliation", title: "Ödeme kontrolü", desc: "PayTR ödeme bildirim uyumsuzlukları" },
+      { href: "/admin/veri?k=job-monitoring", title: "Zamanlanmış işler", desc: "Ödeme, ders ve alarm takibi" },
+      { href: "/admin/veri?k=disputes", title: "Sorun merkezi", desc: "Öğrenci, veli ve öğretmen itirazları" },
+      { href: "/admin/veri?k=student-sub-payments", title: "Öğrenci platform ödemeleri", desc: "Öğrenci abonelik ödeme kayıtları" },
     ],
   },
   {
@@ -118,7 +118,7 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { href: "/admin/veri?k=recordings", title: "Sınıf kayıtları", desc: "Tekrar izleme linkleri ve kayıt durumu" },
       { href: "/admin/veri?k=messages", title: "Sınıf mesajları", desc: "Sohbet, soru, cevap ve duyurular" },
       { href: "/admin/veri?k=learning", title: "Çalışma ve deneme", desc: "Planlar ve assessment kayıtları" },
-      { href: "/admin/veri?k=funnel", title: "Funnel raporu", desc: "Dönüşüm ve operasyon sinyalleri" },
+      { href: "/admin/veri?k=funnel", title: "Dönüşüm raporu", desc: "Arama, profil, talep ve ödeme adımları" },
     ],
   },
   {
@@ -237,19 +237,19 @@ export default function AdminMerkezPage() {
       ? []
       : [
           {
-            title: "Ödev SLA",
+            title: "Ödev hedef süresi",
             value: c.homeworkSlaBreaches,
             href: "/admin/homework",
-            action: c.homeworkSlaBreaches > 0 ? "Geciken soruları öğretmen/havuz durumuna göre çöz" : "SLA temiz",
+            action: c.homeworkSlaBreaches > 0 ? "Geciken soruları öğretmen/havuz durumuna göre çöz" : "Hedef süre temiz",
           },
           {
-            title: "Destek SLA",
+            title: "Destek yanıt süresi",
             value: c.supportSlaBreaches,
             href: "/admin/support",
             action: c.supportSlaBreaches > 0 ? "24 saati aşan destek konularını kapat" : "Destek ritmi temiz",
           },
           {
-            title: "Ödeme mutabakatı",
+            title: "Ödeme kontrolü",
             value: c.reconciliationIssues30d,
             href: "/admin/veri?k=reconciliation",
             action: c.reconciliationIssues30d > 0 ? "PayTR ve cüzdan kayıtlarını karşılaştır" : "Son 30 gün temiz",
@@ -258,7 +258,7 @@ export default function AdminMerkezPage() {
             title: "Öğretmen kalite",
             value: Math.max(0, 70 - c.teacherQualityAvg),
             href: "/admin/teachers",
-            action: c.teacherQualityAvg < 70 ? "Zayıf profilleri doğrulama ve içerik tamamlama akışına al" : "Kalite ortalaması iyi",
+            action: c.teacherQualityAvg < 70 ? "Zayıf profilleri doğrulama ve içerik tamamlama kuyruğuna al" : "Kalite ortalaması iyi",
           },
         ];
   const readinessChecks =
@@ -272,19 +272,19 @@ export default function AdminMerkezPage() {
             action: systemHealth?.status === "ok" ? "Runtime ve DB kontrolleri temiz" : "Sistem sağlığı detayını incele",
           },
           {
-            title: "SLA",
+            title: "Yanıt süresi",
             status: c.homeworkSlaBreaches + c.supportSlaBreaches === 0 ? "ready" : "action",
             value: `${c.homeworkSlaBreaches + c.supportSlaBreaches} risk`,
             action:
               c.homeworkSlaBreaches + c.supportSlaBreaches === 0
-                ? "Ödev ve destek SLA temiz"
+                ? "Ödev ve destek hedef süreleri temiz"
                 : "Geciken ödev/destek işlerini kapat",
           },
           {
             title: "Ödeme",
             status: c.reconciliationIssues30d === 0 ? "ready" : "action",
             value: `${c.reconciliationIssues30d} uyumsuzluk`,
-            action: c.reconciliationIssues30d === 0 ? "PayTR mutabakatı temiz" : "Mutabakat kayıtlarını kontrol et",
+            action: c.reconciliationIssues30d === 0 ? "PayTR ödeme kontrolü temiz" : "Ödeme kontrol kayıtlarını incele",
           },
           {
             title: "Öğretmen kalite",
@@ -327,7 +327,7 @@ export default function AdminMerkezPage() {
         </Link>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-paper-900">Kontrol merkezi</h1>
         <p className="mt-2 text-sm text-paper-800/75">
-          Tüm yönetim modülleri ve veri görünümleri. İşlemler API üzerinden audit edilir; üretimde{" "}
+          Tüm yönetim modülleri ve veri görünümleri. İşlemler API üzerinden kayıt altına alınır; üretimde{" "}
           <span className="font-mono">ADMIN_API_SECRET</span> önerilir.
         </p>
 
@@ -380,7 +380,7 @@ export default function AdminMerkezPage() {
               </div>
               <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
                 <div className="text-xs text-paper-800/55">Kontrol sayısı</div>
-                <div className="mt-1 text-sm font-semibold text-paper-900">{systemHealth.checks.length} sinyal</div>
+                <div className="mt-1 text-sm font-semibold text-paper-900">{systemHealth.checks.length} kontrol</div>
                 <div className="mt-1 text-xs text-paper-800/55">Admin-only görünürlük</div>
               </div>
             </div>
@@ -403,20 +403,20 @@ export default function AdminMerkezPage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-paper-800/55">
-                  Canlı operasyon durumu
+                  Canlı yönetim durumu
                 </div>
                 <h2 className="mt-2 text-lg font-semibold text-paper-900">
-                  {readinessActionCount === 0 ? "Platform canlı akış için hazır" : `${readinessActionCount} kritik aksiyon bekliyor`}
+                  {readinessActionCount === 0 ? "Platform yayına hazır görünüyor" : `${readinessActionCount} kritik aksiyon bekliyor`}
                 </h2>
                 <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
-                  Sistem sağlığı, SLA, ödeme mutabakatı ve öğretmen kalite sinyalleri tek go/no-go özetinde izlenir.
+                  Sistem sağlığı, destek süreleri, ödeme kontrolü ve öğretmen kalite durumu tek özet içinde izlenir.
                 </p>
               </div>
               <Link
                 href="/admin/veri?k=reconciliation"
                 className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-100"
               >
-                Mutabakatı aç
+                Ödeme kontrolünü aç
               </Link>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -450,12 +450,12 @@ export default function AdminMerkezPage() {
                 </p>
               </div>
               <Link href="/admin/veri?k=funnel" className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900">
-                Funnel detayları
+                Dönüşüm detayları
               </Link>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               {[
-                ["Gelir sinyali", `${Math.round((weeklyReport.revenue.teacherSubscriptionsMinor + weeklyReport.revenue.studentSubscriptionsMinor + weeklyReport.revenue.walletTopupsMinor) / 100)} TL`],
+                ["Gelir göstergesi", `${Math.round((weeklyReport.revenue.teacherSubscriptionsMinor + weeklyReport.revenue.studentSubscriptionsMinor + weeklyReport.revenue.walletTopupsMinor) / 100)} TL`],
                 ["SEO landing gücü", weeklyReport.seo.activeCityBranchTeacherCombos],
                 ["Açık ödeme riski", weeklyReport.operations.openPaymentRisks],
                 ["Bekleyen moderasyon", weeklyReport.operations.pendingCampaignModeration],
@@ -503,7 +503,7 @@ export default function AdminMerkezPage() {
                   Kurum paneli
                 </div>
                 <h2 className="mt-2 text-lg font-semibold text-paper-900">
-                  SLA, öğretmen performansı ve finans takibi
+                  Hedef süre, öğretmen performansı ve finans takibi
                 </h2>
                 <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
                   Geciken işler, ders hacmi, öğretmen kalitesi ve ödeme uyumsuzlukları tek yerde izlenir.
@@ -518,8 +518,8 @@ export default function AdminMerkezPage() {
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               {[
-                ["Ödev SLA ihlali", c.homeworkSlaBreaches, "Açık/üstlenilmiş geciken soru", "/admin/homework"],
-                ["Destek SLA riski", c.supportSlaBreaches, "24 saati aşan açık destek", "/admin/support"],
+                ["Ödev hedef süresi", c.homeworkSlaBreaches, "Açık/üstlenilmiş geciken soru", "/admin/homework"],
+                ["Destek yanıt riski", c.supportSlaBreaches, "24 saati aşan açık destek", "/admin/support"],
                 ["Öğretmen kalite", `${c.teacherQualityAvg}/100`, "Profil kalite ortalaması", "/admin/teachers"],
                 ["Ödeme uyumu", c.reconciliationIssues30d, "30g PayTR uyumsuzluğu", "/admin/veri?k=reconciliation"],
                 ["Ders hacmi", c.completedLessons30d, "30g tamamlanan ders", "/admin/veri?k=packages"],
@@ -549,7 +549,7 @@ export default function AdminMerkezPage() {
                   Önce güveni etkileyen kuyruğu kapat
                 </h2>
                 <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
-                  SLA gecikmesi, destek beklemesi, ödeme uyumsuzluğu ve düşük öğretmen kalitesi platform güvenini doğrudan etkiler.
+                  Hedef süre gecikmesi, destek beklemesi, ödeme uyumsuzluğu ve düşük öğretmen kalitesi platform güvenini doğrudan etkiler.
                 </p>
               </div>
               <div className="rounded-xl border border-paper-200 bg-paper-50 px-4 py-3 text-sm">
@@ -583,10 +583,10 @@ export default function AdminMerkezPage() {
                 ["Okunmamış bildirim", c.parentNotificationsUnread, "Veli/öğrenci in-app", "/admin/veri?k=notifications"],
                 ["Açık ödev", c.homeworkPostsActive, "Ödev/soru operasyonu", "/admin/homework"],
                 ["Kalite kuyruğu", c.homeworkQualityQueue, "Cevap revizyonları", "/admin/veri?k=homework"],
-                ["Açık destek", c.openSupportThreads, "SLA takibi", "/admin/support"],
+                ["Açık destek", c.openSupportThreads, "Yanıt süresi takibi", "/admin/support"],
                 ["Sınıf notu", c.classroomNoteCount, "Tahta kayıtları", "/admin/veri?k=classroom"],
                 ["Sınıf kaydı", c.classroomRecordingCount, "Tekrar izleme arşivi", "/admin/veri?k=recordings"],
-                ["Sınıf mesajı", c.classroomMessageCount, "Soru/cevap akışı", "/admin/veri?k=messages"],
+                ["Sınıf mesajı", c.classroomMessageCount, "Soru/cevap kayıtları", "/admin/veri?k=messages"],
                 ["Çalışma planı", c.activeStudyPlans, `7g deneme: ${c.recentAssessmentAttempts}`, "/admin/veri?k=learning"],
                 [
                   "Veli daveti",

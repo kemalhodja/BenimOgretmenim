@@ -223,7 +223,7 @@ export default function OdevSorPage() {
             {[
               ["Hedef süre", `${targetMinutes} dk`, urgencyPromise(urgencyLevel)],
               ["Kalite kontrol", "Cevap puanı", "Öğretmen cevabı açıklık, adım ve sonuç kalitesiyle değerlendirilir."],
-              ["Sonraki pratik", "3 öneri", "Çözümden sonra benzer alıştırmalar çalışma akışına bağlanır."],
+              ["Sonraki pratik", "3 öneri", "Çözümden sonra benzer alıştırmalar çalışma planına eklenir."],
             ].map(([title, value, body]) => (
               <div key={title} className="rounded-xl border border-brand-100 bg-white/80 p-3">
                 <div className="text-xs font-semibold text-brand-950">{title}</div>

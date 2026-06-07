@@ -8,7 +8,13 @@ async function campaignTablesAvailable(): Promise<boolean> {
   const health = await app.request("http://localhost/health");
   if (health.status !== 200) return false;
   const r = await pool.query<{ exists: boolean }>(
-    `select to_regclass('public.teacher_campaigns') is not null as exists`,
+    `select to_regclass('public.teacher_campaigns') is not null
+        and exists (
+          select 1 from information_schema.columns
+          where table_schema = 'public'
+            and table_name = 'teacher_campaigns'
+            and column_name = 'billing_model'
+        ) as exists`,
   );
   return r.rows[0]?.exists === true;
 }
@@ -73,14 +79,14 @@ function campaignBody(title: string) {
   };
 }
 
-async function createCampaign(token: string, title: string) {
+async function createCampaign(token: string, title: string, extra: Record<string, unknown> = {}) {
   return app.request("http://localhost/v1/teacher-campaigns", {
     method: "POST",
     headers: {
       authorization: `Bearer ${token}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify(campaignBody(title)),
+    body: JSON.stringify({ ...campaignBody(title), ...extra }),
   });
 }
 
@@ -162,6 +168,35 @@ describe("teacher campaigns", () => {
       const body = (await res.json()) as { error: string; neededMinor: number };
       expect(body.error).toBe("insufficient_balance");
       expect(body.neededMinor).toBe(100_000);
+    } finally {
+      await pool.query(`delete from users where id = any($1::uuid[])`, [createdUserIds]);
+    }
+  });
+
+  it("allows success fee billing without charging a listing fee upfront", async () => {
+    if (!(await campaignTablesAvailable())) return;
+
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const createdUserIds: string[] = [];
+    try {
+      const teacher = await createTeacher(suffix);
+      createdUserIds.push(teacher.userId);
+      await createCampaign(teacher.token, "İlk Ücretsiz Kampanya");
+
+      const res = await createCampaign(teacher.token, "Başarı Bedelli Kampanya", { billingModel: "success_fee" });
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as {
+        campaign: { listing_fee_minor: number; billing_model: string; success_fee_bps: number };
+      };
+      expect(body.campaign.listing_fee_minor).toBe(0);
+      expect(body.campaign.billing_model).toBe("success_fee");
+      expect(body.campaign.success_fee_bps).toBe(1000);
+
+      const wallet = await pool.query<{ balance_minor: string }>(
+        `select balance_minor from user_wallets where user_id = $1`,
+        [teacher.userId],
+      );
+      expect(wallet.rows[0]?.balance_minor ?? "0").toBe("0");
     } finally {
       await pool.query(`delete from users where id = any($1::uuid[])`, [createdUserIds]);
     }

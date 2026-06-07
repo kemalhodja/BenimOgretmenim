@@ -199,7 +199,7 @@ export default function AdminDashboardPage() {
               <StatCard href="/admin/users" label="Aktif öğrenci platform aboneliği" value={c.activeStudentSubscriptions} />
               <StatCard href="/admin/users" label="Aktif ders paketi" value={c.lessonPackagesActive} hint="lesson_packages" />
               <StatCard href="/admin/veri?k=homework" label="Soru kalite kuyruğu" value={c.homeworkQualityQueue ?? 0} hint="pending / revizyon / flagged" />
-              <StatCard href="/admin/support" label="Açık destek" value={c.openSupportThreads ?? 0} hint="SLA takibi" />
+              <StatCard href="/admin/support" label="Açık destek" value={c.openSupportThreads ?? 0} hint="Yanıt süresi takibi" />
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard href="/admin/veri?k=classroom" label="Sınıf notu/tahta" value={c.classroomNoteCount ?? 0} hint="classroom_session_notes" />

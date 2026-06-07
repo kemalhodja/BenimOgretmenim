@@ -33,6 +33,15 @@ function toSsrCourse(row: JsonRecord): SsrCourse | null {
   };
 }
 
+function deliveryModeLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    online: "Online",
+    in_person: "Yüz yüze",
+    hybrid: "Online veya yüz yüze",
+  };
+  return labels[mode] ?? mode;
+}
+
 async function loadSsrCourses(): Promise<SsrCourse[]> {
   try {
     const api = getServerApiBaseUrl();
@@ -57,12 +66,12 @@ function tl(minor: number): string {
 export const metadata: Metadata = {
   title: "Online kurslar ve grup dersleri",
   description:
-    "Öğretmenlerin yayınladığı online kursları, cohort seçeneklerini, fiyatları ve kayıt akışını inceleyin.",
+    "Öğretmenlerin yayınladığı online kursları, grup seçeneklerini, fiyatları ve kayıt adımlarını inceleyin.",
   alternates: { canonical: coursesUrl },
   openGraph: {
     title: "Online kurslar · BenimÖğretmenim",
     description:
-      "Canlı ders, grup programı, cohort kaydı ve güvenli ödeme akışıyla online kursları keşfedin.",
+      "Canlı ders, grup programı, kayıt adımları ve güvenli ödeme ile online kursları keşfedin.",
     url: coursesUrl,
     locale: "tr_TR",
     type: "website",
@@ -89,7 +98,7 @@ export default async function CoursesLayout({ children }: { children: ReactNode 
         : [
             { "@type": "ListItem", position: 1, name: "Canlı online kurslar" },
             { "@type": "ListItem", position: 2, name: "Cohort bazlı grup dersleri" },
-            { "@type": "ListItem", position: 3, name: "Güvenli kayıt ve ödeme akışı" },
+            { "@type": "ListItem", position: 3, name: "Güvenli kayıt ve ödeme" },
           ],
     },
   };
@@ -104,13 +113,13 @@ export default async function CoursesLayout({ children }: { children: ReactNode 
       {courses.length > 0 ? (
         <section className="mx-auto max-w-5xl px-6 pt-8">
           <div className="rounded-2xl border border-paper-200 bg-white p-5">
-            <h2 className="text-lg font-semibold text-paper-950">SSR öne çıkan kurslar</h2>
+            <h2 className="text-lg font-semibold text-paper-950">Öne çıkan kurslar</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               {courses.map((course) => (
                 <Link key={course.id} href={`/courses/${course.id}`} className="rounded-xl border border-paper-200 bg-paper-50 p-3 hover:border-brand-200">
                   <div className="font-semibold text-paper-950">{course.title}</div>
                   <div className="mt-1 text-xs text-paper-800/60">
-                    {course.teacher_display_name} · {course.branch_name ?? "Genel"} · {course.delivery_mode} · {tl(course.price_minor)} {course.currency}
+                    {course.teacher_display_name} · {course.branch_name ?? "Genel"} · {deliveryModeLabel(course.delivery_mode)} · {tl(course.price_minor)} {course.currency}
                   </div>
                 </Link>
               ))}

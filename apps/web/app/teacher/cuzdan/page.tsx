@@ -34,6 +34,11 @@ type CoursePayout = {
   hourly_rate_minor: number;
   duration_minutes: number;
   amount_minor: number;
+  platform_fee_minor: number;
+  teacher_net_amount_minor: number;
+  success_fee_bps: number;
+  refund_lock_status: string;
+  payable_after: string | null;
   currency: string;
   status: string;
   paid_at: string | null;
@@ -42,6 +47,9 @@ type CoursePayout = {
 type CoursePayoutSummary = {
   paidCount: number;
   paidAmountMinor: number;
+  pendingCount: number;
+  pendingAmountMinor: number;
+  platformFeeAmountMinor: number;
 };
 
 type Withdrawal = {
@@ -62,6 +70,28 @@ type Withdrawal = {
 function tl(minor: number | string): string {
   const n = typeof minor === "string" ? Number(minor) : minor;
   return (n / 100).toFixed(2);
+}
+
+function coursePayoutStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    pending: "Bekliyor",
+    wallet_paid: "Cüzdana yatırıldı",
+    skipped: "Atlandı",
+    failed: "Kontrol gerekiyor",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
+function ledgerKindLabel(kind: string): string {
+  const labels: Record<string, string> = {
+    teacher_payout: "Öğretmen kazancı",
+    direct_booking_payout: "Doğrudan ders kazancı",
+    teacher_withdrawal_requested: "Para çekme talebi",
+    teacher_withdrawal_paid: "Para çekme ödendi",
+    teacher_withdrawal_rejected: "Para çekme reddedildi",
+    wallet_admin_grant: "Admin bakiye ekledi",
+  };
+  return labels[kind] ?? "Cüzdan hareketi";
 }
 
 function tlToMinor(value: string): number {
@@ -212,7 +242,7 @@ export default function TeacherCuzdanPage() {
       <div className="mx-auto max-w-3xl px-6 py-8">
                 <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Cüzdan ve hareketler</h1>
         <p className="mt-1 text-sm text-paper-800/75">
-          Doğrudan ders anlaşmaları ve kurs ders saat hakedişleri burada görünür.
+          Doğrudan ders anlaşmaları ve kurs derslerinden kazandığınız tutarlar burada görünür.
           Öğrenci platforma ödeme yapar; kurs başladığında belirlenen saatlik ücret cüzdanınıza yatırılır.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">
@@ -252,7 +282,7 @@ export default function TeacherCuzdanPage() {
                 </div>
               </div>
               <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-paper-800/50">Blokede</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-paper-800/50">Tutulan tutar</div>
                 <div className="mt-1 font-mono text-xl font-semibold text-paper-900">
                   {tl(wallet.activeHoldMinor ?? 0)} {wallet.currency}
                 </div>
@@ -267,7 +297,7 @@ export default function TeacherCuzdanPage() {
           )}
           <p className="mt-3 text-xs leading-relaxed text-paper-800/60">
             Para çekme talebi oluşturulduğunda tutar toplam bakiyeden düşer ve admin ödeme sürecine alınır.
-            Aktif blokeler çekilebilir tutardan ayrıca düşülür.
+            Tutulan tutarlar çekilebilir bakiyeden ayrıca düşülür.
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-2">
             <label className="text-sm">
@@ -403,22 +433,27 @@ export default function TeacherCuzdanPage() {
         <div className="mt-6 rounded-xl border border-brand-100 bg-brand-50 p-5 shadow-sm">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-brand-950">Kurs hakedişleri</h2>
+              <h2 className="text-sm font-semibold text-brand-950">Kurs kazançları</h2>
               <p className="mt-1 text-xs text-brand-950/70">
-                Komisyon yok: kurs oturumu başladıktan sonra ders saat ücretiniz hakediş olarak yatırılır.
+                Öğrenci ödemesi platformda güvenli ilerler. İlk ders sonrası iade hakkı kapanınca %10 platform başarı
+                bedeli ayrılır ve net kazanç cüzdanınıza yatırılır.
               </p>
             </div>
             <div className="rounded-xl bg-white px-3 py-2 text-right text-sm ring-1 ring-brand-100">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-950/55">Toplam hakediş</div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-950/55">Toplam net kazanç</div>
               <div className="font-mono text-lg font-semibold text-brand-950">
                 {tl(coursePayoutSummary?.paidAmountMinor ?? 0)} TRY
               </div>
               <div className="text-xs text-brand-950/60">{coursePayoutSummary?.paidCount ?? 0} ders</div>
+              <div className="text-[11px] text-brand-950/55">
+                Bekleyen: {tl(coursePayoutSummary?.pendingAmountMinor ?? 0)} TRY · Platform bedeli:{" "}
+                {tl(coursePayoutSummary?.platformFeeAmountMinor ?? 0)} TRY
+              </div>
             </div>
           </div>
           <div className="mt-4 overflow-x-auto rounded-xl border border-brand-100 bg-white">
             {coursePayouts.length === 0 ? (
-              <p className="p-4 text-sm text-paper-800/55">Henüz kurs hakedişi yok.</p>
+              <p className="p-4 text-sm text-paper-800/55">Henüz kurs kazancı yok.</p>
             ) : (
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="border-b border-brand-100 bg-brand-50 text-xs text-brand-950/65">
@@ -427,7 +462,9 @@ export default function TeacherCuzdanPage() {
                     <th className="px-3 py-2">Tarih</th>
                     <th className="px-3 py-2 text-right">Saat ücreti</th>
                     <th className="px-3 py-2 text-right">Süre</th>
-                    <th className="px-3 py-2 text-right">Hakediş</th>
+                    <th className="px-3 py-2 text-right">Brüt</th>
+                    <th className="px-3 py-2 text-right">Platform</th>
+                    <th className="px-3 py-2 text-right">Net</th>
                     <th className="px-3 py-2">Durum</th>
                   </tr>
                 </thead>
@@ -448,7 +485,19 @@ export default function TeacherCuzdanPage() {
                       <td className="px-3 py-2 text-right font-mono font-semibold text-brand-950">
                         {tl(p.amount_minor)} {p.currency}
                       </td>
-                      <td className="px-3 py-2 text-paper-800">{p.status === "wallet_paid" ? "Cüzdana yatırıldı" : p.status}</td>
+                      <td className="px-3 py-2 text-right font-mono text-paper-800">
+                        {tl(p.platform_fee_minor)} {p.currency}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-semibold text-brand-950">
+                        {tl(p.teacher_net_amount_minor || p.amount_minor)} {p.currency}
+                      </td>
+                      <td className="px-3 py-2 text-paper-800">
+                        {p.status === "wallet_paid"
+                          ? "Cüzdana yatırıldı"
+                          : p.refund_lock_status === "pending_refund_window"
+                            ? "İade penceresi bekleniyor"
+                            : coursePayoutStatusLabel(p.status)}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -459,8 +508,7 @@ export default function TeacherCuzdanPage() {
 
         <h2 className="mt-8 text-sm font-semibold text-paper-900">Son hareketler</h2>
         <p className="text-xs text-paper-800/55">
-          Doğrudan ders ödemeleri: <code className="text-[11px]">direct_booking_payout</code> gibi
-          türler burada listelenir.
+          Ders kazançları, para çekme talepleri ve cüzdan hareketleri burada listelenir.
         </p>
         <div className="mt-2 overflow-x-auto rounded-xl border border-paper-200 bg-white shadow-sm">
           {entries.length === 0 ? (
@@ -482,10 +530,10 @@ export default function TeacherCuzdanPage() {
                       {new Date(e.created_at).toLocaleString("tr-TR")}
                     </td>
                     <td className="px-3 py-2 text-paper-800">
-                      {e.kind}
+                      {ledgerKindLabel(e.kind)}
                       {e.ref_id ? (
                         <span className="ml-1 text-[10px] text-paper-800/45">
-                          ({e.ref_id.slice(0, 8)}…)
+                          (ilgili ders/kayıt)
                         </span>
                       ) : null}
                     </td>

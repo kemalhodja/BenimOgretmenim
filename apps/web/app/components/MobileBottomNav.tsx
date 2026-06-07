@@ -119,7 +119,7 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="mobile-app-nav fixed inset-x-0 bottom-0 z-50 border-t border-paper-200 bg-white/95 px-2 pt-2 shadow-[0_-10px_30px_rgb(7_13_17/0.08)] backdrop-blur md:hidden"
+      className="mobile-app-nav fixed inset-x-0 bottom-0 z-50 border-t border-paper-200 bg-white/95 px-2 pt-2 shadow-[0_-10px_30px_rgb(88_170_169/0.12)] backdrop-blur md:hidden"
       aria-label="Mobil hızlı gezinme"
     >
       <div className="mx-auto grid max-w-lg grid-cols-5 gap-1 pb-[max(0.65rem,env(safe-area-inset-bottom))]">

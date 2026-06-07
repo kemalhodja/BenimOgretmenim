@@ -27,6 +27,7 @@ const createCampaignSchema = z.object({
   currency: z.string().length(3).optional(),
   capacity: z.number().int().positive().max(10_000).nullable().optional(),
   startsAt: z.string().datetime().nullable().optional(),
+  billingModel: z.enum(["listing_fee", "success_fee"]).optional(),
 });
 
 const patchStatusSchema = z.object({
@@ -102,9 +103,13 @@ teacherCampaigns.get("/mine", requireAuth, async (c) => {
             tc.lesson_count,
             tc.price_minor,
             tc.currency,
+            tc.billing_model,
+            tc.success_fee_bps,
             tc.capacity,
             tc.starts_at,
             tc.listing_fee_minor,
+            tc.billing_model,
+            tc.success_fee_bps,
             tc.free_listing_used,
             tc.review_note,
             tc.reviewed_at,
@@ -152,6 +157,7 @@ teacherCampaigns.post("/", requireAuth, async (c) => {
   const body = parsed.data;
   const currency = (body.currency ?? "TRY").toUpperCase();
   if (currency !== "TRY") return c.json({ error: "currency_not_supported" }, 409);
+    const billingModel = body.billingModel ?? "listing_fee";
 
   const client = await pool.connect();
   try {
@@ -165,7 +171,7 @@ teacherCampaigns.post("/", requireAuth, async (c) => {
       [teacherId],
     );
     const isFirstListing = Number(createdCount.rows[0]?.c ?? 0) === 0;
-    const listingFeeMinor = isFirstListing ? 0 : LISTING_FEE_MINOR;
+    const listingFeeMinor = billingModel === "success_fee" || isFirstListing ? 0 : LISTING_FEE_MINOR;
 
     if (listingFeeMinor > 0) {
       const available = await getWalletAvailableMinor(userId, client);
@@ -179,13 +185,13 @@ teacherCampaigns.post("/", requireAuth, async (c) => {
       `insert into teacher_campaigns (
          teacher_id, branch_id, city_id, district_id, title, description,
          delivery_mode, lesson_count, price_minor, currency, capacity, starts_at,
-         status, listing_fee_minor, listing_fee_currency, free_listing_used, published_at
+         status, listing_fee_minor, listing_fee_currency, billing_model, success_fee_bps, free_listing_used, published_at
        ) values (
          $1, $2, $3, $4, $5, $6,
          $7::lesson_delivery_mode, $8, $9, $10, $11, $12,
-         'pending_review', $13, 'TRY', $14, null
+         'pending_review', $13, 'TRY', $14, 1000, $15, null
        )
-       returning id, title, status, listing_fee_minor, free_listing_used, created_at`,
+       returning id, title, status, listing_fee_minor, billing_model, success_fee_bps, free_listing_used, created_at`,
       [
         teacherId,
         body.branchId ?? null,
@@ -200,6 +206,7 @@ teacherCampaigns.post("/", requireAuth, async (c) => {
         body.capacity ?? null,
         body.startsAt ? new Date(body.startsAt) : null,
         listingFeeMinor,
+        billingModel,
         isFirstListing,
       ],
     );
@@ -364,6 +371,8 @@ teacherCampaigns.get("/admin/moderation", requireAuth, async (c) => {
             tc.lesson_count,
             tc.price_minor,
             tc.currency,
+            tc.billing_model,
+            tc.success_fee_bps,
             tc.capacity,
             tc.starts_at,
             tc.listing_fee_minor,

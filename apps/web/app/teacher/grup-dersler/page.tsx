@@ -33,6 +33,17 @@ function toLocal(dt: string): string {
   return d.toLocaleString("tr-TR");
 }
 
+function groupLessonStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    open: "Katılıma açık",
+    teacher_assigned: "Size atandı",
+    scheduled: "Ders planlandı",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
 export default function TeacherGroupLessonsPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -99,7 +110,7 @@ export default function TeacherGroupLessonsPage() {
 
   async function complete(id: string) {
     if (!token) return;
-    if (!window.confirm("Ders bitti mi? Blokajlar serbest bırakılacak.")) return;
+    if (!window.confirm("Ders bitti mi? Güvenceye alınan ödemeler serbest bırakılacak.")) return;
     setBusyId(id);
     setError(null);
     setOk(null);
@@ -145,7 +156,7 @@ export default function TeacherGroupLessonsPage() {
       : nextRow?.teacher_id
         ? {
             title: "Atanmış grup dersinizi takip edin",
-            body: `${nextRow.topic_text} · ${toLocal(nextRow.planned_start)}. Ders bitince tamamlayarak blokaj akışını kapatın.`,
+            body: `${nextRow.topic_text} · ${toLocal(nextRow.planned_start)}. Ders bitince tamamlayarak ödeme sürecini kapatın.`,
           }
         : {
             title: "Kabul edilebilir grup dersleri var",
@@ -160,8 +171,7 @@ export default function TeacherGroupLessonsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Grup ders ilanları</h1>
           <p className="mt-1 text-sm text-paper-800/75">
-            Öğrencilerin açtığı ilanları kabul edin; ders bitince «tamamla» ile blokajları serbest
-            bırakın.
+            Öğrencilerin açtığı ilanları kabul edin; ders bitince «tamamla» ile ödemeyi serbest bırakın.
           </p>
         </div>
 
@@ -179,7 +189,7 @@ export default function TeacherGroupLessonsPage() {
 
         <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Grup ders operasyonu</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Grup ders yönetimi</div>
             <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
             <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
           </div>
@@ -221,10 +231,10 @@ export default function TeacherGroupLessonsPage() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="text-sm font-semibold text-paper-900">
-                        {r.branch_name ?? `Branş #${r.branch_id}`} · {r.topic_text}
+                        {r.branch_name ?? "Branş bilgisi eksik"} · {r.topic_text}
                       </div>
                       <div className="mt-1 text-xs text-paper-800/55">
-                        {toLocal(r.planned_start)} · {r.status}
+                        {toLocal(r.planned_start)} · {groupLessonStatusLabel(r.status)}
                       </div>
                       <div className="mt-2 text-xs text-paper-800/75">
                         Katılımcı: <span className="font-medium">{count}</span> · Kişi başı (şu an):{" "}

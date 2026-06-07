@@ -35,6 +35,16 @@ function verificationReadiness(t: TeacherRow): { label: string; className: strin
   return { label: "Zayıf profil", className: "bg-red-50 text-red-800" };
 }
 
+function verificationStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    unverified: "Doğrulanmadı",
+    pending: "İnceleme bekliyor",
+    verified: "Doğrulandı",
+    rejected: "Reddedildi",
+  };
+  return labels[status] ?? status;
+}
+
 export default function AdminTeachersPage() {
   const token = useRequireAdmin();
   const [q, setQ] = useState("");
@@ -81,7 +91,7 @@ export default function AdminTeachersPage() {
 
   async function saveVerification(teacherId: string, verificationStatus: string) {
     if (!token) return;
-    if (!window.confirm(`Doğrulama durumu "${verificationStatus}" olarak kaydedilsin mi?`)) return;
+    if (!window.confirm(`Doğrulama durumu "${verificationStatusLabel(verificationStatus)}" olarak kaydedilsin mi?`)) return;
     setBusyTid(teacherId);
     setError(null);
     try {
@@ -134,10 +144,10 @@ export default function AdminTeachersPage() {
               }}
             >
               <option value="">Tümü</option>
-              <option value="pending">pending</option>
-              <option value="unverified">unverified</option>
-              <option value="verified">verified</option>
-              <option value="rejected">rejected</option>
+              <option value="pending">İnceleme bekliyor</option>
+              <option value="unverified">Doğrulanmadı</option>
+              <option value="verified">Doğrulandı</option>
+              <option value="rejected">Reddedildi</option>
             </select>
           </label>
           <button
@@ -169,7 +179,7 @@ export default function AdminTeachersPage() {
                 <th className="px-3 py-2">Kalite</th>
                 <th className="px-3 py-2">Şehir</th>
                 <th className="px-3 py-2">Profil</th>
-                <th className="px-3 py-2 font-mono text-[11px]">teacher_id</th>
+                <th className="px-3 py-2">Kayıt kodu</th>
                 <th className="px-3 py-2">Doğrulama yönet</th>
               </tr>
             </thead>
@@ -193,8 +203,8 @@ export default function AdminTeachersPage() {
                       <div className="font-medium text-paper-900">{t.display_name}</div>
                       <div className="text-xs text-paper-800/75">{t.email}</div>
                     </td>
-                    <td className="px-3 py-2 capitalize text-paper-800">
-                      <div>{t.verification_status}</div>
+                    <td className="px-3 py-2 text-paper-800">
+                      <div>{verificationStatusLabel(t.verification_status)}</div>
                       {(() => {
                         const readiness = verificationReadiness(t);
                         return (
@@ -241,21 +251,21 @@ export default function AdminTeachersPage() {
                       </Link>
                     </td>
                     <td className="max-w-[7rem] truncate px-3 py-2 font-mono text-[11px] text-paper-800/55">
-                      {t.teacher_id}
+                      {t.teacher_id.slice(0, 8)}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap items-center gap-1">
                         <select
-                          className="rounded border border-paper-200 px-1 py-1 text-xs capitalize"
+                          className="rounded border border-paper-200 px-1 py-1 text-xs"
                           value={draftVer[t.teacher_id] ?? t.verification_status}
                           onChange={(e) =>
                             setDraftVer((d) => ({ ...d, [t.teacher_id]: e.target.value }))
                           }
                         >
-                          <option value="unverified">unverified</option>
-                          <option value="pending">pending</option>
-                          <option value="verified">verified</option>
-                          <option value="rejected">rejected</option>
+                          <option value="unverified">Doğrulanmadı</option>
+                          <option value="pending">İnceleme bekliyor</option>
+                          <option value="verified">Doğrulandı</option>
+                          <option value="rejected">Reddedildi</option>
                         </select>
                         <button
                           type="button"

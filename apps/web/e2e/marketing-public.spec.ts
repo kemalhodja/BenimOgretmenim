@@ -6,13 +6,13 @@ import { expect, test } from "@playwright/test";
  */
 test.describe("Vitrin ve bilgi sayfaları @public", () => {
   const cases: { path: string; title: string | RegExp }[] = [
-    { path: "/", title: "Özel dersi kurumsal kaliteyle yöneten dijital eğitim merkezi" },
+    { path: "/", title: "Öğretmen bul, ders al, soru sor ve gelişimini takip et" },
     { path: "/courses", title: "Kurslar" },
     { path: "/ogretmenler", title: "Öğretmen ara" },
-    { path: "/fiyatlar", title: "Üyelik ve kullanım akışları" },
+    { path: "/fiyatlar", title: "Üyelik ve kullanım bilgileri" },
     { path: "/yardim", title: "Yardım" },
     { path: "/iletisim", title: "İletişim" },
-    { path: "/kampanya", title: "Erken erişim kampanyası" },
+    { path: "/kampanya", title: "Öğretmenler için erken erişim kampanyası" },
     { path: "/kampanyalar", title: "Öğretmen kampanyaları" },
     { path: "/uygulama", title: "Telefona ekle" },
     { path: "/kayit", title: "Kayıt ol" },
@@ -40,12 +40,12 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
   test("/fiyatlar — ziyaretçiye şeffaf temel ücretleri gösterir", async ({ page }) => {
     const res = await page.goto("/fiyatlar", { waitUntil: "domcontentloaded" });
     expect(res?.ok() ?? false).toBeTruthy();
-    await expect(page.getByRole("heading", { name: "Üyelik ve kullanım akışları" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Üyelik ve kullanım bilgileri" })).toBeVisible();
     await expect(page.getByText(/1750 TL \/ 30 ay/)).toBeVisible();
     await expect(page.getByText(/2500 TL \/ 60 ay/)).toBeVisible();
     await expect(page.getByText(/yıllık 1500 TL/)).toBeVisible();
     await expect(page.getByText(/12\.000 TL/).first()).toBeVisible();
-    await expect(page.getByText(/Erken erişim kampanyası: 9 Eylül/)).toBeVisible();
+    await expect(page.getByText(/Erken erişim: 9 Eylül/)).toBeVisible();
   });
 
   test("/kayit — roller platformda bulacaklarını görür", async ({ page }) => {
@@ -56,7 +56,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByRole("button", { name: "Öğrenci hesabını incele" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Veli hesabını incele" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Öğretmen hesabını incele" })).toBeVisible();
-    await expect(page.getByText(/Güvenli ödeme, destek ve uyuşmazlık/)).toBeVisible();
+    await expect(page.getByText(/Güvenli ödeme, destek ve sorun çözümünde/)).toBeVisible();
     await page.getByRole("button", { name: "Veli hesabını incele" }).click();
     await expect(page.locator("select").first()).toHaveValue("guardian");
     await expect(page.getByRole("button", { name: "Veli hesabını incele" })).toHaveAttribute("aria-pressed", "true");

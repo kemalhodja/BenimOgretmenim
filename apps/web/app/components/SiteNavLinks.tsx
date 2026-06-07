@@ -8,11 +8,11 @@ import { loginHrefWithReturn } from "../lib/authRedirect";
 
 /** Kısa liste: keşif + panel + yardım. Detaylar panele ve ana sayfa bölümlerine taşınır. */
 const NAV_PUBLIC = [
+  { href: "/#nasil", label: "Nasıl işler?" },
   { href: "/ogretmenler", label: "Öğretmen ara" },
   { href: "/courses", label: "Kurslar" },
   { href: "/fiyatlar", label: "Fiyatlar" },
   { href: "/guven", label: "Güven" },
-  { href: "/yardim", label: "Yardım" },
 ] as const;
 
 type Variant = "desktop" | "mobile";

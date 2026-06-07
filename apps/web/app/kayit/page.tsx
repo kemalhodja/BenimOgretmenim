@@ -45,25 +45,25 @@ const roleOnboarding = {
   student: {
     title: "Öğrenci başlangıcı",
     steps: [
-      "Hedefini seç: öğretmen bul, ders ilanı aç veya soru gönder.",
-      "Günlük ücretsiz haklarını panelden takip et; ihtiyaç artarsa yıllık aboneliğe geç.",
-      "Demo, teklif, canlı ders ve çalışma planını aynı panelden yönet.",
+      "Önce ihtiyacını seç: öğretmen ara, kursa katıl veya soru gönder.",
+      "Ücretsiz haklarını ve varsa aboneliğini panelden gör.",
+      "Ders, soru ve çalışma planını aynı yerden takip et.",
     ],
   },
   teacher: {
     title: "Öğretmen başlangıcı",
     steps: [
-      "Profil kalite checklist'ini tamamla: branş, şehir, bio, fiyat, video ve belge.",
-      "Abonelikle sınırsız teklif, görünürlük ve ilk ücretsiz kampanya hakkını aç.",
-      "Kampanya başvuruları, ders talepleri, cüzdan ve öğrenci iletişimini panelden izle.",
+      "Branş, şehir, ücret, tanıtım ve belgelerini ekle.",
+      "Ders taleplerini ve kampanyalarını panelden yönet.",
+      "Cüzdan, kazanç ve öğrenci mesajlarını aynı ekranda takip et.",
     ],
   },
   guardian: {
     title: "Veli başlangıcı",
     steps: [
-      "Öğrenci hesabını davet veya bağlantı akışıyla eşleştir.",
-      "Ders bildirimleri, ödev durumu, çalışma planı ve risk uyarılarını takip et.",
-      "Gerekirse destek ve ödeme süreçlerini kayıtlı şekilde incele.",
+      "Öğrenci hesabını kendi veli hesabına bağla.",
+      "Ders, ödev, çalışma planı ve uyarıları takip et.",
+      "Ödeme ve destek kayıtlarını gerektiğinde incele.",
     ],
   },
 } as const;
@@ -71,36 +71,36 @@ const roleOnboarding = {
 const roleDiscovery = {
   student: {
     label: "Öğrenci",
-    eyebrow: "Başarı için doğru öğretmen, soru desteği ve plan",
-    summary: "Öğrenci hesabı; eksiklerinizi görüp doğru öğretmene, doğru derse ve düzenli çalışma akışına ulaşmanız için tasarlanır.",
+    eyebrow: "Öğretmen, soru desteği ve çalışma planı",
+    summary: "Öğrenci hesabı ile öğretmen bulabilir, soru gönderebilir, kurslara katılabilir ve çalışmanızı takip edebilirsiniz.",
     finds: [
-      "Branş, şehir, ücret, doğrulama ve güven sinyalleriyle karşılaştırılabilir öğretmen profilleri",
-      "Demo ders, teklif, canlı ders, kurs ve erken erişim kampanyası başvuruları",
-      "Günlük soru hakkı, ödev/soru havuzu ve kazanım odaklı çalışma planı",
+      "Branş, şehir, ücret, doğrulama ve yorumlarla karşılaştırılabilir öğretmen profilleri",
+      "Demo ders, teklif, canlı ders, kurs ve kampanya başvuruları",
+      "Soru gönderme, ödev takibi ve çalışma planı",
     ],
-    nextStep: "Kayıttan sonra öğrenci paneliniz açılır; öğretmen arayabilir, soru gönderebilir ve ders/kurs süreçlerinizi takip edebilirsiniz.",
+    nextStep: "Kayıttan sonra öğrenci paneliniz açılır. Öğretmen arayabilir, soru gönderebilir ve derslerinizi takip edebilirsiniz.",
   },
   guardian: {
     label: "Veli",
-    eyebrow: "Çocuğunuzun eğitim sürecinde görünürlük ve güven",
-    summary: "Veli hesabı; öğrencinin ders, kurs, ödev, ödeme ve destek süreçlerini kayıtlı ve anlaşılır şekilde izlemeniz için tasarlanır.",
+    eyebrow: "Çocuğunuzun ders sürecini görün",
+    summary: "Veli hesabı ile öğrencinin ders, kurs, ödev, ödeme ve destek sürecini anlaşılır şekilde takip edebilirsiniz.",
     finds: [
-      "Öğrenci hesabı eşleştirme, veliye özel bildirimler ve durum özetleri",
-      "Ders, kurs, ödev, çalışma planı ve risk uyarılarının tek ekranda takibi",
-      "Güvenli ödeme, destek ve uyuşmazlık süreçlerinde şeffaf kayıt",
+      "Öğrenci hesabı eşleştirme, veli bildirimleri ve durum özetleri",
+      "Ders, kurs, ödev, çalışma planı ve uyarıların tek ekranda takibi",
+      "Güvenli ödeme, destek ve sorun çözümünde şeffaf kayıt",
     ],
-    nextStep: "Kayıttan sonra veli paneliniz açılır; öğrencinizi eşleştirip ders bildirimlerini ve ödeme/destek süreçlerini takip edebilirsiniz.",
+    nextStep: "Kayıttan sonra veli paneliniz açılır. Öğrencinizi eşleştirip bildirimleri, ödeme ve destek kayıtlarını izleyebilirsiniz.",
   },
   teacher: {
     label: "Öğretmen",
-    eyebrow: "Profilinizi büyütün, talepleri yönetin, kazancınızı izleyin",
-    summary: "Öğretmen hesabı; profilinizi kendi web siteniz gibi sunmanız, öğrenci taleplerini toplamanız ve kazancınızı profesyonelce yönetmeniz için kurulur.",
+    eyebrow: "Profil, öğrenci talepleri ve kazanç takibi",
+    summary: "Öğretmen hesabı ile profilinizi kendi web siteniz gibi sunabilir, öğrenci taleplerini alabilir ve kazancınızı takip edebilirsiniz.",
     finds: [
-      "Kendi web sitesi gibi çalışan öğretmen profili, uzmanlık alanları, fiyat ve güven göstergeleri",
-      "Ders talepleri, öğrenci mesajları, kampanyalar, kurs başvuruları ve erken erişim görünürlüğü",
-      "Cüzdan, hakediş, para çekme, abonelik ve kampanya yönetimi",
+      "Kendi web sitesi gibi çalışan öğretmen profili, uzmanlık alanları, ücret ve güven göstergeleri",
+      "Ders talepleri, öğrenci mesajları, kampanyalar ve kurs başvuruları",
+      "Cüzdan, kazanç, para çekme, abonelik ve kampanya yönetimi",
     ],
-    nextStep: "Kayıttan sonra öğretmen paneliniz açılır; profilinizi tamamlayıp ders taleplerine, kurslara ve kampanyalara hazırlanabilirsiniz.",
+    nextStep: "Kayıttan sonra öğretmen paneliniz açılır. Profilinizi tamamlayıp ders taleplerine ve kampanyalara hazırlanabilirsiniz.",
   },
 } as const;
 
@@ -133,7 +133,7 @@ function KayitForm() {
   const loginHref = returnUrl ? loginHrefWithReturn(returnUrl) : "/login";
   const roleHint =
     role === "teacher"
-      ? "Öğretmen hesabı ile profilinizi web siteniz gibi kurup taleplere, kampanyalara ve kazanç akışlarına katılabilirsiniz."
+      ? "Öğretmen hesabı ile profilinizi web siteniz gibi kurup taleplere, kampanyalara ve kazanç takibine katılabilirsiniz."
       : role === "guardian"
         ? "Veli hesabı ile öğrencinizin ders, çalışma, ödeme ve destek özetlerini güvenli şekilde takip edebilirsiniz."
         : "Öğrenci hesabı ile öğretmen arayabilir, soru sorabilir, kurslara katılabilir ve çalışma planı oluşturabilirsiniz.";

@@ -19,6 +19,8 @@ type CampaignRow = {
   capacity: number | null;
   starts_at: string | null;
   listing_fee_minor: number;
+  billing_model: "listing_fee" | "success_fee";
+  success_fee_bps: number;
   free_listing_used: boolean;
   review_note: string | null;
   reviewed_at: string | null;
@@ -61,6 +63,12 @@ function applicationStatusLabel(status: string): string {
   if (status === "new") return "Yeni";
   if (status === "contacted") return "İletişime geçildi";
   return "Kapandı";
+}
+
+function billingModelLabel(campaign: CampaignRow): string {
+  if (campaign.billing_model === "success_fee") return `%${(campaign.success_fee_bps / 100).toFixed(0)} başarı bedelli`;
+  if (Number(campaign.listing_fee_minor ?? 0) > 0) return `${minorToTl(campaign.listing_fee_minor)} TL sabit yayın ücreti`;
+  return "Ücretsiz yayın hakkı";
 }
 
 export default function TeacherCampaignsPage() {
@@ -202,18 +210,19 @@ export default function TeacherCampaignsPage() {
 
         <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#f0fdfa_0%,#ffffff_55%,#fff7ed_100%)] p-5 shadow-sm">
           <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">İlan hakkı</div>
-          <h2 className="mt-1 text-lg font-semibold text-paper-900">İlk kampanya ücretsiz, sonraki ilanlar cüzdandan düşer</h2>
+          <h2 className="mt-1 text-lg font-semibold text-paper-900">Sabit yayın ücreti veya başarı bedelli kampanya</h2>
           <p className="mt-1 max-w-3xl text-sm text-paper-800/70">
-            Aktif öğretmen aboneliğiniz varsa ilk yayınlanan kampanya için ücret alınmaz. İkinci ve sonraki her yeni
-            kampanya ilanında <span className="line-through text-paper-800/45">8.000 TL</span>{" "}
-            yerine {minorToTl(listingFeeMinor)} TL cüzdan bakiyesi gerekir.
+            Aktif öğretmen aboneliğiniz varsa sabit yayın ücretini seçebilir veya başarı bedelli modelle risksiz
+            başlayabilirsiniz. Başarı bedelli modelde öğrenci ikinci derse devam edince %10 platform başarı bedeli
+            net kazançtan ayrılır.
           </p>
           <div className="mt-4 grid gap-2 text-xs leading-relaxed text-paper-800/75 sm:grid-cols-3">
             <div className="rounded-xl border border-white/70 bg-white/80 p-3">
               Kampanya ilanı admin onayından sonra public vitrinde görünür.
             </div>
             <div className="rounded-xl border border-white/70 bg-white/80 p-3">
-              Öğrenci başvuru bırakır; ödeme/anlaşma taraflar arasında yapılır.
+              Sabit modelde sonraki ilanlarda <span className="line-through text-paper-800/45">8.000 TL</span>{" "}
+              yerine {minorToTl(listingFeeMinor)} TL cüzdan bakiyesi gerekir.
             </div>
             <div className="rounded-xl border border-white/70 bg-white/80 p-3">
               Başvuruları bu panelden takip edip durumunu güncellersiniz.
@@ -264,6 +273,9 @@ export default function TeacherCampaignsPage() {
                       <div className="mt-1 text-xs text-paper-800/55">
                         {statusLabel(campaign.status)} · {deliveryLabel(campaign.delivery_mode)} ·{" "}
                         {campaign.branch_name ?? "Branş seçilmedi"} · {minorToTl(campaign.price_minor)} {campaign.currency}
+                      </div>
+                      <div className="mt-2 inline-flex rounded-full border border-brand-200 bg-brand-50 px-2 py-1 text-[11px] font-semibold text-brand-900">
+                        {billingModelLabel(campaign)}
                       </div>
                       <p className="mt-2 line-clamp-2 text-sm text-paper-800/70">{campaign.description}</p>
                       {campaign.status === "rejected" ? (

@@ -49,6 +49,27 @@ function urgencyClass(level?: string | null): string {
   return "bg-paper-100 text-paper-800";
 }
 
+function homeworkStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    open: "Havuzda bekliyor",
+    claimed: "Öğretmen üstlendi",
+    answered: "Cevaplandı",
+    closed: "Kapatıldı",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? status;
+}
+
+function qualityStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    not_reviewed: "İnceleme bekliyor",
+    accepted: "Kabul edildi",
+    revision_requested: "Revizyon istendi",
+    flagged: "İşaretlendi",
+  };
+  return labels[status] ?? status;
+}
+
 export default function AdminHomeworkPage() {
   const token = useRequireAdmin();
   const [status, setStatus] = useState("");
@@ -124,7 +145,7 @@ export default function AdminHomeworkPage() {
 
   async function cancel(id: string) {
     if (!token) return;
-    if (!window.confirm("Bu gönderiyi iptal (cancelled) olarak işaretlemek istiyor musunuz?")) return;
+    if (!window.confirm("Bu gönderiyi iptal edildi olarak işaretlemek istiyor musunuz?")) return;
     setBusy(id);
     setError(null);
     try {
@@ -187,7 +208,7 @@ export default function AdminHomeworkPage() {
         <label className="mt-4 block max-w-sm text-sm">
           <span className="font-medium text-paper-800">Durum</span>
           <select
-            className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm capitalize"
+            className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm"
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
@@ -195,11 +216,11 @@ export default function AdminHomeworkPage() {
             }}
           >
             <option value="">Tümü</option>
-            <option value="open">open</option>
-            <option value="claimed">claimed</option>
-            <option value="answered">answered</option>
-            <option value="closed">closed</option>
-            <option value="cancelled">cancelled</option>
+            <option value="open">Havuzda bekliyor</option>
+            <option value="claimed">Öğretmen üstlendi</option>
+            <option value="answered">Cevaplandı</option>
+            <option value="closed">Kapatıldı</option>
+            <option value="cancelled">İptal edildi</option>
           </select>
         </label>
         {error ? (
@@ -238,11 +259,11 @@ export default function AdminHomeworkPage() {
                         {urgencyLabel(q.urgency_level)}
                       </span>
                       <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
-                        {q.quality_status}
+                        {qualityStatusLabel(q.quality_status)}
                       </span>
                       {q.target_answer_minutes ? (
                         <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
-                          SLA {q.target_answer_minutes} dk
+                          Hedef {q.target_answer_minutes} dk
                         </span>
                       ) : null}
                       {q.grade_level_text ? (
@@ -376,7 +397,7 @@ export default function AdminHomeworkPage() {
                       <div className="text-xs text-paper-800/55">{r.student_email}</div>
                     </td>
                     <td className="max-w-[12rem] truncate px-3 py-2">{r.topic}</td>
-                    <td className="px-3 py-2 capitalize">{r.status}</td>
+                    <td className="px-3 py-2">{homeworkStatusLabel(r.status)}</td>
                     <td className="px-3 py-2">
                       <button
                         type="button"

@@ -81,7 +81,7 @@ export default function TeacherDogrudanDerslerPage() {
     if (!token) return;
     if (
       !window.confirm(
-        "Dersi tamamladığınızı onaylıyor musunuz? Öğrencinin ödediği tutardan hak edişiniz cüzdanınıza aktarılır.",
+        "Dersi tamamladığınızı onaylıyor musunuz? Öğrencinin ödediği tutardan kazancınız cüzdanınıza aktarılır.",
       )
     ) {
       return;
@@ -95,7 +95,7 @@ export default function TeacherDogrudanDerslerPage() {
         token,
       });
       await load(token);
-      setOk("Kayıt tamamlandı; hak ediş cüzdanınıza yansıdı.");
+      setOk("Kayıt tamamlandı; kazancınız cüzdanınıza yansıdı.");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "complete_failed";
       setError(msg);
@@ -128,14 +128,14 @@ export default function TeacherDogrudanDerslerPage() {
     rows.length === 0
       ? {
           title: "Henüz doğrudan anlaşma yok",
-          body: "Öğrenciler öğretmen profilinizden doğrudan ders başlattığında burada ödeme ve hak ediş akışını izleyeceksiniz.",
+          body: "Öğrenciler öğretmen profilinizden doğrudan ders başlattığında ödeme ve kazanç durumunu burada izleyeceksiniz.",
           href: "/teacher/edit",
           label: "Profili güçlendir",
         }
       : priorityBooking?.status === "funded"
         ? {
             title: "Tamamlanmayı bekleyen ders var",
-            body: `${priorityBooking.student_display_name ?? "Öğrenci"} ödemeyi yaptı. Dersi verdikten sonra tamamlayarak hak edişi cüzdanınıza aktarın.`,
+            body: `${priorityBooking.student_display_name ?? "Öğrenci"} ödemeyi yaptı. Dersi verdikten sonra tamamlayarak kazancı cüzdanınıza aktarın.`,
             href: "/teacher/cuzdan",
             label: "Cüzdanı aç",
           }
@@ -148,7 +148,7 @@ export default function TeacherDogrudanDerslerPage() {
             }
           : {
               title: "Doğrudan anlaşmalar güncel",
-              body: "Tamamlanan hak edişler cüzdanınıza yansır; yeni anlaşmalar için profil görünürlüğünüzü koruyun.",
+              body: "Tamamlanan ders kazançları cüzdanınıza yansır; yeni anlaşmalar için profil görünürlüğünüzü koruyun.",
               href: "/teacher/cuzdan",
               label: "Cüzdanı aç",
             };
@@ -162,7 +162,7 @@ export default function TeacherDogrudanDerslerPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Doğrudan ders anlaşmaları</h1>
           <p className="mt-1 text-sm text-paper-800/75">
             Öğrenci cüzdanından ödeme yaptığında durum güncellenir; dersi verdikten sonra tamamlayarak
-            hak edişinizi alırsınız.{" "}
+            kazancınızı alırsınız.{" "}
             <Link href="/teacher/cuzdan" className="font-medium text-brand-800 underline-offset-4 hover:underline">
               Cüzdan
             </Link>
@@ -184,7 +184,7 @@ export default function TeacherDogrudanDerslerPage() {
         <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Hak ediş asistanı</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Kazanç asistanı</div>
               <h2 className="mt-1 text-lg font-semibold text-paper-900">{nextAction.title}</h2>
               <p className="mt-1 max-w-2xl text-sm text-paper-800/70">{nextAction.body}</p>
             </div>
@@ -211,7 +211,7 @@ export default function TeacherDogrudanDerslerPage() {
             <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.completed}</div>
           </div>
           <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
-            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Hak ediş</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-warm-900/70">Kazanç</div>
             <div className="mt-1 text-sm font-semibold text-warm-950">{minorToTl(stats.payoutMinor)} TL</div>
           </div>
         </section>
@@ -231,9 +231,9 @@ export default function TeacherDogrudanDerslerPage() {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="text-sm font-semibold text-paper-900">
-                      {b.student_display_name?.trim() || `Öğrenci · ${b.student_id.slice(0, 8)}…`}
+                      {b.student_display_name?.trim() || "Öğrenci"}
                     </div>
-                    <div className="mt-1 font-mono text-xs text-paper-800/55">{b.id}</div>
+                    <div className="mt-1 text-xs text-paper-800/55">Doğrudan ders anlaşması</div>
                     <div className="mt-2 text-xs text-paper-800/75">
                       Anlaşılan:{" "}
                       <span className="font-mono font-medium text-paper-900">
@@ -259,7 +259,7 @@ export default function TeacherDogrudanDerslerPage() {
                     </div>
                     {b.status === "completed" && b.teacher_payout_minor != null && (
                       <div className="mt-2 text-xs text-brand-800">
-                        Hak ediş (cüzdan):{" "}
+                        Kazanç (cüzdan):{" "}
                         <span className="font-mono font-semibold">
                           {minorToTl(b.teacher_payout_minor)} TL
                         </span>

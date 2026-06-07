@@ -82,8 +82,8 @@ function aiList(meta: unknown, key: string): string[] {
 function slaRiskLabel(post: Pick<PoolPost, "urgency_level" | "resolution_sla_due_at" | "target_answer_minutes">): string {
   if (post.resolution_sla_due_at) {
     const ms = new Date(post.resolution_sla_due_at).getTime() - Date.now();
-    if (ms <= 0) return "SLA gecikti";
-    if (ms <= 5 * 60_000) return "SLA kritik";
+    if (ms <= 0) return "Süre geçti";
+    if (ms <= 5 * 60_000) return "Süre kritik";
   }
   if (post.urgency_level === "urgent") return "Acil öncelik";
   if (post.urgency_level === "priority") return "Öncelikli";
@@ -96,6 +96,18 @@ function answerQualityHint(meta: unknown): string {
   const clarity = aiValue(meta, "clarity");
   if (clarity) return `Cevap netliği: ${clarity}`;
   return "Çözüm adımlarını açık yazın; kalite puanı buna göre oluşur.";
+}
+
+function qualityStatusLabel(status: string | null | undefined): string {
+  if (!status) return "İnceleme bekliyor";
+  const labels: Record<string, string> = {
+    not_reviewed: "İnceleme bekliyor",
+    pending_review: "İncelemede",
+    approved: "Uygun",
+    needs_revision: "Düzeltme gerekiyor",
+    rejected: "Uygun bulunmadı",
+  };
+  return labels[status] ?? "Durum güncellendi";
 }
 
 export default function OdevHavuzuPage() {
@@ -406,10 +418,10 @@ export default function OdevHavuzuPage() {
                     <div className="mt-1 text-xs text-paper-800/55">
                       {homeworkPostStatusLabelTr(p.status)} ·{" "}
                       {new Date(p.created_at).toLocaleString("tr-TR")}
-                      {p.target_answer_minutes ? ` · SLA: ${p.target_answer_minutes} dk` : ""}
+                      {p.target_answer_minutes ? ` · Hedef: ${p.target_answer_minutes} dk` : ""}
                     </div>
                     <div className="mt-2 inline-flex rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
-                      Kalite: {p.quality_status ?? "not_reviewed"}
+                      Kalite: {qualityStatusLabel(p.quality_status)}
                     </div>
                     <div className="mt-2 rounded-xl border border-paper-100 bg-paper-50 p-3 text-xs text-paper-800/70">
                       <span className="font-semibold text-paper-900">Cevap standardı:</span>{" "}
@@ -499,12 +511,12 @@ export default function OdevHavuzuPage() {
                       <> · Kalan: {formatRemaining(p.resolve_deadline_at)}</>
                     ) : null}
                     {p.resolution_sla_due_at ? (
-                      <> · SLA: {formatRemaining(p.resolution_sla_due_at)}</>
+                      <> · Hedef: {formatRemaining(p.resolution_sla_due_at)}</>
                     ) : null}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
                     <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
-                      Kalite: {p.quality_status ?? "not_reviewed"}
+                      Kalite: {qualityStatusLabel(p.quality_status)}
                     </span>
                     {p.quality_score ? (
                       <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">

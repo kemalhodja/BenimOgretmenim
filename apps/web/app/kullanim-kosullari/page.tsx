@@ -31,8 +31,8 @@ export default function KullanimKosullariPage() {
         <h2 className="text-base font-semibold text-paper-900">Hizmet</h2>
         <p>
           BenimÖğretmenim; öğrenci, veli ve öğretmenleri özel ders, soru çözüm, canlı sınıf, çalışma
-          takibi, cüzdan ve bildirim akışlarında buluşturan dijital eğitim platformudur. Platform,
-          süreçleri kayıt altına alır ve güvenli ödeme/operasyon altyapısını sağlar.
+          takibi, cüzdan ve bildirimlerde buluşturan dijital eğitim platformudur. Platform,
+          ders ve ödeme adımlarını kayıt altına alır.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Hesap ve içerik</h2>
         <p>
@@ -43,21 +43,21 @@ export default function KullanimKosullariPage() {
         <h2 className="text-base font-semibold text-paper-900">Öğretmen doğrulama ve kalite</h2>
         <p>
           Öğretmen profilleri doğrulama, belge, branş, şehir, deneyim, ders geçmişi, puan ve yanıt
-          davranışı gibi kalite sinyalleriyle değerlendirilebilir. Platform, güveni korumak için profil
+          davranışı gibi kalite bilgileriyle değerlendirilebilir. Platform, güveni korumak için profil
           görünürlüğünü sınırlayabilir, ek belge isteyebilir veya inceleme başlatabilir.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Ödeme ve abonelik</h2>
         <p>
           Öğretmen abonelikleri, öğrenci paketleri, cüzdan yüklemeleri, doğrudan ders ve kurs ödemeleri
           ilgili panelde gösterilen tutar ve koşullara tabidir. Kart ödemeleri ödeme sağlayıcısı üzerinden,
-          havale/EFT ödemeleri admin onayıyla ilerler. Başarısız veya uyumsuz ödeme kayıtları mutabakat
-          sürecine alınır.
+          havale/EFT ödemeleri admin onayıyla ilerler. Başarısız veya uyumsuz ödeme kayıtları admin
+          incelemesine alınır.
         </p>
-        <h2 className="text-base font-semibold text-paper-900">İptal, iade ve uyuşmazlık</h2>
+        <h2 className="text-base font-semibold text-paper-900">İptal, iade ve sorun çözümü</h2>
         <p>
-          Ders, paket veya ödeme uyuşmazlıklarında platform kayıtları, mesajlar, ders durumu, cüzdan
+          Ders, paket veya ödeme sorunlarında platform kayıtları, mesajlar, ders durumu, cüzdan
           hareketleri ve ödeme sağlayıcı bildirimleri birlikte incelenir. İade veya manuel düzeltme
-          gerekiyorsa işlem admin audit ve mutabakat kayıtlarıyla izlenir. Nihai ticari/iade politikası
+          gerekiyorsa işlem admin kayıtlarıyla izlenir. Nihai ticari/iade politikası
           yayıma alınmadan önce hukuk ve muhasebe danışmanlığıyla netleştirilmelidir.
         </p>
         <h2 className="text-base font-semibold text-paper-900">Sorumluluk sınırı</h2>

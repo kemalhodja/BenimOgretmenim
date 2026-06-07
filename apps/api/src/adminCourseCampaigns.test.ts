@@ -391,6 +391,15 @@ describe("admin course campaigns", () => {
         { headers: { authorization: `Bearer ${student.token}` } },
       );
       expect(classroomAccess.status).toBe(200);
+      const firstAttendance = await app.request(
+        `http://localhost/v1/classroom/course-sessions/${dueSession.rows[0].id}/attendance`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${student.token}`, "content-type": "application/json" },
+          body: JSON.stringify({ eventType: "join" }),
+        },
+      );
+      expect(firstAttendance.status).toBe(200);
       const walletAfterStart = await pool.query<{ balance_minor: string }>(
         `select balance_minor from user_wallets where user_id = $1`,
         [student.userId],
@@ -409,28 +418,35 @@ describe("admin course campaigns", () => {
         `select balance_minor from user_wallets where user_id = $1`,
         [teacher.userId],
       );
-      expect(teacherWalletAfterStart.rows[0]?.balance_minor).toBe("80000");
-      const teacherPayout = await pool.query<{ count: string; amount_minor: string }>(
-        `select count(*)::text as count, coalesce(sum(amount_minor), 0)::text as amount_minor
+      expect(teacherWalletAfterStart.rows[0]?.balance_minor ?? "0").toBe("0");
+      const teacherPayout = await pool.query<{ count: string; amount_minor: string; teacher_net_amount_minor: string; refund_lock_status: string }>(
+        `select count(*)::text as count,
+                coalesce(sum(amount_minor), 0)::text as amount_minor,
+                coalesce(sum(teacher_net_amount_minor), 0)::text as teacher_net_amount_minor,
+                min(refund_lock_status) as refund_lock_status
          from course_teacher_payouts
-         where course_id = $1 and teacher_id = $2 and status = 'wallet_paid'`,
+         where course_id = $1 and teacher_id = $2 and status = 'pending'`,
         [courseId, teacher.profileId],
       );
       expect(teacherPayout.rows[0]?.count).toBe("1");
       expect(teacherPayout.rows[0]?.amount_minor).toBe("80000");
+      expect(teacherPayout.rows[0]?.teacher_net_amount_minor).toBe("72000");
+      expect(teacherPayout.rows[0]?.refund_lock_status).toBe("pending_refund_window");
       const teacherPayoutReport = await app.request("http://localhost/v1/wallet/course-payouts", {
         headers: { authorization: `Bearer ${teacher.token}` },
       });
       expect(teacherPayoutReport.status).toBe(200);
       const teacherPayoutReportBody = (await teacherPayoutReport.json()) as {
-        payouts: Array<{ course_id: string; amount_minor: number | string; status: string }>;
-        summary: { paidCount: number; paidAmountMinor: number };
+        payouts: Array<{ course_id: string; amount_minor: number | string; teacher_net_amount_minor: number | string; status: string; refund_lock_status: string }>;
+        summary: { paidCount: number; paidAmountMinor: number; pendingCount: number; pendingAmountMinor: number };
       };
-      expect(teacherPayoutReportBody.summary.paidCount).toBeGreaterThanOrEqual(1);
-      expect(teacherPayoutReportBody.summary.paidAmountMinor).toBeGreaterThanOrEqual(80_000);
+      expect(teacherPayoutReportBody.summary.pendingCount).toBeGreaterThanOrEqual(1);
+      expect(teacherPayoutReportBody.summary.pendingAmountMinor).toBeGreaterThanOrEqual(72_000);
       const reportedPayout = teacherPayoutReportBody.payouts.find((payout) => payout.course_id === courseId);
       expect(String(reportedPayout?.amount_minor)).toBe("80000");
-      expect(reportedPayout?.status).toBe("wallet_paid");
+      expect(String(reportedPayout?.teacher_net_amount_minor)).toBe("72000");
+      expect(reportedPayout?.status).toBe("pending");
+      expect(reportedPayout?.refund_lock_status).toBe("pending_refund_window");
       const classroomAccessAgain = await app.request(
         `http://localhost/v1/classroom/course-sessions/${dueSession.rows[0].id}`,
         { headers: { authorization: `Bearer ${student.token}` } },
@@ -440,7 +456,39 @@ describe("admin course campaigns", () => {
         `select balance_minor from user_wallets where user_id = $1`,
         [teacher.userId],
       );
-      expect(teacherWalletAfterRepeat.rows[0]?.balance_minor).toBe("80000");
+      expect(teacherWalletAfterRepeat.rows[0]?.balance_minor ?? "0").toBe("0");
+      const secondDueSession =
+        dueSession.rows[1]?.id ??
+        (
+          await pool.query<{ id: string }>(
+            `insert into course_sessions (cohort_id, session_index, title, scheduled_start, scheduled_end, duration_minutes, status)
+             values ($1, 2, 'İkinci ders', now() - interval '1 minute', now() + interval '59 minutes', 60, 'scheduled')
+             on conflict (cohort_id, session_index) do update
+               set scheduled_start = excluded.scheduled_start,
+                   scheduled_end = excluded.scheduled_end
+             returning id`,
+            [heldEnrollment.rows[0].cohort_id],
+          )
+        ).rows[0].id;
+      const secondClassroomAccess = await app.request(
+        `http://localhost/v1/classroom/course-sessions/${secondDueSession}`,
+        { headers: { authorization: `Bearer ${student.token}` } },
+      );
+      expect(secondClassroomAccess.status).toBe(200);
+      const secondAttendance = await app.request(
+        `http://localhost/v1/classroom/course-sessions/${secondDueSession}/attendance`,
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${student.token}`, "content-type": "application/json" },
+          body: JSON.stringify({ eventType: "join" }),
+        },
+      );
+      expect(secondAttendance.status).toBe(200);
+      const teacherWalletAfterSecond = await pool.query<{ balance_minor: string }>(
+        `select balance_minor from user_wallets where user_id = $1`,
+        [teacher.userId],
+      );
+      expect(teacherWalletAfterSecond.rows[0]?.balance_minor).toBe("144000");
       const chargeNotification = await pool.query<{ count: string }>(
         `select count(*)::text as count
          from parent_notifications
@@ -471,8 +519,8 @@ describe("admin course campaigns", () => {
       expect(String(listedChargedCampaign?.wallet_held_amount_minor)).toBe("0");
       expect(listedChargedCampaign?.wallet_charged_count).toBe(1);
       expect(String(listedChargedCampaign?.wallet_charged_amount_minor)).toBe("250000");
-      expect(listedChargedCampaign?.teacher_payout_count).toBe(1);
-      expect(String(listedChargedCampaign?.teacher_payout_amount_minor)).toBe("80000");
+      expect(listedChargedCampaign?.teacher_payout_count).toBe(2);
+      expect(String(listedChargedCampaign?.teacher_payout_amount_minor)).toBe("144000");
       const accounting = await app.request("http://localhost/v1/admin/course-accounting", {
         headers: { authorization: `Bearer ${admin.token}` },
       });
@@ -483,14 +531,16 @@ describe("admin course campaigns", () => {
           gross_collected_amount_minor: string | number;
           refunded_amount_minor: string | number;
           teacher_payout_amount_minor: string | number;
+          platform_fee_amount_minor: string | number;
           net_platform_amount_minor: string | number;
         }>;
       };
       const accountingRow = accountingBody.rows.find((row) => row.id === courseId);
       expect(String(accountingRow?.gross_collected_amount_minor)).toBe("250000");
       expect(String(accountingRow?.refunded_amount_minor)).toBe("0");
-      expect(String(accountingRow?.teacher_payout_amount_minor)).toBe("80000");
-      expect(String(accountingRow?.net_platform_amount_minor)).toBe("170000");
+      expect(String(accountingRow?.teacher_payout_amount_minor)).toBe("144000");
+      expect(String(accountingRow?.platform_fee_amount_minor)).toBe("16000");
+      expect(String(accountingRow?.net_platform_amount_minor)).toBe("16000");
 
       const appsAfterCharge = await app.request(`http://localhost/v1/admin/courses/${courseId}/applications`, {
         headers: { authorization: `Bearer ${admin.token}` },

@@ -66,6 +66,18 @@ function homeworkNextStep(post: PostDetail): string {
   return "Durumu takip edin.";
 }
 
+function qualityStatusLabel(status: string | null | undefined): string {
+  if (!status) return "İnceleme bekliyor";
+  const labels: Record<string, string> = {
+    not_reviewed: "İnceleme bekliyor",
+    pending_review: "İncelemede",
+    approved: "Uygun",
+    needs_revision: "Düzeltme gerekiyor",
+    rejected: "Uygun bulunmadı",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
 export default function OdevDetayPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -284,7 +296,7 @@ export default function OdevDetayPage() {
                   Hedef süre: {post.target_answer_minutes ?? 20} dk
                 </span>
                 <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
-                  Kalite: {post.quality_status ?? "not_reviewed"}
+                  Kalite: {qualityStatusLabel(post.quality_status)}
                 </span>
                 {post.quality_score ? (
                   <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
@@ -308,7 +320,7 @@ export default function OdevDetayPage() {
                 </div>
                 <p className="mt-1 text-sm font-medium text-paper-900">{homeworkNextStep(post)}</p>
                 <p className="mt-1 text-xs leading-relaxed text-paper-800/60">
-                  Hedef süre: {post.target_answer_minutes ?? 20} dk · Cevap kalite durumu: {post.quality_status ?? "not_reviewed"}
+                  Hedef süre: {post.target_answer_minutes ?? 20} dk · Cevap kalite durumu: {qualityStatusLabel(post.quality_status)}
                 </p>
               </div>
               <p className="mt-4 whitespace-pre-wrap text-sm text-paper-800">{post.help_text}</p>
@@ -366,7 +378,7 @@ export default function OdevDetayPage() {
                 </h2>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   {[
-                    ["Kalite", post.quality_score ? `${post.quality_score}/100` : post.quality_status ?? "İnceleniyor"],
+                    ["Kalite", post.quality_score ? `${post.quality_score}/100` : qualityStatusLabel(post.quality_status)],
                     ["Ödeme", post.homework_reward_applied_at ? "Ödül aktarıldı" : "Onay bekliyor"],
                     ["Tekrar", aiList(post.ai_metadata_jsonb, "similar_practice").length ? "Alıştırma hazır" : "Cevap sonrası önerilir"],
                   ].map(([title, value]) => (

@@ -539,7 +539,7 @@ export default function OgretmenDetayPage() {
     [
       "Demo ile öğretmeni tanı",
       "Teklif ve fiyatı netleştir",
-      "Güvenli ödeme akışına geç",
+      "Güvenli ödeme sürecine geç",
     ];
 
   return (
@@ -642,7 +642,7 @@ export default function OgretmenDetayPage() {
                 <div className="mt-4 rounded-xl border border-warm-200 bg-warm-50 p-3">
                   <div className="text-xs font-semibold text-warm-950">BenimÖğretmenim farkı</div>
                   <p className="mt-1 text-xs leading-relaxed text-warm-900/80">
-                    Demo, güvenli ödeme, canlı sınıf ve veliye görünür ders sonrası takip aynı akışta ilerler.
+                    Demo, güvenli ödeme, canlı sınıf ve veliye görünür ders sonrası takip aynı süreçte ilerler.
                   </p>
                 </div>
               </aside>
@@ -721,7 +721,7 @@ export default function OgretmenDetayPage() {
                   </span>
                 )}
                 <span className="rounded-full bg-warm-50 px-2 py-0.5 text-[11px] font-medium text-warm-900">
-                  Güvenli ödeme ve paket akışı
+                  Güvenli ödeme ve paket süreci
                 </span>
               </div>
               <div className="mt-4 rounded-xl border border-paper-200 bg-white p-3">
@@ -746,12 +746,12 @@ export default function OgretmenDetayPage() {
                   <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
                     {teacher.trust_summary?.verificationLabel ??
                       (teacher.verification_status === "verified"
-                        ? "Platform, profil bilgilerini ve güven sinyallerini incelemiş."
+                        ? "Platform, profil bilgilerini ve güven kayıtlarını incelemiş."
                         : "Profil henüz tam doğrulanmamış; demo ve ek bilgi isteği önerilir.")}
                   </p>
                 </div>
                 <div className="rounded-xl border border-paper-200 bg-white p-3">
-                  <div className="text-xs font-semibold text-paper-900">Fiyat sinyali</div>
+                  <div className="text-xs font-semibold text-paper-900">Fiyat bilgisi</div>
                   <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
                     {hourlyRange
                       ? `Branşlarda saatlik aralık: ${hourlyRange}.`
@@ -762,7 +762,7 @@ export default function OgretmenDetayPage() {
                   <div className="text-xs font-semibold text-paper-900">Ödeme koruması</div>
                   <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
                     {teacher.trust_summary?.paymentProtection ??
-                      "Paket ve ders ödemeleri kayıtlı ilerler; uyuşmazlıkta ödeme ve ders kayıtları birlikte incelenir."}
+                      "Paket ve ders ödemeleri kayıtlı ilerler; sorun olursa ödeme ve ders kayıtları birlikte incelenir."}
                   </p>
                   <Link href="/guven" className="mt-2 inline-flex text-xs font-semibold text-brand-900 underline">
                     Güven merkezini oku
@@ -796,13 +796,13 @@ export default function OgretmenDetayPage() {
                     <div className="text-lg font-semibold text-paper-900">
                       {responseSignalLabel(teacher)}
                     </div>
-                    <div className="text-xs text-paper-800/60">Eşleşme sinyali</div>
+                    <div className="text-xs text-paper-800/60">Uygunluk</div>
                   </div>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-paper-200 bg-white p-4">
-                <h2 className="text-sm font-semibold text-paper-900">Örnek ders akışı</h2>
+                <h2 className="text-sm font-semibold text-paper-900">Örnek ders süreci</h2>
                 <ol className="mt-3 space-y-2">
                   {(profileSite?.methodSteps ?? sampleLessonFlow.map((item) => ({ title: item, body: "" }))).map((item, index) => (
                     <li key={item.title} className="flex gap-2 text-sm text-paper-800">
@@ -818,7 +818,7 @@ export default function OgretmenDetayPage() {
                 </ol>
                 <p className="mt-3 text-xs text-paper-800/55">
                   {profileSite?.availabilitySummary ??
-                    "Demo derste öğretmenin yöntemi görülür; paket kararı sonrasında cüzdan blokajı ile ödeme güvenceye alınır."}
+                    "Demo derste öğretmenin yöntemi görülür; paket kararı sonrasında ödeme cüzdanda güvenceye alınır."}
                 </p>
               </div>
             </div>
@@ -828,7 +828,7 @@ export default function OgretmenDetayPage() {
                 Ders güvencesi
               </div>
               <h2 className="mt-2 text-base font-semibold text-paper-900">
-                Demo, teklif, ödeme blokajı ve canlı sınıf aynı kayıtlı akışta ilerler.
+                Demo, teklif, ödeme güvencesi ve canlı sınıf aynı kayıtlı süreçte ilerler.
               </h2>
               <p className="mt-2 text-sm leading-relaxed text-paper-800/70">
                 Öğretmeni tanıdıktan sonra paket, oturum, ödeme ve ders sonu değerlendirme aynı panelde kalır.
@@ -836,7 +836,7 @@ export default function OgretmenDetayPage() {
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
                 {[
                   ["1", "Demo veya talep", "Önce beklenti ve yöntem netleşir."],
-                  ["2", "Cüzdan blokajı", "Ödeme ders tamamlanmadan aktarılmaz."],
+                  ["2", "Ödeme güvencesi", "Ödeme ders tamamlanmadan aktarılmaz."],
                   ["3", "Ders sonu takip", "Özet, ödev ve ilerleme veliye görünür."],
                 ].map(([step, title, body]) => (
                   <div key={step} className="rounded-xl border border-warm-200 bg-white/80 p-3">
@@ -859,7 +859,7 @@ export default function OgretmenDetayPage() {
                   </h2>
                 </div>
                 <Link href="/guven" className="text-xs font-semibold text-brand-900 underline">
-                  Güven akışını incele
+                  Güven merkezini incele
                 </Link>
               </div>
               <div className="mt-4 grid gap-3 md:grid-cols-4">
@@ -870,7 +870,7 @@ export default function OgretmenDetayPage() {
                   },
                   {
                     title: "Ödeme koruması",
-                    body: "Cüzdan ve blokaj kayıtlarıyla ders tamamlanmadan ödeme doğrudan aktarılmaz.",
+                    body: "Cüzdan kaydı sayesinde ders tamamlanmadan ödeme doğrudan aktarılmaz.",
                   },
                   {
                     title: "Canlı sınıf kaydı",
@@ -878,7 +878,7 @@ export default function OgretmenDetayPage() {
                   },
                   {
                     title: "Veli görünürlüğü",
-                    body: "Ödev, kazanım testi ve ders sonu sinyalleri aile kararını veriyle destekler.",
+                    body: "Ödev, kazanım testi ve ders sonu notları aile kararını destekler.",
                   },
                 ].map((item) => (
                   <article key={item.title} className="rounded-xl border border-brand-100 bg-white p-3">
@@ -1200,7 +1200,7 @@ export default function OgretmenDetayPage() {
                 },
                 {
                   question: "Veli gelişimi takip eder mi?",
-                  answer: "Ders sonu notları ve ödev sinyalleri veli panelinde görünür.",
+                  answer: "Ders sonu notları ve ödev durumu veli panelinde görünür.",
                 },
               ]).map((item) => (
                 <article key={item.question} className="rounded-xl border border-paper-200 bg-paper-50 p-4">

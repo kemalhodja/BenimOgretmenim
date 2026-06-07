@@ -39,6 +39,17 @@ function ceilDiv(a: number, b: number): number {
   return Math.floor((a + b - 1) / b);
 }
 
+function groupLessonStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    open: "Katılıma açık",
+    teacher_assigned: "Öğretmen atandı",
+    scheduled: "Ders planlandı",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
 export default function StudentGroupLessonsPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -131,7 +142,7 @@ export default function StudentGroupLessonsPage() {
           plannedStart,
         }),
       });
-      setOk("Grup ders talebi oluşturuldu. Katıldığınız için tutar cüzdanınızda bloke edildi.");
+      setOk("Grup ders talebi oluşturuldu. Katıldığınız için tutar cüzdanınızda güvenceye alındı.");
       setTopic("");
       setTeacherId("");
       await load(token);
@@ -144,7 +155,7 @@ export default function StudentGroupLessonsPage() {
         return;
       }
       if (msg.includes("insufficient_balance") || msg.includes("[409]")) {
-        setError("Bakiye yetersiz: katılmak için 1000,00 TL bloke edilebilir bakiye gerekir.");
+        setError("Bakiye yetersiz: katılmak için 1000,00 TL kullanılabilir bakiye gerekir.");
         return;
       }
       if (msg.includes("[403]")) {
@@ -162,7 +173,7 @@ export default function StudentGroupLessonsPage() {
     setOk(null);
     try {
       await apiFetch(`/v1/group-lessons/${id}/join`, { method: "POST", token });
-      setOk("Katılım alındı. Payınız kadar tutar cüzdanınızda bloke edildi.");
+      setOk("Katılım alındı. Payınız kadar tutar cüzdanınızda güvenceye alındı.");
       await load(token);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "join_failed";
@@ -173,7 +184,7 @@ export default function StudentGroupLessonsPage() {
         return;
       }
       if (msg.includes("insufficient_balance") || msg.includes("[409]")) {
-        setError("Bakiye yetersiz: mevcut katılımcı sayısına göre payınızı bloke edemiyoruz.");
+        setError("Bakiye yetersiz: mevcut katılımcı sayısına göre payınızı güvenceye alamıyoruz.");
         return;
       }
       if (msg.includes("[403]")) {
@@ -207,7 +218,7 @@ export default function StudentGroupLessonsPage() {
           }
         : {
             title: "Cüzdan bakiyenizi hazırlayın",
-            body: "Grup dersine katılımda payınız kadar tutar blokeye alınır; bakiye yetersizse panelden yükleme yapın.",
+            body: "Grup dersine katılımda payınız kadar tutar cüzdanda tutulur; bakiye yetersizse panelden yükleme yapın.",
           };
 
   return (
@@ -216,11 +227,11 @@ export default function StudentGroupLessonsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Grup ders talepleri</h1>
           <p className="mt-1 text-sm text-paper-800/75">
-            Toplam ücret 1000 TL. Katılanlar arasında paylaştırılır; katılınca tutar bloke edilir,
+            Toplam ücret 1000 TL. Katılanlar arasında paylaştırılır; katılınca tutar cüzdanda güvenceye alınır,
             planlanan dersten 1 saat önce tahsil edilir (1 saat kala katılım kapanır).
           </p>
           <p className="mt-2 text-xs text-paper-800/55">
-            Katıldıktan sonra iptal yoktur. Blokaj ders bitimine kadar kalkmayabilir.
+            Katıldıktan sonra iptal yoktur. Güvenceye alınan tutar ders bitimine kadar tutulabilir.
           </p>
           <p className="mt-2 text-sm text-paper-800/65">
             Üst menüden talepler ve öğretmen arama. Ödeme/bakiye:{" "}
@@ -236,7 +247,7 @@ export default function StudentGroupLessonsPage() {
                 {tl(wallet.balanceMinor)} {wallet.currency}
               </span>
               {" · "}
-              Bloke:{" "}
+              Güvencede:{" "}
               <span className="font-mono font-medium text-paper-900">{tl(activeHoldMinor)} TL</span>
               {" · "}
               Kullanılabilir:{" "}
@@ -335,16 +346,16 @@ export default function StudentGroupLessonsPage() {
             </label>
             <label className="block sm:col-span-2">
               <div className="mb-1 text-sm font-medium text-paper-800">
-                Öğretmen ID (opsiyonel)
+                Öğretmen kodu (opsiyonel)
               </div>
               <input
                 value={teacherId}
                 onChange={(e) => setTeacherId(e.target.value)}
                 className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm font-mono outline-none focus:border-brand-400"
-                placeholder="UUID (boş bırakabilirsiniz)"
+                placeholder="Boş bırakabilirsiniz"
               />
               <div className="mt-1 text-xs text-paper-800/55">
-                Öğretmen profilinden seçim UI’ını bir sonraki adımda ekleyebiliriz.
+                Belirli bir öğretmenle ilerlemek istiyorsanız öğretmen profilindeki kodu buraya ekleyebilirsiniz.
               </div>
             </label>
           </div>
@@ -397,10 +408,10 @@ export default function StudentGroupLessonsPage() {
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <div className="text-sm font-semibold text-paper-900">
-                            {r.branch_name ?? `Branş #${r.branch_id}`} · {r.topic_text}
+                            {r.branch_name ?? "Branş bilgisi eksik"} · {r.topic_text}
                           </div>
                           <div className="mt-1 text-xs text-paper-800/55">
-                            {toLocal(r.planned_start)} · durum: {r.status}
+                            {toLocal(r.planned_start)} · {groupLessonStatusLabel(r.status)}
                           </div>
                           <div className="mt-2 text-xs text-paper-800/75">
                             Katılımcı: <span className="font-medium">{count}</span> · Kişi başı (şu an):
@@ -427,7 +438,7 @@ export default function StudentGroupLessonsPage() {
                             onClick={() => void join(r.id)}
                             className="rounded-xl bg-brand-700 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                           >
-                            {joinBusyId === r.id ? "…" : "Katıl (blokaj)"}
+                            {joinBusyId === r.id ? "…" : "Katıl ve ödemeyi güvenceye al"}
                           </button>
                         </div>
                       </div>

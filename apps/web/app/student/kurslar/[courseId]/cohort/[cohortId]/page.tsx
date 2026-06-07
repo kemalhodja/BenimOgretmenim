@@ -24,6 +24,16 @@ function toLocal(dt: string | null): string {
   return new Date(dt).toLocaleString("tr-TR");
 }
 
+function sessionStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    scheduled: "Planlandı",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+    missed: "Kaçırıldı",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
 export default function StudentCohortSessionsPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -224,11 +234,11 @@ export default function StudentCohortSessionsPage() {
                   className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
                 >
                   <div className="text-sm font-semibold text-paper-900">
-                    #{s.session_index}
+                    {s.session_index}. oturum
                     {s.title ? ` · ${s.title}` : ""}
                   </div>
                   <div className="mt-1 text-xs text-paper-800/55">
-                    {s.status} · {toLocal(s.scheduled_start)}
+                    {sessionStatusLabel(s.status)} · {toLocal(s.scheduled_start)}
                     {s.duration_minutes ? ` · ${s.duration_minutes} dk` : ""}
                   </div>
                   {s.meeting_url ? (

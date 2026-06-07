@@ -93,6 +93,27 @@ function tlMinor(v: string | number): string {
   return (n / 100).toFixed(2);
 }
 
+function holdStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    active: "Güvencede",
+    released: "Serbest bırakıldı",
+    captured: "Tahsil edildi",
+    refunded: "İade edildi",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
+function holdReasonLabel(reason: string): string {
+  const labels: Record<string, string> = {
+    group_lesson_join: "Grup dersi katılımı",
+    direct_booking: "Doğrudan ders",
+    course_enrollment: "Kurs kaydı",
+    lesson_package: "Ders paketi",
+  };
+  return labels[reason] ?? "Ödeme güvencesi";
+}
+
 function StudentPanelPageInner() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -455,7 +476,7 @@ function StudentPanelPageInner() {
             {[
               {
                 label: "1. Hedefi netleştir",
-                body: weeklyTargetSignals > 0 ? "Haftalık plan sinyaliniz var; sıradaki zayıf konuya odaklanın." : "Çalışma planı açıp sınav/hedef bilgisiyle ilk haftayı oluşturun.",
+                body: weeklyTargetSignals > 0 ? "Haftalık planınız hazır; sıradaki zayıf konuya odaklanın." : "Çalışma planı açıp sınav/hedef bilgisiyle ilk haftayı oluşturun.",
                 href: "/student/calisma",
                 cta: "Planı aç",
               },
@@ -467,7 +488,7 @@ function StudentPanelPageInner() {
               },
               {
                 label: "3. Öğretmen adaylarını karşılaştır",
-                body: "Doğrulanmış profil, ücret, yorum ve kalite sinyallerini kısa listede karşılaştırın.",
+                body: "Doğrulanmış profil, ücret, yorum ve kalite bilgilerini kısa listede karşılaştırın.",
                 href: "/ogretmenler?verifiedOnly=1&sort=recommended",
                 cta: "Öğretmen ara",
               },
@@ -514,7 +535,7 @@ function StudentPanelPageInner() {
             </div>
           </div>
           <p className="mt-3 text-xs leading-relaxed text-paper-800/60">
-            Veli bağlantısı kurulduğunda bu sinyaller ders katılımı, ödev durumu ve öğretmen notlarıyla birlikte
+            Veli bağlantısı kurulduğunda bu bilgiler ders katılımı, ödev durumu ve öğretmen notlarıyla birlikte
             takip edilebilir.
           </p>
           <div className="mt-4 grid gap-3 lg:grid-cols-3">
@@ -752,7 +773,7 @@ function StudentPanelPageInner() {
             </p>
           )}
           <p className="mt-1 text-xs text-paper-800/55">
-            Bloke:{" "}
+            Güvencede:{" "}
             <span className="font-mono font-medium text-paper-800">
               {tl(activeHoldMinor)} TL
             </span>
@@ -790,13 +811,13 @@ function StudentPanelPageInner() {
         </div>
 
         <div id="platform-aboneligi" className="mt-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-paper-900">Blokajlar</h2>
+          <h2 className="text-sm font-semibold text-paper-900">Güvenceye alınan tutarlar</h2>
           <p className="mt-1 text-xs text-paper-800/55">
-            Grup ders vb. için tutar bloke olabilir; ders bitene kadar sürebilir.
+            Grup ders vb. için tutar cüzdanda tutulabilir; ders bitene kadar sürebilir.
           </p>
           <div className="mt-3 overflow-x-auto rounded-xl border border-paper-100">
             {holds.length === 0 ? (
-              <p className="p-3 text-sm text-paper-800/55">Blokaj yok.</p>
+              <p className="p-3 text-sm text-paper-800/55">Güvenceye alınan tutar yok.</p>
             ) : (
               <table className="w-full min-w-[720px] text-left text-xs">
                 <thead className="border-b border-paper-100 bg-paper-50 text-paper-800/55">
@@ -804,7 +825,7 @@ function StudentPanelPageInner() {
                     <th className="px-2 py-2">Tarih</th>
                     <th className="px-2 py-2">Durum</th>
                     <th className="px-2 py-2">Sebep</th>
-                    <th className="px-2 py-2">Ref</th>
+                    <th className="px-2 py-2">Kayıt</th>
                     <th className="px-2 py-2 text-right">Tutar</th>
                   </tr>
                 </thead>
@@ -814,10 +835,10 @@ function StudentPanelPageInner() {
                       <td className="px-2 py-2 font-mono text-paper-800/75">
                         {new Date(h.created_at).toLocaleString("tr-TR")}
                       </td>
-                      <td className="px-2 py-2 text-paper-800">{h.status}</td>
-                      <td className="px-2 py-2 text-paper-800">{h.reason}</td>
+                      <td className="px-2 py-2 text-paper-800">{holdStatusLabel(h.status)}</td>
+                      <td className="px-2 py-2 text-paper-800">{holdReasonLabel(h.reason)}</td>
                       <td className="px-2 py-2 font-mono text-paper-800/75">
-                        {(h.ref_type ?? "—") + (h.ref_id ? `:${h.ref_id.slice(0, 8)}` : "")}
+                        {h.ref_type ? "İlgili ders/kayıt" : "Genel cüzdan kaydı"}
                       </td>
                       <td className="px-2 py-2 text-right font-mono text-paper-800">
                         {tlMinor(h.amount_minor)} {h.currency}
@@ -833,7 +854,7 @@ function StudentPanelPageInner() {
         <div className="mt-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-paper-900">Son cüzdan hareketleri</h2>
           <p className="mt-1 text-xs text-paper-800/55">
-            Yükleme, doğrudan ders bloke ödemesi vb. Son 25 kayıt.
+            Yükleme, doğrudan ders ödemesi vb. Son 25 kayıt.
           </p>
           <div className="mt-3 overflow-x-auto rounded-xl border border-paper-100">
             {ledger.length === 0 ? (

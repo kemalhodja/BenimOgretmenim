@@ -23,6 +23,15 @@ function minorToTl(n: number): string {
   return (n / 100).toFixed(2);
 }
 
+function deliveryModeLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    online: "Online",
+    in_person: "Yüz yüze",
+    hybrid: "Online veya yüz yüze",
+  };
+  return labels[mode] ?? mode;
+}
+
 export default function CoursesPage() {
   const [rows, setRows] = useState<CourseRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +62,7 @@ export default function CoursesPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Kurslar</h1>
-            <p className="mt-1 text-sm text-paper-800/75">Yayındaki kurslar — detaydan cohort seçilir.</p>
+            <p className="mt-1 text-sm text-paper-800/75">Yayındaki kursları inceleyin; detaydan size uygun grubu seçin.</p>
           </div>
           <AuthEntryLink
             path="/panel"
@@ -91,7 +100,7 @@ export default function CoursesPage() {
                   ) : null}
                 </div>
                 <div className="mt-1 text-xs text-paper-800/55">
-                  {c.teacher_display_name} · {c.branch_name ?? "—"} · {c.delivery_mode} ·{" "}
+                  {c.teacher_display_name} · {c.branch_name ?? "Branş bilgisi"} · {deliveryModeLabel(c.delivery_mode)} ·{" "}
                   {minorToTl(c.price_minor)} {c.currency}
                 </div>
               </Link>

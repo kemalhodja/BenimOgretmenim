@@ -95,9 +95,49 @@ function localLabel(value: string): string {
   return new Date(iso).toLocaleString("tr-TR");
 }
 
+function courseStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    draft: "Taslak",
+    published: "Yayında",
+    archived: "Arşivlendi",
+  };
+  return labels[status] ?? status;
+}
+
+function applicationStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    pending: "Bekliyor",
+    approved: "Onaylandı",
+    accepted: "Seçildi",
+    rejected: "Reddedildi",
+    withdrawn: "Geri çekildi",
+  };
+  return labels[status] ?? status;
+}
+
+function verificationStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    pending: "İnceleme bekliyor",
+    verified: "Doğrulandı",
+    rejected: "Reddedildi",
+  };
+  return labels[status] ?? status;
+}
+
+function walletHoldStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    active: "Cüzdanda güvencede",
+    captured: "Tahsil edildi",
+    released: "Serbest bırakıldı",
+    refunded: "İade edildi",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? status;
+}
+
 function enrollmentPaymentLabel(app: CourseApplications["studentApplications"][number]): string {
   const amount = app.enrollment_price_minor != null ? `${minorToTl(app.enrollment_price_minor)} ${app.enrollment_currency ?? "TRY"}` : null;
-  if (app.enrollment_payment_status === "wallet_held") return `${amount ?? "Ücret"} bloke edildi`;
+  if (app.enrollment_payment_status === "wallet_held") return `${amount ?? "Ücret"} güvencede`;
   if (app.enrollment_payment_status === "wallet_charged") return `${amount ?? "Ücret"} tahsil edildi`;
   if (app.enrollment_payment_status === "external_paid") return "Harici ödeme tamamlandı";
   if (app.enrollment_payment_status === "refunded") return "İptal/iade tamamlandı";
@@ -109,7 +149,7 @@ function enrollmentPaymentLabel(app: CourseApplications["studentApplications"][n
 function walletReadinessLabel(app: CourseApplications["studentApplications"][number], priceMinor: number): string {
   const available = minorValue(app.wallet_available_minor);
   if (app.status === "approved" && app.enrollment_payment_status === "wallet_held") {
-    return `Kullanılabilir: ${minorToTl(available)} TRY · ücret blokede`;
+    return `Kullanılabilir: ${minorToTl(available)} TRY · ücret güvencede`;
   }
   if (app.status === "approved" && app.enrollment_payment_status === "wallet_charged") {
     return "Tahsilat tamamlandı";
@@ -380,10 +420,10 @@ export default function AdminCoursesPage() {
               {opsStats.approvedStudents} onay · {opsStats.enrollments} kayıt
             </p>
             <p className="mt-1 text-xs text-paper-800/55">
-              {minorToTl(opsStats.heldAmount)} TL blokede · {minorToTl(opsStats.chargedAmount)} TL tahsil
+              {minorToTl(opsStats.heldAmount)} TL güvencede · {minorToTl(opsStats.chargedAmount)} TL tahsil
             </p>
             <p className="mt-1 text-xs text-paper-800/55">
-              {minorToTl(opsStats.teacherPayoutAmount)} TL öğretmen hakedişi · {minorToTl(opsStats.refundedAmount)} TL iade
+              {minorToTl(opsStats.teacherPayoutAmount)} TL öğretmen kazancı · {minorToTl(opsStats.refundedAmount)} TL iade
             </p>
           </div>
         </section>
@@ -442,7 +482,7 @@ export default function AdminCoursesPage() {
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 className="mt-1 min-h-24 w-full rounded-xl border border-paper-200 px-3 py-2 outline-none focus:border-brand-400"
-                placeholder="Kampanya hedefi, kimlere uygun olduğu, ders akışı ve başarı beklentisi..."
+                placeholder="Kampanya hedefi, kimlere uygun olduğu, ders planı ve başarı beklentisi..."
               />
             </label>
             <label className="text-sm">
@@ -572,7 +612,7 @@ export default function AdminCoursesPage() {
                       Otomatik kayıt: {selectedCourse.enrollment_count}
                     </span>
                     <span className="rounded-full bg-brand-50 px-2.5 py-1 font-semibold text-brand-900">
-                      Bloke: {minorToTl(minorValue(selectedCourse.wallet_held_amount_minor))} TL
+                      Güvencede: {minorToTl(minorValue(selectedCourse.wallet_held_amount_minor))} TL
                     </span>
                     <span className="rounded-full bg-paper-100 px-2.5 py-1 font-semibold text-paper-900">
                       Tahsil: {minorToTl(minorValue(selectedCourse.wallet_charged_amount_minor))} TL
@@ -581,7 +621,7 @@ export default function AdminCoursesPage() {
                       İade: {minorToTl(minorValue(selectedCourse.refunded_amount_minor))} TL
                     </span>
                     <span className="rounded-full bg-paper-100 px-2.5 py-1 font-semibold text-paper-900">
-                      Öğretmen hakedişi: {minorToTl(minorValue(selectedCourse.teacher_payout_amount_minor))} TL
+                      Öğretmen kazancı: {minorToTl(minorValue(selectedCourse.teacher_payout_amount_minor))} TL
                     </span>
                     {selectedStats.acceptedTeacher ? (
                       <span className="rounded-full bg-paper-100 px-2.5 py-1 font-semibold text-paper-900">
@@ -608,7 +648,10 @@ export default function AdminCoursesPage() {
                       applications.teacherApplications.map((app) => (
                         <article key={app.id} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
                           <div className="text-sm font-semibold text-paper-950">{app.teacher_display_name}</div>
-                          <div className="text-xs text-paper-800/55">{app.teacher_email} · {app.status} · {app.verification_status}</div>
+                          <div className="text-xs text-paper-800/55">
+                            {app.teacher_email} · {applicationStatusLabel(app.status)} ·{" "}
+                            {verificationStatusLabel(app.verification_status)}
+                          </div>
                           {app.message ? <p className="mt-2 text-xs text-paper-800/70">{app.message}</p> : null}
                           {app.experience_note ? <p className="mt-1 text-xs text-paper-800/55">{app.experience_note}</p> : null}
                           <div className="mt-3 flex gap-2">
@@ -645,7 +688,9 @@ export default function AdminCoursesPage() {
                         return (
                         <article key={app.id} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
                           <div className="text-sm font-semibold text-paper-950">{app.student_display_name}</div>
-                          <div className="text-xs text-paper-800/55">{app.student_email} · {app.status} · {app.cohort_title ?? "Grup"}</div>
+                          <div className="text-xs text-paper-800/55">
+                            {app.student_email} · {applicationStatusLabel(app.status)} · {app.cohort_title ?? "Grup"}
+                          </div>
                           <div className="mt-2 flex flex-wrap gap-2 text-xs">
                             <span className={`rounded-full px-2.5 py-1 font-semibold ring-1 ${
                               app.status === "approved" || walletReady
@@ -659,7 +704,7 @@ export default function AdminCoursesPage() {
                             </span>
                             {app.wallet_hold_status ? (
                               <span className="rounded-full bg-paper-100 px-2.5 py-1 font-semibold text-paper-800">
-                                Hold: {app.wallet_hold_status}
+                                {walletHoldStatusLabel(app.wallet_hold_status)}
                               </span>
                             ) : null}
                             {app.enrollment_charged_at ? (
@@ -703,7 +748,7 @@ export default function AdminCoursesPage() {
           <label className="text-sm">
             <span className="font-medium text-paper-800">Durum</span>
             <select
-              className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm capitalize"
+              className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value);
@@ -711,9 +756,9 @@ export default function AdminCoursesPage() {
               }}
             >
               <option value="">Tümü</option>
-              <option value="published">published</option>
-              <option value="draft">draft</option>
-              <option value="archived">archived</option>
+              <option value="published">Yayında</option>
+              <option value="draft">Taslak</option>
+              <option value="archived">Arşivlendi</option>
             </select>
           </label>
           <label className="text-sm">
@@ -811,7 +856,7 @@ export default function AdminCoursesPage() {
                       <div className="text-paper-900">{c.teacher_display_name}</div>
                       <div className="text-xs text-paper-800/75">{c.teacher_email ?? "Seçim bekliyor"}</div>
                     </td>
-                    <td className="px-3 py-2 capitalize text-paper-800">{c.status}</td>
+                    <td className="px-3 py-2 text-paper-800">{courseStatusLabel(c.status)}</td>
                     <td className="px-3 py-2 tabular-nums text-paper-800">
                       <div>Öğrenci: {minorToTl(c.price_minor)} {c.currency}</div>
                       {c.origin === "admin_campaign" ? (
@@ -829,13 +874,13 @@ export default function AdminCoursesPage() {
                             Bekleyen {c.student_application_pending_count} · Onay {c.student_application_approved_count} · Kayıt {c.enrollment_count}
                           </div>
                           <div className="mt-1 rounded-lg border border-brand-100 bg-brand-50 px-2 py-1 text-brand-950">
-                            Bloke {minorToTl(minorValue(c.wallet_held_amount_minor))} TL · Tahsil {minorToTl(minorValue(c.wallet_charged_amount_minor))} TL
+                            Güvencede {minorToTl(minorValue(c.wallet_held_amount_minor))} TL · Tahsil {minorToTl(minorValue(c.wallet_charged_amount_minor))} TL
                           </div>
                           <div className="mt-1 rounded-lg border border-amber-100 bg-amber-50 px-2 py-1 text-amber-950">
                             İade {minorToTl(minorValue(c.refunded_amount_minor))} TL ({c.refunded_count})
                           </div>
                           <div className="mt-1 rounded-lg border border-paper-200 bg-white px-2 py-1">
-                            Öğretmen hakedişi {minorToTl(minorValue(c.teacher_payout_amount_minor))} TL ({c.teacher_payout_count})
+                            Öğretmen kazancı {minorToTl(minorValue(c.teacher_payout_amount_minor))} TL ({c.teacher_payout_count})
                           </div>
                           <button
                             type="button"
@@ -856,13 +901,13 @@ export default function AdminCoursesPage() {
                     <td className="px-3 py-2">
                       <div className="flex flex-wrap items-center gap-1">
                         <select
-                          className="rounded border border-paper-200 px-1 py-1 text-xs capitalize"
+                          className="rounded border border-paper-200 px-1 py-1 text-xs"
                           value={draft[c.id] ?? c.status}
                           onChange={(e) => setDraft((d) => ({ ...d, [c.id]: e.target.value }))}
                         >
-                          <option value="draft">draft</option>
-                          <option value="published">published</option>
-                          <option value="archived">archived</option>
+                          <option value="draft">Taslak</option>
+                          <option value="published">Yayında</option>
+                          <option value="archived">Arşivlendi</option>
                         </select>
                         <button
                           type="button"

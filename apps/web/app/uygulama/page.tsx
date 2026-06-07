@@ -36,17 +36,17 @@ const quickAccess = [
 const mobileBenefits = [
   { title: "Ders linki hızlı açılır", body: "Canlı sınıf, bildirim ve panel bağlantıları ana ekrandan tek dokunuşla erişilir." },
   { title: "Soru fotoğrafı kolaylaşır", body: "Öğrenci ödev/soru gönderimini telefondan daha kısa sürede tamamlar." },
-  { title: "Öğretmen hızlı yanıtlar", body: "Teklif, soru havuzu ve ders akışları mobilde daha sık kontrol edilir." },
+  { title: "Öğretmen hızlı yanıtlar", body: "Teklifler, soru havuzu ve ders durumları mobilde daha hızlı kontrol edilir." },
 ] as const;
 
 export const metadata: Metadata = {
   title: "Telefona ekle",
   description:
-    "BenimÖğretmenim'i ana ekrana ekleyin (PWA). Android'de tek tık; iPhone'da Safari ile. Google Play ve App Store yayını için gerekenler.",
+    "BenimÖğretmenim'i telefonunuzun ana ekranına ekleyin. Android ve iPhone için kısa kurulum adımları.",
   alternates: { canonical: uygulamaUrl },
   openGraph: {
     type: "website",
-    title: "PWA — telefona ekle · BenimÖğretmenim",
+    title: "Telefona ekle · BenimÖğretmenim",
     description: "Ana ekrana ekleme ve tam ekran kullanım.",
     url: uygulamaUrl,
     locale: "tr_TR",
@@ -61,7 +61,7 @@ export default function UygulamaPage() {
         Telefona ekle
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-paper-800/85">
-        BenimÖğretmenim bir <strong>web uygulaması</strong> (PWA): ana ekrana kısayol ekleyerek tam
+        BenimÖğretmenim bir <strong>web uygulaması</strong>: ana ekrana kısayol ekleyerek tam
         ekran kullanabilirsiniz. Android’de Chrome; iPhone’da Safari ile kurulum yapılır.
       </p>
 
@@ -110,8 +110,7 @@ export default function UygulamaPage() {
             <strong>Ana ekrana ekle</strong> veya <strong>Yükle uygulama</strong>.
           </li>
           <li>
-            Kısayol oluşunca simgeye dokunarak uygulamayı <strong>tam ekran</strong> (standalone)
-            açabilirsiniz.
+            Kısayol oluşunca simgeye dokunarak uygulamayı <strong>tam ekran</strong> açabilirsiniz.
           </li>
         </ol>
       </section>
@@ -143,38 +142,21 @@ export default function UygulamaPage() {
       <section className="mt-10">
         <h2 className="text-lg font-semibold text-paper-950">Mağaza uygulaması</h2>
         <p className="mt-2 text-sm leading-relaxed text-paper-800/85">
-          Play veya App Store’da görünmek için siteye ek olarak bir mağaza paketi gerekir; tarayıcıdan
-          eklenen PWA kısayolu mağaza girişi sayılmaz.
+          Play Store veya App Store’da görünmek için mağaza kurallarına uygun ayrı bir yayın hazırlığı gerekir.
+          Ana ekrana ekleme, kullanıcıların hemen kullanabilmesi için en hızlı yoldur.
         </p>
         <details className="mt-4 rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/90">
           <summary className="cursor-pointer font-medium text-paper-900">
-            Mağaza yayını için hazırlık notları
+            Mağaza yayını için hazırlık kontrolü
           </summary>
           <ul className="mt-3 list-disc space-y-2 pl-5">
             <li>
-              <strong>Google Play:</strong> Çoğu kurulumda{" "}
-              <strong>Trusted Web Activity (TWA)</strong>; sitede{" "}
-              <code className="rounded bg-paper-100 px-1 font-mono text-xs">
-                /.well-known/assetlinks.json
-              </code>{" "}
-              ile imza eşlemesi. Repoda şablon:{" "}
-              <code className="rounded bg-paper-100 px-1 font-mono text-xs">
-                apps/twa-android/assetlinks.template.json
-              </code>
-              , adımlar:{" "}
-              <code className="rounded bg-paper-100 px-1 font-mono text-xs">
-                apps/twa-android/BUILD.txt
-              </code>
-              , iskelet:{" "}
-              <code className="rounded bg-paper-100 px-1 font-mono text-xs">apps/twa-android</code> (
-              <code className="rounded bg-paper-100 px-1 font-mono text-xs">
-                com.benimogretmenim.twa
-              </code>
-              ).
+              <strong>Google Play:</strong> Uygulama adı, ikon, ekran görüntüleri, gizlilik beyanı
+              ve site doğrulaması hazırlanır.
             </li>
             <li>
-              <strong>App Store:</strong> WebView / Capacitor benzeri iOS kabuğu ve Apple Developer
-              Program + inceleme gerekir.
+              <strong>App Store:</strong> Apple geliştirici hesabı, iPhone/iPad ekran görüntüleri,
+              gizlilik cevapları ve inceleme süreci gerekir.
             </li>
           </ul>
           <p className="mt-3 text-sm text-paper-800/85">

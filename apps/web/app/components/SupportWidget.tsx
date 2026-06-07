@@ -250,7 +250,7 @@ export function SupportWidget() {
   const contextOptions = useMemo(() => {
     const base = [
       { label: "Ödeme / iade", text: `Ödeme veya iade konusunda destek istiyorum.\nSayfa: ${pagePath}` },
-      { label: "Ders sorunu", text: `Ders akışıyla ilgili destek istiyorum.\nSayfa: ${pagePath}` },
+      { label: "Ders sorunu", text: `Ders süreciyle ilgili destek istiyorum.\nSayfa: ${pagePath}` },
       { label: "Kampanya", text: `Kampanya başvurusu veya kampanya incelemesi hakkında destek istiyorum.\nSayfa: ${pagePath}` },
       { label: "Veli bağlantısı", text: `Veli/öğrenci bağlantısı hakkında destek istiyorum.\nSayfa: ${pagePath}` },
     ];
@@ -284,7 +284,7 @@ export function SupportWidget() {
         <>
           <button
             type="button"
-            className="fixed inset-0 z-[55] bg-black/30"
+            className="fixed inset-0 z-[55] bg-brand-950/18 backdrop-blur-[1px]"
             aria-label="Destek panelini kapat"
             onClick={() => setOpen(false)}
           />

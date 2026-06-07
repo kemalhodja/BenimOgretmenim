@@ -17,6 +17,8 @@ type CampaignDetail = {
   lesson_count: number | null;
   price_minor: number;
   currency: string;
+  billing_model: "listing_fee" | "success_fee";
+  success_fee_bps: number;
   capacity: number | null;
   starts_at: string | null;
   branch_name: string | null;
@@ -161,7 +163,7 @@ export default function CampaignDetailPage() {
                 {campaign.district_name ? ` / ${campaign.district_name}` : ""}
               </p>
 
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="mt-5 grid gap-3 sm:grid-cols-4">
                 <div className="rounded-xl border border-paper-100 bg-paper-50 p-3">
                   <div className="text-xs text-paper-800/55">Ders sayısı</div>
                   <div className="mt-1 text-lg font-semibold text-paper-900">{campaign.lesson_count ?? "Esnek"}</div>
@@ -170,6 +172,12 @@ export default function CampaignDetailPage() {
                   <div className="text-xs text-brand-900/65">Kampanya fiyatı</div>
                   <div className="mt-1 text-lg font-semibold text-brand-950">
                     {minorToTl(campaign.price_minor)} {campaign.currency}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-warm-100 bg-warm-50/70 p-3">
+                  <div className="text-xs text-warm-900/65">Güvenli ödeme</div>
+                  <div className="mt-1 text-sm font-semibold text-warm-950">
+                    İlk ders sonrası iade hakkı
                   </div>
                 </div>
                 <div className="rounded-xl border border-paper-100 bg-paper-50 p-3">
@@ -209,8 +217,9 @@ export default function CampaignDetailPage() {
               <div className="rounded-xl border border-brand-200 bg-white p-5 shadow-sm">
                 <div className="text-sm font-semibold text-paper-900">Bu kampanyayla ilgileniyorum</div>
                 <p className="mt-2 text-xs leading-relaxed text-paper-800/65">
-                  Başvuru bıraktığınızda adınız, e-posta adresiniz ve mesajınız öğretmene görünür. Kampanya ödemesi
-                  platformdan alınmaz; detayları öğretmenle siz netleştirirsiniz.
+                  Başvuru bıraktığınızda adınız, e-posta adresiniz ve mesajınız öğretmene görünür. Ders/kurs ödemesi
+                  platform cüzdanında güvenceye alınır; ilk dersten sonra iade talebi oluşturabilirsiniz. İkinci derse
+                  girerseniz iade hakkı kapanır.
                 </p>
                 <textarea
                   value={message}

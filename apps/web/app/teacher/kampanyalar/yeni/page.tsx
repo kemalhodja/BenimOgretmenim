@@ -43,6 +43,7 @@ export default function NewTeacherCampaignPage() {
   const [priceTl, setPriceTl] = useState("10000");
   const [capacity, setCapacity] = useState("");
   const [startsAt, setStartsAt] = useState("");
+  const [billingModel, setBillingModel] = useState<"listing_fee" | "success_fee">("listing_fee");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,6 +96,7 @@ export default function NewTeacherCampaignPage() {
           currency: "TRY",
           capacity: capacityValue,
           startsAt: startsAtIso,
+          billingModel,
         }),
       });
       router.push("/teacher/kampanyalar");
@@ -108,7 +110,7 @@ export default function NewTeacherCampaignPage() {
       if (msg.includes("teacher_subscription_required")) {
         setError("Kampanya yayınlamak için aktif öğretmen aboneliği gerekir.");
       } else if (msg.includes("insufficient_balance")) {
-        setError("Bu kampanya için 1000 TL ilan ücreti gerekir. Öğretmen cüzdanınıza bakiye yükleyin.");
+        setError("Sabit yayın ücreti modelinde 1000 TL ilan ücreti gerekir. İsterseniz başarı bedelli modeli seçebilirsiniz.");
       } else if (msg.includes("[403]")) {
         setError("Bu sayfa yalnızca öğretmen hesabı içindir.");
       } else {
@@ -265,12 +267,47 @@ export default function NewTeacherCampaignPage() {
             </div>
 
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">
-              Kampanya göndermek için aktif öğretmen aboneliği gerekir. İlk kampanya ücretsizdir. İkinci
-              ve sonraki her yeni kampanya ilanında <span className="line-through text-amber-900/55">8.000 TL</span>{" "}
-              yerine 1000 TL öğretmen cüzdanından düşülür. Öğrenci kampanya bedelini
-              platforma ödemez; başvuru sonrası anlaşma taraflar arasında yapılır. İlan admin onayından sonra public
-              vitrinde görünür.
+              Kampanya göndermek için aktif öğretmen aboneliği gerekir. Öğrenci kampanya üzerinden kayıt olursa ödeme
+              platform cüzdanında güvenli ilerler; ilk ders sonrası iade hakkı vardır, ikinci dersten sonra iade kapanır.
             </div>
+
+            <section className="rounded-2xl border border-paper-200 bg-paper-50 p-4">
+              <div className="text-sm font-semibold text-paper-900">Kampanya ödeme modeli</div>
+              <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
+                Sabit yayın ücretiyle ilanı baştan ödeyebilir veya risksiz başlayıp öğrenci gelirse %10 platform başarı
+                bedeliyle devam edebilirsiniz.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setBillingModel("listing_fee")}
+                  aria-pressed={billingModel === "listing_fee"}
+                  className={`rounded-xl border p-3 text-left ${
+                    billingModel === "listing_fee" ? "border-brand-300 bg-white ring-2 ring-brand-100" : "border-paper-200 bg-white/70"
+                  }`}
+                >
+                  <div className="text-sm font-semibold text-paper-950">Sabit yayın ücreti</div>
+                  <p className="mt-1 text-xs leading-relaxed text-paper-800/70">
+                    İlk kampanya ücretsizdir. Sonraki ilanlarda <span className="line-through text-paper-800/45">8.000 TL</span>{" "}
+                    yerine 1000 TL cüzdandan düşülür.
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingModel("success_fee")}
+                  aria-pressed={billingModel === "success_fee"}
+                  className={`rounded-xl border p-3 text-left ${
+                    billingModel === "success_fee" ? "border-brand-300 bg-white ring-2 ring-brand-100" : "border-paper-200 bg-white/70"
+                  }`}
+                >
+                  <div className="text-sm font-semibold text-paper-950">Başarı bedelli yayınla</div>
+                  <p className="mt-1 text-xs leading-relaxed text-paper-800/70">
+                    Yayınlarken ücret ödemezsiniz. Öğrenci derse devam edip iade hakkı kapanınca brüt tutardan %10
+                    platform başarı bedeli ayrılır.
+                  </p>
+                </button>
+              </div>
+            </section>
 
             <button
               type="button"

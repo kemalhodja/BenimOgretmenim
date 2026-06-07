@@ -15,6 +15,16 @@ type UserRow = {
   last_login_at: string | null;
 };
 
+function roleLabel(role: string): string {
+  const labels: Record<string, string> = {
+    student: "Öğrenci",
+    teacher: "Öğretmen",
+    guardian: "Veli",
+    admin: "Admin",
+  };
+  return labels[role] ?? role;
+}
+
 function RoleEditor({
   u,
   token,
@@ -41,7 +51,7 @@ function RoleEditor({
     if (!dirty || lockedTeacher) return;
     if (
       !window.confirm(
-        `${u.email} kullanıcısının rolünü "${u.role}" → "${next}" olarak değiştirmek istediğinize emin misiniz?`,
+        `${u.email} kullanıcısının rolünü "${roleLabel(u.role)}" → "${roleLabel(next)}" olarak değiştirmek istediğinize emin misiniz?`,
       )
     ) {
       return;
@@ -65,7 +75,7 @@ function RoleEditor({
   if (lockedTeacher) {
     return (
       <div className="text-paper-800/75">
-        <span className="capitalize">teacher</span>
+        <span>Öğretmen</span>
         <div className="mt-0.5 max-w-[12rem] text-[11px] leading-snug text-paper-800/45">
           Öğretmen rolü kaldırılamaz (profil satırı). Destek süreciyle ilerleyin.
         </div>
@@ -77,14 +87,14 @@ function RoleEditor({
     <div className="min-w-[10rem]">
       <div className="flex flex-wrap items-center gap-2">
         <select
-          className="rounded-lg border border-paper-200 bg-white px-2 py-1 text-sm capitalize"
+          className="rounded-lg border border-paper-200 bg-white px-2 py-1 text-sm"
           value={next}
           onChange={(e) => setNext(e.target.value)}
         >
-          <option value="student">student</option>
-          <option value="teacher">teacher</option>
-          <option value="guardian">guardian</option>
-          <option value="admin">admin</option>
+          <option value="student">Öğrenci</option>
+          <option value="teacher">Öğretmen</option>
+          <option value="guardian">Veli</option>
+          <option value="admin">Admin</option>
         </select>
         <button
           type="button"
@@ -182,10 +192,10 @@ export default function AdminUsersPage() {
               }}
             >
               <option value="">Tümü</option>
-              <option value="student">student</option>
-              <option value="teacher">teacher</option>
-              <option value="guardian">guardian</option>
-              <option value="admin">admin</option>
+              <option value="student">Öğrenci</option>
+              <option value="teacher">Öğretmen</option>
+              <option value="guardian">Veli</option>
+              <option value="admin">Admin</option>
             </select>
           </label>
           <button
@@ -218,7 +228,7 @@ export default function AdminUsersPage() {
                 <th className="px-3 py-2">Rol değiştir</th>
                 <th className="px-3 py-2">Kayıt</th>
                 <th className="px-3 py-2">Son giriş</th>
-                <th className="px-3 py-2 font-mono text-[11px]">id</th>
+                <th className="px-3 py-2">Kayıt kodu</th>
               </tr>
             </thead>
             <tbody>
@@ -239,7 +249,7 @@ export default function AdminUsersPage() {
                   <tr key={u.id} className="border-b border-paper-100 last:border-0">
                     <td className="px-3 py-2 font-medium text-paper-900">{u.display_name}</td>
                     <td className="px-3 py-2 text-paper-800">{u.email}</td>
-                    <td className="px-3 py-2 capitalize text-paper-800/75">{u.role}</td>
+                    <td className="px-3 py-2 text-paper-800/75">{roleLabel(u.role)}</td>
                     <td className="px-3 py-2 align-top">
                       <RoleEditor u={u} token={token} myId={myId} onDone={() => void load()} />
                     </td>
@@ -247,7 +257,7 @@ export default function AdminUsersPage() {
                     <td className="px-3 py-2 text-paper-800/75">
                       {u.last_login_at ? new Date(u.last_login_at).toLocaleString("tr-TR") : "—"}
                     </td>
-                    <td className="max-w-[8rem] truncate px-3 py-2 font-mono text-[11px] text-paper-800/55">{u.id}</td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-paper-800/55">{u.id.slice(0, 8)}</td>
                   </tr>
                 ))
               )}

@@ -43,6 +43,35 @@ function toLocal(dt: string | null): string {
   return new Date(dt).toLocaleString("tr-TR");
 }
 
+function courseStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    draft: "Taslak",
+    published: "Yayında",
+    archived: "Arşivlendi",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
+function cohortStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    planned: "Planlanıyor",
+    active: "Aktif grup",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
+function deliveryModeLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    online: "Online",
+    in_person: "Yüz yüze",
+    hybrid: "Karma",
+  };
+  return labels[mode] ?? mode;
+}
+
 export default function TeacherCourseManagePage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -183,7 +212,7 @@ export default function TeacherCourseManagePage() {
       : cohorts.some((cohort) => cohort.status === "planned")
         ? {
             title: "Planlı grubu aktifleştirin",
-            body: "Aktif grup, kayıt ve oturum planlama akışını öğrenci tarafında daha güven verir.",
+            body: "Aktif grup, kayıt ve oturum planı öğrenci tarafında daha güven verir.",
             href: focusCohort ? `/teacher/kurslar/${courseId}/cohort/${focusCohort.id}` : null,
             label: "Oturumlara git",
           }
@@ -195,7 +224,7 @@ export default function TeacherCourseManagePage() {
               label: "Oturum ekle",
             }
           : {
-              title: "Kurs operasyonu hazır",
+              title: "Kurs yönetimi hazır",
               body: "Grup, kayıt ve oturum sayıları dengeli görünüyor. Sıradaki adım düzenli planlama.",
               href: focusCohort ? `/teacher/kurslar/${courseId}/cohort/${focusCohort.id}` : null,
               label: "Grubu yönet",
@@ -223,7 +252,7 @@ export default function TeacherCourseManagePage() {
           </h1>
           {course && (
             <p className="mt-1 text-sm text-paper-800/75">
-              {course.status} · {course.delivery_mode} · {minorToTl(course.price_minor)}{" "}
+              {courseStatusLabel(course.status)} · {deliveryModeLabel(course.delivery_mode)} · {minorToTl(course.price_minor)}{" "}
               {course.currency}
               {course.branch_name ? ` · ${course.branch_name}` : ""}
             </p>
@@ -292,7 +321,7 @@ export default function TeacherCourseManagePage() {
         </section>
 
         <section className="mt-10 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-paper-900">Yeni grup (cohort)</h2>
+          <h2 className="text-sm font-semibold text-paper-900">Yeni grup</h2>
           <p className="mt-1 text-xs text-paper-800/55">
             Grup açtıktan sonra ders oturumlarını o grubun sayfasından ekleyebilirsiniz.
           </p>
@@ -344,7 +373,7 @@ export default function TeacherCourseManagePage() {
                     <div>
                       <div className="text-sm font-semibold text-paper-900">{g.title}</div>
                       <div className="mt-1 text-xs text-paper-800/55">
-                        {g.status} · {g.enrolled_count} kayıt · {g.session_count} oturum
+                        {cohortStatusLabel(g.status)} · {g.enrolled_count} kayıt · {g.session_count} oturum
                         {g.capacity != null ? ` · kontenjan ${g.capacity}` : ""}
                       </div>
                       <div className="mt-2 text-xs text-paper-800/65">

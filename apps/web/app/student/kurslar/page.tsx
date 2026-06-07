@@ -26,6 +26,9 @@ type EnrollmentRow = {
   enrollment_currency: string;
   enrollment_payment_status: string;
   enrollment_charged_at: string | null;
+  refund_eligibility_status: string;
+  refund_requested_at: string | null;
+  refund_amount_minor: number | string;
 };
 
 type CourseApplicationRow = {
@@ -53,15 +56,25 @@ function applicationLabel(status: string): string {
 }
 
 function applicationHelp(status: string): string {
-  if (status === "approved") return "Admin uygunluğu onayladı; kampanya Kurslarım listesine eklendi ve bakiye blokesi açıldı.";
+  if (status === "approved") return "Admin uygunluğu onayladı; kampanya Kurslarım listesine eklendi ve ödeme cüzdanda güvenceye alındı.";
   if (status === "rejected") return "Kontenjan, seviye veya takvim nedeniyle uygun bulunmamış olabilir.";
   if (status === "pending") return "Admin kontenjan, öğretmen ve seviye uygunluğunu kontrol ediyor.";
   return "Başvuru durumu güncellendi.";
 }
 
+function courseGroupStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    planned: "Planlanıyor",
+    active: "Aktif grup",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
 function enrollmentPaymentLabel(row: EnrollmentRow): string {
   if (row.enrollment_payment_status === "wallet_held") {
-    return `${(row.enrollment_price_minor / 100).toFixed(2)} ${row.enrollment_currency} bloke`;
+    return `${(row.enrollment_price_minor / 100).toFixed(2)} ${row.enrollment_currency} güvencede`;
   }
   if (row.enrollment_payment_status === "wallet_charged") {
     return `${(row.enrollment_price_minor / 100).toFixed(2)} ${row.enrollment_currency} tahsil edildi`;
@@ -72,6 +85,15 @@ function enrollmentPaymentLabel(row: EnrollmentRow): string {
   return "Ücretsiz / ödeme yok";
 }
 
+function refundStatusLabel(row: EnrollmentRow): string {
+  if (row.refund_eligibility_status === "refund_requested") return "İade talebiniz admin incelemesinde.";
+  if (row.refund_eligibility_status === "eligible_after_first") return "İlk ders sonrası iade hakkınız açık.";
+  if (row.refund_eligibility_status === "locked_after_second") return "İkinci derse girildiği için iade hakkı kapandı.";
+  if (row.refund_eligibility_status === "refunded") return `İade edildi: ${(Number(row.refund_amount_minor ?? 0) / 100).toFixed(2)} ${row.enrollment_currency}`;
+  if (row.enrollment_payment_status === "wallet_held") return "Ödeme cüzdanınızda güvencede; ilk ders başlayınca tahsil edilir.";
+  return "İade hakkı ilk ders sonrası açılır.";
+}
+
 export default function StudentKurslarPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -79,6 +101,8 @@ export default function StudentKurslarPage() {
   const [rows, setRows] = useState<EnrollmentRow[]>([]);
   const [applications, setApplications] = useState<CourseApplicationRow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [refundBusyId, setRefundBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = getToken();
@@ -118,6 +142,33 @@ export default function StudentKurslarPage() {
       }
     });
   }, [token, load, router, pathname]);
+
+  async function requestRefund(enrollmentId: string) {
+    if (!token) return;
+    setRefundBusyId(enrollmentId);
+    setError(null);
+    setOk(null);
+    try {
+      await apiFetch(`/v1/courses/enrollments/${enrollmentId}/refund-request`, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ reason: "Öğrenci ilk ders sonrası iade talebi" }),
+      });
+      setOk("İade talebiniz alındı. Admin incelemesinden sonra sonuç bildirilecek.");
+      await load(token);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "refund_request_failed";
+      if (msg.includes("refund_not_allowed_after_second_lesson")) {
+        setError("İkinci derse girildiği için iade hakkı kapanmış.");
+      } else if (msg.includes("refund_not_available_yet")) {
+        setError("İade hakkı ilk ders sonrası açılır.");
+      } else {
+        setError(msg);
+      }
+    } finally {
+      setRefundBusyId(null);
+    }
+  }
 
   const stats = useMemo(() => {
     const active = rows.filter((row) => row.cohort_status === "active").length;
@@ -184,6 +235,11 @@ export default function StudentKurslarPage() {
         {error && (
           <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
+          </div>
+        )}
+        {ok && (
+          <div className="mt-6 rounded-xl border border-brand-200 bg-brand-50 p-4 text-sm text-brand-900">
+            {ok}
           </div>
         )}
 
@@ -282,16 +338,19 @@ export default function StudentKurslarPage() {
                   <div>
                     <div className="text-sm font-semibold text-paper-900">{e.course_title}</div>
                     <div className="mt-1 text-xs text-paper-800/55">
-                      Grup: {e.cohort_title} · {e.cohort_status} · Öğretmen: {e.teacher_display_name}
+                      Grup: {e.cohort_title} · {courseGroupStatusLabel(e.cohort_status)} · Öğretmen: {e.teacher_display_name}
                     </div>
                     <div className="mt-2 w-fit rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-100">
                       {enrollmentPaymentLabel(e)}
+                    </div>
+                    <div className="mt-2 rounded-xl border border-warm-200 bg-warm-50 px-3 py-2 text-xs leading-relaxed text-warm-950">
+                      {refundStatusLabel(e)}
                     </div>
                     <div className="mt-2 text-xs text-paper-800/75">
                       Sıradaki oturum:{" "}
                       {e.next_session_id ? (
                         <>
-                          #{e.next_session_index}
+                          {e.next_session_index}. oturum
                           {e.next_session_title ? ` · ${e.next_session_title}` : ""} ·{" "}
                           {toLocal(e.next_scheduled_start)}
                         </>
@@ -331,6 +390,16 @@ export default function StudentKurslarPage() {
                     >
                       Kurs sayfası
                     </Link>
+                    {e.refund_eligibility_status === "eligible_after_first" ? (
+                      <button
+                        type="button"
+                        disabled={refundBusyId === e.enrollment_id}
+                        onClick={() => void requestRefund(e.enrollment_id)}
+                        className="rounded-xl border border-warm-300 bg-warm-50 px-3 py-2 text-center text-sm font-semibold text-warm-950 disabled:opacity-50"
+                      >
+                        {refundBusyId === e.enrollment_id ? "Gönderiliyor…" : "İade talep et"}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>

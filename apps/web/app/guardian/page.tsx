@@ -416,7 +416,7 @@ export default function GuardianPage() {
               </div>
               <h2 className="mt-1 text-lg font-semibold text-paper-900">Katılım, soru ve risk özeti</h2>
               <p className="mt-1 text-sm leading-relaxed text-paper-800/65">
-                Son 7 günde oluşan ders, soru ve öğretmen notu sinyalleri.
+                Son 7 günde oluşan ders, soru ve öğretmen notu kayıtları.
               </p>
             </div>
             <div className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-900">
@@ -425,7 +425,7 @@ export default function GuardianPage() {
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
             {[
-              ["Katılım sinyali", weeklyNotifications.length],
+              ["Katılım kaydı", weeklyNotifications.length],
               ["Çözülen/iletilen soru", weeklyHomeworkSignals],
               ["Kazanım testi", weeklyCurriculumAttempts.length],
               ["Öğretmen notu", weeklyProgress.length + weeklyLessonSignals],
@@ -450,12 +450,12 @@ export default function GuardianPage() {
             {[
               {
                 title: "Ders katılımını kontrol et",
-                body: weeklyLessonSignals > 0 ? "Bu hafta ders sinyali var; öğretmen notunu okuyun." : "Bu hafta tamamlanan ders sinyali yoksa öğrenciyle takvim planını netleştirin.",
+                body: weeklyLessonSignals > 0 ? "Bu hafta ders kaydı var; öğretmen notunu okuyun." : "Bu hafta tamamlanan ders kaydı yoksa öğrenciyle takvim planını netleştirin.",
                 href: "#bildirimler",
               },
               {
                 title: "Soru/ödev temposunu takip et",
-                body: weeklyHomeworkSignals > 0 ? "Soru çözüm akışı oluşmuş; çözüm kalitesini ve tekrar notunu kontrol edin." : "Öğrenci takıldığı konuyu soru havuzuna göndermemiş olabilir.",
+                body: weeklyHomeworkSignals > 0 ? "Soru çözümü yapılmış; çözüm kalitesini ve tekrar notunu kontrol edin." : "Öğrenci takıldığı konuyu soru havuzuna göndermemiş olabilir.",
                 href: "#bildirimler",
               },
               {
@@ -635,7 +635,7 @@ export default function GuardianPage() {
               </div>
               <h2 className="mt-1 text-base font-semibold text-paper-900">{familyRisk}</h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
-                Bu özet; ders bildirimleri, konu kavrama sinyalleri, deneme sonuçları ve çalışma planını birlikte okur.
+                Bu özet; ders bildirimleri, konu kavrama durumu, deneme sonuçları ve çalışma planını birlikte okur.
               </p>
             </div>
             <Link
@@ -648,7 +648,7 @@ export default function GuardianPage() {
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             {[
               ["Okunmamış", `${unreadNotifications} bildirim`, "Ders, ödev ve ödeme dışı gelişmeler burada toplanır."],
-              ["Kavrama", averageMastery == null ? "İlk ders bekleniyor" : percentLabel(averageMastery * 100), "Ders sonu özetlerinden konu bazlı sinyal çıkar."],
+              ["Kavrama", averageMastery == null ? "İlk ders bekleniyor" : percentLabel(averageMastery * 100), "Ders sonu özetlerinden konu bazlı durum çıkar."],
               ["Odak", focusTopics.length ? focusTopics.slice(0, 2).join(", ") : "Veri bekleniyor", "Deneme yanlışları tekrar planını besler."],
             ].map(([title, value, body]) => (
               <div key={title} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
@@ -666,7 +666,7 @@ export default function GuardianPage() {
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
                 Veli güven merkezi
               </div>
-              <h2 className="mt-2 text-lg font-semibold text-paper-900">Konu takibi ve risk sinyalleri</h2>
+              <h2 className="mt-2 text-lg font-semibold text-paper-900">Konu takibi ve risk durumu</h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">
                 Ders özetleri, deneme yanlışları ve haftalık plan birlikte takip edilir.
               </p>
@@ -691,7 +691,7 @@ export default function GuardianPage() {
                     <div className="text-xs font-medium text-brand-900">{percentLabel(row.mastery * 100)}</div>
                   </div>
                   <div className="mt-1 text-xs text-paper-800/55">
-                    {row.student_display_name} · {row.evidence_count} ders sinyali
+                    {row.student_display_name} · {row.evidence_count} ders kaydı
                   </div>
                   <div className="mt-2 h-2 overflow-hidden rounded-full bg-paper-200">
                     <div

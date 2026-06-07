@@ -56,6 +56,26 @@ function minorToTl(n: number): string {
   return (n / 100).toFixed(2);
 }
 
+function cohortStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    planned: "Planlandı",
+    open: "Kayda açık",
+    active: "Devam ediyor",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+  };
+  return labels[status] ?? "Durum güncelleniyor";
+}
+
+function deliveryModeLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    online: "Online",
+    in_person: "Yüz yüze",
+    hybrid: "Online veya yüz yüze",
+  };
+  return labels[mode] ?? mode;
+}
+
 export default function CourseDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -121,7 +141,11 @@ export default function CourseDetailPage() {
         },
       );
       if ("enrollment" in raw) {
-        setOk(raw.walletHold ? "Kayıt alındı; kurs ücreti bakiyenizde bloke edildi." : "Kayıt alındı.");
+        setOk(
+          raw.walletHold
+            ? "Kayıt alındı; kurs ücreti cüzdanınızda güvenceye alındı. İlk ders sonrası iade hakkınız açılır."
+            : "Kayıt alındı.",
+        );
         const r = await apiFetch<{ course: CourseDetail; cohorts: CohortRow[]; lessonSchedule?: LessonScheduleRow[] }>(
           `/v1/courses/${courseId}`,
         );
@@ -232,28 +256,29 @@ export default function CourseDetailPage() {
               {course.title}
             </h1>
             <p className="mt-1 text-sm text-paper-800/75">
-              {course.teacher_display_name} · {course.branch_name ?? "—"} · {course.delivery_mode} ·{" "}
+              {course.teacher_display_name} · {course.branch_name ?? "Branş bilgisi"} · {deliveryModeLabel(course.delivery_mode)} ·{" "}
               {minorToTl(course.price_minor)} {course.currency}
             </p>
             {course.origin === "admin_campaign" ? (
               <div className="mt-3 rounded-2xl border border-brand-200 bg-brand-50/70 p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">
-                  Admin kurs kampanyası
+                  Kurs kampanyası
                 </div>
                 <h2 className="mt-1 text-base font-semibold text-paper-950">
-                  Ön kayıtla ilerleyen ayrıntılı kurs kampanyası
+                  Bu kurs önce ön kayıtla ilerler
                 </h2>
                 <p className="mt-1 text-sm text-paper-800/70">
-                  Öğrenci fiyatı: {minorToTl(course.price_minor)} {course.currency}. Öğretmen seçimi ve ön kayıt onayı admin tarafından yönetilir.
+                  Kurs ücreti {minorToTl(course.price_minor)} {course.currency}. Ekibimiz kontenjanı, seviyeyi ve öğretmen uygunluğunu kontrol eder.
                 </p>
                 {course.campaign_details_jsonb?.applicationNote ? (
                   <p className="mt-2 text-xs text-paper-800/60">{course.campaign_details_jsonb.applicationNote}</p>
                 ) : null}
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   {[
-                    ["1", "Ön kayıt", "Öğrenci hedefini ve uygunluğunu iletir."],
-                    ["2", "Admin kontrolü", "Kontenjan, seviye ve öğretmen seçimi netleşir."],
-                    ["3", "Kayıt adımı", "Uygunsa bakiye bloke edilir; kurs başlayınca tahsil edilir."],
+                    ["1", "Ön kayıt", "Hedefinizi ve seviyenizi yazarsınız."],
+                    ["2", "Uygunluk kontrolü", "Kontenjan, seviye ve öğretmen uygunluğu kontrol edilir."],
+                    ["3", "Ödeme güvencesi", "Uygunsa tutar cüzdanınızda bekletilir; ilk ders başlayınca tahsil edilir."],
+                    ["4", "İade hakkı", "İlk dersten sonra iade isteyebilirsiniz. İkinci derse girerseniz bu hak kapanır."],
                   ].map(([step, title, body]) => (
                     <div key={step} className="rounded-xl bg-white/80 p-3 text-xs ring-1 ring-brand-100">
                       <div className="font-semibold text-brand-900">Adım {step}</div>
@@ -289,7 +314,7 @@ export default function CourseDetailPage() {
                       {course.campaign_details_jsonb?.requirements?.map((item) => <li key={item}>• {item}</li>)}
                     </ul>
                   ) : (
-                    <p className="mt-2 text-sm text-paper-800/60">Ön kayıt sonrası admin uygunluğu kontrol eder.</p>
+                    <p className="mt-2 text-sm text-paper-800/60">Ön kayıt sonrası ekibimiz uygunluğu kontrol eder.</p>
                   )}
                 </div>
                 <div className="rounded-xl border border-paper-200 bg-paper-50 p-4 md:col-span-2">
@@ -304,18 +329,18 @@ export default function CourseDetailPage() {
                     </ul>
                   ) : (
                     <p className="mt-2 text-sm text-paper-800/60">
-                      {cohorts[0]?.schedule_jsonb?.summary ?? "Ders gün/saatleri admin tarafından netleştirilecek."}
+                      {cohorts[0]?.schedule_jsonb?.summary ?? "Ders gün/saatleri ekibimiz tarafından netleştirilecek."}
                     </p>
                   )}
                 </div>
               </div>
             ) : null}
 
-            <h2 className="mt-8 text-base font-semibold text-paper-900">Cohortlar</h2>
+            <h2 className="mt-8 text-base font-semibold text-paper-900">Kurs grupları</h2>
             <p className="mt-1 text-xs text-paper-800/55">
               {course.origin === "admin_campaign"
-                ? "Ön kayıt için öğrenci hesabıyla giriş yapın; admin onayında bakiye bloke edilir, kurs başlayınca tahsil edilir."
-                : "Başlangıç tarihine göre listelenir. Kayıtta bakiye bloke edilir, kurs başlayınca tahsil edilir."}
+                ? "Ön kayıt için öğrenci hesabıyla giriş yapın. Başvurunuz uygun görülürse ödeme cüzdanınızda güvenceye alınır."
+                : "Kayıt olunca ödeme cüzdanınızda güvenceye alınır. İlk ders başlayınca tahsil edilir. İkinci derse girerseniz iade hakkı kapanır."}
             </p>
             {course.origin === "admin_campaign" ? (
               <label className="mt-4 block text-sm">
@@ -331,7 +356,7 @@ export default function CourseDetailPage() {
 
             <div className="mt-4 space-y-3">
               {cohorts.length === 0 ? (
-                <div className="text-sm text-paper-800/75">Şu an açık cohort yok.</div>
+                <div className="text-sm text-paper-800/75">Şu an açık grup yok.</div>
               ) : (
                 cohorts.map((c) => {
                   const full =
@@ -343,7 +368,7 @@ export default function CourseDetailPage() {
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="text-sm font-semibold text-paper-900">{c.title}</div>
-                        <div className="text-xs text-paper-800/55">{c.status}</div>
+                        <div className="text-xs text-paper-800/55">{cohortStatusLabel(c.status)}</div>
                       </div>
                       <div className="mt-1 text-xs text-paper-800/75">
                         Başlangıç: {c.starts_at ? new Date(c.starts_at).toLocaleString("tr-TR") : "—"}

@@ -20,6 +20,25 @@ type ReqRow = {
   student_email: string;
 };
 
+function requestStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    open: "Açık",
+    matched: "Eşleşti",
+    cancelled: "İptal edildi",
+    expired: "Süresi doldu",
+  };
+  return labels[status] ?? status;
+}
+
+function deliveryModeLabel(mode: string): string {
+  const labels: Record<string, string> = {
+    online: "Online",
+    in_person: "Yüz yüze",
+    hybrid: "Online veya yüz yüze",
+  };
+  return labels[mode] ?? mode;
+}
+
 export default function AdminLessonRequestsPage() {
   const token = useRequireAdmin();
   const [status, setStatus] = useState("open");
@@ -56,7 +75,7 @@ export default function AdminLessonRequestsPage() {
 
   async function cancelRequest(id: string) {
     if (!token) return;
-    if (!window.confirm("Bu ders talebini iptal (cancelled) olarak işaretlemek istiyor musunuz?")) return;
+    if (!window.confirm("Bu ders talebini iptal edildi olarak işaretlemek istiyor musunuz?")) return;
     setBusyId(id);
     setError(null);
     try {
@@ -91,22 +110,22 @@ export default function AdminLessonRequestsPage() {
         <label className="mt-4 block max-w-sm text-sm">
           <span className="font-medium text-paper-800">Durum</span>
           <select
-            className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm capitalize"
+            className="mt-1 w-full rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm"
             value={status}
             onChange={(e) => setStatus(e.target.value)}
           >
             <option value="">Tümü</option>
-            <option value="open">open</option>
-            <option value="matched">matched</option>
-            <option value="cancelled">cancelled</option>
-            <option value="expired">expired</option>
+            <option value="open">Açık</option>
+            <option value="matched">Eşleşti</option>
+            <option value="cancelled">İptal edildi</option>
+            <option value="expired">Süresi doldu</option>
           </select>
         </label>
 
         <div className="mt-3 flex flex-wrap gap-3 text-xs text-paper-800/75">
           {Object.entries(summary).map(([k, v]) => (
-            <span key={k} className="rounded-lg bg-paper-100 px-2 py-1 capitalize">
-              {k}: <strong className="tabular-nums text-paper-900">{v}</strong>
+            <span key={k} className="rounded-lg bg-paper-100 px-2 py-1">
+              {requestStatusLabel(k)}: <strong className="tabular-nums text-paper-900">{v}</strong>
             </span>
           ))}
         </div>
@@ -124,7 +143,7 @@ export default function AdminLessonRequestsPage() {
                 <th className="px-3 py-2">Durum</th>
                 <th className="px-3 py-2">Teslim</th>
                 <th className="px-3 py-2">Oluşturulma</th>
-                <th className="px-3 py-2 font-mono text-[11px]">id</th>
+                <th className="px-3 py-2">Kayıt kodu</th>
                 <th className="px-3 py-2">İşlem</th>
               </tr>
             </thead>
@@ -162,10 +181,10 @@ export default function AdminLessonRequestsPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2 capitalize text-paper-800">{r.status}</td>
-                    <td className="px-3 py-2 text-paper-800/75">{r.delivery_mode}</td>
+                    <td className="px-3 py-2 text-paper-800">{requestStatusLabel(r.status)}</td>
+                    <td className="px-3 py-2 text-paper-800/75">{deliveryModeLabel(r.delivery_mode)}</td>
                     <td className="px-3 py-2 text-paper-800/75">{new Date(r.created_at).toLocaleString("tr-TR")}</td>
-                    <td className="max-w-[7rem] truncate px-3 py-2 font-mono text-[11px] text-paper-800/55">{r.id}</td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-paper-800/55">{r.id.slice(0, 8)}</td>
                     <td className="px-3 py-2">
                       {(r.status === "open" || r.status === "matched") && (
                         <button

@@ -42,6 +42,15 @@ function priorityLabel(priority: string): string {
   return "Normal";
 }
 
+function threadStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    open: "Açık",
+    closed: "Kapandı",
+    pending: "Yanıt bekliyor",
+  };
+  return labels[status] ?? status;
+}
+
 function priorityClass(priority: string): string {
   if (priority === "urgent") return "bg-red-50 text-red-800";
   if (priority === "high") return "bg-amber-50 text-amber-900";
@@ -51,11 +60,11 @@ function priorityClass(priority: string): string {
 
 function slaLabel(t: ThreadRow): string {
   if (t.resolved_at) return "Çözüldü";
-  if (!t.first_response_due_at) return "SLA yok";
+  if (!t.first_response_due_at) return "Yanıt hedefi yok";
   if ((t.staff_response_count ?? 0) > 0) return "Yanıtlandı";
   const due = new Date(t.first_response_due_at).getTime();
   const diff = due - Date.now();
-  if (diff <= 0) return "SLA geçti";
+  if (diff <= 0) return "Yanıt süresi geçti";
   const minutes = Math.ceil(diff / 60_000);
   if (minutes < 60) return `${minutes} dk kaldı`;
   return `${Math.ceil(minutes / 60)} sa kaldı`;
@@ -278,7 +287,7 @@ export default function AdminSupportPage() {
                           </span>
                           <span
                             className={`rounded-full px-2 py-0.5 font-medium ${
-                              slaLabel(t) === "SLA geçti" ? "bg-red-50 text-red-800" : "bg-paper-100 text-paper-800"
+                              slaLabel(t) === "Yanıt süresi geçti" ? "bg-red-50 text-red-800" : "bg-paper-100 text-paper-800"
                             }`}
                           >
                             {slaLabel(t)}
@@ -293,7 +302,7 @@ export default function AdminSupportPage() {
                           {t.context_path ? `Sayfa: ${t.context_path}` : "Sayfa bilgisi yok"}
                         </div>
                         <div className="mt-1 text-[10px] uppercase text-paper-800/45">
-                          {t.status} · {new Date(t.updated_at).toLocaleString("tr-TR")}
+                          {threadStatusLabel(t.status)} · {new Date(t.updated_at).toLocaleString("tr-TR")}
                         </div>
                       </button>
                     </li>
@@ -321,7 +330,7 @@ export default function AdminSupportPage() {
                       {priorityLabel(threadMeta.priority)}
                     </span>
                     <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
-                      {threadMeta.status}
+                      {threadStatusLabel(threadMeta.status)}
                     </span>
                     <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
                       {slaLabel(threadMeta)}

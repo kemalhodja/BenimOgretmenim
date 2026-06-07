@@ -237,10 +237,6 @@ async function resolveCourseAccess(sessionId: string, userId: string, role: stri
   ) {
     await settleCourseEnrollmentHold(enrollmentForAccess.id);
   }
-  if (row.scheduled_start && new Date(row.scheduled_start).getTime() <= Date.now()) {
-    await settleCourseSessionTeacherPayout(row.id);
-  }
-
   const participants = await pool.query(
     `select 'student' as role, u.display_name
      from course_enrollments ce
@@ -590,6 +586,14 @@ classroom.post("/:kind/:sessionId/attendance", requireAuth, async (c) => {
       JSON.stringify(parsed.data.clientMeta ?? {}),
     ],
   );
+
+  if (
+    kind === "course-sessions" &&
+    role === "student" &&
+    (parsed.data.eventType === "join" || parsed.data.eventType === "heartbeat")
+  ) {
+    await settleCourseSessionTeacherPayout(c.req.param("sessionId"));
+  }
 
   const attendance = await loadAttendance(access.subjectType, access.subjectId);
   return c.json({ ok: true, attendance });

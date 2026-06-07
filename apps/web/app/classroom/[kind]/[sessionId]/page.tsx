@@ -81,6 +81,27 @@ function toLocal(value: string | null): string {
   return new Date(value).toLocaleString("tr-TR");
 }
 
+function roomStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    scheduled: "Planlandı",
+    live: "Canlı",
+    completed: "Tamamlandı",
+    cancelled: "İptal edildi",
+    no_show: "Katılım olmadı",
+  };
+  return labels[status] ?? "Durum güncelleniyor";
+}
+
+function recordingStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    processing: "Hazırlanıyor",
+    ready: "İzlemeye hazır",
+    failed: "Hazırlanamadı",
+    hidden: "Gizli",
+  };
+  return labels[status] ?? "Durum güncelleniyor";
+}
+
 function whiteboardImage(note: RoomResponse["notes"][number]): string | null {
   const value = note.whiteboard_jsonb;
   if (!value || typeof value !== "object") return null;
@@ -502,7 +523,7 @@ export default function ClassroomPage() {
               {room?.title ?? "Canlı sınıf"}
             </h1>
             <p className="mt-1 text-sm text-paper-800/70">
-              {room ? `${room.status} · ${toLocal(room.scheduledStart)} · ${room.durationMinutes ?? "—"} dk` : "Yükleniyor"}
+              {room ? `${roomStatusLabel(room.status)} · ${toLocal(room.scheduledStart)} · ${room.durationMinutes ?? "—"} dk` : "Yükleniyor"}
             </p>
             <p className="mt-1 text-xs text-paper-800/55">
               Gerçek zamanlı:{" "}
@@ -807,7 +828,7 @@ export default function ClassroomPage() {
                     <li key={r.id} className="rounded-lg bg-paper-50 p-2">
                       <div className="font-medium text-paper-900">{r.title}</div>
                       <div className="text-xs text-paper-800/55">
-                        {r.status} · {new Date(r.created_at).toLocaleString("tr-TR")}
+                        {recordingStatusLabel(r.status)} · {new Date(r.created_at).toLocaleString("tr-TR")}
                         {r.duration_seconds ? ` · ${Math.round(r.duration_seconds / 60)} dk` : ""}
                       </div>
                       {r.public_url ? (

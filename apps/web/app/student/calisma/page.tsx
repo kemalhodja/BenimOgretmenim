@@ -155,6 +155,15 @@ type Overview = {
   curriculumAttempts: CurriculumAttempt[];
 };
 
+function planItemStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    todo: "Yapılacak",
+    done: "Tamamlandı",
+    skipped: "Atlandı",
+  };
+  return labels[status] ?? "Durum güncellendi";
+}
+
 function topicList(value: unknown): string {
   if (!Array.isArray(value)) return "—";
   const values = value.map((x) => String(x)).filter(Boolean);
@@ -430,7 +439,7 @@ export default function StudentCalismaPage() {
   const coachCard = !latestPlan
     ? {
         title: "İlk çalışma planını oluştur",
-        body: "Hedef sınav, haftalık dakika ve zayıf konuları girerek 7 günlük net bir çalışma akışı başlat.",
+        body: "Hedef sınav, haftalık dakika ve zayıf konuları girerek 7 günlük net bir çalışma planı başlat.",
         href: "#plan-olustur",
         cta: "Plan formuna git",
       }
@@ -843,7 +852,7 @@ export default function StudentCalismaPage() {
                       }`}
                     >
                       <div className="text-xs font-medium text-paper-800/55">
-                        Gün {item.dayIndex} · {item.minutes} dk · {item.status}
+                        Gün {item.dayIndex} · {item.minutes} dk · {planItemStatusLabel(item.status)}
                       </div>
                       <div className="mt-1 font-medium text-paper-900">{item.title}</div>
                       <div className="mt-3 flex flex-wrap gap-2">

@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
-/* Marka: canlı cyan + mercan (yeşilimsi mint yok); logo ile uyumlu sıcak vurgu. */
+/* Marka: güven veren petrol-mavi + sıcak şeftali; koyu kontrast yerine samimi profesyonel ton. */
 :root {
-  --background: #f6fafc;
-  --foreground: #0a1620;
+  --background: #f7faf8;
+  --foreground: #24333c;
 }
 
 @theme inline {
@@ -12,39 +12,39 @@
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 
-  --color-paper-50: #f4fafc;
-  --color-paper-100: #e8f2f7;
-  --color-paper-200: #d2e6ef;
-  --color-paper-300: #9bb8c8;
-  --color-paper-800: #1a2832;
-  --color-paper-900: #111b22;
-  --color-paper-950: #070d11;
+  --color-paper-50: #f7faf8;
+  --color-paper-100: #edf4f1;
+  --color-paper-200: #d9e8e4;
+  --color-paper-300: #b8cec8;
+  --color-paper-800: #3f5158;
+  --color-paper-900: #2d3d45;
+  --color-paper-950: #24333c;
 
-  /* Marka ana: cyan / turkuaz (yeşil değil; daha canlı mavi) */
-  --color-brand-50: #ecfeff;
-  --color-brand-100: #cffafe;
-  --color-brand-200: #a5f3fc;
-  --color-brand-300: #67e8f9;
-  --color-brand-400: #22d3ee;
-  --color-brand-500: #14b8d6;
-  --color-brand-600: #0e9bb8;
-  --color-brand-700: #0c7f99;
-  --color-brand-800: #0a6680;
-  --color-brand-900: #084c60;
-  --color-brand-950: #052838;
+  /* Marka ana: sağlık/finans güveni veren yumuşak petrol-mavi. */
+  --color-brand-50: #eef9f8;
+  --color-brand-100: #d8efed;
+  --color-brand-200: #b8dedb;
+  --color-brand-300: #88c7c6;
+  --color-brand-400: #58aaa9;
+  --color-brand-500: #3f9398;
+  --color-brand-600: #327986;
+  --color-brand-700: #2a6574;
+  --color-brand-800: #255769;
+  --color-brand-900: #20495a;
+  --color-brand-950: #1b3948;
 
-  /* Mercan — biraz daha parlak üst tonlar */
-  --color-warm-50: #fff7f3;
-  --color-warm-100: #ffe8de;
-  --color-warm-200: #ffcbb8;
-  --color-warm-300: #ff9f7a;
-  --color-warm-400: #ff7a4d;
-  --color-warm-500: #f2643a;
-  --color-warm-600: #e04d28;
-  --color-warm-700: #bc3d22;
-  --color-warm-800: #96321f;
-  --color-warm-900: #73281a;
-  --color-warm-950: #40150e;
+  /* Sıcak vurgu: agresif turuncu yerine sakin şeftali/kum tonu. */
+  --color-warm-50: #fff8f1;
+  --color-warm-100: #feeddc;
+  --color-warm-200: #fbd8b9;
+  --color-warm-300: #f5bd8e;
+  --color-warm-400: #eba36b;
+  --color-warm-500: #dc874d;
+  --color-warm-600: #c66f3b;
+  --color-warm-700: #a85a32;
+  --color-warm-800: #86482d;
+  --color-warm-900: #6b3c28;
+  --color-warm-950: #3d2116;
 
   /**
    * Uyum katmanı: eski sayfalarda kalan zinc-* sınıfları,
@@ -63,15 +63,15 @@
 }
 
 ::selection {
-  background-color: color-mix(in srgb, #22d3ee 32%, #ffcbb8 34%);
-  color: #052838;
+  background-color: color-mix(in srgb, #88c7c6 38%, #fbd8b9 34%);
+  color: #1b3948;
 }
 
 body {
   background-color: var(--background);
   background-image:
-    radial-gradient(100% 50% at 100% 0%, rgb(242 100 58 / 0.06), transparent 50%),
-    radial-gradient(90% 45% at 0% 15%, rgb(14 184 212 / 0.06), transparent 48%);
+    radial-gradient(100% 50% at 100% 0%, rgb(235 163 107 / 0.08), transparent 50%),
+    radial-gradient(90% 45% at 0% 15%, rgb(88 170 169 / 0.08), transparent 48%);
   background-attachment: fixed;
   color: var(--foreground);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
