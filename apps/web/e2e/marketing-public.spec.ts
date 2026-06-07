@@ -12,7 +12,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     { path: "/fiyatlar", title: "Üyelik ve kullanım akışları" },
     { path: "/yardim", title: "Yardım" },
     { path: "/iletisim", title: "İletişim" },
-    { path: "/kampanya", title: "Erken erişim abonelik kampanyası" },
+    { path: "/kampanya", title: "Erken erişim kampanyası" },
     { path: "/kampanyalar", title: "Öğretmen kampanyaları" },
     { path: "/uygulama", title: "Telefona ekle" },
     { path: "/kayit", title: "Kayıt ol" },
@@ -44,6 +44,25 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByText(/1750 TL \/ 30 ay/)).toBeVisible();
     await expect(page.getByText(/2500 TL \/ 60 ay/)).toBeVisible();
     await expect(page.getByText(/yıllık 1500 TL/)).toBeVisible();
+    await expect(page.getByText(/12\.000 TL/).first()).toBeVisible();
+    await expect(page.getByText(/Erken erişim kampanyası: 9 Eylül/)).toBeVisible();
+  });
+
+  test("/kayit — roller platformda bulacaklarını görür", async ({ page }) => {
+    const res = await page.goto("/kayit", { waitUntil: "domcontentloaded" });
+    expect(res?.ok() ?? false).toBeTruthy();
+    await expect(page.getByRole("heading", { name: "Kayıt ol" })).toBeVisible();
+    await expect(page.getByText("Bu platformda ne bulacaksınız?")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Öğrenci hesabını incele" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Veli hesabını incele" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Öğretmen hesabını incele" })).toBeVisible();
+    await expect(page.getByText(/Güvenli ödeme, destek ve uyuşmazlık/)).toBeVisible();
+    await page.getByRole("button", { name: "Veli hesabını incele" }).click();
+    await expect(page.locator("select").first()).toHaveValue("guardian");
+    await expect(page.getByRole("button", { name: "Veli hesabını incele" })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Öğretmen hesabını incele" }).click();
+    await expect(page.locator("select").first()).toHaveValue("teacher");
+    await expect(page.getByText(/profilinizi web siteniz gibi kurup/)).toBeVisible();
   });
 
   test("/ogretmenler — seçim sihirbazı filtreleri hazırlar", async ({ page }) => {

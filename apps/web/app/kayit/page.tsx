@@ -68,6 +68,44 @@ const roleOnboarding = {
   },
 } as const;
 
+const roleDiscovery = {
+  student: {
+    label: "Öğrenci",
+    eyebrow: "Başarı için doğru öğretmen, soru desteği ve plan",
+    summary: "Öğrenci hesabı; eksiklerinizi görüp doğru öğretmene, doğru derse ve düzenli çalışma akışına ulaşmanız için tasarlanır.",
+    finds: [
+      "Branş, şehir, ücret, doğrulama ve güven sinyalleriyle karşılaştırılabilir öğretmen profilleri",
+      "Demo ders, teklif, canlı ders, kurs ve erken erişim kampanyası başvuruları",
+      "Günlük soru hakkı, ödev/soru havuzu ve kazanım odaklı çalışma planı",
+    ],
+    nextStep: "Kayıttan sonra öğrenci paneliniz açılır; öğretmen arayabilir, soru gönderebilir ve ders/kurs süreçlerinizi takip edebilirsiniz.",
+  },
+  guardian: {
+    label: "Veli",
+    eyebrow: "Çocuğunuzun eğitim sürecinde görünürlük ve güven",
+    summary: "Veli hesabı; öğrencinin ders, kurs, ödev, ödeme ve destek süreçlerini kayıtlı ve anlaşılır şekilde izlemeniz için tasarlanır.",
+    finds: [
+      "Öğrenci hesabı eşleştirme, veliye özel bildirimler ve durum özetleri",
+      "Ders, kurs, ödev, çalışma planı ve risk uyarılarının tek ekranda takibi",
+      "Güvenli ödeme, destek ve uyuşmazlık süreçlerinde şeffaf kayıt",
+    ],
+    nextStep: "Kayıttan sonra veli paneliniz açılır; öğrencinizi eşleştirip ders bildirimlerini ve ödeme/destek süreçlerini takip edebilirsiniz.",
+  },
+  teacher: {
+    label: "Öğretmen",
+    eyebrow: "Profilinizi büyütün, talepleri yönetin, kazancınızı izleyin",
+    summary: "Öğretmen hesabı; profilinizi kendi web siteniz gibi sunmanız, öğrenci taleplerini toplamanız ve kazancınızı profesyonelce yönetmeniz için kurulur.",
+    finds: [
+      "Kendi web sitesi gibi çalışan öğretmen profili, uzmanlık alanları, fiyat ve güven göstergeleri",
+      "Ders talepleri, öğrenci mesajları, kampanyalar, kurs başvuruları ve erken erişim görünürlüğü",
+      "Cüzdan, hakediş, para çekme, abonelik ve kampanya yönetimi",
+    ],
+    nextStep: "Kayıttan sonra öğretmen paneliniz açılır; profilinizi tamamlayıp ders taleplerine, kurslara ve kampanyalara hazırlanabilirsiniz.",
+  },
+} as const;
+
+type RegisterRole = keyof typeof roleDiscovery;
+
 function KayitForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -77,7 +115,7 @@ function KayitForm() {
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [role, setRole] = useState<"student" | "teacher" | "guardian">(
+  const [role, setRole] = useState<RegisterRole>(
     initialRole === "teacher" || initialRole === "guardian" ? initialRole : "student",
   );
   const [error, setError] = useState<string | null>(null);
@@ -95,10 +133,10 @@ function KayitForm() {
   const loginHref = returnUrl ? loginHrefWithReturn(returnUrl) : "/login";
   const roleHint =
     role === "teacher"
-      ? "Öğretmen hesabı ile profilinizi tamamlayıp teklif ve ders akışlarına katılabilirsiniz."
+      ? "Öğretmen hesabı ile profilinizi web siteniz gibi kurup taleplere, kampanyalara ve kazanç akışlarına katılabilirsiniz."
       : role === "guardian"
-        ? "Veli hesabı ile öğrencinizin ders, çalışma ve bildirim özetlerini takip edebilirsiniz."
-        : "Öğrenci hesabı ile öğretmen arayabilir, soru sorabilir ve çalışma planı oluşturabilirsiniz.";
+        ? "Veli hesabı ile öğrencinizin ders, çalışma, ödeme ve destek özetlerini güvenli şekilde takip edebilirsiniz."
+        : "Öğrenci hesabı ile öğretmen arayabilir, soru sorabilir, kurslara katılabilir ve çalışma planı oluşturabilirsiniz.";
 
   const canSubmit = useMemo(
     () =>
@@ -148,16 +186,45 @@ function KayitForm() {
   }
 
   const onboarding = roleOnboarding[role];
+  const selectedRoleDiscovery = roleDiscovery[role];
   const activeOnboardingStep = onboarding.steps[Math.min(onboardingStep, onboarding.steps.length - 1)];
+
+  function selectRegisterRole(nextRole: RegisterRole) {
+    setRole(nextRole);
+    setOnboardingStep(0);
+  }
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center bg-paper-50 px-4 py-12">
       <div className="grid w-full max-w-5xl gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]">
         <aside className="rounded-2xl border border-brand-200 bg-brand-50 p-6 text-brand-950">
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-900/70">
-            Role özel başlangıç
+            Kayıt olmadan önce gör
           </div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">{onboarding.title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-brand-950/80">
+            Öğrenci, veli ve öğretmen kendi hesabında hangi araçları bulacağını daha kayıt ekranındayken görebilir.
+          </p>
+          <div className="mt-5 rounded-2xl border border-brand-200 bg-white/80 p-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-900/60">
+              {selectedRoleDiscovery.eyebrow}
+            </div>
+            <h3 className="mt-2 text-lg font-semibold text-brand-950">
+              {selectedRoleDiscovery.label} hesabında ne bulacaksınız?
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-brand-950/80">{selectedRoleDiscovery.summary}</p>
+            <ul className="mt-4 space-y-2">
+              {selectedRoleDiscovery.finds.map((item) => (
+                <li key={item} className="flex gap-2 text-sm leading-relaxed text-brand-950/85">
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-700" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 rounded-xl bg-brand-50 px-3 py-2 text-xs font-semibold leading-relaxed text-brand-950">
+              {selectedRoleDiscovery.nextStep}
+            </p>
+          </div>
           <div className="mt-5 rounded-2xl bg-white/75 p-4">
             <div className="flex items-center justify-between text-xs font-semibold text-brand-900/70">
               <span>Adım {onboardingStep + 1}/{onboarding.steps.length}</span>
@@ -229,8 +296,7 @@ function KayitForm() {
             <select
               value={role}
               onChange={(e) => {
-                setRole(e.target.value as "student" | "teacher" | "guardian");
-                setOnboardingStep(0);
+                selectRegisterRole(e.target.value as RegisterRole);
               }}
               className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
             >
@@ -239,6 +305,59 @@ function KayitForm() {
               <option value="guardian">Veli</option>
             </select>
           </label>
+
+          <section className="rounded-2xl border border-paper-200 bg-paper-50 p-3" aria-labelledby="role-discovery-title">
+            <div id="role-discovery-title" className="text-sm font-semibold text-paper-900">
+              Bu platformda ne bulacaksınız?
+            </div>
+            <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
+              Rolünüzü seçin; öğrenci, veli ve öğretmen için sunulan alanları kayıt olmadan önce görün.
+            </p>
+            <div className="mt-3 grid gap-2">
+              {Object.entries(roleDiscovery).map(([roleKey, info]) => {
+                const typedRole = roleKey as RegisterRole;
+                const selected = typedRole === role;
+                return (
+                  <button
+                    key={roleKey}
+                    type="button"
+                    onClick={() => {
+                      selectRegisterRole(typedRole);
+                    }}
+                    aria-label={`${info.label} hesabını incele`}
+                    className={`rounded-xl border px-3 py-3 text-left transition ${
+                      selected
+                        ? "border-brand-300 bg-white shadow-sm ring-2 ring-brand-100"
+                        : "border-paper-200 bg-white/70 hover:border-brand-200"
+                    }`}
+                    aria-pressed={selected}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-paper-950">{info.label}</div>
+                        <div className="mt-0.5 text-xs font-medium text-brand-800">{info.eyebrow}</div>
+                      </div>
+                      <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${selected ? "bg-brand-800 text-white" : "bg-paper-100 text-paper-800/65"}`}>
+                        {selected ? "Seçili" : "İncele"}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed text-paper-800/70">{info.summary}</p>
+                    <ul className="mt-2 space-y-1">
+                      {info.finds.map((item) => (
+                        <li key={item} className="flex gap-2 text-xs leading-relaxed text-paper-800/70">
+                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700/75" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-2 rounded-lg bg-paper-50 px-2 py-1.5 text-xs font-medium leading-relaxed text-paper-800/70">
+                      {info.nextStep}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
           <label className="block">
             <div className="mb-1 text-sm font-medium text-paper-800">

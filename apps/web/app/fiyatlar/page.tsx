@@ -22,6 +22,8 @@ const audiencePlans = [
   {
     title: "Öğrenci",
     price: "Ücretsiz başla · yıllık 1500 TL",
+    comparePrice: "12.000 TL",
+    campaignNote: "Lansman referansı: 8 kat liste fiyatı üstü çizili gösterilir; geçerli ödeme tutarı değişmedi.",
     body: "Ücretsiz kullanımda günlük 1 ders ilanı ve 5 soru; yıllık abonelikte günlük 5 ilan ve 10 soru hakkı.",
     href: "/kayit?role=student",
     cta: "Öğrenci hesabı aç",
@@ -29,7 +31,9 @@ const audiencePlans = [
   {
     title: "Öğretmen",
     price: "1750 TL / 30 ay · 2500 TL / 60 ay",
-    body: "Sınırsız teklif, öğretmen görünürlüğü ve kampanya ilan hakkı. İlk kampanya ücretsiz; sonraki yeni ilanlar 1000 TL.",
+    comparePrice: "14.000 TL / 30 ay · 20.000 TL / 60 ay",
+    campaignNote: "Erken erişim kampanyası: 9 Eylül’e kadar aldığınız sürenin 4 katı hediye süre eklenir.",
+    body: "Sınırsız teklif, öğretmen görünürlüğü ve kampanya ilan hakkı. İlk kampanya ücretsiz; sonraki yeni ilanlarda 8.000 TL liste referansı yerine 1000 TL.",
     href: "/kayit?role=teacher",
     cta: "Öğretmen olarak başvur",
   },
@@ -185,7 +189,17 @@ export default function FiyatlarPage() {
           {audiencePlans.map((plan) => (
             <div key={plan.title} className="rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
               <h2 className="text-lg font-semibold text-paper-900">{plan.title}</h2>
+              {"comparePrice" in plan ? (
+                <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-paper-800/45">
+                  <span className="line-through">{plan.comparePrice}</span>
+                </p>
+              ) : null}
               <p className="mt-1 text-sm font-medium text-brand-900">{plan.price}</p>
+              {"campaignNote" in plan ? (
+                <p className="mt-2 rounded-xl border border-warm-200 bg-warm-50 px-3 py-2 text-xs font-semibold leading-relaxed text-warm-900">
+                  {plan.campaignNote}
+                </p>
+              ) : null}
               <p className="mt-3 text-sm leading-relaxed text-paper-800/75">{plan.body}</p>
               <Link
                 href={plan.href}

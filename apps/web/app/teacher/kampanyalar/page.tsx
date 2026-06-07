@@ -205,7 +205,8 @@ export default function TeacherCampaignsPage() {
           <h2 className="mt-1 text-lg font-semibold text-paper-900">İlk kampanya ücretsiz, sonraki ilanlar cüzdandan düşer</h2>
           <p className="mt-1 max-w-3xl text-sm text-paper-800/70">
             Aktif öğretmen aboneliğiniz varsa ilk yayınlanan kampanya için ücret alınmaz. İkinci ve sonraki her yeni
-            kampanya ilanı için {minorToTl(listingFeeMinor)} TL cüzdan bakiyesi gerekir.
+            kampanya ilanında <span className="line-through text-paper-800/45">8.000 TL</span>{" "}
+            yerine {minorToTl(listingFeeMinor)} TL cüzdan bakiyesi gerekir.
           </p>
           <div className="mt-4 grid gap-2 text-xs leading-relaxed text-paper-800/75 sm:grid-cols-3">
             <div className="rounded-xl border border-white/70 bg-white/80 p-3">

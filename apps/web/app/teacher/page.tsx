@@ -1036,8 +1036,12 @@ export default function TeacherHomePage() {
             <div className="mt-3 space-y-3">
               <div className="rounded-xl border border-paper-100 bg-paper-50/80 p-3">
                 <div className="text-sm font-medium text-paper-900">
-                  6 Aylık (1750 TL) + 2 yıl hediye · toplam 30 ay
+                  <span className="text-paper-800/45 line-through">14.000 TL</span>{" "}
+                  6 Aylık (1750 TL) · 24 ay hediye · toplam 30 ay
                 </div>
+                <p className="mt-1 text-xs font-semibold text-warm-800">
+                  Erken erişim kampanyası: aldığınız sürenin 4 katı hediye.
+                </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -1067,8 +1071,12 @@ export default function TeacherHomePage() {
               </div>
               <div className="rounded-xl border border-paper-100 bg-paper-50/80 p-3">
                 <div className="text-sm font-medium text-paper-900">
-                  12 Aylık (2500 TL) + 4 yıl hediye · toplam 60 ay
+                  <span className="text-paper-800/45 line-through">20.000 TL</span>{" "}
+                  12 Aylık (2500 TL) · 48 ay hediye · toplam 60 ay
                 </div>
+                <p className="mt-1 text-xs font-semibold text-warm-800">
+                  Erken erişim kampanyası: aldığınız sürenin 4 katı hediye.
+                </p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
                     type="button"

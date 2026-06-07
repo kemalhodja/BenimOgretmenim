@@ -31,6 +31,10 @@ function minorToTl(n: number): string {
   return (n / 100).toFixed(2);
 }
 
+function listReferenceMinor(n: number): number {
+  return n * 8;
+}
+
 function roleName(role: UserRole): string {
   if (role === "student") return "Öğrenci";
   if (role === "teacher") return "Öğretmen";
@@ -160,6 +164,9 @@ export function RoleBasedPricing() {
       {role === "student" && studentSub ? (
         <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-5">
           <div className="text-sm font-medium text-brand-900">Öğrenci platform aboneliği</div>
+          <div className="mt-2 text-sm font-semibold text-brand-900/55 line-through">
+            {minorToTl(listReferenceMinor(studentSub.annualPriceMinor))} TL / yıl
+          </div>
           <div className="mt-2 text-2xl font-semibold text-brand-950">
             {minorToTl(studentSub.annualPriceMinor)} TL / yıl
           </div>
@@ -197,7 +204,15 @@ export function RoleBasedPricing() {
                 <div className="mt-3 text-2xl font-semibold text-brand-800">
                   {minorToTl(p.price_minor)} {p.currency}
                 </div>
+                <div className="mt-1 text-xs font-semibold text-paper-800/45 line-through">
+                  Liste referansı: {minorToTl(listReferenceMinor(p.price_minor))} {p.currency}
+                </div>
                 <p className="mt-2 text-xs font-medium text-brand-900">{teacherCampaignLabel(p)}</p>
+                {p.code === "teacher_6m" || p.code === "teacher_12m" ? (
+                  <p className="mt-2 text-xs font-semibold text-warm-800">
+                    Erken erişim kampanyası: aldığınız sürenin 4 katı hediye.
+                  </p>
+                ) : null}
                 <Link
                   href="/teacher"
                   className="mt-4 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white"

@@ -266,7 +266,8 @@ export default function NewTeacherCampaignPage() {
 
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">
               Kampanya göndermek için aktif öğretmen aboneliği gerekir. İlk kampanya ücretsizdir. İkinci
-              ve sonraki her yeni kampanya ilanında 1000 TL öğretmen cüzdanından düşülür. Öğrenci kampanya bedelini
+              ve sonraki her yeni kampanya ilanında <span className="line-through text-amber-900/55">8.000 TL</span>{" "}
+              yerine 1000 TL öğretmen cüzdanından düşülür. Öğrenci kampanya bedelini
               platforma ödemez; başvuru sonrası anlaşma taraflar arasında yapılır. İlan admin onayından sonra public
               vitrinde görünür.
             </div>

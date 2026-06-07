@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { HomeLaunchAnnouncement } from "./components/HomeLaunchAnnouncement";
 import { HomeHeroPersonalized } from "./components/HomeHeroPersonalized";
 import { HeroArt } from "./components/HeroArt";
 import { StudentAudienceCard, TeacherAudienceCard } from "./components/marketing/AudienceCards";
@@ -275,6 +276,7 @@ function HighlightIcon({ name }: { name: (typeof homeHighlights)[number]["icon"]
 export default function Home() {
   return (
     <div className="bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_28%),radial-gradient(circle_at_88%_12%,rgba(255,122,77,0.14),transparent_30%),linear-gradient(180deg,#f4fafc_0%,#f6fafc_42%,#ffffff_100%)]">
+      <HomeLaunchAnnouncement />
       <section className="relative overflow-hidden border-b border-white/10 bg-paper-950 text-white">
         <HeroArt />
         <div

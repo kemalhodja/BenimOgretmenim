@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BrandLogo } from "./BrandLogo";
+import Image from "next/image";
 
 const TAGLINE = "Online Akademi";
 
@@ -11,16 +11,16 @@ type Props = {
 
 export function BrandLockup({ asLink = true, className = "" }: Props) {
   const inner = (
-    <span className="flex min-w-0 items-center gap-3">
-      <BrandLogo size="lg" className="shrink-0" />
-      <span className="min-w-0 leading-none">
-        <span className="block whitespace-nowrap text-[1.15rem] font-black tracking-[-0.04em] text-paper-950 sm:text-[1.55rem]">
-          BenimÖğretmenim
-        </span>
-        <span className="mt-1 block text-[0.62rem] font-bold uppercase tracking-[0.28em] text-brand-800 sm:text-[0.72rem]">
-          {TAGLINE}
-        </span>
-      </span>
+    <span className="flex min-w-0 items-center">
+      <Image
+        src="/logo-marketing.png"
+        alt={`Benim Öğretmenim — ${TAGLINE}`}
+        width={220}
+        height={113}
+        priority
+        sizes="(max-width: 640px) 150px, 190px"
+        className="h-12 w-auto rounded-xl object-contain sm:h-14"
+      />
     </span>
   );
 

@@ -7,14 +7,14 @@ const kampanyaUrl = `${publicSiteUrl()}/kampanya`;
 
 const teacherSubscriptionBenefits = [
   "Sınırsız teklif verme ve öğrenci taleplerine yanıt hakkı",
-  "Kendi kampanya/reklam ilanını oluşturma: ilk ilan ücretsiz, ikinci ve sonraki yeni ilanlar 1000 TL",
+  "Kendi kampanya/reklam ilanını oluşturma: ilk ilan ücretsiz, sonraki yeni ilanlarda 8.000 TL liste referansı yerine 1000 TL",
   "Kurs, grup ders, doğrudan ders ve öğretmen vitrini görünürlüğü",
   "Başvuru, bildirim, cüzdan ve ödeme kayıtlarını panelden takip",
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Erken erişim öğretmen aboneliği kampanyası",
-  description: "6 ay alana 2 yıl, 1 yıl alana 4 yıl ek süre veren erken erişim öğretmen kampanyası.",
+  title: "Erken erişim kampanyası",
+  description: "9 Eylül İzmir'in Kurtuluşu lansmanına özel: öğretmen aboneliğinde alınan sürenin 4 katı hediye.",
   alternates: { canonical: kampanyaUrl },
   openGraph: {
     type: "website",
@@ -32,10 +32,15 @@ export default function KampanyaPage() {
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-12">
         <div className="rounded-xl border border-paper-200 bg-white p-6 text-sm">
-          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Erken erişim abonelik kampanyası</h1>
+          <div className="inline-flex rounded-full border border-warm-200 bg-warm-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-warm-900">
+            Erken erişim kampanyası
+          </div>
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-paper-900">
+            Erken erişim kampanyası
+          </h1>
           <p className="mt-2 text-paper-800/75">
-            BenimÖğretmenim’de erken erişime katılan öğretmenler, sınırlı dönem kampanyasıyla çok daha uzun
-            görünürlük ve teklif hakkı kazanır.
+            BenimÖğretmenim’de lansman tarihi 9 Eylül, İzmir’in Kurtuluşu. Bu dönemde öğretmen aboneliğinde fiyatlar
+            değişmez; aldığınız sürenin 4 katı hediye süre eklenir.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             {["Profilini güçlendir", "Demo talebe yanıt ver", "Pakete dönüştür"].map((x, i) => (
@@ -52,20 +57,20 @@ export default function KampanyaPage() {
             <ul className="mt-3 space-y-2 text-sm text-paper-900">
               <li>
                 <span className="font-semibold">6 ay</span> ·{" "}
-                <span className="font-mono text-paper-800/45 line-through">7.500 TL</span>{" "}
+                <span className="font-mono text-paper-800/45 line-through">14.000 TL</span>{" "}
                 <span className="font-mono font-semibold text-brand-800">1750 TL</span>
-                <span className="text-paper-800/70"> · +2 yıl hediye · toplam 30 ay</span>
+                <span className="text-paper-800/70"> · 6 ay al, 24 ay hediye · toplam 30 ay</span>
               </li>
               <li>
                 <span className="font-semibold">12 ay</span> ·{" "}
-                <span className="font-mono text-paper-800/45 line-through">12.000 TL</span>{" "}
+                <span className="font-mono text-paper-800/45 line-through">20.000 TL</span>{" "}
                 <span className="font-mono font-semibold text-brand-800">2500 TL</span>
-                <span className="text-paper-800/70"> · +4 yıl hediye · toplam 60 ay</span>
+                <span className="text-paper-800/70"> · 12 ay al, 48 ay hediye · toplam 60 ay</span>
               </li>
             </ul>
             <p className="mt-3 text-xs leading-relaxed text-paper-800/60">
-              Kampanya abonelik süresini uzatır; ödeme tutarı değişmeden öğretmen panelindeki teklif, görünürlük
-              ve ders akışlarına daha uzun süre erişim sağlar.
+              Üstü çizili tutarlar 8 kat liste fiyatı referansıdır. Kampanya ödeme tutarını değiştirmez; abonelik
+              süresini alınan sürenin 4 katı hediye ederek uzatır.
             </p>
           </div>
           <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-4">
