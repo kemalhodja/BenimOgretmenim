@@ -34,6 +34,18 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
     await expect(page.getByText("Başvuru durumlarınız")).toBeVisible();
   });
 
+  test("mobil öğrenci: alt navigasyon tek elle temel akışları gösterir", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chrome", "Mobil alt nav sadece mobile-chrome projesinde doğrulanır.");
+    await loginViaUi(page, SEED_USERS.student.email, SEED_USERS.student.password);
+    const nav = page.getByRole("navigation", { name: "Mobil hızlı gezinme" });
+    await expect(nav).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Özet" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Talepler" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Çalışma" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Kurslar" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Ödev" })).toBeVisible();
+  });
+
   test("öğretmen: giriş → panel özeti", async ({ page }) => {
     await loginViaUi(page, SEED_USERS.teacher.email, SEED_USERS.teacher.password);
     await expect(page).toHaveURL(/\/teacher\/?$/);
@@ -61,7 +73,7 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
     await expect(page.getByText("Profil vitrini")).toBeVisible();
     await expect(page.getByText("BenimÖğretmenim farkı")).toBeVisible();
     await expect(page.getByText("Sadece ilan değil, yönetilen ders süreci")).toBeVisible();
-    await expect(page.getByText("Hızlı karar")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Demo ders talep et|Demo talep et/ }).first()).toBeVisible();
     await expect(page.getByText("Sık sorulan sorular")).toBeVisible();
   });
 

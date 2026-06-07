@@ -274,7 +274,7 @@ export function SupportWidget() {
         aria-expanded={open}
         aria-controls="support-widget-panel"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-full bg-brand-800 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+        className="support-widget-trigger fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-full bg-brand-800 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
       >
         <WhatsappGlyph className="h-6 w-6 shrink-0 sm:h-5 sm:w-5" />
         <span className="hidden sm:inline">Destek</span>

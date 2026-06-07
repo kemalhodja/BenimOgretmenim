@@ -9,8 +9,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 
   --color-paper-50: #f4fafc;
   --color-paper-100: #e8f2f7;
@@ -74,5 +74,38 @@ body {
     radial-gradient(90% 45% at 0% 15%, rgb(14 184 212 / 0.06), transparent 48%);
   background-attachment: fixed;
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 767px) {
+  html {
+    scroll-padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+
+  body:has(.mobile-app-nav) {
+    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+
+  body:has(.mobile-app-nav) .install-app-banner {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  }
+
+  body:has(.mobile-app-nav) .support-widget-trigger {
+    right: 1rem;
+    bottom: calc(5.75rem + env(safe-area-inset-bottom));
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }

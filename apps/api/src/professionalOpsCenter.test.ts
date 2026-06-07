@@ -116,6 +116,7 @@ describe("professional operations center", () => {
       expect(exportBody.count).toBeGreaterThanOrEqual(1);
     } finally {
       await pool.query(`delete from platform_job_heartbeats where job_name = 'test:stale-job'`);
+      await pool.query(`delete from teacher_wallet_withdrawals where teacher_user_id = any($1::uuid[])`, [createdUserIds]);
       await pool.query(`delete from users where id = any($1::uuid[])`, [createdUserIds]);
     }
   });

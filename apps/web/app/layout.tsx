@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ConditionalSiteChrome } from "./components/ConditionalSiteChrome";
 import { InstallAppBanner } from "./components/InstallAppBanner";
@@ -9,16 +8,6 @@ import { PwaRegister } from "./components/PwaRegister";
 import { SiteWideJsonLd } from "./components/SiteWideJsonLd";
 import { SupportWidget } from "./components/SupportWidget";
 import { publicSiteUrl } from "./lib/siteUrl";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 const siteUrl = publicSiteUrl();
 
@@ -74,10 +63,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="tr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="tr" className="h-full antialiased">
       <body className="flex min-h-full flex-col bg-paper-50 font-sans text-paper-900">
         <SiteWideJsonLd />
         <PwaRegister />

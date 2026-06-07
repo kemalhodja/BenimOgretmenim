@@ -7,5 +7,6 @@ test.describe("Giriş @public", () => {
     await expect(page.locator('input[inputmode="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
     await expect(page.getByRole("button", { name: "Giriş yap" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Mobil hızlı gezinme" })).toBeHidden();
   });
 });

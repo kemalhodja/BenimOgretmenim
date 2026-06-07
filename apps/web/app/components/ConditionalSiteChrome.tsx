@@ -8,6 +8,7 @@ import { AdminPanelFooter } from "./AdminPanelFooter";
 import { AdminPanelHeader } from "./AdminPanelHeader";
 import { GuardianPanelFooter } from "./GuardianPanelFooter";
 import { GuardianPanelHeader } from "./GuardianPanelHeader";
+import { MobileBottomNav } from "./MobileBottomNav";
 import { StudentPanelFooter } from "./StudentPanelFooter";
 import { StudentPanelHeader } from "./StudentPanelHeader";
 import { TeacherPanelFooter } from "./TeacherPanelFooter";
@@ -62,6 +63,7 @@ export function ConditionalSiteChrome({
       {header}
       {children}
       {footer}
+      <MobileBottomNav />
     </>
   );
 }
