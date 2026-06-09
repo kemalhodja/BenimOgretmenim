@@ -11,16 +11,24 @@ type Props = {
 
 export function BrandLockup({ asLink = true, className = "" }: Props) {
   const inner = (
-    <span className="flex min-w-0 items-center">
+    <span className="flex min-w-0 items-center gap-2.5">
       <Image
         src="/logo-marketing.png"
-        alt={`Benim Öğretmenim — ${TAGLINE}`}
+        alt=""
         width={220}
         height={113}
         priority
         sizes="(max-width: 640px) 150px, 190px"
-        className="h-12 w-auto rounded-xl object-contain sm:h-14"
+        className="h-11 w-auto rounded-xl object-contain shadow-sm ring-1 ring-paper-200/80 sm:h-12"
       />
+      <span className="min-w-0 leading-none">
+        <span className="block whitespace-nowrap text-lg font-extrabold tracking-tight text-paper-950 sm:text-xl">
+          BenimÖğretmenim
+        </span>
+        <span className="mt-1 block whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-800">
+          {TAGLINE}
+        </span>
+      </span>
     </span>
   );
 
