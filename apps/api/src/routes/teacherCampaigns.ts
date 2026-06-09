@@ -8,6 +8,12 @@ import { applyWalletDelta } from "../lib/wallet.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
 import { assertAdminGate } from "../lib/adminGate.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
+import {
+  availableUsageCredits,
+  consumeUsageCredit,
+  listUsageCreditPacks,
+  purchaseUsageCreditPackFromWallet,
+} from "../lib/usageCredits.js";
 
 export const teacherCampaigns = new Hono<{ Variables: AppVariables }>();
 
@@ -41,6 +47,10 @@ const adminPatchStatusSchema = z.object({
 
 const applySchema = z.object({
   message: z.string().max(2000).nullable().optional(),
+});
+
+const messageSchema = z.object({
+  body: z.string().trim().min(1).max(5000),
 });
 
 const patchApplicationSchema = z.object({
@@ -83,6 +93,43 @@ async function lockTeacherCampaignEntitlement(teacherId: string, client: PoolCli
     `select pg_advisory_xact_lock(hashtext($1), hashtext($2))`,
     ["teacher_campaign_entitlement", teacherId],
   );
+}
+
+function teacherConversationMonthlyLimit(): number {
+  const n = Number(process.env.TEACHER_CAMPAIGN_CONVERSATION_MONTHLY_LIMIT ?? "10");
+  if (!Number.isFinite(n) || n < 0 || n > 10_000) return 10;
+  return Math.floor(n);
+}
+
+async function consumeTeacherConversationSlot(
+  client: PoolClient,
+  teacherId: string,
+  teacherUserId: string,
+): Promise<boolean> {
+  const baseQuota = teacherConversationMonthlyLimit();
+  const usage = await client.query<{ base_quota: number; opened_count: number }>(
+    `insert into teacher_campaign_conversation_usage (teacher_id, period_start, base_quota, opened_count)
+     values ($1, date_trunc('month', now())::date, $2, 0)
+     on conflict (teacher_id, period_start)
+     do update set base_quota = excluded.base_quota, updated_at = now()
+     returning base_quota, opened_count`,
+    [teacherId, baseQuota],
+  );
+  const opened = Number(usage.rows[0]?.opened_count ?? 0);
+  const quota = Number(usage.rows[0]?.base_quota ?? baseQuota);
+  if (opened >= quota) {
+    const hasExtra = await consumeUsageCredit(teacherUserId, "teacher_campaign_conversation", client);
+    if (!hasExtra) return false;
+  }
+  await client.query(
+    `update teacher_campaign_conversation_usage
+     set opened_count = opened_count + 1,
+         updated_at = now()
+     where teacher_id = $1
+       and period_start = date_trunc('month', now())::date`,
+    [teacherId],
+  );
+  return true;
 }
 
 /** Teacher: list own campaigns with application counts. */
@@ -137,6 +184,70 @@ teacherCampaigns.get("/mine", requireAuth, async (c) => {
   );
 
   return c.json({ campaigns: r.rows, listingFeeMinor: LISTING_FEE_MINOR });
+});
+
+/** Teacher: extra conversation packs for commission-based campaigns. */
+teacherCampaigns.get("/usage-packs", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
+
+  const teacherId = await teacherIdForUser(userId);
+  if (!teacherId) return c.json({ packs: [], remainingConversationCredits: 0 });
+
+  const packs = await listUsageCreditPacks("teacher");
+  const remainingConversationCredits = await availableUsageCredits(
+    userId,
+    "teacher_campaign_conversation",
+  );
+  const usage = await pool.query<{ base_quota: number; opened_count: number }>(
+    `select base_quota, opened_count
+     from teacher_campaign_conversation_usage
+     where teacher_id = $1
+       and period_start = date_trunc('month', now())::date`,
+    [teacherId],
+  );
+  const baseQuota = usage.rows[0]?.base_quota ?? teacherConversationMonthlyLimit();
+  const openedCount = usage.rows[0]?.opened_count ?? 0;
+  return c.json({
+    packs,
+    remainingConversationCredits,
+    monthlyConversationQuota: {
+      baseQuota,
+      openedCount,
+      remainingBase: Math.max(0, Number(baseQuota) - Number(openedCount)),
+    },
+  });
+});
+
+teacherCampaigns.post("/usage-packs/:packCode/purchase", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
+
+  const packCode = c.req.param("packCode");
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const purchased = await purchaseUsageCreditPackFromWallet({
+      userId,
+      audienceRole: "teacher",
+      packCode,
+      client,
+    });
+    await client.query("commit");
+    return c.json(purchased, 201);
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    const err = e as Error & { neededMinor?: number };
+    if (err.message === "usage_credit_pack_not_found") return c.json({ error: "pack_not_found" }, 404);
+    if (err.message === "insufficient_balance") {
+      return c.json({ error: "insufficient_balance", neededMinor: err.neededMinor ?? null }, 409);
+    }
+    throw e;
+  } finally {
+    client.release();
+  }
 });
 
 /** Teacher: create a campaign advertisement for admin review. */
@@ -302,10 +413,17 @@ teacherCampaigns.get("/:campaignId/applications", requireAuth, async (c) => {
             a.status,
             a.created_at,
             a.updated_at,
+            tc.billing_model,
             s.id as student_id,
             u.display_name as student_display_name,
-            u.email as student_email
+            case when tc.billing_model = 'success_fee' then null else u.email end as student_email,
+            (
+              select count(*)::int
+              from teacher_campaign_application_messages m
+              where m.application_id = a.id
+            ) as message_count
      from teacher_campaign_applications a
+     join teacher_campaigns tc on tc.id = a.campaign_id
      join students s on s.id = a.student_id
      join users u on u.id = s.user_id
      where a.campaign_id = $1
@@ -482,8 +600,13 @@ teacherCampaigns.post("/:campaignId/applications", requireAuth, async (c) => {
   const studentId = await studentIdForUser(userId);
   if (!studentId) return c.json({ error: "student_profile_missing" }, 400);
 
-  const campaign = await pool.query<{ teacher_id: string; teacher_user_id: string; title: string }>(
-    `select tc.teacher_id, t.user_id as teacher_user_id, tc.title
+  const campaign = await pool.query<{
+    teacher_id: string;
+    teacher_user_id: string;
+    title: string;
+    billing_model: string;
+  }>(
+    `select tc.teacher_id, t.user_id as teacher_user_id, tc.title, tc.billing_model
      from teacher_campaigns tc
      join teachers t on t.id = tc.teacher_id
      where tc.id = $1 and tc.status = 'published'`,
@@ -491,24 +614,69 @@ teacherCampaigns.post("/:campaignId/applications", requireAuth, async (c) => {
   );
   if (!campaign.rowCount) return c.json({ error: "not_found" }, 404);
 
+  const client = await pool.connect();
   try {
-    const ins = await pool.query(
+    await client.query("begin");
+
+    const duplicate = await client.query(
+      `select 1 from teacher_campaign_applications
+       where campaign_id = $1 and student_id = $2
+       limit 1`,
+      [campaignId, studentId],
+    );
+    if (duplicate.rowCount) {
+      await client.query("rollback");
+      return c.json({ error: "already_applied" }, 409);
+    }
+
+    const campaignRow = campaign.rows[0];
+    const firstMessage = parsed.data.message?.trim() || "Kampanya hakkında bilgi almak istiyorum.";
+    if (campaignRow.billing_model === "success_fee") {
+      const quotaOk = await consumeTeacherConversationSlot(
+        client,
+        campaignRow.teacher_id,
+        campaignRow.teacher_user_id,
+      );
+      if (!quotaOk) {
+        const packs = await listUsageCreditPacks("teacher", client);
+        await client.query("rollback");
+        return c.json(
+          {
+            error: "campaign_conversation_quota_exceeded",
+            message: "Öğretmenin komisyonlu kampanya görüşme hakkı dolu.",
+            packs,
+          },
+          429,
+        );
+      }
+    }
+
+    const ins = await client.query(
       `insert into teacher_campaign_applications (campaign_id, student_id, message)
        values ($1, $2, $3)
        returning id, campaign_id, status, created_at`,
-      [campaignId, studentId, parsed.data.message?.trim() || null],
+      [campaignId, studentId, firstMessage],
     );
 
-    await pool.query(
+    if (campaignRow.billing_model === "success_fee") {
+      await client.query(
+        `insert into teacher_campaign_application_messages (
+           application_id, sender_user_id, sender_role, body
+         ) values ($1, $2, 'student', $3)`,
+        [ins.rows[0].id, userId, firstMessage],
+      );
+    }
+
+    await client.query(
       `insert into parent_notifications (
          recipient_user_id, student_id, snapshot_id, channel,
          title, body, payload_jsonb, delivery_status, sent_at
        ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
       [
-        campaign.rows[0].teacher_user_id,
+        campaignRow.teacher_user_id,
         studentId,
         "Yeni kampanya başvurusu",
-        `"${campaign.rows[0].title}" kampanyanıza yeni bir öğrenci ilgi kaydı bıraktı.`,
+        `"${campaignRow.title}" kampanyanıza yeni bir öğrenci ilgi kaydı bıraktı.`,
         JSON.stringify({
           kind: "teacher_campaign_application",
           campaignId,
@@ -517,11 +685,140 @@ teacherCampaigns.post("/:campaignId/applications", requireAuth, async (c) => {
       ],
     );
 
+    await client.query("commit");
     return c.json({ application: ins.rows[0] }, 201);
   } catch (e) {
+    await client.query("rollback").catch(() => {});
     const err = e as { code?: string };
     if (err.code === "23505") return c.json({ error: "already_applied" }, 409);
     throw e;
+  } finally {
+    client.release();
+  }
+});
+
+/** Student/teacher: read campaign application messages. */
+teacherCampaigns.get("/:campaignId/applications/:applicationId/messages", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "student" && role !== "teacher") return c.json({ error: "forbidden" }, 403);
+
+  const campaignId = c.req.param("campaignId");
+  const applicationId = c.req.param("applicationId");
+  if (!uuidSchema.safeParse(campaignId).success) return c.json({ error: "invalid_campaign_id" }, 400);
+  if (!uuidSchema.safeParse(applicationId).success) return c.json({ error: "invalid_application_id" }, 400);
+
+  const access = await pool.query<{ billing_model: string }>(
+    `select tc.billing_model
+     from teacher_campaign_applications a
+     join teacher_campaigns tc on tc.id = a.campaign_id
+     join teachers t on t.id = tc.teacher_id
+     join students s on s.id = a.student_id
+     where a.id = $1
+       and a.campaign_id = $2
+       and (
+         ($3 = 'teacher' and t.user_id = $4)
+         or ($3 = 'student' and s.user_id = $4)
+       )`,
+    [applicationId, campaignId, role, userId],
+  );
+  if (!access.rowCount) return c.json({ error: "not_found_or_forbidden" }, 404);
+  if (access.rows[0].billing_model !== "success_fee") {
+    return c.json({ error: "campaign_chat_not_enabled" }, 409);
+  }
+
+  const messages = await pool.query(
+    `select m.id,
+            m.application_id,
+            m.sender_user_id,
+            m.sender_role,
+            m.body,
+            m.created_at,
+            u.display_name as sender_display_name
+     from teacher_campaign_application_messages m
+     join users u on u.id = m.sender_user_id
+     where m.application_id = $1
+     order by m.created_at asc`,
+    [applicationId],
+  );
+  return c.json({ messages: messages.rows });
+});
+
+/** Student/teacher: send campaign application message. */
+teacherCampaigns.post("/:campaignId/applications/:applicationId/messages", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "student" && role !== "teacher") return c.json({ error: "forbidden" }, 403);
+
+  const campaignId = c.req.param("campaignId");
+  const applicationId = c.req.param("applicationId");
+  if (!uuidSchema.safeParse(campaignId).success) return c.json({ error: "invalid_campaign_id" }, 400);
+  if (!uuidSchema.safeParse(applicationId).success) return c.json({ error: "invalid_application_id" }, 400);
+
+  const parsed = messageSchema.safeParse(await c.req.json().catch(() => ({})));
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const access = await pool.query<{ billing_model: string; teacher_user_id: string; student_user_id: string; student_id: string; title: string }>(
+    `select tc.billing_model,
+            t.user_id as teacher_user_id,
+            s.user_id as student_user_id,
+            s.id as student_id,
+            tc.title
+     from teacher_campaign_applications a
+     join teacher_campaigns tc on tc.id = a.campaign_id
+     join teachers t on t.id = tc.teacher_id
+     join students s on s.id = a.student_id
+     where a.id = $1
+       and a.campaign_id = $2
+       and (
+         ($3 = 'teacher' and t.user_id = $4)
+         or ($3 = 'student' and s.user_id = $4)
+       )`,
+    [applicationId, campaignId, role, userId],
+  );
+  if (!access.rowCount) return c.json({ error: "not_found_or_forbidden" }, 404);
+  const row = access.rows[0];
+  if (row.billing_model !== "success_fee") {
+    return c.json({ error: "campaign_chat_not_enabled" }, 409);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const inserted = await client.query(
+      `insert into teacher_campaign_application_messages (
+         application_id, sender_user_id, sender_role, body
+       ) values ($1, $2, $3, $4)
+       returning id, application_id, sender_user_id, sender_role, body, created_at`,
+      [applicationId, userId, role, parsed.data.body],
+    );
+
+    const recipientUserId = role === "teacher" ? row.student_user_id : row.teacher_user_id;
+    await client.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        recipientUserId,
+        row.student_id,
+        "Kampanya sohbetinde yeni mesaj",
+        `"${row.title}" kampanya sohbetinde yeni mesajınız var.`,
+        JSON.stringify({
+          kind: "teacher_campaign_application_message",
+          campaignId,
+          applicationId,
+          messageId: inserted.rows[0].id,
+        }),
+      ],
+    );
+    await client.query("commit");
+    return c.json({ message: inserted.rows[0] }, 201);
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
   }
 });
 
@@ -565,6 +862,8 @@ teacherCampaigns.get("/", async (c) => {
             tc.lesson_count,
             tc.price_minor,
             tc.currency,
+            tc.billing_model,
+            tc.success_fee_bps,
             tc.capacity,
             tc.starts_at,
             tc.created_at,
@@ -601,6 +900,8 @@ teacherCampaigns.get("/:campaignId", async (c) => {
             tc.lesson_count,
             tc.price_minor,
             tc.currency,
+            tc.billing_model,
+            tc.success_fee_bps,
             tc.capacity,
             tc.starts_at,
             tc.created_at,

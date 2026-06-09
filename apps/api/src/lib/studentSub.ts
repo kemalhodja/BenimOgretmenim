@@ -16,6 +16,8 @@ export type StudentUsageSnapshot = {
   homeworkPostsToday: number;
   lessonRequestsRemaining: number;
   homeworkPostsRemaining: number;
+  extraLessonRequestCredits: number;
+  extraHomeworkCredits: number;
 };
 
 /** Annual student subscription: default 12 months / 1500 TL. */
@@ -61,6 +63,24 @@ export async function lockStudentDailyUsage(
   );
 }
 
+async function availableStudentExtraCredits(
+  userId: string,
+  creditType: "student_homework" | "student_lesson_request",
+  client: Pick<Pool, "query"> | PoolClient,
+): Promise<number> {
+  const r = await client.query<{ remaining: string }>(
+    `select coalesce(sum(quantity - used_count), 0)::text as remaining
+     from user_usage_credits
+     where user_id = $1
+       and credit_type = $2
+       and used_count < quantity
+       and valid_from <= now()
+       and (valid_until is null or valid_until > now())`,
+    [userId, creditType],
+  );
+  return Number(r.rows[0]?.remaining ?? 0);
+}
+
 export function studentUsagePolicyForSubscription(
   sub: { months_count: number } | null,
 ): StudentUsagePolicy {
@@ -83,6 +103,7 @@ export async function getStudentDailyUsage(
   studentId: string,
   policy: StudentUsagePolicy,
   client: Pick<Pool, "query"> | PoolClient = pool,
+  userId?: string,
 ): Promise<StudentUsageSnapshot> {
   const [requests, homework] = await Promise.all([
     client.query<{ c: number }>(
@@ -103,11 +124,25 @@ export async function getStudentDailyUsage(
   ]);
   const lessonRequestsToday = Number(requests.rows[0]?.c ?? 0);
   const homeworkPostsToday = Number(homework.rows[0]?.c ?? 0);
+  const [extraLessonRequestCredits, extraHomeworkCredits] = userId
+    ? await Promise.all([
+        availableStudentExtraCredits(userId, "student_lesson_request", client),
+        availableStudentExtraCredits(userId, "student_homework", client),
+      ])
+    : [0, 0];
   return {
     lessonRequestsToday,
     homeworkPostsToday,
-    lessonRequestsRemaining: Math.max(0, policy.dailyLessonRequestLimit - lessonRequestsToday),
-    homeworkPostsRemaining: Math.max(0, policy.dailyHomeworkPostLimit - homeworkPostsToday),
+    lessonRequestsRemaining:
+      lessonRequestsToday < policy.dailyLessonRequestLimit
+        ? policy.dailyLessonRequestLimit - lessonRequestsToday + extraLessonRequestCredits
+        : extraLessonRequestCredits,
+    homeworkPostsRemaining:
+      homeworkPostsToday < policy.dailyHomeworkPostLimit
+        ? policy.dailyHomeworkPostLimit - homeworkPostsToday + extraHomeworkCredits
+        : extraHomeworkCredits,
+    extraLessonRequestCredits,
+    extraHomeworkCredits,
   };
 }
 

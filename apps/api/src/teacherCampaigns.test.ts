@@ -19,6 +19,18 @@ async function campaignTablesAvailable(): Promise<boolean> {
   return r.rows[0]?.exists === true;
 }
 
+async function campaignChatTablesAvailable(): Promise<boolean> {
+  if (!(await campaignTablesAvailable())) return false;
+  const r = await pool.query<{ exists: boolean }>(
+    `select to_regclass('public.teacher_campaign_application_messages') is not null
+        and to_regclass('public.teacher_campaign_conversation_usage') is not null
+        and to_regclass('public.usage_credit_packs') is not null
+        and to_regclass('public.user_usage_credits') is not null
+        and to_regclass('public.usage_credit_payments') is not null as exists`,
+  );
+  return r.rows[0]?.exists === true;
+}
+
 async function ensureTeacherPlan(): Promise<void> {
   await pool.query(
     `insert into subscription_plans (code, title, duration_months, price_minor, currency, entitlements_jsonb)
@@ -249,6 +261,149 @@ describe("teacher campaigns", () => {
       expect(body.applications[0].student_email).toContain("campaign-student-");
       expect(body.applications[0].status).toBe("new");
     } finally {
+      await pool.query(`delete from users where id = any($1::uuid[])`, [createdUserIds]);
+    }
+  });
+
+  it("creates a platform chat for success fee campaign applications", async () => {
+    if (!(await campaignChatTablesAvailable())) return;
+
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const createdUserIds: string[] = [];
+    try {
+      const teacher = await createTeacher(suffix);
+      const student = await createStudent(suffix);
+      const otherStudent = await createStudent(`${suffix}-other`);
+      createdUserIds.push(teacher.userId, student.userId, otherStudent.userId);
+
+      const campaignRes = await createCampaign(teacher.token, "Komisyonlu Sohbet Kampanyası", {
+        billingModel: "success_fee",
+      });
+      const campaignBodyJson = (await campaignRes.json()) as { campaign: { id: string } };
+      const campaignId = campaignBodyJson.campaign.id;
+      await pool.query(
+        `update teacher_campaigns set status = 'published', published_at = now() where id = $1`,
+        [campaignId],
+      );
+
+      const applyRes = await app.request(`http://localhost/v1/teacher-campaigns/${campaignId}/applications`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${student.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ message: "Platform içi sohbet başlatmak istiyorum." }),
+      });
+      expect(applyRes.status).toBe(201);
+      const applyBody = (await applyRes.json()) as { application: { id: string } };
+
+      const apps = await app.request(`http://localhost/v1/teacher-campaigns/${campaignId}/applications`, {
+        headers: { authorization: `Bearer ${teacher.token}` },
+      });
+      expect(apps.status).toBe(200);
+      const appsBody = (await apps.json()) as {
+        applications: Array<{ student_email: string | null; billing_model: string; message_count: number }>;
+      };
+      expect(appsBody.applications[0].student_email).toBeNull();
+      expect(appsBody.applications[0].billing_model).toBe("success_fee");
+      expect(appsBody.applications[0].message_count).toBe(1);
+
+      const messages = await app.request(
+        `http://localhost/v1/teacher-campaigns/${campaignId}/applications/${applyBody.application.id}/messages`,
+        { headers: { authorization: `Bearer ${teacher.token}` } },
+      );
+      expect(messages.status).toBe(200);
+      const messagesBody = (await messages.json()) as { messages: Array<{ body: string; sender_role: string }> };
+      expect(messagesBody.messages).toHaveLength(1);
+      expect(messagesBody.messages[0].sender_role).toBe("student");
+
+      const reply = await app.request(
+        `http://localhost/v1/teacher-campaigns/${campaignId}/applications/${applyBody.application.id}/messages`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${teacher.token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ body: "Merhaba, saatleri birlikte netleştirelim." }),
+        },
+      );
+      expect(reply.status).toBe(201);
+
+      const forbidden = await app.request(
+        `http://localhost/v1/teacher-campaigns/${campaignId}/applications/${applyBody.application.id}/messages`,
+        { headers: { authorization: `Bearer ${otherStudent.token}` } },
+      );
+      expect(forbidden.status).toBe(404);
+    } finally {
+      await pool.query(`delete from users where id = any($1::uuid[])`, [createdUserIds]);
+    }
+  });
+
+  it("unblocks commission campaign chats after buying an extra conversation pack", async () => {
+    if (!(await campaignChatTablesAvailable())) return;
+
+    const oldLimit = process.env.TEACHER_CAMPAIGN_CONVERSATION_MONTHLY_LIMIT;
+    process.env.TEACHER_CAMPAIGN_CONVERSATION_MONTHLY_LIMIT = "0";
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const createdUserIds: string[] = [];
+    try {
+      const teacher = await createTeacher(suffix);
+      const student = await createStudent(suffix);
+      createdUserIds.push(teacher.userId, student.userId);
+
+      const campaignRes = await createCampaign(teacher.token, "Kotalı Komisyon Kampanyası", {
+        billingModel: "success_fee",
+      });
+      const campaignBodyJson = (await campaignRes.json()) as { campaign: { id: string } };
+      const campaignId = campaignBodyJson.campaign.id;
+      await pool.query(
+        `update teacher_campaigns set status = 'published', published_at = now() where id = $1`,
+        [campaignId],
+      );
+
+      const blocked = await app.request(`http://localhost/v1/teacher-campaigns/${campaignId}/applications`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${student.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ message: "Kota test başvurusu." }),
+      });
+      expect(blocked.status).toBe(429);
+      const blockedBody = (await blocked.json()) as { error: string; packs: unknown[] };
+      expect(blockedBody.error).toBe("campaign_conversation_quota_exceeded");
+      expect(blockedBody.packs.length).toBeGreaterThan(0);
+
+      await applyWalletDelta({
+        userId: teacher.userId,
+        deltaMinor: 25_000,
+        kind: "test_wallet_grant",
+      });
+      const purchase = await app.request(
+        "http://localhost/v1/teacher-campaigns/usage-packs/teacher_campaign_chat_250/purchase",
+        {
+          method: "POST",
+          headers: { authorization: `Bearer ${teacher.token}` },
+        },
+      );
+      expect(purchase.status).toBe(201);
+
+      const applied = await app.request(`http://localhost/v1/teacher-campaigns/${campaignId}/applications`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${student.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ message: "Paket sonrası başvuru." }),
+      });
+      expect(applied.status).toBe(201);
+    } finally {
+      if (oldLimit == null) {
+        delete process.env.TEACHER_CAMPAIGN_CONVERSATION_MONTHLY_LIMIT;
+      } else {
+        process.env.TEACHER_CAMPAIGN_CONVERSATION_MONTHLY_LIMIT = oldLimit;
+      }
       await pool.query(`delete from users where id = any($1::uuid[])`, [createdUserIds]);
     }
   });

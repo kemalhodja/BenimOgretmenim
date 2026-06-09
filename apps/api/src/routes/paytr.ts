@@ -6,6 +6,7 @@ import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import { writePaymentReconciliationEvent } from "../lib/adminAudit.js";
+import { createExtendedTeacherSubscription, teacherSubscriptionPromoMultiplier } from "../lib/teacherSubscriptions.js";
 
 export const paytr = new Hono<{ Variables: AppVariables }>();
 
@@ -510,14 +511,13 @@ paytr.post("/callback", async (c) => {
       return c.text("OK");
     }
 
-    const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "5");
+    const promoMultiplier = teacherSubscriptionPromoMultiplier();
 
     const plan = await pool.query(
       `select duration_months, price_minor, currency from subscription_plans where code = $1`,
       [row.plan_code],
     );
     const pl = plan.rows[0] as { duration_months: number; price_minor: number; currency: string };
-    const totalMonths = pl.duration_months * Math.max(1, promoMultiplier);
 
     const client = await pool.connect();
     try {
@@ -547,35 +547,17 @@ paytr.post("/callback", async (c) => {
         client,
       );
 
-      const sub = await client.query(
-        `with existing as (
-           select greatest(now(), coalesce(max(expires_at), now())) as starts_at
-           from teacher_subscriptions
-           where teacher_id = $1
-             and status = 'active'
-             and expires_at > now()
-         )
-         insert into teacher_subscriptions (
-           teacher_id, plan_code, status, started_at, expires_at,
-           promo_multiplier, paid_amount_minor, currency, payment_provider, external_ref, payment_id
-         )
-         select $1, $2::subscription_plan_code, 'active',
-                existing.starts_at,
-                existing.starts_at + ($3::text || ' months')::interval,
-                $4, $5, $6, 'paytr', $7, $8
-         from existing
-         returning id`,
-        [
-          row.teacher_id,
-          row.plan_code,
-          String(totalMonths),
-          promoMultiplier,
-          pl.price_minor,
-          pl.currency,
-          merchantOid,
-          row.id,
-        ],
-      );
+      const sub = await createExtendedTeacherSubscription(client, {
+        teacherId: row.teacher_id,
+        planCode: row.plan_code,
+        durationMonths: pl.duration_months,
+        promoMultiplier,
+        paidAmountMinor: pl.price_minor,
+        currency: pl.currency,
+        paymentProvider: "paytr",
+        externalRef: merchantOid,
+        paymentId: row.id,
+      });
 
       await client.query("commit");
       void sub;

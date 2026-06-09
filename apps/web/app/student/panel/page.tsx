@@ -24,10 +24,20 @@ type SubMe = {
     homeworkPostsToday: number;
     lessonRequestsRemaining: number;
     homeworkPostsRemaining: number;
+    extraLessonRequestCredits: number;
+    extraHomeworkCredits: number;
   } | null;
 };
 
 type Wallet = { balanceMinor: number; currency: string };
+
+type UsagePack = {
+  code: string;
+  title: string;
+  description: string;
+  price_minor: number;
+  currency: string;
+};
 
 type LedgerEntry = {
   id: string;
@@ -136,6 +146,7 @@ function StudentPanelPageInner() {
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [progressSnapshots, setProgressSnapshots] = useState<ProgressSnapshot[]>([]);
   const [guardianInvites, setGuardianInvites] = useState<GuardianInvite[]>([]);
+  const [usagePacks, setUsagePacks] = useState<UsagePack[]>([]);
   const [guardianInviteBusy, setGuardianInviteBusy] = useState(false);
   const [notifBusyId, setNotifBusyId] = useState<string | null>(null);
 
@@ -149,7 +160,7 @@ function StudentPanelPageInner() {
   }, [router, pathWithQuery]);
 
   const load = useCallback(async (t: string) => {
-    const [s, w, l, h, n, p, g] = await Promise.all([
+    const [s, w, l, h, n, p, g, packs] = await Promise.all([
       apiFetch<SubMe>("/v1/student-platform/subscription/me", { token: t }),
       apiFetch<Wallet>("/v1/wallet/me", { token: t }),
       apiFetch<{ entries: LedgerEntry[] }>("/v1/wallet/ledger?limit=25", { token: t }),
@@ -163,6 +174,9 @@ function StudentPanelPageInner() {
       apiFetch<{ invites: GuardianInvite[] }>("/v1/guardians/invites/mine", { token: t }).catch(
         () => ({ invites: [] as GuardianInvite[] }),
       ),
+      apiFetch<{ packs: UsagePack[] }>("/v1/student-platform/usage-packs", { token: t }).catch(
+        () => ({ packs: [] as UsagePack[] }),
+      ),
     ]);
     setSub(s);
     setWallet(w);
@@ -172,6 +186,7 @@ function StudentPanelPageInner() {
     setNotifications(n.notifications);
     setProgressSnapshots(p.snapshots);
     setGuardianInvites(g.invites);
+    setUsagePacks(packs.packs);
   }, []);
 
   async function createGuardianInvite() {
@@ -350,6 +365,26 @@ function StudentPanelPageInner() {
       if (msg.includes("[403]")) {
         setError("Abonelik satın almak için öğrenci hesabı gerekir.");
       }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function buyUsagePack(packCode: string) {
+    if (!token) return;
+    setBusy(true);
+    setError(null);
+    setOk(null);
+    try {
+      await apiFetch(`/v1/student-platform/usage-packs/${packCode}/purchase`, {
+        method: "POST",
+        token,
+      });
+      setOk("Ek hak paketi cüzdan bakiyenizden alındı.");
+      await load(token);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "usage_pack_purchase_failed";
+      setError(msg.includes("insufficient_balance") ? "Bu ek paket için cüzdan bakiyeniz yeterli değil." : msg);
     } finally {
       setBusy(false);
     }
@@ -924,6 +959,38 @@ function StudentPanelPageInner() {
               Bugünkü kalan hak: {sub.usage.lessonRequestsRemaining}/{sub.policy.dailyLessonRequestLimit} ders ilanı,{" "}
               {sub.usage.homeworkPostsRemaining}/{sub.policy.dailyHomeworkPostLimit} soru. Mevcut paket:{" "}
               {sub.policy.tier === "annual" ? "Yıllık abone" : "Ücretsiz"}.
+              {(sub.usage.extraLessonRequestCredits > 0 || sub.usage.extraHomeworkCredits > 0) ? (
+                <span>
+                  {" "}
+                  Ek hak: {sub.usage.extraLessonRequestCredits} ders talebi, {sub.usage.extraHomeworkCredits} soru.
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          {usagePacks.length > 0 ? (
+            <div className="mt-4 rounded-2xl border border-brand-100 bg-brand-50/40 p-4">
+              <div className="text-sm font-semibold text-paper-900">Ek hak satın al</div>
+              <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
+                Günlük hakkınız dolduğunda aynı gün kullanmak için ek ders talebi veya soru hakkı alabilirsiniz.
+                Ödeme cüzdan bakiyenizden düşer.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {usagePacks.map((pack) => (
+                  <button
+                    key={pack.code}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void buyUsagePack(pack.code)}
+                    className="rounded-xl border border-brand-200 bg-white p-3 text-left text-xs shadow-sm disabled:opacity-50"
+                  >
+                    <span className="block font-semibold text-paper-950">{pack.title}</span>
+                    <span className="mt-1 block leading-relaxed text-paper-800/65">{pack.description}</span>
+                    <span className="mt-2 block font-semibold text-brand-900">
+                      {tl(pack.price_minor)} {pack.currency}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : null}
           <div className="mt-4 flex flex-wrap items-end gap-3">

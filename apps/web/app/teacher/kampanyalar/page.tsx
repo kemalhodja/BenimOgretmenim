@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
+import { CampaignApplicationChat } from "../../components/CampaignApplicationChat";
 
 type CampaignRow = {
   id: string;
@@ -38,7 +39,27 @@ type ApplicationRow = {
   status: "new" | "contacted" | "closed";
   created_at: string;
   student_display_name: string;
-  student_email: string;
+  student_email: string | null;
+  billing_model: "listing_fee" | "success_fee";
+  message_count: number;
+};
+
+type UsagePack = {
+  code: string;
+  title: string;
+  description: string;
+  price_minor: number;
+  currency: string;
+};
+
+type TeacherUsagePacks = {
+  packs: UsagePack[];
+  remainingConversationCredits: number;
+  monthlyConversationQuota: {
+    baseQuota: number;
+    openedCount: number;
+    remainingBase: number;
+  };
 };
 
 function minorToTl(n: number): string {
@@ -80,6 +101,8 @@ export default function TeacherCampaignsPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [applicationsByCampaign, setApplicationsByCampaign] = useState<Record<string, ApplicationRow[]>>({});
+  const [usagePacks, setUsagePacks] = useState<TeacherUsagePacks | null>(null);
+  const [openChatId, setOpenChatId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = getToken();
@@ -92,11 +115,15 @@ export default function TeacherCampaignsPage() {
 
   const load = useCallback(async (t: string) => {
     setError(null);
-    const r = await apiFetch<{ campaigns: CampaignRow[]; listingFeeMinor: number }>("/v1/teacher-campaigns/mine", {
-      token: t,
-    });
+    const [r, packs] = await Promise.all([
+      apiFetch<{ campaigns: CampaignRow[]; listingFeeMinor: number }>("/v1/teacher-campaigns/mine", {
+        token: t,
+      }),
+      apiFetch<TeacherUsagePacks>("/v1/teacher-campaigns/usage-packs", { token: t }),
+    ]);
     setRows(r.campaigns);
     setListingFeeMinor(r.listingFeeMinor);
+    setUsagePacks(packs);
   }, []);
 
   useEffect(() => {
@@ -184,6 +211,24 @@ export default function TeacherCampaignsPage() {
     }
   }
 
+  async function purchaseConversationPack(packCode: string) {
+    if (!token) return;
+    setBusyId(packCode);
+    setError(null);
+    try {
+      await apiFetch(`/v1/teacher-campaigns/usage-packs/${packCode}/purchase`, {
+        method: "POST",
+        token,
+      });
+      await load(token);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "purchase_failed";
+      setError(msg.includes("insufficient_balance") ? "Bu paket için cüzdan bakiyeniz yeterli değil." : msg);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (!token) return null;
 
   return (
@@ -225,9 +270,36 @@ export default function TeacherCampaignsPage() {
               yerine {minorToTl(listingFeeMinor)} TL cüzdan bakiyesi gerekir.
             </div>
             <div className="rounded-xl border border-white/70 bg-white/80 p-3">
-              Başvuruları bu panelden takip edip durumunu güncellersiniz.
+              Komisyonlu kampanyalarda öğrenciyle güvenli sohbet bu panelde tutulur.
             </div>
           </div>
+          {usagePacks ? (
+            <div className="mt-4 rounded-2xl border border-brand-100 bg-white/80 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-paper-900">Komisyonlu kampanya görüşme hakkı</div>
+                  <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
+                    Bu ay {usagePacks.monthlyConversationQuota.openedCount}/{usagePacks.monthlyConversationQuota.baseQuota} yeni
+                    öğrenci sohbeti açıldı. Ek paketlerden kalan hakkınız: {usagePacks.remainingConversationCredits}.
+                  </p>
+                </div>
+                {usagePacks.packs.map((pack) => (
+                  <button
+                    key={pack.code}
+                    type="button"
+                    disabled={busyId === pack.code}
+                    onClick={() => void purchaseConversationPack(pack.code)}
+                    className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-left text-xs font-semibold text-brand-950 disabled:opacity-50"
+                  >
+                    <span className="block">{pack.title}</span>
+                    <span className="block font-normal text-brand-900/70">
+                      {minorToTl(pack.price_minor)} {pack.currency} · {pack.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium">
             <Link href="/teacher/cuzdan" className="rounded-full bg-white px-3 py-1.5 text-brand-900 ring-1 ring-brand-200">
               Cüzdanı yönet
@@ -373,11 +445,22 @@ export default function TeacherCampaignsPage() {
                                     {application.student_display_name}
                                   </div>
                                   <div className="mt-0.5 text-xs text-paper-800/55">
-                                    {application.student_email} · {applicationStatusLabel(application.status)} ·{" "}
+                                    {application.student_email ?? "Platform içi sohbet"} · {applicationStatusLabel(application.status)} ·{" "}
                                     {new Date(application.created_at).toLocaleString("tr-TR")}
                                   </div>
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
+                                  {application.billing_model === "success_fee" ? (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setOpenChatId((current) => (current === application.id ? null : application.id))
+                                      }
+                                      className="rounded-lg border border-brand-200 bg-brand-50 px-2 py-1 text-xs font-medium text-brand-950"
+                                    >
+                                      Sohbeti aç
+                                    </button>
+                                  ) : null}
                                   {(["new", "contacted", "closed"] as const).map((status) => (
                                     <button
                                       key={status}
@@ -393,6 +476,13 @@ export default function TeacherCampaignsPage() {
                               </div>
                               {application.message ? (
                                 <p className="mt-2 whitespace-pre-wrap text-sm text-paper-800/75">{application.message}</p>
+                              ) : null}
+                              {application.billing_model === "success_fee" && openChatId === application.id && token ? (
+                                <CampaignApplicationChat
+                                  token={token}
+                                  campaignId={campaign.id}
+                                  applicationId={application.id}
+                                />
                               ) : null}
                             </div>
                           ))}

@@ -11,6 +11,7 @@ import {
   lockStudentDailyUsage,
   studentUsagePolicyForSubscription,
 } from "../lib/studentSub.js";
+import { consumeUsageCredit, listUsageCreditPacks } from "../lib/usageCredits.js";
 
 async function requestMessageParticipant(
   requestId: string,
@@ -128,18 +129,23 @@ lessonRequests.post("/", requireAuth, async (c) => {
       await lockStudentDailyUsage(studentId, client);
       const sub = await getActiveStudentSubscription(userId, client);
       const policy = studentUsagePolicyForSubscription(sub);
-      const usage = await getStudentDailyUsage(studentId, policy, client);
+      const usage = await getStudentDailyUsage(studentId, policy, client, userId);
       if (usage.lessonRequestsToday >= policy.dailyLessonRequestLimit) {
-        await client.query("rollback");
-        return c.json(
-          {
-            error: "daily_lesson_request_quota_exceeded",
-            limit: policy.dailyLessonRequestLimit,
-            used: usage.lessonRequestsToday,
-            tier: policy.tier,
-          },
-          429,
-        );
+        const usedExtra = await consumeUsageCredit(userId, "student_lesson_request", client);
+        if (!usedExtra) {
+          const packs = await listUsageCreditPacks("student", client);
+          await client.query("rollback");
+          return c.json(
+            {
+              error: "daily_lesson_request_quota_exceeded",
+              limit: policy.dailyLessonRequestLimit,
+              used: usage.lessonRequestsToday,
+              tier: policy.tier,
+              packs,
+            },
+            429,
+          );
+        }
       }
     }
 

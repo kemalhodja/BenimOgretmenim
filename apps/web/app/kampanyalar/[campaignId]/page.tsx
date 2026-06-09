@@ -8,6 +8,7 @@ import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
 import { trackEvent } from "../../lib/trackEvent";
+import { CampaignApplicationChat } from "../../components/CampaignApplicationChat";
 
 type CampaignDetail = {
   id: string;
@@ -58,6 +59,7 @@ export default function CampaignDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
 
   useEffect(() => {
     setToken(getToken());
@@ -89,7 +91,7 @@ export default function CampaignDetailPage() {
     setError(null);
     setOk(null);
     try {
-      await apiFetch(`/v1/teacher-campaigns/${campaignId}/applications`, {
+      const r = await apiFetch<{ application: { id: string } }>(`/v1/teacher-campaigns/${campaignId}/applications`, {
         method: "POST",
         token,
         body: JSON.stringify({ message: message.trim() || null }),
@@ -99,7 +101,12 @@ export default function CampaignDetailPage() {
         entityId: campaignId,
         metadata: { teacherId: campaign?.teacher_id, campaignTitle: campaign?.title },
       });
-      setOk("Başvurunuz öğretmene iletildi. Öğretmen sizinle iletişime geçebilir.");
+      setApplicationId(r.application.id);
+      setOk(
+        campaign?.billing_model === "success_fee"
+          ? "Başvurunuz öğretmene iletildi. Sohbeti bu sayfadan güvenli şekilde sürdürebilirsiniz."
+          : "Başvurunuz öğretmene iletildi. Öğretmen sizinle iletişime geçebilir.",
+      );
       setMessage("");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "apply_failed";
@@ -113,6 +120,8 @@ export default function CampaignDetailPage() {
         setError("Kampanyaya başvuru için öğrenci hesabıyla giriş yapmalısınız.");
       } else if (msg.includes("already_applied")) {
         setError("Bu kampanyaya daha önce başvuru bıraktınız.");
+      } else if (msg.includes("campaign_conversation_quota_exceeded")) {
+        setError("Öğretmenin bu ayki yeni sohbet hakkı dolu. Öğretmen ek görüşme paketi aldığında tekrar deneyebilirsiniz.");
       } else {
         setError(msg);
       }
@@ -217,9 +226,11 @@ export default function CampaignDetailPage() {
               <div className="rounded-xl border border-brand-200 bg-white p-5 shadow-sm">
                 <div className="text-sm font-semibold text-paper-900">Bu kampanyayla ilgileniyorum</div>
                 <p className="mt-2 text-xs leading-relaxed text-paper-800/65">
-                  Başvuru bıraktığınızda adınız, e-posta adresiniz ve mesajınız öğretmene görünür. Ders/kurs ödemesi
-                  platform cüzdanında güvenceye alınır; ilk dersten sonra iade talebi oluşturabilirsiniz. İkinci derse
-                  girerseniz iade hakkı kapanır.
+                  {campaign.billing_model === "success_fee"
+                    ? "Başvuru bıraktığınızda ilk mesajınız öğretmene platform içi sohbet olarak gider. Öğretmenle güvenli şekilde bu alandan yazışırsınız."
+                    : "Başvuru bıraktığınızda adınız, e-posta adresiniz ve mesajınız öğretmene görünür."}{" "}
+                  Ders/kurs ödemesi platform cüzdanında güvenceye alınır; ilk dersten sonra iade talebi oluşturabilirsiniz.
+                  İkinci derse girerseniz iade hakkı kapanır.
                 </p>
                 <textarea
                   value={message}
@@ -236,6 +247,9 @@ export default function CampaignDetailPage() {
                 >
                   {busy ? "Gönderiliyor…" : token ? "Başvuru bırak" : "Giriş yap ve başvur"}
                 </button>
+                {campaign.billing_model === "success_fee" && token && applicationId ? (
+                  <CampaignApplicationChat token={token} campaignId={campaign.id} applicationId={applicationId} />
+                ) : null}
               </div>
             </aside>
           </div>

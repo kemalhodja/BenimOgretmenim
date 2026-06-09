@@ -275,7 +275,7 @@ export default function NewTeacherCampaignPage() {
               <div className="text-sm font-semibold text-paper-900">Kampanya ödeme modeli</div>
               <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
                 Sabit yayın ücretiyle ilanı baştan ödeyebilir veya risksiz başlayıp öğrenci gelirse %10 platform başarı
-                bedeliyle devam edebilirsiniz.
+                bedeliyle devam edebilirsiniz. Her kampanya önce admin incelemesine gider.
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <button
@@ -289,7 +289,7 @@ export default function NewTeacherCampaignPage() {
                   <div className="text-sm font-semibold text-paper-950">Sabit yayın ücreti</div>
                   <p className="mt-1 text-xs leading-relaxed text-paper-800/70">
                     İlk kampanya ücretsizdir. Sonraki ilanlarda <span className="line-through text-paper-800/45">8.000 TL</span>{" "}
-                    yerine 1000 TL cüzdandan düşülür.
+                    yerine 1000 TL cüzdandan düşülür. Başvurularda normal takip ekranını kullanırsınız.
                   </p>
                 </button>
                 <button
@@ -303,7 +303,8 @@ export default function NewTeacherCampaignPage() {
                   <div className="text-sm font-semibold text-paper-950">Başarı bedelli yayınla</div>
                   <p className="mt-1 text-xs leading-relaxed text-paper-800/70">
                     Yayınlarken ücret ödemezsiniz. Öğrenci derse devam edip iade hakkı kapanınca brüt tutardan %10
-                    platform başarı bedeli ayrılır.
+                    platform başarı bedeli ayrılır. Öğrenci görüşmeleri platform içi sohbetten ilerler; aylık hak dolarsa
+                    ek görüşme paketi alabilirsiniz.
                   </p>
                 </button>
               </div>

@@ -22,6 +22,11 @@ import {
   lockStudentDailyUsage,
   studentUsagePolicyForSubscription,
 } from "../lib/studentSub.js";
+import {
+  consumeUsageCredit,
+  listUsageCreditPacks,
+  purchaseUsageCreditPackFromWallet,
+} from "../lib/usageCredits.js";
 
 export const studentPlatform = new Hono<{ Variables: AppVariables }>();
 
@@ -36,11 +41,47 @@ studentPlatform.get("/subscription/me", requireAuth, async (c) => {
   const price = getStudentSubPriceConfig();
   const policy = studentUsagePolicyForSubscription(sub);
   const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
-  const usage = sr.rowCount ? await getStudentDailyUsage(sr.rows[0].id as string, policy) : null;
+  const usage = sr.rowCount ? await getStudentDailyUsage(sr.rows[0].id as string, policy, pool, userId) : null;
   if (!sub) {
     return c.json({ active: false, subscription: null, ...price, policy, usage });
   }
   return c.json({ active: true, subscription: sub, ...price, policy, usage });
+});
+
+studentPlatform.get("/usage-packs", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+  const packs = await listUsageCreditPacks("student");
+  return c.json({ packs });
+});
+
+studentPlatform.post("/usage-packs/:packCode/purchase", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+
+  const packCode = c.req.param("packCode");
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const purchased = await purchaseUsageCreditPackFromWallet({
+      userId,
+      audienceRole: "student",
+      packCode,
+      client,
+    });
+    await client.query("commit");
+    return c.json(purchased, 201);
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    const err = e as Error & { neededMinor?: number };
+    if (err.message === "usage_credit_pack_not_found") return c.json({ error: "pack_not_found" }, 404);
+    if (err.message === "insufficient_balance") {
+      return c.json({ error: "insufficient_balance", neededMinor: err.neededMinor ?? null }, 409);
+    }
+    throw e;
+  } finally {
+    client.release();
+  }
 });
 
 /** Öğrenci yıllık aboneliği: varsayılan 12 ay / 1500 TL; PayTR ile ödeme sonrası aktif. */
@@ -153,18 +194,23 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
     await lockStudentDailyUsage(studentId, client);
     const act = await getActiveStudentSubscription(userId, client);
     const policy = studentUsagePolicyForSubscription(act);
-    const usage = await getStudentDailyUsage(studentId, policy, client);
+    const usage = await getStudentDailyUsage(studentId, policy, client, userId);
     if (usage.homeworkPostsToday >= policy.dailyHomeworkPostLimit) {
-      await client.query("rollback");
-      return c.json(
-        {
-          error: "daily_homework_quota_exceeded",
-          limit: policy.dailyHomeworkPostLimit,
-          used: usage.homeworkPostsToday,
-          tier: policy.tier,
-        },
-        429,
-      );
+      const usedExtra = await consumeUsageCredit(userId, "student_homework", client);
+      if (!usedExtra) {
+        const packs = await listUsageCreditPacks("student", client);
+        await client.query("rollback");
+        return c.json(
+          {
+            error: "daily_homework_quota_exceeded",
+            limit: policy.dailyHomeworkPostLimit,
+            used: usage.homeworkPostsToday,
+            tier: policy.tier,
+            packs,
+          },
+          429,
+        );
+      }
     }
 
     ins = await client.query(

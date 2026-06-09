@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { BrandLockup } from "./components/BrandLockup";
 import { HomeLaunchAnnouncement } from "./components/HomeLaunchAnnouncement";
 import { HomeHeroPersonalized } from "./components/HomeHeroPersonalized";
 import { HeroArt } from "./components/HeroArt";
@@ -326,6 +327,9 @@ export default function Home() {
         <div className="relative z-0 mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_min(44%,min(440px,100%))] lg:items-center lg:gap-12">
             <div className="max-lg:order-2 lg:order-none">
+              <div className="mb-5 inline-flex rounded-3xl border border-brand-100 bg-white/80 px-4 py-3 shadow-[0_18px_55px_rgba(88,170,169,0.16)] backdrop-blur">
+                <BrandLockup asLink={false} className="[&_img]:h-14 sm:[&_img]:h-16" />
+              </div>
               <p className="mb-3 inline-flex rounded-full border border-brand-200 bg-white/75 px-3 py-1 text-xs font-semibold text-brand-900 shadow-[0_10px_30px_rgba(88,170,169,0.14)] backdrop-blur">
                 Dijital eğitim merkezi
               </p>

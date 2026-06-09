@@ -7,6 +7,7 @@ import { applyWalletDelta } from "../lib/wallet.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
 import { assertAdminApiSecret } from "../lib/adminSecret.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
+import { createExtendedTeacherSubscription, teacherSubscriptionPromoMultiplier } from "../lib/teacherSubscriptions.js";
 
 export const subscriptions = new Hono<{ Variables: AppVariables }>();
 
@@ -75,7 +76,7 @@ subscriptions.post("/purchase-from-wallet", requireAuth, async (c) => {
   if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
   const teacherId = tr.rows[0].id as string;
 
-  const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "5");
+  const promoMultiplier = teacherSubscriptionPromoMultiplier();
 
   const plan = await pool.query(
     `select code, duration_months, price_minor, currency
@@ -92,7 +93,6 @@ subscriptions.post("/purchase-from-wallet", requireAuth, async (c) => {
   };
   if (p.currency !== "TRY") return c.json({ error: "currency_not_supported" }, 409);
   if (!Number.isFinite(p.price_minor) || p.price_minor <= 0) return c.json({ error: "plan_price_invalid" }, 409);
-
   const totalMonths = p.duration_months * Math.max(1, promoMultiplier);
 
   const client = await pool.connect();
@@ -120,37 +120,19 @@ subscriptions.post("/purchase-from-wallet", requireAuth, async (c) => {
       client,
     });
 
-    const sub = await client.query(
-      `with existing as (
-         select greatest(now(), coalesce(max(expires_at), now())) as starts_at
-         from teacher_subscriptions
-         where teacher_id = $1
-           and status = 'active'
-           and expires_at > now()
-       )
-       insert into teacher_subscriptions (
-         teacher_id, plan_code, status, started_at, expires_at,
-         promo_multiplier, paid_amount_minor, currency, payment_provider, external_ref
-       )
-       select $1, $2::subscription_plan_code, 'active',
-              existing.starts_at,
-              existing.starts_at + ($3::text || ' months')::interval,
-              $4, $5, $6, 'wallet', $7
-       from existing
-       returning id, plan_code, status, started_at, expires_at, promo_multiplier`,
-      [
-        teacherId,
-        p.code,
-        String(totalMonths),
-        Math.max(1, promoMultiplier),
-        p.price_minor,
-        p.currency,
-        `wallet-${Date.now()}`,
-      ],
-    );
+    const sub = await createExtendedTeacherSubscription(client, {
+      teacherId,
+      planCode: p.code,
+      durationMonths: p.duration_months,
+      promoMultiplier,
+      paidAmountMinor: p.price_minor,
+      currency: p.currency,
+      paymentProvider: "wallet",
+      externalRef: `wallet-${Date.now()}`,
+    });
 
     await client.query("commit");
-    return c.json({ ok: true, subscription: sub.rows[0] }, 201);
+    return c.json({ ok: true, subscription: sub }, 201);
   } catch (e) {
     await client.query("rollback").catch(() => {});
     throw e;
@@ -182,7 +164,7 @@ subscriptions.post("/purchase", requireAuth, async (c) => {
   if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
   const teacherId = tr.rows[0].id as string;
 
-  const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "5");
+  const promoMultiplier = teacherSubscriptionPromoMultiplier();
 
   const plan = await pool.query(
     `select code, duration_months, price_minor, currency
@@ -321,15 +303,13 @@ subscriptions.post("/admin/approve-bank-transfer", requireAuth, async (c) => {
   };
   if (p.state !== "pending") return c.json({ error: "payment_not_pending" }, 409);
 
-  const promoMultiplier = Number(process.env.SUB_PROMO_MULTIPLIER ?? "5");
+  const promoMultiplier = teacherSubscriptionPromoMultiplier();
   const plan = await pool.query(
     `select duration_months from subscription_plans where code = $1`,
     [p.plan_code],
   );
   const months = (plan.rows[0]?.duration_months as number | undefined) ?? 0;
   if (!months) return c.json({ error: "plan_not_found" }, 404);
-  const totalMonths = months * Math.max(1, promoMultiplier);
-
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -341,35 +321,17 @@ subscriptions.post("/admin/approve-bank-transfer", requireAuth, async (c) => {
       [p.id, userId],
     );
 
-    const sub = await client.query(
-      `with existing as (
-         select greatest(now(), coalesce(max(expires_at), now())) as starts_at
-         from teacher_subscriptions
-         where teacher_id = $1
-           and status = 'active'
-           and expires_at > now()
-       )
-       insert into teacher_subscriptions (
-         teacher_id, plan_code, status, started_at, expires_at,
-         promo_multiplier, paid_amount_minor, currency, payment_provider, external_ref, payment_id
-       )
-       select $1, $2::subscription_plan_code, 'active',
-              existing.starts_at,
-              existing.starts_at + ($3::text || ' months')::interval,
-              $4, $5, $6, 'bank_transfer', $7, $8
-       from existing
-       returning id`,
-      [
-        p.teacher_id,
-        p.plan_code,
-        String(totalMonths),
-        promoMultiplier,
-        p.amount_minor,
-        p.currency,
-        `BANK-${p.id}`,
-        p.id,
-      ],
-    );
+    const sub = await createExtendedTeacherSubscription(client, {
+      teacherId: p.teacher_id,
+      planCode: p.plan_code,
+      durationMonths: months,
+      promoMultiplier,
+      paidAmountMinor: p.amount_minor,
+      currency: p.currency,
+      paymentProvider: "bank_transfer",
+      externalRef: `BANK-${p.id}`,
+      paymentId: p.id,
+    });
 
     await writeAdminAudit(
       {
@@ -383,7 +345,7 @@ subscriptions.post("/admin/approve-bank-transfer", requireAuth, async (c) => {
         before: { state: p.state },
         after: {
           state: "paid",
-          subscriptionId: sub.rows[0].id,
+          subscriptionId: sub.id,
           planCode: p.plan_code,
           amountMinor: p.amount_minor,
         },
@@ -392,7 +354,7 @@ subscriptions.post("/admin/approve-bank-transfer", requireAuth, async (c) => {
     );
 
     await client.query("commit");
-    return c.json({ ok: true, subscriptionId: sub.rows[0].id });
+    return c.json({ ok: true, subscriptionId: sub.id });
   } catch (e) {
     await client.query("rollback").catch(() => {});
     throw e;
