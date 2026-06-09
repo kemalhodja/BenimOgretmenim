@@ -12,7 +12,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     { path: "/fiyatlar", title: "Üyelik ve kullanım bilgileri" },
     { path: "/yardim", title: "Yardım" },
     { path: "/iletisim", title: "İletişim" },
-    { path: "/kampanya", title: "Öğretmenler için erken erişim kampanyası" },
+    { path: "/kampanya", title: "İlk 500 öğretmene erken erişim hediyesi" },
     { path: "/kampanyalar", title: "Öğretmen kampanyaları" },
     { path: "/uygulama", title: "Telefona ekle" },
     { path: "/kayit", title: "Kayıt ol" },
@@ -45,7 +45,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByText(/2500 TL \/ 60 ay/)).toBeVisible();
     await expect(page.getByText(/yıllık 1500 TL/)).toBeVisible();
     await expect(page.getByText(/12\.000 TL/).first()).toBeVisible();
-    await expect(page.getByText(/Erken erişim: 9 Eylül/)).toBeVisible();
+    await expect(page.getByText(/Erken erişim hediyesi/)).toBeVisible();
   });
 
   test("/kayit — roller platformda bulacaklarını görür", async ({ page }) => {

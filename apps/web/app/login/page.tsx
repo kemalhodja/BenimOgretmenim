@@ -100,20 +100,19 @@ function LoginForm() {
     [searchParams],
   );
 
-  const canSubmit = useMemo(
-    () => email.trim().length > 3 && password.trim().length > 0 && !loading,
-    [email, password, loading],
-  );
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setShowRegisterHint(false);
     setLoading(true);
+    const form = e.currentTarget as HTMLFormElement;
+    const formData = new FormData(form);
+    const submittedEmail = String(formData.get("email") ?? "");
+    const submittedPassword = String(formData.get("password") ?? "");
     try {
       const r = await apiFetch<LoginResponse>("/v1/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: submittedEmail, password: submittedPassword }),
       });
       setToken(r.token);
       const dest = returnUrl ?? defaultDestForRole(r.user.role);
@@ -183,12 +182,14 @@ function LoginForm() {
           ) : null}
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form method="post" onSubmit={onSubmit} className="space-y-4">
           <label className="block">
             <div className="mb-1 text-sm font-medium text-paper-800">E-posta</div>
             <input
+              name="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onInput={(e) => setEmail(e.currentTarget.value)}
               className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
               autoComplete="email"
               inputMode="email"
@@ -198,8 +199,10 @@ function LoginForm() {
           <label className="block">
             <div className="mb-1 text-sm font-medium text-paper-800">Parola</div>
             <input
+              name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onInput={(e) => setPassword(e.currentTarget.value)}
               className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
               type="password"
               autoComplete="current-password"
@@ -226,7 +229,7 @@ function LoginForm() {
 
           <button
             type="submit"
-            disabled={!canSubmit}
+            disabled={loading}
             className="w-full rounded-xl bg-brand-800 px-3 py-2.5 text-sm font-semibold text-white hover:bg-brand-900 disabled:opacity-50"
           >
             {loading ? "Giriş yapılıyor..." : "Giriş yap"}

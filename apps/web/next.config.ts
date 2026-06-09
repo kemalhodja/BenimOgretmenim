@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
     const { inferInternalApiUrlIfNeeded } = await import(
       "./scripts/infer-internal-api-url.mjs"

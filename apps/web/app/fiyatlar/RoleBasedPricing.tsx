@@ -43,8 +43,8 @@ function roleName(role: UserRole): string {
 }
 
 function teacherCampaignLabel(plan: PlanRow): string {
-  if (plan.code === "teacher_6m") return "Erken erişim: 6 ay öde, toplam 30 ay kullan.";
-  if (plan.code === "teacher_12m") return "Erken erişim: 12 ay öde, toplam 60 ay kullan.";
+  if (plan.code === "teacher_6m") return "Erken erişim hediyesi: 6 ay aboneliğe 24 ay ücretsiz hediye süre.";
+  if (plan.code === "teacher_12m") return "Erken erişim hediyesi: 12 ay aboneliğe 48 ay ücretsiz hediye süre.";
   return `${plan.duration_months} aylık abonelik.`;
 }
 
@@ -210,7 +210,7 @@ export function RoleBasedPricing() {
                 <p className="mt-2 text-xs font-medium text-brand-900">{teacherCampaignLabel(p)}</p>
                 {p.code === "teacher_6m" || p.code === "teacher_12m" ? (
                   <p className="mt-2 text-xs font-semibold text-warm-800">
-                    Erken erişim kampanyası: aldığınız sürenin 4 katı hediye.
+                    Kontenjan ilk 500 öğretmendir; ödeme tutarı değişmez.
                   </p>
                 ) : null}
                 <Link
