@@ -44,8 +44,8 @@ function itemsFor(mode: PanelMode, role: UserRole | null, pathname: string): Ite
   }
   if (effective === "guardian") {
     return [
-      { href: "/guardian", label: "Panel", primary: true },
-      { href: "/yardim", label: "Yardım" },
+      { href: "/guardian", label: "Panel" },
+      { href: "/guardian/requests", label: "İlanlar", primary: true },
       { href: "/student/kurslar", label: "Kurslar" },
       { href: "/ogretmenler", label: "Öğretmen", shortLabel: "Öğret" },
       { href: "/iletisim", label: "Destek" },

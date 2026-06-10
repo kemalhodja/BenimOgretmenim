@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../../lib/api";
 import { loginHrefWithReturn } from "../../../lib/authRedirect";
-import { clearToken, getToken } from "../../../lib/auth";
+import { clearToken, getRoleFromToken, getToken } from "../../../lib/auth";
 import { RequestChat } from "../../../components/RequestChat";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
@@ -13,6 +13,8 @@ type Branch = { id: number; parent_id: number | null; name: string; slug: string
 type MyRequest = {
   id: string;
   status: string;
+  student_id?: string;
+  student_display_name?: string;
   request_kind?: "regular" | "demo";
   target_teacher_id: string | null;
   target_teacher_display_name: string | null;
@@ -271,7 +273,11 @@ export default function StudentRequestDetailPage() {
         setError("Bu teklif üzerinde işlem yapma yetkiniz yok.");
       }
       if (msg.includes("insufficient_wallet_available")) {
-        setError("Kullanılabilir cüzdan bakiyesi paketi güvenceye almak için yetersiz. Öğrenci panelinden bakiye yükleyin.");
+        setError(
+          getRoleFromToken(token) === "guardian"
+            ? "Kullanılabilir cüzdan bakiyesi paketi güvenceye almak için yetersiz."
+            : "Kullanılabilir cüzdan bakiyesi paketi güvenceye almak için yetersiz. Öğrenci panelinden bakiye yükleyin.",
+        );
       }
     } finally {
       setBusyId(null);
@@ -279,16 +285,19 @@ export default function StudentRequestDetailPage() {
   }
 
   if (!token) return null;
+  const role = getRoleFromToken(token);
+  const isGuardian = role === "guardian";
+  const requestBaseHref = isGuardian ? "/guardian/requests" : "/student/requests";
 
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
         <div>
           <Link
-            href="/student/requests"
+            href={requestBaseHref}
             className="text-sm font-medium text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
           >
-            ← Taleplerim
+            ← İlanlarım
           </Link>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight text-paper-900">
             {summary?.request_kind === "demo" ? "Demo talebi ve teklifler" : "Talep ve teklifler"}
@@ -297,6 +306,7 @@ export default function StudentRequestDetailPage() {
             <p className="mt-1 text-sm text-paper-800/75">
               {branchName} · durum:{" "}
               <span className="font-medium">{requestStatusTr(summary.status)}</span>
+              {isGuardian && summary.student_display_name ? ` · öğrenci: ${summary.student_display_name}` : ""}
             </p>
           )}
           {summary?.request_kind === "demo" && (
@@ -311,14 +321,20 @@ export default function StudentRequestDetailPage() {
             <p className="mt-1 text-sm text-paper-800/65">Konu: {summary.topic_text}</p>
           )}
           <p className="mt-2 text-sm text-paper-800/65">
-            Diğer sayfalar üst menüden. Ödeme ve bakiye:{" "}
-            <Link
-              href="/student/panel"
-              className="font-medium text-brand-800 underline-offset-4 hover:underline"
-            >
-              özet / cüzdan
-            </Link>
-            .
+            {isGuardian
+              ? "Teklifi kabul ettiğinizde ödeme güvencesi işlemi yapan veli hesabı üzerinden kontrol edilir."
+              : (
+                <>
+                  Diğer sayfalar üst menüden. Ödeme ve bakiye:{" "}
+                  <Link
+                    href="/student/panel"
+                    className="font-medium text-brand-800 underline-offset-4 hover:underline"
+                  >
+                    özet / cüzdan
+                  </Link>
+                  .
+                </>
+              )}
           </p>
         </div>
 

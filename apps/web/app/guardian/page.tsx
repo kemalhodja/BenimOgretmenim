@@ -408,6 +408,34 @@ export default function GuardianPage() {
           </div>
         </section>
 
+        <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                Ders ilanı ve teklifler
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">
+                Öğrenciniz adına ilan açın, gelen teklifleri karşılaştırın
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/65">
+                Branş, konu ve uygun zamanı yazın. İlan ilgili öğretmenlere bildirilir; teklif geldiğinde öğretmen profili,
+                ücret ve mesajı aynı ekranda değerlendirebilirsiniz.
+              </p>
+            </div>
+            <Link
+              href="/guardian/requests"
+              className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
+            >
+              İlan ve teklifleri aç
+            </Link>
+          </div>
+          {students.length === 0 ? (
+            <p className="mt-3 rounded-xl border border-paper-200 bg-paper-50 px-3 py-2 text-xs text-paper-800/65">
+              İlan oluşturmak için önce öğrenci hesabını veli hesabınıza bağlayın.
+            </p>
+          ) : null}
+        </section>
+
         <section id="kazanim-takibi" className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>

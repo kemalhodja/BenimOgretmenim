@@ -18,6 +18,9 @@ export function GuardianPanelHeader() {
           <BrandLockup asLink={false} className="max-sm:max-w-[min(90vw,22rem)]" />
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
+          <Link href="/guardian/requests" className={panelNavLinkDesk}>
+            İlanlar
+          </Link>
           <Link href="/yardim" className={panelNavLinkDesk}>
             Yardım
           </Link>
@@ -28,6 +31,9 @@ export function GuardianPanelHeader() {
       </div>
       <nav className={`flex ${panelNavSubrow} md:hidden`}>
         <div className="flex w-full overflow-x-auto text-xs">
+          <Link href="/guardian/requests" className={panelNavLinkMob}>
+            İlanlar
+          </Link>
           <Link href="/yardim" className={panelNavLinkMob}>
             Yardım
           </Link>

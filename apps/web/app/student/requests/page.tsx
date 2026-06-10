@@ -4,15 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
-import { clearToken, getToken } from "../../lib/auth";
+import { clearToken, getRoleFromToken, getToken } from "../../lib/auth";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { trackEvent } from "../../lib/trackEvent";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
+type StudentRow = { student_id: string; student_display_name: string };
 
 type MyRequest = {
   id: string;
   status: string;
+  student_id?: string;
+  student_display_name?: string;
   request_kind?: "regular" | "demo";
   target_teacher_id: string | null;
   target_teacher_display_name: string | null;
@@ -51,6 +54,8 @@ export default function StudentRequestsPage() {
   const searchParams = useSearchParams();
   const [token, setToken] = useState<string | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [guardianStudents, setGuardianStudents] = useState<StudentRow[]>([]);
+  const [selectedStudentId, setSelectedStudentId] = useState("");
   const [mine, setMine] = useState<MyRequest[]>([]);
   const [branchId, setBranchId] = useState<number | "">("");
   const [note, setNote] = useState("");
@@ -149,12 +154,20 @@ export default function StudentRequestsPage() {
   }, [searchParams]);
 
   async function refresh(t: string) {
-    const [b, m] = await Promise.all([
+    const role = getRoleFromToken(t);
+    const [b, m, g] = await Promise.all([
       apiFetch<{ branches: Branch[] }>("/v1/meta/branches"),
       apiFetch<{ requests: MyRequest[] }>("/v1/lesson-requests/mine", { token: t }),
+      role === "guardian"
+        ? apiFetch<{ students: StudentRow[] }>("/v1/guardians/overview", { token: t })
+        : Promise.resolve({ students: [] as StudentRow[] }),
     ]);
     setBranches(b.branches);
     setMine(m.requests);
+    setGuardianStudents(g.students);
+    if (role === "guardian") {
+      setSelectedStudentId((prev) => prev || g.students[0]?.student_id || "");
+    }
   }
 
   useEffect(() => {
@@ -180,6 +193,10 @@ export default function StudentRequestsPage() {
     try {
       if (branchId === "") throw new Error("Branş seçin");
       if (topic.trim().length < 2) throw new Error("Ders konusu en az 2 karakter olmalı (zorunlu).");
+      const role = getRoleFromToken(token);
+      if (role === "guardian" && !selectedStudentId) {
+        throw new Error("İlan oluşturmak için bağlı öğrenciyi seçin.");
+      }
       if (requestKind === "demo" && !targetTeacherId) {
         throw new Error("Demo ders için öğretmen bilgisi eksik.");
       }
@@ -202,6 +219,7 @@ export default function StudentRequestsPage() {
         token,
         body: JSON.stringify({
           branchId,
+          ...(role === "guardian" ? { studentId: selectedStudentId } : {}),
           topic: topic.trim(),
           requestKind,
           targetTeacherId,
@@ -216,7 +234,7 @@ export default function StudentRequestsPage() {
         entityId: targetTeacherId ?? undefined,
         metadata: { branchId, requestKind, shortlistCount: shortlistTeachers.length },
       });
-      setOk(requestKind === "demo" ? "Demo ders talebi öğretmene gönderildi." : "Talep oluşturuldu.");
+      setOk(requestKind === "demo" ? "Demo ders talebi öğretmene gönderildi." : "Ders ilanı oluşturuldu. Uygun öğretmenlere bildirim gönderilir.");
       setNote("");
       setGradeLevel("");
       setExamTarget("");
@@ -230,7 +248,7 @@ export default function StudentRequestsPage() {
         router.replace(loginHrefWithReturn(pathWithQuery));
       }
       if (msg.includes("[403]")) {
-        setError("Talep oluşturmak için öğrenci hesabı gerekir.");
+        setError("Talep oluşturmak için öğrenci hesabı ya da bağlı öğrencisi olan veli hesabı gerekir.");
       }
       if (msg.includes("daily_lesson_request_quota_exceeded")) {
         setError("Bugünkü ders ilanı hakkınız doldu. Ücretsiz öğrenciler günde 1 ilan açabilir; yıllık abonelikte bu hak günde 5 ilandır.");
@@ -241,6 +259,9 @@ export default function StudentRequestsPage() {
   }
 
   if (!token) return null;
+  const role = getRoleFromToken(token);
+  const isGuardian = role === "guardian";
+  const requestBaseHref = isGuardian ? "/guardian/requests" : "/student/requests";
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -248,10 +269,10 @@ export default function StudentRequestsPage() {
         <header className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-paper-900">
-              Ders taleplerim
+              Ders ilanlarım
             </h1>
             <p className="mt-1 text-sm text-paper-800/65">
-              Branş ve konu zorunlu; teklifler için satıra tıklayın.
+              İlan oluşturun; öğretmenlerden gelen teklifleri satıra tıklayarak değerlendirin.
             </p>
           </div>
         </header>
@@ -271,7 +292,7 @@ export default function StudentRequestsPage() {
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="rounded-xl border border-paper-200 bg-white p-5">
             <h2 className="text-base font-semibold text-paper-900">
-              {requestKind === "demo" ? "Demo ders talebi" : "Yeni talep"}
+              {requestKind === "demo" ? "Demo ders talebi" : "Yeni ders ilanı"}
             </h2>
             <p className="mt-1 text-xs text-paper-800/55">
               Sınıf, hedef ve uygun zaman bilgisi öğretmenin hızlı yanıt vermesini sağlar. Medya için{" "}
@@ -315,6 +336,27 @@ export default function StudentRequestsPage() {
               </div>
             )}
             <div className="mt-4 space-y-4">
+              {isGuardian && (
+                <label className="block">
+                  <div className="mb-1 text-sm font-medium text-paper-900">Öğrenci</div>
+                  <select
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                  >
+                    <option value="">Bağlı öğrenci seçin</option>
+                    {guardianStudents.map((student) => (
+                      <option key={student.student_id} value={student.student_id}>
+                        {student.student_display_name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-paper-800/55">
+                    Veli yalnızca bağlı olduğu öğrenci adına ilan oluşturabilir.
+                  </p>
+                </label>
+              )}
+
               <label className="block">
                 <div className="mb-1 text-sm font-medium text-paper-900">Branş</div>
                 <select
@@ -407,24 +449,24 @@ export default function StudentRequestsPage() {
                   ? "Oluşturuluyor..."
                   : requestKind === "demo"
                     ? "Demo talebi gönder"
-                    : "Talep oluştur"}
+                    : "İlan oluştur"}
               </button>
             </div>
           </div>
 
           <div className="rounded-xl border border-paper-200 bg-white p-5">
-            <h2 className="text-base font-semibold text-paper-900">Talepler</h2>
+            <h2 className="text-base font-semibold text-paper-900">İlanlar ve teklifler</h2>
             <p className="mt-1 text-xs text-paper-800/55">Detay ve teklifler için satıra tıklayın.</p>
             <div className="mt-3 space-y-2">
               {mine.length === 0 ? (
                 <div className="rounded-xl border border-paper-100 bg-paper-50 p-4 text-sm text-paper-800/70">
-                  Henüz talep yok. Branş, konu ve uygun zaman bilgisiyle ilk talebinizi oluşturabilirsiniz.
+                  Henüz ilan yok. Branş, konu ve uygun zaman bilgisiyle ilk ilanınızı oluşturabilirsiniz.
                 </div>
               ) : (
                 mine.map((r) => (
                   <Link
                     key={r.id}
-                    href={`/student/requests/${r.id}`}
+                    href={`${requestBaseHref}/${r.id}`}
                     className="flex items-center justify-between rounded-xl border border-paper-100 px-3 py-2 transition hover:border-brand-200 hover:bg-brand-50/25"
                   >
                     <div>
@@ -434,6 +476,11 @@ export default function StudentRequestsPage() {
                       <div className="text-xs text-paper-800/55">
                         {requestStatusLabel(r.status)} · teklif: {r.offers_count}
                       </div>
+                      {isGuardian && r.student_display_name && (
+                        <div className="mt-1 text-xs text-paper-800/65">
+                          Öğrenci: {r.student_display_name}
+                        </div>
+                      )}
                       {r.topic_text && (
                         <div className="mt-1 text-xs text-paper-800/65">{r.topic_text}</div>
                       )}
@@ -451,7 +498,7 @@ export default function StudentRequestsPage() {
               )}
             </div>
             <div className="mt-4 rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2 text-xs leading-relaxed text-brand-950">
-              Talep detayında gelen teklifleri, öğretmen profillerini ve ödeme adımını birlikte görebilirsiniz.
+              İlan detayında gelen teklifleri, öğretmen profillerini ve ödeme adımını birlikte görebilirsiniz.
             </div>
           </div>
         </div>

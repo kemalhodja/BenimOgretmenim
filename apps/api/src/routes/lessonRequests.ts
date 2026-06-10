@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import type { QueryResult } from "pg";
 import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
@@ -13,6 +14,60 @@ import {
 } from "../lib/studentSub.js";
 import { consumeUsageCredit, listUsageCreditPacks } from "../lib/usageCredits.js";
 
+type DbExecutor = {
+  query<T extends Record<string, unknown> = Record<string, unknown>>(
+    text: string,
+    params?: unknown[],
+  ): Promise<QueryResult<T>>;
+};
+
+type RequestOwnerStudent = {
+  studentId: string;
+  studentUserId: string;
+};
+
+async function resolveRequestStudent(
+  db: DbExecutor,
+  userId: string,
+  role: string,
+  requestedStudentId?: string | null,
+): Promise<{ ok: true; value: RequestOwnerStudent } | { ok: false; error: string; status: 400 | 403 }> {
+  if (role === "student") {
+    const r = await db.query<{ id: string; user_id: string }>(
+      `select id, user_id from students where user_id = $1`,
+      [userId],
+    );
+    if (!r.rowCount) return { ok: false, error: "student_profile_missing", status: 400 };
+    const row = r.rows[0];
+    if (requestedStudentId && requestedStudentId !== row.id) {
+      return { ok: false, error: "forbidden_student_mismatch", status: 403 };
+    }
+    return { ok: true, value: { studentId: row.id, studentUserId: row.user_id } };
+  }
+
+  if (role === "guardian") {
+    if (!requestedStudentId) {
+      return { ok: false, error: "guardian_student_required", status: 400 };
+    }
+    const r = await db.query<{ id: string; user_id: string }>(
+      `select s.id, s.user_id
+       from students s
+       where s.id = $1
+         and exists (
+           select 1 from student_guardians sg
+           where sg.student_id = s.id
+             and sg.guardian_user_id = $2
+         )`,
+      [requestedStudentId, userId],
+    );
+    if (!r.rowCount) return { ok: false, error: "forbidden_guardian_student", status: 403 };
+    const row = r.rows[0];
+    return { ok: true, value: { studentId: row.id, studentUserId: row.user_id } };
+  }
+
+  return { ok: false, error: "forbidden_students_or_guardians_only", status: 403 };
+}
+
 async function requestMessageParticipant(
   requestId: string,
   userId: string,
@@ -24,6 +79,20 @@ async function requestMessageParticipant(
        from lesson_requests lr
        join students s on s.id = lr.student_id
        where lr.id = $1 and s.user_id = $2`,
+      [requestId, userId],
+    );
+    return r.rowCount ? "student" : null;
+  }
+  if (role === "guardian") {
+    const r = await pool.query(
+      `select 1
+       from lesson_requests lr
+       where lr.id = $1
+         and exists (
+           select 1 from student_guardians sg
+           where sg.student_id = lr.student_id
+             and sg.guardian_user_id = $2
+         )`,
       [requestId, userId],
     );
     return r.rowCount ? "student" : null;
@@ -44,6 +113,7 @@ async function requestMessageParticipant(
 export const lessonRequests = new Hono<{ Variables: AppVariables }>();
 
 const createRequestSchema = z.object({
+  studentId: z.string().uuid().optional(),
   branchId: z.number().int().positive(),
   topic: z.string().min(2).max(200),
   requestKind: z.enum(["regular", "demo"]).optional().default("regular"),
@@ -73,9 +143,6 @@ function shortlistTeacherIdsFromAvailability(value: Record<string, unknown> | un
 lessonRequests.post("/", requireAuth, async (c) => {
   const userId = c.get("userId");
   const role = c.get("userRole");
-  if (role !== "student") {
-    return c.json({ error: "forbidden_students_only" }, 403);
-  }
 
   const parsed = createRequestSchema.safeParse(await c.req.json());
   if (!parsed.success) {
@@ -99,13 +166,11 @@ lessonRequests.post("/", requireAuth, async (c) => {
     return c.json({ error: "demo_request_target_teacher_required" }, 400);
   }
 
-  const sr = await pool.query(`select id from students where user_id = $1`, [
-    userId,
-  ]);
-  if (!sr.rowCount) {
-    return c.json({ error: "student_profile_missing" }, 400);
+  const owner = await resolveRequestStudent(pool, userId, role, parsed.data.studentId ?? null);
+  if (!owner.ok) {
+    return c.json({ error: owner.error }, owner.status);
   }
-  const studentId = sr.rows[0].id as string;
+  const { studentId, studentUserId } = owner.value;
 
   if (targetTeacherId) {
     const tr = await pool.query(
@@ -127,11 +192,11 @@ lessonRequests.post("/", requireAuth, async (c) => {
     await client.query("begin");
     if (requestKind !== "demo") {
       await lockStudentDailyUsage(studentId, client);
-      const sub = await getActiveStudentSubscription(userId, client);
+      const sub = await getActiveStudentSubscription(studentUserId, client);
       const policy = studentUsagePolicyForSubscription(sub);
-      const usage = await getStudentDailyUsage(studentId, policy, client, userId);
+      const usage = await getStudentDailyUsage(studentId, policy, client, studentUserId);
       if (usage.lessonRequestsToday >= policy.dailyLessonRequestLimit) {
-        const usedExtra = await consumeUsageCredit(userId, "student_lesson_request", client);
+        const usedExtra = await consumeUsageCredit(studentUserId, "student_lesson_request", client);
         if (!usedExtra) {
           const packs = await listUsageCreditPacks("student", client);
           await client.query("rollback");
@@ -193,39 +258,69 @@ lessonRequests.post("/", requireAuth, async (c) => {
 
   const requestId = ins.rows[0].id as string;
   const notifyTeacherIds = [...new Set([...(targetTeacherId ? [targetTeacherId] : []), ...shortlistTeacherIds])];
-  if (notifyTeacherIds.length > 0) {
-    const recipients = await pool.query(
-      `select distinct t.id as teacher_id, t.user_id, u.display_name
-       from teachers t
-       join users u on u.id = t.user_id
-       join teacher_branches tb on tb.teacher_id = t.id
-       where t.id = any($1::uuid[])
-         and tb.branch_id = $2`,
-      [notifyTeacherIds, parsed.data.branchId],
+  const deliveryMode = parsed.data.deliveryMode ?? "online";
+  const cityId = parsed.data.cityId ?? null;
+  const recipients =
+    notifyTeacherIds.length > 0
+      ? await pool.query<{ teacher_id: string; user_id: string; display_name: string }>(
+          `select distinct t.id as teacher_id, t.user_id, u.display_name
+           from teachers t
+           join users u on u.id = t.user_id
+           join teacher_branches tb on tb.teacher_id = t.id
+           where t.id = any($1::uuid[])
+             and tb.branch_id = $2`,
+          [notifyTeacherIds, parsed.data.branchId],
+        )
+      : await pool.query<{ teacher_id: string; user_id: string; display_name: string }>(
+          `select distinct t.id as teacher_id, t.user_id, u.display_name
+           from teachers t
+           join users u on u.id = t.user_id
+           join teacher_branches tb on tb.teacher_id = t.id
+           where tb.branch_id = $1
+             and u.role = 'teacher'
+             and t.verification_status <> 'rejected'
+             and (
+               $2::text in ('online', 'hybrid')
+               or $3::smallint is null
+               or t.city_id = $3::smallint
+             )
+           order by
+             case when t.verification_status = 'verified' then 0 else 1 end,
+             coalesce(t.rating_count, 0) desc,
+             t.created_at desc
+           limit 50`,
+          [parsed.data.branchId, deliveryMode, cityId],
+        );
+
+  for (const recipient of recipients.rows) {
+    const isTargetDemo = requestKind === "demo" && recipient.teacher_id === targetTeacherId;
+    const isShortlisted = !isTargetDemo && shortlistTeacherIds.includes(recipient.teacher_id);
+    await pool.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel,
+         title, body, payload_jsonb, delivery_status, sent_at
+       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
+      [
+        recipient.user_id,
+        studentId,
+        isTargetDemo ? "Yeni demo ders talebi" : "Yeni ders ilanı var",
+        isTargetDemo
+          ? `"${parsed.data.topic.trim()}" için size özel demo ders talebi geldi.`
+          : isShortlisted
+            ? `"${parsed.data.topic.trim()}" ilanında öğrenci sizi kısa listesine aldı.`
+            : `"${parsed.data.topic.trim()}" için branşınıza uygun yeni ders ilanı yayınlandı.`,
+        JSON.stringify({
+          kind: isTargetDemo
+            ? "lesson_request_demo_targeted"
+            : isShortlisted
+              ? "lesson_request_shortlisted"
+              : "lesson_request_created_teacher",
+          requestId,
+          branchId: parsed.data.branchId,
+          teacherId: recipient.teacher_id,
+        }),
+      ],
     );
-    for (const recipient of recipients.rows as Array<{ teacher_id: string; user_id: string; display_name: string }>) {
-      const isTargetDemo = requestKind === "demo" && recipient.teacher_id === targetTeacherId;
-      await pool.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          recipient.user_id,
-          studentId,
-          isTargetDemo ? "Yeni demo ders talebi" : "Kısa listeli ders talebi",
-          isTargetDemo
-            ? `"${parsed.data.topic.trim()}" için size özel demo ders talebi geldi.`
-            : `"${parsed.data.topic.trim()}" talebinde öğrenci sizi kısa listesine aldı.`,
-          JSON.stringify({
-            kind: isTargetDemo ? "lesson_request_demo_targeted" : "lesson_request_shortlisted",
-            requestId,
-            branchId: parsed.data.branchId,
-            teacherId: recipient.teacher_id,
-          }),
-        ],
-      );
-    }
   }
 
   return c.json({ request: ins.rows[0] }, 201);
@@ -235,28 +330,36 @@ lessonRequests.post("/", requireAuth, async (c) => {
 lessonRequests.get("/mine", requireAuth, async (c) => {
   const userId = c.get("userId");
   const role = c.get("userRole");
-  if (role !== "student") {
-    return c.json({ error: "forbidden_students_only" }, 403);
+  if (role !== "student" && role !== "guardian") {
+    return c.json({ error: "forbidden_students_or_guardians_only" }, 403);
   }
-  const sr = await pool.query(`select id from students where user_id = $1`, [
-    userId,
-  ]);
-  if (!sr.rowCount) return c.json({ requests: [] });
-  const studentId = sr.rows[0].id as string;
 
   const r = await pool.query(
-    `select lr.id, lr.status, lr.branch_id, lr.city_id, lr.district_id, lr.delivery_mode,
+    `select lr.id, lr.status, lr.student_id, su.display_name as student_display_name,
+            lr.branch_id, lr.city_id, lr.district_id, lr.delivery_mode,
             lr.request_kind, lr.target_teacher_id, lr.topic_text,
             tu.display_name as target_teacher_display_name,
             lr.created_at,
             (select count(*)::int from lesson_offers o where o.request_id = lr.id) as offers_count
      from lesson_requests lr
+     join students s on s.id = lr.student_id
+     join users su on su.id = s.user_id
      left join teachers tt on tt.id = lr.target_teacher_id
      left join users tu on tu.id = tt.user_id
-     where lr.student_id = $1
+     where (
+       ($2 = 'student' and s.user_id = $1)
+       or (
+         $2 = 'guardian'
+         and exists (
+           select 1 from student_guardians sg
+           where sg.student_id = lr.student_id
+             and sg.guardian_user_id = $1
+         )
+       )
+     )
      order by lr.created_at desc
      limit 50`,
-    [studentId],
+    [userId, role],
   );
   return c.json({ requests: r.rows });
 });
@@ -407,8 +510,8 @@ lessonRequests.get("/my-offers", requireAuth, async (c) => {
 lessonRequests.post("/:requestId/cancel", requireAuth, async (c) => {
   const userId = c.get("userId");
   const role = c.get("userRole");
-  if (role !== "student") {
-    return c.json({ error: "forbidden_students_only" }, 403);
+  if (role !== "student" && role !== "guardian") {
+    return c.json({ error: "forbidden_students_or_guardians_only" }, 403);
   }
   const requestId = c.req.param("requestId");
 
@@ -420,9 +523,20 @@ lessonRequests.post("/:requestId/cancel", requireAuth, async (c) => {
       `select lr.id, lr.status
        from lesson_requests lr
        join students s on s.id = lr.student_id
-       where lr.id = $1 and s.user_id = $2
+       where lr.id = $1
+         and (
+           ($3 = 'student' and s.user_id = $2)
+           or (
+             $3 = 'guardian'
+             and exists (
+               select 1 from student_guardians sg
+               where sg.student_id = lr.student_id
+                 and sg.guardian_user_id = $2
+             )
+           )
+         )
        for update`,
-      [requestId, userId],
+      [requestId, userId, role],
     );
     if (!own.rowCount) {
       await client.query("rollback");
@@ -497,7 +611,7 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
   const teacherId = tr.rows[0].id as string;
   const teacherDisplayName = (tr.rows[0].display_name as string | undefined) ?? "Öğretmen";
 
-  // Abonelik kontrolü: aktif abonelik varsa ücretsiz; yoksa teklif başına ücret (300 TL)
+  // Abonelik kontrolü: aktif abonelik varsa ücretsiz; yoksa teklif başına ücret (500 TL).
   const activeSub = await pool.query(
     `select 1
      from teacher_subscriptions s
@@ -507,7 +621,7 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
      limit 1`,
     [teacherId],
   );
-  const offerFeeMinor = Number(process.env.OFFER_FEE_MINOR ?? "30000"); // 300 TL
+  const offerFeeMinor = Number(process.env.OFFER_FEE_MINOR ?? "50000"); // 500 TL
   if (!Number.isFinite(offerFeeMinor) || offerFeeMinor < 0 || offerFeeMinor > 1_000_000_00) {
     return c.json({ error: "offer_fee_invalid" }, 500);
   }
@@ -563,7 +677,7 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
         kind: "teacher_offer_fee",
         refType: "lesson_request",
         refId: requestId,
-        metadata: { offerFeeMinor },
+        metadata: { offerFeeMinor, requestId, teacherId },
         client,
       });
     }
@@ -633,16 +747,27 @@ lessonRequests.get("/:requestId/offers", requireAuth, async (c) => {
   const userId = c.get("userId");
   const role = c.get("userRole");
   const requestId = c.req.param("requestId");
-  if (role !== "student") {
-    return c.json({ error: "forbidden_students_only" }, 403);
+  if (role !== "student" && role !== "guardian") {
+    return c.json({ error: "forbidden_students_or_guardians_only" }, 403);
   }
 
   const own = await pool.query(
     `select 1
      from lesson_requests lr
      join students s on s.id = lr.student_id
-     where lr.id = $1 and s.user_id = $2`,
-    [requestId, userId],
+     where lr.id = $1
+       and (
+         ($3 = 'student' and s.user_id = $2)
+         or (
+           $3 = 'guardian'
+           and exists (
+             select 1 from student_guardians sg
+             where sg.student_id = lr.student_id
+               and sg.guardian_user_id = $2
+           )
+         )
+       )`,
+    [requestId, userId, role],
   );
   if (!own.rowCount) return c.json({ error: "forbidden_or_not_found" }, 403);
 
@@ -736,8 +861,8 @@ const decideOfferSchema = z.object({
 lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c) => {
   const userId = c.get("userId");
   const role = c.get("userRole");
-  if (role !== "student") {
-    return c.json({ error: "forbidden_students_only" }, 403);
+  if (role !== "student" && role !== "guardian") {
+    return c.json({ error: "forbidden_students_or_guardians_only" }, 403);
   }
   const requestId = c.req.param("requestId");
   const offerId = c.req.param("offerId");
@@ -758,9 +883,20 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
        from lesson_requests lr
        join students s on s.id = lr.student_id
        join users su on su.id = s.user_id
-       where lr.id = $1 and s.user_id = $2
+       where lr.id = $1
+         and (
+           ($3 = 'student' and s.user_id = $2)
+           or (
+             $3 = 'guardian'
+             and exists (
+               select 1 from student_guardians sg
+               where sg.student_id = lr.student_id
+                 and sg.guardian_user_id = $2
+             )
+           )
+         )
        for update`,
-      [requestId, userId],
+      [requestId, userId, role],
     );
     if (!own.rowCount) {
       await client.query("rollback");

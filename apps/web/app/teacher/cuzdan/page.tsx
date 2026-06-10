@@ -86,6 +86,7 @@ function ledgerKindLabel(kind: string): string {
   const labels: Record<string, string> = {
     teacher_payout: "Öğretmen kazancı",
     direct_booking_payout: "Doğrudan ders kazancı",
+    teacher_offer_fee: "Ders ilanı teklif ücreti",
     teacher_withdrawal_requested: "Para çekme talebi",
     teacher_withdrawal_paid: "Para çekme ödendi",
     teacher_withdrawal_rejected: "Para çekme reddedildi",
@@ -244,6 +245,7 @@ export default function TeacherCuzdanPage() {
         <p className="mt-1 text-sm text-paper-800/75">
           Doğrudan ders anlaşmaları ve kurs derslerinden kazandığınız tutarlar burada görünür.
           Öğrenci platforma ödeme yapar; kurs başladığında belirlenen saatlik ücret cüzdanınıza yatırılır.
+          Aboneliğiniz yoksa ders ilanlarına teklif verirken her teklif için iadesiz 500 TL cüzdanınızdan düşülür.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm">
           <Link className="text-paper-800/75 underline" href="/teacher">

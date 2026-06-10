@@ -150,7 +150,7 @@ export default function TeacherRequestsPage() {
       }
       if (msg.includes("[409]") && msg.includes("insufficient")) {
         setError(
-          "Bakiye yetersiz. Aboneliğiniz yoksa teklif göndermek için 300 TL cüzdan bakiyesi gerekir. Cüzdan sayfasından bakiye yükleyin.",
+          "Bakiye yetersiz. Aboneliğiniz yoksa teklif göndermek için 500 TL cüzdan bakiyesi gerekir. Bu teklif ücreti iade edilmez; cüzdan sayfasından bakiye yükleyin.",
         );
       }
     } finally {
@@ -189,6 +189,10 @@ export default function TeacherRequestsPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Açık ders talepleri</h1>
           <p className="mt-1 text-sm text-paper-800/65">Gönderdiğiniz teklifler: üst menüden «Teklifler».</p>
+          <p className="mt-2 max-w-3xl rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs leading-relaxed text-brand-950">
+            Aboneliğiniz aktifse teklif göndermek ücretsizdir. Aboneliğiniz yoksa her teklif için cüzdanınızdan
+            iadesiz 500 TL düşülür.
+          </p>
         </div>
 
         {(error || ok) && (
@@ -341,7 +345,7 @@ export default function TeacherRequestsPage() {
 
         <p className="mt-6 text-xs text-paper-800/55">
           Liste: öğrencilerin açtığı açık talepler. Talep oluşturma bu panelde yoktur; yalnızca teklif
-          verirsiniz.
+          verirsiniz. Abonelik aktif değilse teklif gönderirken 500 TL cüzdan bakiyesi gerekir.
         </p>
       </div>
     </div>
