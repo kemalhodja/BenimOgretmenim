@@ -79,7 +79,7 @@ const platformTracks = [
   },
   {
     title: "Canlı ders düzeni",
-    body: "Ders linki, tahta, mesaj ve materyaller tek yerde kalır.",
+    body: "Ders bağlantısı, tahta, mesaj ve materyaller tek yerde kalır.",
     href: "/student/dersler",
   },
   {
@@ -138,7 +138,7 @@ const commandDeckCards = [
   {
     eyebrow: "02",
     title: "Dersi düzenli yürütme",
-    body: "Ders linki, mesaj, materyal, kayıt ve ders notları aynı yerde durur.",
+    body: "Ders bağlantısı, mesaj, materyal, kayıt ve ders notları aynı yerde durur.",
     metric: "1 panel",
     metricLabel: "tüm ders süreci",
   },
@@ -231,7 +231,7 @@ const howSteps = [
   {
     step: "3",
     title: "Güvenli süreci izleyin",
-    body: "Ödeme, iade hakkı, ders linki ve bildirimler panelde kayıtlı durur.",
+    body: "Ödeme, iade hakkı, ders bağlantısı ve bildirimler panelde kayıtlı durur.",
   },
   {
     step: "4",
@@ -265,7 +265,7 @@ const plainRoleGuide = [
 ] as const;
 
 const simplePaymentFlow = [
-  "Öğrenci ödeme tutarını cüzdanında güvenceye alır.",
+  "Öğrencinin ödediği tutar ders tamamlanana kadar bekletilir.",
   "İlk ders başlayınca ödeme tahsil edilir; öğretmen ödemesi bekler.",
   "İlk ders sonrası öğrenci iade talebi açabilir.",
   "İkinci derse girilirse iade hakkı kapanır. Net tutar öğretmene aktarılır.",
@@ -489,7 +489,7 @@ export default function Home() {
                   BenimÖğretmenim’de kim ne yapar?
                 </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/75">
-                  Öğrenci ders alır. Öğretmen hizmet verir. Veli süreci takip eder. Ödeme, iade hakkı, ders linki
+                  Öğrenci ders alır. Öğretmen ders verir. Veli süreci takip eder. Ödeme, iade hakkı, ders bağlantısı
                   ve bildirimler ilgili panelde açıkça görünür.
                 </p>
               </div>

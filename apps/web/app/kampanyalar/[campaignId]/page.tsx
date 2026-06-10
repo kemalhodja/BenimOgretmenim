@@ -229,8 +229,8 @@ export default function CampaignDetailPage() {
                   {campaign.billing_model === "success_fee"
                     ? "Başvuru bıraktığınızda ilk mesajınız öğretmene platform içi sohbet olarak gider. Öğretmenle güvenli şekilde bu alandan yazışırsınız."
                     : "Başvuru bıraktığınızda adınız, e-posta adresiniz ve mesajınız öğretmene görünür."}{" "}
-                  Ders/kurs ödemesi platform cüzdanında güvenceye alınır; ilk dersten sonra iade talebi oluşturabilirsiniz.
-                  İkinci derse girerseniz iade hakkı kapanır.
+                  Ödeme yapmadan önce tutarı ve iade koşulunu görürsünüz. İlk dersten sonra iade talebi açabilirsiniz;
+                  ikinci dersten sonra iade hakkı biter.
                 </p>
                 <textarea
                   value={message}

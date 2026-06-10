@@ -104,7 +104,7 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
         <p className="mt-2 max-w-2xl text-sm text-paper-800/75">
-          Kullanıcılar, içerik ve operasyon metrikleri. Tam liste ve aksiyonlar için kontrol merkezini açın.
+          Kullanıcılar, içerik ve işlem özetleri. Tam liste ve sıradaki adımlar için kontrol merkezini açın.
         </p>
 
         {error ? (
@@ -120,7 +120,7 @@ export default function AdminDashboardPage() {
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard href="/admin/users" label="Kayıtlı kullanıcı" value={c.usersTotal} />
               <StatCard href="/admin/teachers" label="Öğretmen profili" value={c.teachers} />
-              <StatCard href="/admin/users" label="Öğrenci profili" value={c.students} hint="students tablosu" />
+              <StatCard href="/admin/users" label="Öğrenci profili" value={c.students} hint="Öğrenci kayıtları" />
               <StatCard
                 href="/admin/requests"
                 label="Açık ders talebi"
@@ -134,13 +134,13 @@ export default function AdminDashboardPage() {
                 href="/admin/payments"
                 label="Bekleyen abonelik ödemesi"
                 value={c.pendingSubscriptionPayments ?? 0}
-                hint="Tüm yöntemler (pending)"
+                hint="Tüm yöntemler (beklemede)"
               />
               <StatCard
                 href="/admin/wallet"
                 label="Cüzdanı dolu kullanıcı"
                 value={c.walletsWithBalance}
-                hint={`Toplam bakiye (minor): ${c.walletBalanceSumMinor}`}
+                hint={`Toplam bakiye: ${(Number(c.walletBalanceSumMinor ?? 0) / 100).toFixed(2)} TL`}
               />
               <StatCard
                 href="/admin/courses"
@@ -181,13 +181,13 @@ export default function AdminDashboardPage() {
                 href="/admin/homework"
                 label="Açık ödev gönderisi"
                 value={c.homeworkPostsActive ?? 0}
-                hint="open + claimed"
+                hint="Açık ve üstlenilmiş"
               />
               <StatCard
                 href="/admin/direct-bookings"
                 label="Doğrudan ders (devam eden)"
                 value={c.directBookingsInFlight ?? 0}
-                hint="funding / funded"
+                hint="Ödeme bekleyen ve ödenmiş"
               />
               <StatCard
                 href="/admin/veri?k=notifications"
@@ -197,12 +197,12 @@ export default function AdminDashboardPage() {
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard href="/admin/users" label="Aktif öğrenci platform aboneliği" value={c.activeStudentSubscriptions} />
-              <StatCard href="/admin/users" label="Aktif ders paketi" value={c.lessonPackagesActive} hint="lesson_packages" />
-              <StatCard href="/admin/veri?k=homework" label="Soru kalite kuyruğu" value={c.homeworkQualityQueue ?? 0} hint="pending / revizyon / flagged" />
+              <StatCard href="/admin/users" label="Aktif ders paketi" value={c.lessonPackagesActive} hint="Ders paketi kayıtları" />
+              <StatCard href="/admin/veri?k=homework" label="Soru kalite kuyruğu" value={c.homeworkQualityQueue ?? 0} hint="Bekleyen, düzeltilecek ve işaretli" />
               <StatCard href="/admin/support" label="Açık destek" value={c.openSupportThreads ?? 0} hint="Yanıt süresi takibi" />
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard href="/admin/veri?k=classroom" label="Sınıf notu/tahta" value={c.classroomNoteCount ?? 0} hint="classroom_session_notes" />
+              <StatCard href="/admin/veri?k=classroom" label="Sınıf notu/tahta" value={c.classroomNoteCount ?? 0} hint="Ders notları" />
               <StatCard href="/admin/veri?k=recordings" label="Sınıf kaydı" value={c.classroomRecordingCount ?? 0} hint="Tekrar izleme" />
               <StatCard href="/admin/veri?k=messages" label="Sınıf mesajı" value={c.classroomMessageCount ?? 0} hint="Sohbet ve sorular" />
               <StatCard href="/admin/veri?k=learning" label="Aktif çalışma planı" value={c.activeStudyPlans ?? 0} />
@@ -256,7 +256,7 @@ export default function AdminDashboardPage() {
               href="/admin/wallet"
               className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
             >
-              Cüzdan grant
+              Cüzdan bakiyesi ekle
             </Link>
             <Link
               href="/admin/courses"

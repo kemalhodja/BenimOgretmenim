@@ -187,7 +187,7 @@ export default function CourseDetailPage() {
         token,
         body: JSON.stringify({ cohortId, goalNote }),
       });
-      setOk("Ön kayıt başvurunuz alındı. Admin uygunluk ve kontenjan için dönüş yapacak.");
+      setOk("Ön kayıt başvurunuz alındı. Ekibimiz uygunluk ve kontenjan durumunu kontrol edip dönüş yapacak.");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "application_failed";
       setError(msg);

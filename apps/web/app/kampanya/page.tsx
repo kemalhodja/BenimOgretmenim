@@ -7,7 +7,7 @@ const kampanyaUrl = `${publicSiteUrl()}/kampanya`;
 
 const teacherSubscriptionBenefits = [
   "Sınırsız teklif verme ve öğrenci taleplerine yanıt hakkı",
-  "Kendi kampanya/reklam ilanını oluşturma: ilk ilan ücretsiz, sonraki yeni ilanlarda 8.000 TL liste referansı yerine 1000 TL",
+  "Kendi kampanya/reklam ilanını oluşturma: ilk ilan ücretsiz, sonraki ilanlar için 1000 TL",
   "Kurs, grup ders, doğrudan ders ve öğretmen vitrini görünürlüğü",
   "Başvuru, bildirim, cüzdan ve ödeme kayıtlarını panelden takip",
 ] as const;
@@ -131,7 +131,7 @@ export default function KampanyaPage() {
               </li>
             </ul>
             <p className="mt-3 text-xs leading-relaxed text-paper-800/60">
-              Üstü çizili tutarlar normal liste değeri referansıdır. Öğretmen bugün kampanya fiyatını öder;
+              Üstü çizili tutar yalnızca karşılaştırma içindir. Bugün ödenecek tutar kampanya fiyatıdır;
               hediye süre otomatik eklenir. Kampanya ilk 500 öğretmen aboneliği için geçerlidir.
             </p>
           </div>

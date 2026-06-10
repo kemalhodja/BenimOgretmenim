@@ -133,7 +133,7 @@ function KayitForm() {
   const loginHref = returnUrl ? loginHrefWithReturn(returnUrl) : "/login";
   const roleHint =
     role === "teacher"
-      ? "Öğretmen hesabı ile profilinizi web siteniz gibi kurup taleplere, kampanyalara ve kazanç takibine katılabilirsiniz."
+      ? "Öğretmen hesabı ile profilinizi web siteniz gibi kurabilir, talepleri ve kampanyaları yönetebilir, kazancınızı takip edebilirsiniz."
       : role === "guardian"
         ? "Veli hesabı ile öğrencinizin ders, çalışma, ödeme ve destek özetlerini güvenli şekilde takip edebilirsiniz."
         : "Öğrenci hesabı ile öğretmen arayabilir, soru sorabilir, kurslara katılabilir ve çalışma planı oluşturabilirsiniz.";

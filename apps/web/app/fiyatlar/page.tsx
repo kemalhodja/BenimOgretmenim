@@ -21,9 +21,9 @@ export const metadata: Metadata = {
 const audiencePlans = [
   {
     title: "Öğrenci",
-    price: "Ücretsiz başla · yıllık 1500 TL",
+    price: "Ücretsiz kullanım var · yıllık abonelik 1500 TL",
     comparePrice: "12.000 TL",
-    campaignNote: "Erken erişim: normal liste değeri üstü çizili gösterilir; bugün ödenecek tutar değişmedi.",
+    campaignNote: "Bugün ödeyeceğiniz tutar değişmez. Üstü çizili tutar sadece karşılaştırma bilgisidir.",
     body: "Ücretsiz kullanımda günlük 1 ders ilanı ve 5 soru; yıllık abonelikte günlük 5 ilan ve 10 soru hakkı.",
     href: "/kayit?role=student",
     cta: "Öğrenci hesabı aç",
@@ -33,14 +33,14 @@ const audiencePlans = [
     price: "1750 TL / 30 ay · 2500 TL / 60 ay",
     comparePrice: "14.000 TL / 30 ay · 20.000 TL / 60 ay",
     campaignNote: "Erken erişim hediyesi: 6 ay aboneliğe 24 ay, 12 ay aboneliğe 48 ay ücretsiz hediye süre. 9 Eylül’e kadar veya ilk 500 öğretmen dolana kadar geçerlidir.",
-    body: "Sınırsız teklif, öğretmen görünürlüğü ve kampanya ilan hakkı. İlk kampanya ücretsiz; sonraki yeni ilanlarda normal 8.000 TL liste değeri yerine 1000 TL.",
+    body: "Sınırsız teklif, öğretmen görünürlüğü ve kampanya ilan hakkı. İlk kampanya ilanı ücretsiz; sonraki ilanlar için 1000 TL ödersiniz.",
     href: "/kayit?role=teacher",
     cta: "Öğretmen olarak başvur",
   },
   {
     title: "Veli",
     price: "Takip hesabı",
-    body: "Öğrencinin ders bildirimleri, çalışma planı ilerlemesi, deneme ortalaması ve canlı sınıf linklerini takip edin.",
+    body: "Öğrencinin ders bildirimlerini, çalışma planı ilerlemesini, deneme ortalamasını ve canlı sınıf bağlantılarını takip edin.",
     href: "/kayit?role=guardian",
     cta: "Veli hesabı aç",
   },
@@ -74,11 +74,11 @@ const paymentTransparency = [
   },
   {
     title: "Ödeme nasıl korunur?",
-    body: "Kart ödemeleri PayTR ile alınır. Cüzdan ve ders kayıtları admin tarafından kontrol edilebilir.",
+    body: "Kart ödemeleri güvenli ödeme altyapısıyla alınır. Cüzdan ve ders kayıtları yönetici tarafından kontrol edilebilir.",
   },
   {
     title: "Sorun olursa ne olur?",
-    body: "Tutar uyuşmazlığı veya başarısız ödeme olursa kayıt admin incelemesine alınır.",
+    body: "Tutar uyuşmazlığı veya başarısız ödeme olursa kayıt yönetici incelemesine alınır.",
   },
   {
     title: "İptal/iade nasıl değerlendirilir?",

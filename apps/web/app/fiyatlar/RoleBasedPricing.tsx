@@ -39,7 +39,7 @@ function roleName(role: UserRole): string {
   if (role === "student") return "Öğrenci";
   if (role === "teacher") return "Öğretmen";
   if (role === "guardian") return "Veli";
-  return "Admin";
+  return "Yönetici";
 }
 
 function teacherCampaignLabel(plan: PlanRow): string {
@@ -165,7 +165,7 @@ export function RoleBasedPricing() {
         <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-5">
           <div className="text-sm font-medium text-brand-900">Öğrenci platform aboneliği</div>
           <div className="mt-2 text-sm font-semibold text-brand-900/55 line-through">
-            {minorToTl(listReferenceMinor(studentSub.annualPriceMinor))} TL / yıl
+            Karşılaştırma: {minorToTl(listReferenceMinor(studentSub.annualPriceMinor))} TL / yıl
           </div>
           <div className="mt-2 text-2xl font-semibold text-brand-950">
             {minorToTl(studentSub.annualPriceMinor)} TL / yıl
@@ -205,7 +205,7 @@ export function RoleBasedPricing() {
                   {minorToTl(p.price_minor)} {p.currency}
                 </div>
                 <div className="mt-1 text-xs font-semibold text-paper-800/45 line-through">
-                  Liste referansı: {minorToTl(listReferenceMinor(p.price_minor))} {p.currency}
+                  Karşılaştırma: {minorToTl(listReferenceMinor(p.price_minor))} {p.currency}
                 </div>
                 <p className="mt-2 text-xs font-medium text-brand-900">{teacherCampaignLabel(p)}</p>
                 {p.code === "teacher_6m" || p.code === "teacher_12m" ? (

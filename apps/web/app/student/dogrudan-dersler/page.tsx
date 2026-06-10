@@ -160,8 +160,8 @@ export default function StudentDogrudanDerslerPage() {
           Doğrudan ders anlaşmaları
         </h1>
         <p className="mt-1 text-sm text-paper-800/75">
-          Öğretmen profilinden anlaşma açar, burada cüzdanınızdan ödersiniz. Dersi öğretmen
-          portalında tamamladıktan sonra tutar ona ödenir.
+          Öğretmen profilinden anlaşma açar, burada cüzdanınızdan ödersiniz. Öğretmen dersi tamamlandı
+          olarak işaretlediğinde tutar öğretmene aktarılır.
         </p>
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
           <Link className="text-paper-800/75 underline" href="/ogretmenler">

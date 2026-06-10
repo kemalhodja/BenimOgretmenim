@@ -41,8 +41,8 @@ const pillars = [
 const paymentFlow = [
   "Kullanıcı ödeme yapmadan önce tutarı görür.",
   "Ödeme sonucu sistem tarafından kontrol edilir.",
-  "Sorunlu ödemeler admin incelemesine düşer.",
-  "Admin işlem sonucunu notuyla kapatır.",
+  "Sorunlu ödemeler yönetici incelemesine alınır.",
+  "Yönetici işlem sonucunu notuyla kapatır.",
 ] as const;
 
 const policies = [
@@ -173,7 +173,7 @@ export default function GuvenPage() {
         <section className="mt-8 rounded-2xl border border-brand-200 bg-brand-50 p-5">
           <h2 className="text-lg font-semibold text-brand-950">Güveni nasıl takip ediyoruz?</h2>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-brand-900">
-            Admin panelinde ödemeler, kampanyalar, öğretmen doğrulaması, destek talepleri ve sistem durumu izlenir.
+            Yönetici panelinde ödemeler, kampanyalar, öğretmen doğrulaması, destek talepleri ve sistem durumu izlenir.
             Böylece sorunlar erken fark edilir ve kayıtlı şekilde çözülür.
           </p>
         </section>

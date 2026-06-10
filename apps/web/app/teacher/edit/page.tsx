@@ -35,8 +35,8 @@ const checklistLabels: Record<string, string> = {
   availabilitySet: "Müsaitlik saatlerini doldur",
   bioFilled: "En az 40 karakterlik biyografi yaz",
   videoLinked: "Tanıtım videosu ekle",
-  instagramLinked: "Instagram/profil linki ekle",
-  platformLinksAdded: "Ders platformu linki ekle",
+  instagramLinked: "Instagram/profil bağlantısı ekle",
+  platformLinksAdded: "Ders bağlantısı ekle",
   examDocsAdded: "Örnek doküman veya başarı belgesi ekle",
   onboardingInterviewDone: "Tanışma adımını tamamla",
   curriculumStarted: "Müfredat planı başlat",
@@ -244,20 +244,20 @@ export default function TeacherEditPage() {
     setError(null);
     setOk(null);
     try {
-      if (!validation.videoOk) throw new Error("Video URL geçersiz.");
-      if (!validation.instagramOk) throw new Error("Instagram URL geçersiz.");
+      if (!validation.videoOk) throw new Error("Tanıtım videosu bağlantısı geçersiz.");
+      if (!validation.instagramOk) throw new Error("Instagram bağlantısı geçersiz.");
       if (validation.platformInvalidIdx.length > 0) {
-        throw new Error("Özel platform linklerinde geçersiz URL var.");
+        throw new Error("Ders ve iletişim bağlantılarında geçersiz adres var.");
       }
       if (validation.examInvalidIdx.length > 0) {
-        throw new Error("Doküman linklerinde geçersiz URL var.");
+        throw new Error("Doküman bağlantılarında geçersiz adres var.");
       }
 
       let availabilityJson: Record<string, unknown> = {};
       try {
         availabilityJson = JSON.parse(availability) as Record<string, unknown>;
       } catch {
-        throw new Error("availability JSON geçersiz");
+        throw new Error("Müsaitlik bilgisi geçersiz. Hazır seçeneklerden birini kullanabilir veya yazımı kontrol edebilirsiniz.");
       }
       const cleanPlatformLinks = (platformLinks ?? [])
         .map((x) => ({ title: x.title?.trim?.() ?? "", url: x.url?.trim?.() ?? "" }))
@@ -338,7 +338,7 @@ export default function TeacherEditPage() {
 
   const missingChecklist = Object.entries(checklistLabels).filter(([key]) => !checklist[key]);
   const websiteEssentials = [
-    { key: "bioFilled", focus: "bio", title: "Güçlü açılış metni", body: "Profil hero alanı biyografinizin ilk cümlelerinden beslenir." },
+    { key: "bioFilled", focus: "bio", title: "Güçlü açılış metni", body: "Profilinizin üst bölümü biyografinizin ilk cümlelerinden beslenir." },
     { key: "branchesSelected", focus: "branches", title: "Uzmanlık vitrini", body: "Birincil branş ve fiyat aralığı profilinizde net görünür." },
     { key: "videoLinked", focus: "video", title: "Video tanıtım", body: "Kendi web siteniz gibi ilk güven temasını hızlandırır." },
     { key: "examDocsAdded", focus: "examDocs", title: "Kanıt ve içerik", body: "Belgeler, yazılı hazırlık içerikleri ve örnek dokümanlar karar güvenini artırır." },
@@ -392,7 +392,7 @@ export default function TeacherEditPage() {
             </div>
           ) : (
             <p className="mt-4 text-sm font-medium text-brand-900">
-              Profil kalite adımları tamam. Admin doğrulama ve öğrenci yorumları puanı daha da güçlendirir.
+              Profil kalite adımları tamam. Yönetici onayı ve öğrenci yorumları profilinizi daha güvenilir gösterir.
             </p>
           )}
         </div>
@@ -407,7 +407,7 @@ export default function TeacherEditPage() {
                 Öğretmen profiliniz artık kişisel web siteniz gibi çalışır
               </h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/65">
-                Hero alanı, güven vitrini, ders yöntemi, kanıtlar ve CTA’lar aşağıdaki bilgilerden beslenir.
+                Profilinizdeki ilk bölüm, güven bilgileri, ders yöntemi ve başvuru düğmeleri aşağıdaki bilgilerle hazırlanır.
               </p>
             </div>
             <div className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-900">
@@ -452,7 +452,7 @@ export default function TeacherEditPage() {
 
               <label className="block" data-focus="video">
                 <div className="mb-1 text-sm font-medium text-paper-800">
-                  Video URL
+                  Tanıtım videosu bağlantısı
                 </div>
                 <input
                   value={videoUrl}
@@ -464,14 +464,14 @@ export default function TeacherEditPage() {
                 />
                 {!validation.videoOk && (
                   <div className="mt-1 text-xs text-red-700">
-                    Geçerli bir http/https URL girin.
+                    Geçerli bir internet bağlantısı girin.
                   </div>
                 )}
               </label>
 
               <label className="block" data-focus="instagram">
                 <div className="mb-1 text-sm font-medium text-paper-800">
-                  Instagram URL
+                  Instagram bağlantısı
                 </div>
                 <input
                   value={instagramUrl}
@@ -486,19 +486,19 @@ export default function TeacherEditPage() {
                 />
                 {!validation.instagramOk && (
                   <div className="mt-1 text-xs text-red-700">
-                    Geçerli bir http/https URL girin.
+                    Geçerli bir internet bağlantısı girin.
                   </div>
                 )}
               </label>
 
               <label className="block" data-focus="platformLinks">
                 <div className="mb-1 text-sm font-medium text-paper-800">
-                  Özel platform linkleri
+                  Ders ve iletişim bağlantıları
                 </div>
                 <div className="space-y-2">
                   {(platformLinks ?? []).length === 0 && (
                     <div className="text-xs text-paper-800/55">
-                      Henüz link eklemediniz.
+                      Henüz bağlantı eklemediniz.
                     </div>
                   )}
                   {(platformLinks ?? []).map((x, idx) => (
@@ -516,7 +516,7 @@ export default function TeacherEditPage() {
                           )
                         }
                         className="rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400 sm:col-span-2"
-                        placeholder="Başlık (örn: Zoom)"
+                        placeholder="Başlık (örnek: Zoom)"
                       />
                       <input
                         value={x.url}
@@ -536,7 +536,7 @@ export default function TeacherEditPage() {
                       />
                       {validation.platformInvalidIdx.includes(idx) && (
                         <div className="sm:col-span-5 text-xs text-red-700">
-                          Geçerli bir http/https URL girin.
+                          Geçerli bir internet bağlantısı girin.
                         </div>
                       )}
                       <div className="sm:col-span-5">
@@ -564,7 +564,7 @@ export default function TeacherEditPage() {
                     }
                     className="rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm font-medium text-paper-900"
                   >
-                    Link ekle
+                    Bağlantı ekle
                   </button>
                 </div>
               </label>
@@ -614,7 +614,7 @@ export default function TeacherEditPage() {
                       />
                       {validation.examInvalidIdx.includes(idx) && (
                         <div className="sm:col-span-6 text-xs text-red-700">
-                          Geçerli bir http/https URL girin.
+                          Geçerli bir internet bağlantısı girin.
                         </div>
                       )}
                       <select
@@ -712,7 +712,7 @@ export default function TeacherEditPage() {
 
               <label className="block" data-focus="availability">
                 <div className="mb-1 text-sm font-medium text-paper-800">
-                  Müsaitlik (JSON)
+                  Müsait olduğunuz zamanlar
                 </div>
                 <div className="mb-2 flex flex-wrap gap-2">
                   {availabilityPresets.map((preset) => (
@@ -730,6 +730,7 @@ export default function TeacherEditPage() {
                   value={availability}
                   onChange={(e) => setAvailability(e.target.value)}
                   className="min-h-40 w-full rounded-xl border border-paper-200 px-3 py-2 font-mono text-xs outline-none focus:border-brand-400"
+                  aria-label="Müsait olduğunuz gün ve saatler"
                 />
               </label>
 
@@ -742,7 +743,7 @@ export default function TeacherEditPage() {
               </button>
               {validation.hasAnyInvalid && (
                 <div className="text-xs text-red-700">
-                  Bazı linkler geçersiz görünüyor. Kaydetmeden önce düzeltin.
+                  Bazı bağlantılar geçersiz görünüyor. Kaydetmeden önce düzeltin.
                 </div>
               )}
             </div>

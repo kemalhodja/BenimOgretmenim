@@ -137,7 +137,7 @@ function recommendationReasons(teacher: TrustSignalTeacher): string[] {
 
 function trustActionLabel(teacher: TrustSignalTeacher): string {
   const score = trustScore(teacher);
-  if (score >= 85) return "Demo için güçlü aday";
+  if (score >= 85) return "Demo talebi için uygun görünüyor";
   if (score >= 70) return "Kısa listeye eklenebilir";
   if (teacher.verification_status !== "verified") return "Doğrulama durumunu inceleyin";
   return "Profil detayını kontrol edin";
@@ -656,7 +656,7 @@ function OgretmenlerPageInner() {
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-paper-800/55">
-                Öğretmen seçim sihirbazı
+                Öğretmen seçmeme yardım et
               </div>
               <h2 className="mt-1 text-lg font-semibold text-paper-950">Hedefinize göre filtreleri hazırlayalım</h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/65">
@@ -943,7 +943,7 @@ function OgretmenlerPageInner() {
           </div>
           {!metaReady && !metaLoading && (
             <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Filtreler yüklenemedi — bağlantı veya API adresini kontrol edin.
+              Filtreler yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.
             </div>
           )}
         </div>
@@ -1050,7 +1050,7 @@ function OgretmenlerPageInner() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-900/65">
-                Güvenli öğretmen marketplace
+                Güvenle öğretmen seçin
               </div>
               <h2 className="mt-2 text-lg font-semibold text-paper-900">
                 Kalite ve güven bilgileri
@@ -1076,7 +1076,7 @@ function OgretmenlerPageInner() {
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
             {[
-              ["Güven puanı", `${marketplaceSignals.highTrust} güçlü aday`, "Doğrulama, yorum, ders geçmişi ve profil kanıtı birlikte okunur."],
+              ["Güven puanı", `${marketplaceSignals.highTrust} uygun aday`, "Doğrulama, yorum, ders geçmişi ve profil kanıtı birlikte okunur."],
               ["Karar rehberi", "Önce demo", "Emin olmadığınızda tek talep açıp teklifleri aynı ölçekte karşılaştırın."],
               ["Ödeme güveni", "Güvenceli paket", "Kabul sonrası toplam tutar cüzdanda tutulur; ders süreci kayıtlı ilerler."],
             ].map(([title, value, body]) => (
@@ -1359,7 +1359,7 @@ function OgretmenlerPageInner() {
                       )}
                       {t.has_platform_links && (
                         <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
-                          Platform linkleri
+                          Ek çalışma bağlantıları
                         </span>
                       )}
                       {t.completed_sessions_count > 0 && (

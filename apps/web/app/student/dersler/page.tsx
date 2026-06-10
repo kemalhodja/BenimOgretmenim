@@ -255,7 +255,7 @@ export default function StudentDerslerPage() {
     : upcomingSession
       ? {
           title: `Sıradaki ders: #${upcomingSession.session_index}`,
-          body: `${toLocal(upcomingSession.scheduled_start)} tarihinde sınıf linki bu panelde hazır.`,
+          body: `${toLocal(upcomingSession.scheduled_start)} tarihinde sınıf bağlantısı bu panelde hazır.`,
         }
       : waitingSession
         ? {
@@ -278,7 +278,7 @@ export default function StudentDerslerPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Derslerim</h1>
           <p className="mt-1 text-sm text-paper-800/75">
-            Demo ve normal derslerinizi, meeting linklerini ve tamamlanan ders yorumlarını buradan takip edin.
+            Demo ve normal derslerinizi, ders bağlantılarını ve tamamlanan ders yorumlarını buradan takip edin.
           </p>
           <p className="mt-2 text-sm text-paper-800/65">
             Diğer işlemler üst menüden. Ödeme ve bakiye:{" "}
@@ -466,7 +466,7 @@ export default function StudentDerslerPage() {
                               rel="noreferrer"
                               className="inline-block text-xs font-medium text-brand-800 underline"
                             >
-                              Harici link
+                              Dış bağlantı
                             </a>
                           </div>
                         )}

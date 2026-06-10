@@ -115,21 +115,21 @@ export default function StudentCohortSessionsPage() {
     sessions.length === 0
       ? {
           title: "Öğretmen oturum planını hazırlıyor",
-          body: "Dersler eklendiğinde takvim ve sınıf linkleri burada görünecek.",
+          body: "Dersler eklendiğinde takvim ve sınıf bağlantıları burada görünecek.",
           href: "/student/kurslar",
           label: "Kurslarıma dön",
         }
       : nextSession?.meeting_url
         ? {
             title: `Sıradaki canlı ders: #${nextSession.session_index}`,
-            body: `${toLocal(nextSession.scheduled_start)} için sınıf linkiniz hazır.`,
+            body: `${toLocal(nextSession.scheduled_start)} için sınıf bağlantınız hazır.`,
             href: `/classroom/course/${nextSession.id}`,
             label: "Sınıfa gir",
           }
         : nextSession?.scheduled_start
           ? {
               title: `Sıradaki ders: #${nextSession.session_index}`,
-              body: `${toLocal(nextSession.scheduled_start)} için planlandı. Sınıf linki öğretmen tarafından paylaşılacak.`,
+              body: `${toLocal(nextSession.scheduled_start)} için planlandı. Sınıf bağlantısı öğretmen tarafından paylaşılacak.`,
               href: "/student/kurslar",
               label: "Kurslarıma dön",
             }
@@ -208,7 +208,7 @@ export default function StudentCohortSessionsPage() {
             <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.planned}</div>
           </div>
           <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
-            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Sınıf linki hazır</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Sınıf bağlantısı hazır</div>
             <div className="mt-1 text-2xl font-semibold text-brand-950">{stats.ready}</div>
           </div>
           <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
@@ -220,7 +220,7 @@ export default function StudentCohortSessionsPage() {
         <section className="mt-8">
           <h2 className="text-sm font-semibold text-paper-900">Ders oturumları</h2>
           <p className="mt-1 text-xs text-paper-800/55">
-            Tarih ve toplantı linki öğretmeniniz tarafından ayarlanır.
+            Tarih ve ders bağlantısı öğretmeniniz tarafından ayarlanır.
           </p>
           <div className="mt-3 space-y-3">
             {sessions.length === 0 ? (
@@ -259,7 +259,7 @@ export default function StudentCohortSessionsPage() {
                       </a>
                     </div>
                   ) : (
-                    <p className="mt-2 text-xs text-paper-800/55">Toplantı linki henüz yok.</p>
+                    <p className="mt-2 text-xs text-paper-800/55">Ders bağlantısı henüz yok.</p>
                   )}
                 </div>
               ))

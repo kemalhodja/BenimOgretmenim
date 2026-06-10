@@ -263,7 +263,7 @@ export default function TeacherCampaignsPage() {
           </p>
           <div className="mt-4 grid gap-2 text-xs leading-relaxed text-paper-800/75 sm:grid-cols-3">
             <div className="rounded-xl border border-white/70 bg-white/80 p-3">
-              Kampanya ilanı admin onayından sonra public vitrinde görünür.
+              Kampanya ilanı yönetici onayından sonra herkese açık vitrinde görünür.
             </div>
             <div className="rounded-xl border border-white/70 bg-white/80 p-3">
               Sabit modelde sonraki ilanlarda <span className="line-through text-paper-800/45">8.000 TL</span>{" "}
@@ -305,7 +305,7 @@ export default function TeacherCampaignsPage() {
               Cüzdanı yönet
             </Link>
             <Link href="/kampanyalar" className="rounded-full bg-white px-3 py-1.5 text-paper-900 ring-1 ring-paper-200">
-              Public kampanya vitrini
+              Herkese açık kampanya vitrini
             </Link>
           </div>
         </section>
@@ -352,7 +352,7 @@ export default function TeacherCampaignsPage() {
                       <p className="mt-2 line-clamp-2 text-sm text-paper-800/70">{campaign.description}</p>
                       {campaign.status === "rejected" ? (
                         <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-                          <div className="font-semibold">Admin red notu</div>
+                          <div className="font-semibold">Ret nedeni</div>
                           <p className="mt-1 text-xs leading-relaxed">
                             {campaign.review_note?.trim() ||
                               "Kampanya onaylanmadı. Başlık, açıklama, fiyat veya vaatleri netleştirip yeniden incelemeye gönderin."}
@@ -366,7 +366,7 @@ export default function TeacherCampaignsPage() {
                       ) : null}
                       {campaign.status === "pending_review" ? (
                         <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950">
-                          Kampanya admin incelemesinde. Onaylanınca public vitrinde görünür; reddedilirse sebep burada gösterilir.
+                          Kampanya yönetici incelemesinde. Onaylanınca herkese açık vitrinde görünür; reddedilirse sebep burada gösterilir.
                         </div>
                       ) : null}
                       <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-medium">
@@ -386,7 +386,7 @@ export default function TeacherCampaignsPage() {
                         href={`/kampanyalar/${campaign.id}`}
                         className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
                       >
-                        Public sayfa
+                        Herkese açık sayfa
                       </Link>
                       <button
                         type="button"
@@ -416,7 +416,7 @@ export default function TeacherCampaignsPage() {
                         </button>
                       ) : (
                         <span className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900">
-                          Admin incelemesinde
+                          Yönetici incelemesinde
                         </span>
                       )}
                       <button

@@ -223,7 +223,7 @@ export default function TeacherCohortSessionsPage() {
       : sessions.length === 0
         ? {
             title: "İlk canlı oturumu ekleyin",
-            body: "Kayıtlı öğrenciler takvimi ve sınıf linkini bu ekrandan takip edecek.",
+            body: "Kayıtlı öğrenciler takvimi ve sınıf bağlantısını bu ekrandan takip edecek.",
           }
         : nextSession?.scheduled_start
           ? {
@@ -232,7 +232,7 @@ export default function TeacherCohortSessionsPage() {
             }
           : {
               title: "Eklenen oturumu planlayın",
-              body: "Tarih ve süre girildiğinde meeting linki oluşur, öğrenci/veli bildirimi gider.",
+              body: "Tarih ve süre girildiğinde ders bağlantısı oluşur, öğrenci ve veliye bildirim gider.",
             };
 
   if (!token) return null;

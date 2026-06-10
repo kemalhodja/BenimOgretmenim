@@ -44,7 +44,7 @@ type SeedPreset = {
 
 const SEED_ROLE_PRESETS: readonly SeedPreset[] = [
   {
-    label: "Admin",
+    label: "Yönetici",
     email: process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL ?? "",
     password:
       process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD ??
@@ -162,7 +162,7 @@ function LoginForm() {
               >
                 Kayıt olun
               </Link>
-              . Admin hesabı kayıtla oluşturulmaz.
+              . Yönetici hesabı için kurum yetkilisiyle iletişime geçin.
             </p>
           )}
           {returnUrl && (

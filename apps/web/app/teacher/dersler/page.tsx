@@ -336,12 +336,12 @@ export default function TeacherDerslerPage() {
     : nextScheduledSession
       ? {
           title: `Sıradaki ders: #${nextScheduledSession.session_index}`,
-          body: `${toLocal(nextScheduledSession.scheduled_start)} tarihinde sınıf linki hazır.`,
+          body: `${toLocal(nextScheduledSession.scheduled_start)} tarihinde sınıf bağlantısı hazır.`,
         }
       : openSession
         ? {
             title: "İlk açık oturumu planlayın",
-            body: "Tarih ve süre seçip öğrencinin paneline meeting linkini düşürün.",
+            body: "Tarih ve süre seçin; öğrencinin panelinde ders bağlantısı görünsün.",
           }
         : {
             title: "Paket durumunu kontrol edin",
@@ -354,7 +354,7 @@ export default function TeacherDerslerPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Ders paketleri & oturumlar</h1>
           <p className="mt-1 text-sm text-paper-800/75">
-            Teklif kabulüyle paket oluşur; buradan ilk dersi planlayıp meeting linki paylaşın.
+            Teklif kabul edilince ders paketi oluşur. Buradan ilk dersi planlayıp ders bağlantısını paylaşın.
           </p>
         </div>
 
@@ -542,7 +542,7 @@ export default function TeacherDerslerPage() {
                               rel="noreferrer"
                               className="inline-block text-xs font-medium text-brand-800 underline"
                             >
-                              Harici link
+                              Dış bağlantı
                             </a>
                           </div>
                         )}
@@ -625,7 +625,7 @@ export default function TeacherDerslerPage() {
                                   aria-label="Bir sonraki ders adımı"
                                 />
                                 <p className="mt-1 text-[11px] text-paper-800/50">
-                                  Sonraki dersin hedefini yazın; veli ve öğrenci bunu aksiyon olarak görür.
+                                  Sonraki dersin hedefini yazın; veli ve öğrenci bunu sıradaki adım olarak görür.
                                 </p>
                               </label>
                             </div>

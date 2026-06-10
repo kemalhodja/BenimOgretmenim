@@ -65,7 +65,7 @@ export default function CampaignsPage() {
             <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Öğretmen kampanyaları</h1>
             <p className="mt-1 max-w-2xl text-sm text-paper-800/75">
               Öğretmenlerin hazırladığı kamp, yoğun tekrar ve sınav hazırlık ilanlarını inceleyin. Başvuru sonrası
-              detay ve ödeme anlaşması öğretmenle öğrenci arasında yapılır.
+              program netleşir; ödeme adımları platformda açıkça gösterilir.
             </p>
           </div>
           <AuthEntryLink
@@ -80,8 +80,7 @@ export default function CampaignsPage() {
           <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Yeni ilan modeli</div>
           <h2 className="mt-1 text-lg font-semibold text-paper-900">TYT kampı, LGS tekrar programı veya özel ders paketi</h2>
           <p className="mt-1 text-sm text-paper-800/70">
-            Kampanyalar platform tarafından ödeme garantisi verilen paketler değildir; öğrenci ilgi kaydı bırakır,
-            öğretmen başvuruyu görür ve taraflar kendi arasında programı netleştirir.
+            Bu ilanlarda öğretmen programını sunar. Başvuru sonrası koşullar, ders planı ve ödeme bilgisi netleşir.
           </p>
         </section>
 

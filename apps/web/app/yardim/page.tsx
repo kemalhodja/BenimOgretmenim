@@ -39,11 +39,11 @@ const faq = [
   },
   {
     q: "Online kurslar",
-    a: "Kurs listesinden programı ve ücreti inceleyin. Kayıt sonrası canlı ders linkleri öğrenci kurs sayfasında görünür.",
+    a: "Kurs listesinden programı ve ücreti inceleyin. Kayıt sonrası canlı ders bağlantıları öğrenci kurs sayfasında görünür.",
   },
   {
     q: "Öğretmen aboneliği",
-    a: "Ücretsiz planda teklif hakkı sınırlıdır. Abonelikle daha fazla görünürlük ve sınırsız teklif hakkı açılır. Kart ödemesi PayTR ile, havale/EFT ise admin onayıyla ilerler.",
+    a: "Ücretsiz planda teklif hakkı sınırlıdır. Abonelikle daha fazla görünürlük ve sınırsız teklif hakkı açılır. Kart ödemesi güvenli ödeme altyapısıyla, havale/EFT ise yönetici onayıyla ilerler.",
   },
   {
     q: "Veli paneli",

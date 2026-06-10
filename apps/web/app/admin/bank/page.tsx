@@ -158,12 +158,11 @@ export default function AdminBankPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Havale ve EFT onayı</h1>
           <p className="mt-1 text-sm text-paper-800/75">
-            Bekleyen banka ödemelerini kontrol edin; onay işlemleri API kayıtlarıyla izlenir.
+            Bekleyen banka ödemelerini kontrol edin; onay işlemleri kayıt altına alınır.
           </p>
           <p className="mt-2 max-w-xl text-xs text-paper-800/55">
-            Üretimde API tarafında <span className="font-mono">ADMIN_API_SECRET</span> tanımlıysa, Next
-            sunucusunda aynı değer ve <span className="font-mono">INTERNAL_API_BASE_URL</span> (Docker içi
-            API adresi) ayarlanmalıdır; gizli anahtar tarayıcıya verilmez.
+            Üretimde yönetici güvenlik anahtarı tanımlıysa, web sunucusunda aynı değer ve iç servis adresi
+            ayarlanmalıdır; gizli anahtar tarayıcıya verilmez.
           </p>
           <p className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
             <button

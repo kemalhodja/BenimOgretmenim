@@ -721,8 +721,8 @@ function AdminVeriInner() {
               </select>
             </label>
             <div className="max-w-xl text-xs leading-relaxed text-paper-800/60">
-              Öğretmen kampanyaları public vitrine çıkmadan önce burada incelenir. Onaylanan kampanyalar
-              `/kampanyalar` listesine düşer; reddedilenler öğretmen panelinde görünür ama public olmaz.
+              Öğretmen kampanyaları herkese açık vitrine çıkmadan önce burada incelenir. Onaylanan kampanyalar
+              kampanya listesine düşer; reddedilenler öğretmen panelinde görünür ama herkese açık olmaz.
             </div>
           </div>
         ) : null}

@@ -231,7 +231,7 @@ export default function StudentGroupLessonsPage() {
             planlanan dersten 1 saat önce tahsil edilir (1 saat kala katılım kapanır).
           </p>
           <p className="mt-2 text-xs text-paper-800/55">
-            Katıldıktan sonra iptal yoktur. Güvenceye alınan tutar ders bitimine kadar tutulabilir.
+            Katılım sonrası iptal yapılamaz. Ödeme payınız ders tamamlanana kadar bekletilir.
           </p>
           <p className="mt-2 text-sm text-paper-800/65">
             Üst menüden talepler ve öğretmen arama. Ödeme/bakiye:{" "}

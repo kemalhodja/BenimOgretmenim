@@ -56,9 +56,9 @@ function applicationLabel(status: string): string {
 }
 
 function applicationHelp(status: string): string {
-  if (status === "approved") return "Admin uygunluğu onayladı; kampanya Kurslarım listesine eklendi ve ödeme cüzdanda güvenceye alındı.";
+  if (status === "approved") return "Başvurunuz onaylandı. Kurs, Kurslarım listesine eklendi ve ödeme cüzdanınızda güvenceye alındı.";
   if (status === "rejected") return "Kontenjan, seviye veya takvim nedeniyle uygun bulunmamış olabilir.";
-  if (status === "pending") return "Admin kontenjan, öğretmen ve seviye uygunluğunu kontrol ediyor.";
+  if (status === "pending") return "Ekibimiz kontenjanı, öğretmeni ve seviye uygunluğunu kontrol ediyor.";
   return "Başvuru durumu güncellendi.";
 }
 
@@ -86,7 +86,7 @@ function enrollmentPaymentLabel(row: EnrollmentRow): string {
 }
 
 function refundStatusLabel(row: EnrollmentRow): string {
-  if (row.refund_eligibility_status === "refund_requested") return "İade talebiniz admin incelemesinde.";
+  if (row.refund_eligibility_status === "refund_requested") return "İade talebiniz ekibimiz tarafından inceleniyor.";
   if (row.refund_eligibility_status === "eligible_after_first") return "İlk ders sonrası iade hakkınız açık.";
   if (row.refund_eligibility_status === "locked_after_second") return "İkinci derse girildiği için iade hakkı kapandı.";
   if (row.refund_eligibility_status === "refunded") return `İade edildi: ${(Number(row.refund_amount_minor ?? 0) / 100).toFixed(2)} ${row.enrollment_currency}`;
@@ -154,7 +154,7 @@ export default function StudentKurslarPage() {
         token,
         body: JSON.stringify({ reason: "Öğrenci ilk ders sonrası iade talebi" }),
       });
-      setOk("İade talebiniz alındı. Admin incelemesinden sonra sonuç bildirilecek.");
+      setOk("İade talebiniz alındı. Ekibimiz incelemeyi tamamlayınca sonucu bildirecek.");
       await load(token);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "refund_request_failed";
@@ -194,20 +194,20 @@ export default function StudentKurslarPage() {
     rows.length === 0
       ? {
           title: "Size uygun kursları keşfedin",
-          body: "Kayıt olduğunuz kursların canlı ders takvimi ve sınıf linkleri burada toplanır.",
+            body: "Kayıt olduğunuz kursların canlı ders takvimi ve sınıf bağlantıları burada toplanır.",
           href: "/courses",
           label: "Kurs kataloğu",
         }
       : nextEnrollment
         ? {
             title: `Sıradaki kurs dersi: ${nextEnrollment.course_title}`,
-            body: `${nextEnrollment.cohort_title} · ${toLocal(nextEnrollment.next_scheduled_start)}. Sınıf linki hazır olduğunda tek tıkla katılabilirsiniz.`,
+            body: `${nextEnrollment.cohort_title} · ${toLocal(nextEnrollment.next_scheduled_start)}. Sınıf bağlantısı hazır olduğunda tek tıkla katılabilirsiniz.`,
             href: `/student/kurslar/${nextEnrollment.course_id}/cohort/${nextEnrollment.cohort_id}`,
             label: "Oturumları gör",
           }
         : {
             title: "Kurs planlamasını bekliyorsunuz",
-            body: "Öğretmen yeni oturum planladığında bildirim gelir ve sınıf linki bu ekranda görünür.",
+            body: "Öğretmen yeni ders planladığında bildirim gelir ve sınıf bağlantısı bu ekranda görünür.",
             href: "/courses",
             label: "Katalogda keşfet",
           };
@@ -265,7 +265,7 @@ export default function StudentKurslarPage() {
             <div className="mt-1 text-2xl font-semibold text-paper-900">{stats.active}</div>
           </div>
           <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 shadow-sm">
-            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Sınıf linki hazır</div>
+            <div className="text-xs font-medium uppercase tracking-wide text-brand-900/65">Sınıf bağlantısı hazır</div>
             <div className="mt-1 text-2xl font-semibold text-brand-950">{stats.ready}</div>
           </div>
           <div className="rounded-xl border border-warm-200 bg-warm-50/70 p-4 shadow-sm">
@@ -286,7 +286,7 @@ export default function StudentKurslarPage() {
               </div>
               <h2 className="mt-1 text-lg font-semibold text-paper-950">Başvuru durumlarınız</h2>
               <p className="mt-1 text-sm text-paper-800/65">
-                Admin kampanyalarında ödeme alınmadan önce ön kayıt ve uygunluk kontrolü yapılır.
+                Kampanyalı kurslarda ödeme alınmadan önce ön kayıt ve uygunluk kontrolü yapılır.
               </p>
             </div>
             <Link href="/courses" className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-900">
@@ -372,7 +372,7 @@ export default function StudentKurslarPage() {
                           rel="noreferrer"
                           className="inline-block text-xs font-medium text-brand-800 underline"
                         >
-                          Harici link
+                          Dış bağlantı
                         </a>
                       </div>
                     ) : null}

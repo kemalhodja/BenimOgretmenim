@@ -89,7 +89,7 @@ function ledgerKindLabel(kind: string): string {
     teacher_withdrawal_requested: "Para çekme talebi",
     teacher_withdrawal_paid: "Para çekme ödendi",
     teacher_withdrawal_rejected: "Para çekme reddedildi",
-    wallet_admin_grant: "Admin bakiye ekledi",
+    wallet_admin_grant: "Yönetici bakiye ekledi",
   };
   return labels[kind] ?? "Cüzdan hareketi";
 }
@@ -99,7 +99,7 @@ function tlToMinor(value: string): number {
 }
 
 function withdrawalStatusLabel(status: Withdrawal["status"]): string {
-  if (status === "pending") return "Admin onayında";
+  if (status === "pending") return "Yönetici onayında";
   if (status === "paid") return "Ödendi";
   if (status === "rejected") return "Reddedildi";
   return status;
@@ -215,7 +215,7 @@ export default function TeacherCuzdanPage() {
           bankName: withdrawBank.trim() || undefined,
         }),
       });
-      setOk("Para çekme talebiniz alındı. Tutar cüzdanınızda ayrıldı; admin ödemeyi tamamlayınca durum güncellenecek.");
+      setOk("Para çekme talebiniz alındı. Tutar cüzdanınızda ayrıldı; yönetici ödemeyi tamamlayınca durum güncellenecek.");
       setWithdrawAmountTl("");
       setWithdrawIban("");
       setWithdrawHolder("");
@@ -296,7 +296,7 @@ export default function TeacherCuzdanPage() {
             </div>
           )}
           <p className="mt-3 text-xs leading-relaxed text-paper-800/60">
-            Para çekme talebi oluşturulduğunda tutar toplam bakiyeden düşer ve admin ödeme sürecine alınır.
+            Para çekme talebi oluşturulduğunda tutar toplam bakiyeden düşer ve yönetici ödeme sürecine alınır.
             Tutulan tutarlar çekilebilir bakiyeden ayrıca düşülür.
           </p>
           <div className="mt-4 flex flex-wrap items-end gap-2">
@@ -327,7 +327,7 @@ export default function TeacherCuzdanPage() {
             <div>
               <h2 className="text-sm font-semibold text-paper-900">Para çekme</h2>
               <p className="mt-1 text-xs text-paper-800/60">
-                Talep oluşturunca tutar cüzdanınızdan ayrılır. Admin banka transferini tamamlayınca durum “Ödendi” olur.
+                Talep oluşturunca tutar cüzdanınızdan ayrılır. Yönetici banka transferini tamamlayınca durum “Ödendi” olur.
               </p>
             </div>
             <div className="text-xs text-paper-800/55">Minimum 100,00 TL</div>
@@ -402,7 +402,7 @@ export default function TeacherCuzdanPage() {
                     <th className="px-3 py-2">IBAN</th>
                     <th className="px-3 py-2 text-right">Tutar</th>
                     <th className="px-3 py-2">Durum</th>
-                    <th className="px-3 py-2">Admin notu</th>
+                    <th className="px-3 py-2">Yönetici notu</th>
                   </tr>
                 </thead>
                 <tbody>

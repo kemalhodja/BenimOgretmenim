@@ -430,9 +430,9 @@ export default function TeacherHomePage() {
       bioFilled: "Biyografi dolduruldu",
       videoLinked: "Video eklendi",
       instagramLinked: "Instagram eklendi",
-      platformLinksAdded: "Özel platform linkleri eklendi",
+      platformLinksAdded: "Ders bağlantıları eklendi",
       examDocsAdded: "Doküman eklendi",
-      onboardingInterviewDone: "Onboarding görüşmesi tamam",
+      onboardingInterviewDone: "İlk kurulum görüşmesi tamam",
       curriculumStarted: "Müfredat başlatıldı",
     };
     const fixHref: Record<string, string> = {
@@ -495,7 +495,7 @@ export default function TeacherHomePage() {
             }
           : {
               title: "Yaklaşan canlı derslerini hazırla",
-              body: "Sınıf linklerini, materyalleri ve ders sonrası değerlendirmeyi kontrol et.",
+              body: "Sınıf bağlantılarını, materyalleri ve ders sonrası değerlendirmeyi kontrol et.",
               href: "/teacher/dersler",
               cta: "Derslere git",
             };
@@ -558,7 +558,7 @@ export default function TeacherHomePage() {
           {[
             { href: "/teacher/odev-havuzu", title: "Soru havuzu", body: "Yeni soruları üstlen ve çözüm gönder." },
             { href: "/teacher/requests", title: "Ders talepleri", body: "Teklif bekleyen öğrencileri kontrol et." },
-            { href: "/teacher/dersler", title: "Canlı dersler", body: "Yaklaşan ders ve sınıf linklerini aç." },
+            { href: "/teacher/dersler", title: "Canlı dersler", body: "Yaklaşan derslerin sınıf bağlantılarını aç." },
             { href: "/teacher/edit", title: "Profili güçlendir", body: "Video, belge ve branş bilgilerini tamamla." },
           ].map((item) => (
             <Link
@@ -576,7 +576,7 @@ export default function TeacherHomePage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
-                {showOnboarding ? "Öğretmen onboarding" : "Sonraki en iyi işlem"}
+                {showOnboarding ? "Öğretmen ilk kurulum" : "Sonraki en iyi işlem"}
               </div>
               <h2 className="mt-2 text-lg font-semibold text-paper-900">{nextBestAction.title}</h2>
               <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">{nextBestAction.body}</p>
@@ -890,7 +890,7 @@ export default function TeacherHomePage() {
             </Link>
           </div>
           <p className="mt-1 text-xs text-paper-800/55">
-            YouTube/Loom gibi bir link ekleyin. Bu video herkese açık öğretmen profilinizde de gösterilir.
+            YouTube veya Loom gibi bir video bağlantısı ekleyin. Bu video herkese açık öğretmen profilinizde de gösterilir.
           </p>
 
           {me?.teacher.videoUrl ? (
@@ -922,7 +922,7 @@ export default function TeacherHomePage() {
                 );
               })()}
               <div className="mt-2 text-xs text-paper-800/55">
-                URL: <span className="font-mono">{me.teacher.videoUrl}</span>
+                Video bağlantısı: <span className="font-mono">{me.teacher.videoUrl}</span>
               </div>
             </div>
           ) : (

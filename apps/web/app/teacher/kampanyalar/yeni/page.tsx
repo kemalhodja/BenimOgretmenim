@@ -275,7 +275,7 @@ export default function NewTeacherCampaignPage() {
               <div className="text-sm font-semibold text-paper-900">Kampanya ödeme modeli</div>
               <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
                 Sabit yayın ücretiyle ilanı baştan ödeyebilir veya risksiz başlayıp öğrenci gelirse %10 platform başarı
-                bedeliyle devam edebilirsiniz. Her kampanya önce admin incelemesine gider.
+                bedeliyle devam edebilirsiniz. Her kampanya önce yönetici incelemesine gider.
               </p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <button

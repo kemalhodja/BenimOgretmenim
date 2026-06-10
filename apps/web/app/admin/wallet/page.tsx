@@ -75,7 +75,7 @@ function paymentMethodLabel(method: string): string {
 
 function ledgerKindLabel(kind: string): string {
   const labels: Record<string, string> = {
-    wallet_admin_grant: "Admin bakiye ekledi",
+    wallet_admin_grant: "Yönetici bakiye ekledi",
     wallet_topup_paid: "Cüzdan yükleme",
     wallet_hold_created: "Ödeme güvenceye alındı",
     wallet_hold_captured: "Ödeme tahsil edildi",
@@ -98,7 +98,7 @@ export default function AdminWalletPage() {
   const [loadingOps, setLoadingOps] = useState(false);
   const [grantUserId, setGrantUserId] = useState("");
   const [grantAmountMinor, setGrantAmountMinor] = useState("100000");
-  const [grantReason, setGrantReason] = useState("Admin bakiye ekleme");
+  const [grantReason, setGrantReason] = useState("Yönetici bakiye ekleme");
   const [grantBusy, setGrantBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -171,7 +171,7 @@ export default function AdminWalletPage() {
           reason: grantReason.trim(),
         }),
       });
-      setOk("Cüzdan grant başarılı.");
+      setOk("Cüzdan bakiyesi başarıyla eklendi.");
       await loadOps();
     } catch (e) {
       setError(e instanceof Error ? e.message : "hata");

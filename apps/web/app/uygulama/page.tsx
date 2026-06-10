@@ -7,7 +7,7 @@ const uygulamaUrl = `${publicSiteUrl()}/uygulama`;
 const quickAccess = [
   {
     title: "Öğrenci hızlı başlangıç",
-    body: "Öğretmen ara, soru gönder, çalışma planını işaretle ve canlı ders linklerine telefondan ulaş.",
+    body: "Öğretmen ara, soru gönder, çalışma planını işaretle ve canlı ders bağlantılarına telefondan ulaş.",
     links: [
       { href: "/student/panel", label: "Öğrenci paneli" },
       { href: "/student/odev-sor", label: "Soru gönder" },
@@ -34,7 +34,7 @@ const quickAccess = [
 ] as const;
 
 const mobileBenefits = [
-  { title: "Ders linki hızlı açılır", body: "Canlı sınıf, bildirim ve panel bağlantıları ana ekrandan tek dokunuşla erişilir." },
+  { title: "Ders bağlantısı hızlı açılır", body: "Canlı sınıf, bildirim ve panel bağlantıları ana ekrandan tek dokunuşla erişilir." },
   { title: "Soru fotoğrafı kolaylaşır", body: "Öğrenci ödev/soru gönderimini telefondan daha kısa sürede tamamlar." },
   { title: "Öğretmen hızlı yanıtlar", body: "Teklifler, soru havuzu ve ders durumları mobilde daha hızlı kontrol edilir." },
 ] as const;
@@ -179,7 +179,7 @@ export default function UygulamaPage() {
       <section className="mt-10 rounded-2xl border border-brand-200 bg-brand-50 p-5">
         <h2 className="text-lg font-semibold text-brand-950">Telefonda en iyi kullanım</h2>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-relaxed text-brand-900/90">
-          <li>Canlı ders linklerine bildirimden veya paneldeki “Dersler” bölümünden girin.</li>
+          <li>Canlı ders bağlantılarına bildirimden veya paneldeki “Dersler” bölümünden girin.</li>
           <li>Soru fotoğrafı için “Soru gönder” sayfasındaki kamera seçeneğini kullanın.</li>
           <li>Öğretmenler için soru havuzu ve teklif ekranlarını ana ekrana eklenen uygulamadan kontrol etmek daha hızlıdır.</li>
         </ul>

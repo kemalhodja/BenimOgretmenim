@@ -58,14 +58,14 @@ function toLocal(dt: string | null): string {
 function teacherApplicationLabel(status: string | null): string {
   if (status === "accepted") return "Seçildiniz";
   if (status === "rejected") return "Uygun bulunmadı";
-  if (status === "pending") return "Admin değerlendirmesinde";
+  if (status === "pending") return "Yönetici değerlendirmesinde";
   return "Başvuru bekleniyor";
 }
 
 function teacherApplicationHelp(status: string | null): string {
-  if (status === "accepted") return "Admin sizi bu kampanyanın öğretmeni olarak seçti.";
+  if (status === "accepted") return "Yönetici sizi bu kampanyanın öğretmeni olarak seçti.";
   if (status === "rejected") return "Bu kampanya için başka bir öğretmen tercih edilmiş olabilir.";
-  if (status === "pending") return "Başvurunuz admin tarafından inceleniyor.";
+  if (status === "pending") return "Başvurunuz yönetici tarafından inceleniyor.";
   return "Saat ücretini, ders planını ve kapsamı inceleyip başvurabilirsiniz.";
 }
 
@@ -214,7 +214,7 @@ export default function TeacherKurslarPage() {
       : nextCourse
         ? {
             title: `Sıradaki kurs oturumu: ${nextCourse.title}`,
-            body: `${nextCourse.next_cohort_title ?? "Grup"} · ${toLocal(nextCourse.next_scheduled_start)}. Sınıf linki hazır olduğunda buradan açabilirsiniz.`,
+            body: `${nextCourse.next_cohort_title ?? "Grup"} · ${toLocal(nextCourse.next_scheduled_start)}. Sınıf bağlantısı hazır olduğunda buradan açabilirsiniz.`,
             href: `/teacher/kurslar/${nextCourse.id}`,
             label: "Oturumu yönet",
           }
@@ -299,7 +299,7 @@ export default function TeacherKurslarPage() {
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">
-                Admin kurs kampanyaları
+                Yönetici kurs kampanyaları
               </div>
               <h2 className="mt-1 text-lg font-semibold text-paper-950">
                 Eğitmen başvurusu bekleyen kampanyalar
@@ -315,7 +315,7 @@ export default function TeacherKurslarPage() {
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             {campaigns.length === 0 ? (
               <div className="rounded-xl border border-paper-200 bg-paper-50 p-4 text-sm text-paper-800/65">
-                Şu an başvuruya açık admin kampanyası yok.
+                Şu an başvuruya açık yönetici kampanyası yok.
               </div>
             ) : (
               campaigns.map((campaign) => (
@@ -345,7 +345,7 @@ export default function TeacherKurslarPage() {
                         ))}
                       </ul>
                     ) : (
-                      <div className="mt-1">Saatler admin tarafından netleştirilecek.</div>
+                      <div className="mt-1">Saatler yönetici tarafından netleştirilecek.</div>
                     )}
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -430,7 +430,7 @@ export default function TeacherKurslarPage() {
                       href={`/courses/${c.id}`}
                       className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
                     >
-                      Public sayfa
+                      Herkese açık sayfa
                     </Link>
                     {c.next_session_id && (
                       <Link

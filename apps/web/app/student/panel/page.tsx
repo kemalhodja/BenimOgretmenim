@@ -500,7 +500,7 @@ function StudentPanelPageInner() {
               </div>
               <h2 className="mt-1 text-lg font-semibold text-paper-900">Öğrenci için 3 adımlı hızlı plan</h2>
               <p className="mt-1 text-sm leading-relaxed text-paper-800/65">
-                Öğretmen seçimi, soru çözümü ve çalışma takibi arasında kaybolmadan sıradaki aksiyonu tamamlayın.
+                Öğretmen seçimi, soru çözümü ve çalışma takibi arasında kaybolmadan sıradaki adımı tamamlayın.
               </p>
             </div>
             <Link href="/ogretmenler" className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900">
@@ -593,7 +593,7 @@ function StudentPanelPageInner() {
               </p>
             </div>
             <div className="rounded-xl border border-paper-200 bg-paper-50 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/50">Zayıf konu ve aksiyon</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/50">Geliştirilecek konu ve sıradaki adım</div>
               <div className="mt-1 text-sm font-semibold text-paper-950">Sıradaki odak</div>
               <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{weakTopicHint}</p>
               <Link href="/student/odev-sor" className="mt-3 inline-flex text-xs font-semibold text-brand-800 underline">
@@ -607,7 +607,7 @@ function StudentPanelPageInner() {
           {[
             { href: "/student/odev-sor", title: "Soru gönder", body: "Fotoğraf çek, aciliyet seç, çözümü takip et." },
             { href: "/student/calisma", title: "Planı işaretle", body: "Haftalık görevleri tamamlandı/atlandı yap." },
-            { href: "/student/dersler", title: "Canlı dersler", body: "Yaklaşan ders ve sınıf linklerine hızlı gir." },
+            { href: "/student/dersler", title: "Canlı dersler", body: "Yaklaşan derslerin sınıf bağlantılarına hızlı gir." },
             { href: "/ogretmenler?verifiedOnly=1&sort=recommended", title: "Öğretmen bul", body: "Doğrulanmış profilleri karşılaştır." },
           ].map((item) => (
             <Link
