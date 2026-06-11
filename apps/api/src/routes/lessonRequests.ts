@@ -283,6 +283,8 @@ lessonRequests.post("/", requireAuth, async (c) => {
                     t.rating_count,
                     t.rating_avg,
                     t.verification_status,
+                    jsonb_typeof(t.availability_jsonb) = 'object'
+                      and jsonb_object_length(t.availability_jsonb) > 0 as has_availability,
                     exists (
                       select 1
                       from teacher_subscriptions s
@@ -319,6 +321,7 @@ lessonRequests.post("/", requireAuth, async (c) => {
              case when has_active_subscription then 0 else 1 end,
              case when last_login_at >= now() - interval '30 days' then 0 else 1 end,
              case when verification_status = 'verified' then 0 else 1 end,
+             case when has_availability then 0 else 1 end,
              profile_quality_score desc,
              coalesce(rating_count, 0) desc,
              coalesce(rating_avg, 0) desc,
@@ -1022,6 +1025,13 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
         ? Math.round(hourlyRateMinor * totalLessons * (durationMinutes / 60))
         : 0;
     const deliveryMode = (own.rows[0].delivery_mode as string) ?? "online";
+    const payerRole = role === "guardian" ? "guardian" : "student";
+    const walletHoldMethod =
+      totalAmountMinor > 0
+        ? payerRole === "guardian"
+          ? "guardian_wallet_hold"
+          : "student_wallet_hold"
+        : "manual_followup";
 
     if (totalAmountMinor > 0) {
       const available = await getWalletAvailableMinor(userId, client);
@@ -1054,10 +1064,12 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
         totalAmountMinor > 0 ? "held_in_escrow" : "pending",
         totalAmountMinor,
         JSON.stringify({
-          method: totalAmountMinor > 0 ? "student_wallet_hold" : "manual_followup",
+          method: walletHoldMethod,
           release: "per_completed_lesson",
           lessonDurationMinutes: durationMinutes,
           hourlyRateMinor,
+          payerRole,
+          payerUserId: userId,
         }),
       ],
     );
@@ -1090,6 +1102,9 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
             hourlyRateMinor,
             totalLessons,
             durationMinutes,
+            payerRole,
+            payerUserId: userId,
+            walletHoldMethod,
           }),
         ],
       );
@@ -1168,6 +1183,8 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
         status: totalAmountMinor > 0 ? "held_in_escrow" : "pending",
         totalAmountMinor,
         holdId,
+          payerRole,
+          payerUserId: userId,
       },
       package: {
         totalLessons,

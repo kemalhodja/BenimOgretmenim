@@ -128,6 +128,8 @@ export default function StudentRequestDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [packageLessonCount, setPackageLessonCount] = useState(4);
   const [lessonDurationMinutes, setLessonDurationMinutes] = useState(60);
+  const [topupKurus, setTopupKurus] = useState(200_000);
+  const [topupBusy, setTopupBusy] = useState(false);
 
   useEffect(() => {
     const t = getToken();
@@ -284,6 +286,33 @@ export default function StudentRequestDetailPage() {
     }
   }
 
+  async function topupWallet() {
+    if (!token) return;
+    setTopupBusy(true);
+    setError(null);
+    setOk(null);
+    try {
+      if (topupKurus < 10_000) throw new Error("En az 100,00 TL yükleyebilirsiniz.");
+      const r = await apiFetch<{ next: { checkout: string } }>("/v1/wallet/topup", {
+        method: "POST",
+        token,
+        body: JSON.stringify({ amountMinor: topupKurus }),
+      });
+      const ck = await apiFetch<{ iframeUrl: string }>(r.next.checkout, { token });
+      window.open(ck.iframeUrl, "_blank", "noopener,noreferrer");
+      setOk("Cüzdan yükleme penceresi açıldı. Ödeme tamamlanınca bu sayfayı yenileyip teklifi kabul edebilirsiniz.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "topup_failed";
+      setError(msg);
+      if (msg.includes("[401]")) {
+        clearToken();
+        router.replace(loginHrefWithReturn(pathname));
+      }
+    } finally {
+      setTopupBusy(false);
+    }
+  }
+
   if (!token) return null;
   const role = getRoleFromToken(token);
   const isGuardian = role === "guardian";
@@ -322,7 +351,7 @@ export default function StudentRequestDetailPage() {
           )}
           <p className="mt-2 text-sm text-paper-800/65">
             {isGuardian
-              ? "Teklifi kabul ettiğinizde ödeme güvencesi işlemi yapan veli hesabı üzerinden kontrol edilir."
+              ? "Teklifi kabul ettiğinizde ödeme güvencesi veli hesabınızın cüzdanından kontrol edilir."
               : (
                 <>
                   Diğer sayfalar üst menüden. Ödeme ve bakiye:{" "}
@@ -400,9 +429,38 @@ export default function StudentRequestDetailPage() {
               <div className="rounded-xl border border-brand-200 bg-brand-50/70 p-4 text-sm text-brand-950">
                 <div className="font-semibold">Paket ve ödeme güvencesi</div>
                 <p className="mt-1">
-                  Teklif kabulünde paket oluşturulur; seçtiğiniz ders sayısı ve süreye göre toplam tutar cüzdanınızda
+                  Teklif kabulünde paket oluşturulur; seçtiğiniz ders sayısı ve süreye göre toplam tutar {isGuardian ? "veli cüzdanınızda" : "cüzdanınızda"}
                   güvenceye alınır. Dersler tamamlandıkça ödeme kayıtlarından izlenir.
                 </p>
+                <div className="mt-3 rounded-xl border border-brand-100 bg-white/80 p-3">
+                  <div className="text-xs font-semibold text-brand-950">
+                    {isGuardian ? "Veli cüzdanını hazırla" : "Cüzdanı hazırla"}
+                  </div>
+                  <p className="mt-1 text-xs leading-relaxed text-brand-900/75">
+                    Kabulde toplam paket tutarı cüzdanda bekletilir; ders tamamlanmadan öğretmene aktarılmaz.
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end">
+                    <label className="text-xs font-medium text-brand-950">
+                      Tutar (kuruş)
+                      <input
+                        type="number"
+                        min={10_000}
+                        step={1_000}
+                        value={topupKurus}
+                        onChange={(e) => setTopupKurus(Number(e.target.value) || 10_000)}
+                        className="mt-1 block w-full rounded-lg border border-brand-200 bg-white px-2 py-1 font-mono text-sm text-paper-900 sm:w-40"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={topupBusy}
+                      onClick={() => void topupWallet()}
+                      className="rounded-xl border border-brand-300 bg-white px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-50 disabled:opacity-50"
+                    >
+                      {topupBusy ? "Açılıyor..." : "PayTR ile cüzdan yükle"}
+                    </button>
+                  </div>
+                </div>
                 <div className="mt-3 grid gap-2 sm:grid-cols-3">
                   <div className="rounded-xl bg-white/80 p-3 ring-1 ring-brand-100">
                     <div className="text-xs font-semibold text-brand-950">1. Kalite skoru</div>

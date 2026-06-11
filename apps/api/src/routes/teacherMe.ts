@@ -164,7 +164,7 @@ teacherMe.get("/me", requireAuth, async (c) => {
   const profileQualitySignals = [
     {
       key: "verification",
-      label: "Admin doğrulama",
+      label: "Yönetici doğrulaması",
       points: row.verification_status === "verified" ? 15 : 0,
       maxPoints: 15,
     },
@@ -200,7 +200,7 @@ teacherMe.get("/me", requireAuth, async (c) => {
     },
     {
       key: "platformLinks",
-      label: "Platform linkleri",
+      label: "Ders ve kanıt bağlantıları",
       points: hasPlatformLinks ? 5 : 0,
       maxPoints: 5,
     },

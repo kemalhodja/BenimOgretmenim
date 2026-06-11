@@ -454,10 +454,15 @@ describe("lesson requests Armut flow", () => {
           authorization: `Bearer ${acceptTeacher.token}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify({ message: "Kabul edilecek teklif.", proposedHourlyRateMinor: 0 }),
+        body: JSON.stringify({ message: "Kabul edilecek teklif.", proposedHourlyRateMinor: 100_000 }),
       });
       expect(acceptOfferRes.status).toBe(201);
       const acceptOfferBody = (await acceptOfferRes.json()) as { offer: { id: string } };
+      await applyWalletDelta({
+        userId: guardian.userId,
+        deltaMinor: 200_000,
+        kind: "test_wallet_grant",
+      });
 
       const acceptDecision = await app.request(
         `http://localhost/v1/lesson-requests/${acceptRequestBody.request.id}/offers/${acceptOfferBody.offer.id}/decide`,
@@ -471,15 +476,36 @@ describe("lesson requests Armut flow", () => {
         },
       );
       expect(acceptDecision.status).toBe(200);
-      const acceptBody = (await acceptDecision.json()) as { packageId: string; payment: { totalAmountMinor: number } };
+      const acceptBody = (await acceptDecision.json()) as {
+        packageId: string;
+        payment: { totalAmountMinor: number; payerRole: string; payerUserId: string };
+      };
       expect(acceptBody.packageId).toBeTruthy();
-      expect(acceptBody.payment.totalAmountMinor).toBe(0);
+      expect(acceptBody.payment.totalAmountMinor).toBe(200_000);
+      expect(acceptBody.payment.payerRole).toBe("guardian");
+      expect(acceptBody.payment.payerUserId).toBe(guardian.userId);
 
       const acceptedRequest = await pool.query<{ status: string }>(
         `select status::text from lesson_requests where id = $1`,
         [acceptRequestBody.request.id],
       );
       expect(acceptedRequest.rows[0]?.status).toBe("matched");
+
+      const packageRow = await pool.query<{
+        method: string;
+        payer_role: string;
+        payer_user_id: string;
+      }>(
+        `select escrow_release_policy_jsonb->>'method' as method,
+                escrow_release_policy_jsonb->>'payerRole' as payer_role,
+                escrow_release_policy_jsonb->>'payerUserId' as payer_user_id
+         from lesson_packages
+         where id = $1`,
+        [acceptBody.packageId],
+      );
+      expect(packageRow.rows[0]?.method).toBe("guardian_wallet_hold");
+      expect(packageRow.rows[0]?.payer_role).toBe("guardian");
+      expect(packageRow.rows[0]?.payer_user_id).toBe(guardian.userId);
     } finally {
       await cleanup(userIds, studentIds);
     }

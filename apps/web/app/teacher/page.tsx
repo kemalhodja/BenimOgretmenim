@@ -6,6 +6,7 @@ import Link from "next/link";
 import { apiFetch } from "../lib/api";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 import { clearToken, getToken } from "../lib/auth";
+import { trackEvent } from "../lib/trackEvent";
 
 type SubMe = {
   active: boolean;
@@ -239,6 +240,27 @@ function qualitySignalHref(key: string): string | null {
   return hrefs[key] ?? null;
 }
 
+function profileSlugPart(value: string): string {
+  const normalized = value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "ogretmen";
+}
+
+function teacherProfilePath(displayName: string, branchName: string | null | undefined, teacherId: string): string {
+  const slug = [displayName, branchName ?? "ozel-ders"].map(profileSlugPart).join("-");
+  return `/ogretmenler/${slug}-${teacherId}`;
+}
+
 export default function TeacherHomePage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
@@ -256,6 +278,7 @@ export default function TeacherHomePage() {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [notifBusyId, setNotifBusyId] = useState<string | null>(null);
+  const [sharePanelOk, setSharePanelOk] = useState<string | null>(null);
 
   useEffect(() => {
     const t = getToken();
@@ -319,6 +342,45 @@ export default function TeacherHomePage() {
       /* yoksay */
     } finally {
       setNotifBusyId(null);
+    }
+  }
+
+  async function copyShareText(kind: "link" | "intro" | "bio") {
+    if (!me) return;
+    const primaryBranch =
+      me.teacher.branches.find((branch) => branch.isPrimary) ?? me.teacher.branches[0] ?? null;
+    const profilePath = teacherProfilePath(
+      me.teacher.displayName,
+      primaryBranch?.name,
+      me.teacher.id,
+    );
+    const profileUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}${profilePath}`
+        : profilePath;
+    const introText = `Merhaba, ben ${me.teacher.displayName}. ${primaryBranch?.name ?? "özel ders"} alanında öğrencinin seviyesini ve hedefini netleştirerek kişiye özel ders planı oluşturuyorum. Profilimden ders yaklaşımımı, uzmanlık alanlarımı, güven bilgilerini ve demo/teklif adımlarını inceleyebilirsiniz: ${profileUrl}`;
+    const bioText = `${me.teacher.displayName} | ${primaryBranch?.name ?? "Özel ders"} öğretmeni | Demo talebi, güvenli ödeme ve ders sonrası takip için profilimi inceleyin: ${profileUrl}`;
+    const text = kind === "link" ? profileUrl : kind === "intro" ? introText : bioText;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        setSharePanelOk(
+          kind === "link"
+            ? "Profil linki kopyalandı."
+            : kind === "intro"
+              ? "Tanıtım mesajı kopyalandı."
+              : "Sosyal medya bio metni kopyalandı.",
+        );
+        trackEvent("teacher_profile_share_asset_copy", {
+          entityType: "teacher",
+          entityId: me.teacher.id,
+          metadata: { source: "teacher_panel_share_center", kind },
+        });
+      } else {
+        setSharePanelOk("Tarayıcı kopyalamayı desteklemiyor.");
+      }
+    } catch {
+      setSharePanelOk("Kopyalama tamamlanamadı.");
     }
   }
 
@@ -504,6 +566,11 @@ export default function TeacherHomePage() {
               href: "/teacher/dersler",
               cta: "Derslere git",
             };
+  const primaryTeacherBranch =
+    me?.teacher.branches.find((branch) => branch.isPrimary) ?? me?.teacher.branches[0] ?? null;
+  const teacherProfileHref = me
+    ? teacherProfilePath(me.teacher.displayName, primaryTeacherBranch?.name, me.teacher.id)
+    : "/ogretmenler";
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-6 py-8">
@@ -592,6 +659,88 @@ export default function TeacherHomePage() {
             >
               {nextBestAction.cta}
             </Link>
+          </div>
+        </section>
+
+        <section className="mt-6 overflow-hidden rounded-[2rem] border border-paper-200 bg-white shadow-sm">
+          <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="p-5">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                Profilimi paylaş
+              </div>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-paper-950">
+                Kendi öğretmen web sayfanı veliye, öğrenciye ve sosyal medyaya gönder.
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-paper-800/70">
+                Profil sayfan; uzmanlıklarını, güven bilgilerini, demo talebini, teklif akışını ve hazır tanıtım metnini tek linkte toplar.
+              </p>
+              <div className="mt-4 rounded-2xl border border-paper-200 bg-paper-50 p-4">
+                <div className="text-xs font-semibold text-paper-800/55">Paylaşılacak profil</div>
+                <div className="mt-1 break-all text-sm font-semibold text-paper-950">
+                  {teacherProfileHref}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void copyShareText("link")}
+                    className="rounded-xl bg-paper-950 px-3 py-2 text-xs font-semibold text-white hover:bg-paper-800"
+                  >
+                    Linki kopyala
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void copyShareText("intro")}
+                    className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-xs font-semibold text-paper-900 hover:bg-paper-50"
+                  >
+                    Veli mesajını kopyala
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void copyShareText("bio")}
+                    className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-xs font-semibold text-paper-900 hover:bg-paper-50"
+                  >
+                    Bio metnini kopyala
+                  </button>
+                  <Link
+                    href={teacherProfileHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-100"
+                  >
+                    Profili aç
+                  </Link>
+                </div>
+                {sharePanelOk ? (
+                  <p className="mt-2 text-xs font-semibold text-brand-900">{sharePanelOk}</p>
+                ) : null}
+              </div>
+            </div>
+            <aside className="border-t border-paper-200 bg-[radial-gradient(circle_at_top_right,#ecfeff_0%,#ffffff_48%,#fff7ed_100%)] p-5 lg:border-l lg:border-t-0">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-900/70">
+                Tanıtım gücü
+              </div>
+              <div className="mt-3 grid gap-3">
+                {[
+                  {
+                    title: primaryTeacherBranch?.name ?? "Özel ders vitrini",
+                    body: "Ana uzmanlık profilde ve paylaşım metninde öne çıkar.",
+                  },
+                  {
+                    title: `${profileQualityScore}/100 vitrin kalitesi`,
+                    body: "Profil kalitesi yükseldikçe öğretmenin kendini anlatma gücü artar.",
+                  },
+                  {
+                    title: "Tek link başvuru",
+                    body: "Demo, teklif ve kısa liste aksiyonları aynı sayfadan başlar.",
+                  },
+                ].map((item) => (
+                  <div key={item.title} className="rounded-2xl border border-white bg-white/85 p-4">
+                    <h3 className="text-sm font-semibold text-paper-950">{item.title}</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+            </aside>
           </div>
         </section>
 

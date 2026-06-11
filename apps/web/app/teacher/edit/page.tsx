@@ -345,6 +345,56 @@ export default function TeacherEditPage() {
     { key: "availabilitySet", focus: "availability", title: "Müsaitlik", body: "Veli/öğrenci derse başlama ihtimalini saat bilgisiyle daha hızlı değerlendirir." },
   ];
   const websiteReadyCount = websiteEssentials.filter((item) => checklist[item.key]).length;
+  const selectedPrimaryBranch =
+    leafBranches.find((branch) => branch.id === primaryBranchId) ??
+    leafBranches.find((branch) => branch.id === selectedBranchIds[0]) ??
+    null;
+  const profileBranchLabel = selectedPrimaryBranch?.name ?? "branşım";
+  const bioGuide = [
+    "Kime yardımcı oluyorsunuz? (sınıf, sınav, seviye)",
+    "Dersi nasıl işliyorsunuz? (seviye analizi, soru çözümü, takip)",
+    "Öğrenci ne kazanır? (plan, özgüven, net artışı, yazılı hazırlığı)",
+    "İlk derste ne olur? (demo, hedef belirleme, eksik konu haritası)",
+  ] as const;
+  const nextConversionActions = [
+    {
+      key: "bioFilled",
+      title: "Açılış metni",
+      body: "İlk iki cümle profilin karar hızını belirler.",
+    },
+    {
+      key: "videoLinked",
+      title: "Video güveni",
+      body: "Kısa tanıtım videosu öğrencinin öğretmeni tanımasını kolaylaştırır.",
+    },
+    {
+      key: "availabilitySet",
+      title: "Saat netliği",
+      body: "Müsaitlik doluysa ilan eşleştirmelerinde daha güçlü görünürsünüz.",
+    },
+    {
+      key: "examDocsAdded",
+      title: "Kanıt",
+      body: "Örnek doküman, başarı belgesi veya yazılı planı güveni artırır.",
+    },
+  ] as const;
+
+  function applyBioTemplate() {
+    const branch = profileBranchLabel;
+    setBioRaw(
+      `Merhaba, ben ${branch} alanında öğrencinin seviyesini, hedefini ve eksik kazanımlarını netleştirerek ders planı oluşturan bir öğretmenim.\n\nİlk derste öğrencinin mevcut durumunu analiz eder, hedef sınav veya okul yazılısı için öncelikli konuları belirlerim. Derslerde konu anlatımı, birlikte soru çözümü ve ders sonu tekrar/ödev takibini birlikte yürütürüm.\n\nAmacım öğrencinin sadece dersi anlaması değil; hangi konuyu neden kaçırdığını görmesi, düzenli çalışması ve ailesinin süreci net şekilde takip edebilmesidir.`,
+    );
+  }
+
+  function addProofStarter(kind: "platform" | "exam" | "success") {
+    const next =
+      kind === "platform"
+        ? { title: "Örnek ders / çalışma bağlantısı", url: "", kind: "platform" }
+        : kind === "success"
+          ? { title: "Başarı belgesi veya öğrenci sonucu", url: "", kind: "dokuman" }
+          : { title: "Yazılıya hazırlık örnek dokümanı", url: "", kind: "yazili_hazirlik" };
+    setExamDocs((prev) => [...prev, next]);
+  }
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -435,6 +485,41 @@ export default function TeacherEditPage() {
           </div>
         </section>
 
+        <section className="mt-6 rounded-2xl border border-warm-200 bg-warm-50/70 p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-warm-900/70">
+                Profil dönüşüm rehberi
+              </div>
+              <h2 className="mt-1 text-base font-semibold text-paper-950">
+                Öğrencinin kararını hızlandıran 4 alan
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/65">
+                İlanlara teklif verirken ve öğretmen arama sayfasında bu alanlar güven sinyali olarak görünür.
+              </p>
+            </div>
+            <div className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-warm-900 ring-1 ring-warm-200">
+              {nextConversionActions.filter((item) => checklist[item.key]).length}/{nextConversionActions.length} güçlü
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {nextConversionActions.map((item) => (
+              <div
+                key={item.key}
+                className={`rounded-xl border p-3 ${
+                  checklist[item.key] ? "border-warm-200 bg-white" : "border-paper-200 bg-white/70"
+                }`}
+              >
+                <div className="text-sm font-semibold text-paper-950">{item.title}</div>
+                <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+                <div className="mt-2 text-[11px] font-semibold text-warm-900">
+                  {checklist[item.key] ? "Güçlü" : "Tamamlanmalı"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-paper-900">Profil</h2>
@@ -448,6 +533,24 @@ export default function TeacherEditPage() {
                   onChange={(e) => setBioRaw(e.target.value)}
                   className="min-h-28 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
                 />
+                <div className="mt-2 rounded-xl border border-brand-100 bg-brand-50/60 p-3">
+                  <div className="text-xs font-semibold text-brand-950">Güçlü biyografi formülü</div>
+                  <ul className="mt-2 grid gap-1.5 text-xs leading-relaxed text-brand-900/80 sm:grid-cols-2">
+                    {bioGuide.map((line) => (
+                      <li key={line} className="flex gap-2">
+                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={applyBioTemplate}
+                    className="mt-3 rounded-xl border border-brand-200 bg-white px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-50"
+                  >
+                    Hazır biyografi taslağı oluştur
+                  </button>
+                </div>
               </label>
 
               <label className="block" data-focus="video">
@@ -666,6 +769,29 @@ export default function TeacherEditPage() {
                   >
                     Doküman ekle
                   </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => addProofStarter("exam")}
+                      className="rounded-full border border-paper-200 bg-white px-3 py-1 text-xs font-medium text-paper-900 hover:border-brand-200 hover:bg-brand-50"
+                    >
+                      Yazılı dokümanı şablonu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addProofStarter("success")}
+                      className="rounded-full border border-paper-200 bg-white px-3 py-1 text-xs font-medium text-paper-900 hover:border-brand-200 hover:bg-brand-50"
+                    >
+                      Başarı kanıtı şablonu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => addProofStarter("platform")}
+                      className="rounded-full border border-paper-200 bg-white px-3 py-1 text-xs font-medium text-paper-900 hover:border-brand-200 hover:bg-brand-50"
+                    >
+                      Çalışma bağlantısı şablonu
+                    </button>
+                  </div>
                 </div>
               </label>
 

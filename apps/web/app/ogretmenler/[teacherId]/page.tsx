@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { RegisterNavLink } from "../../components/AuthNavLinks";
 import { apiFetch } from "../../lib/api";
-import { clearToken, getToken } from "../../lib/auth";
+import { clearToken, getRoleFromToken, getToken } from "../../lib/auth";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { trackEvent } from "../../lib/trackEvent";
 
@@ -178,6 +178,48 @@ function profileDecisionLabel(teacher: TeacherDetail): string {
   return "Demo ile beklentiyi netleştirin";
 }
 
+function decisionConfidenceScore(teacher: TeacherDetail): number {
+  let score = Math.min(55, Math.round(Number(teacher.profile_quality_score ?? 0) * 0.55));
+  if (teacher.verification_status === "verified") score += 12;
+  if (teacher.has_video) score += 8;
+  if (teacher.has_exam_docs) score += 8;
+  if (teacher.completed_sessions_count >= 10) score += 10;
+  else if (teacher.completed_sessions_count > 0) score += 5;
+  if (Number(teacher.rating_count ?? 0) > 0) score += 7;
+  return Math.min(100, score);
+}
+
+function idealFitCards(teacher: TeacherDetail, branches: BranchRow[]) {
+  const primary = branches.find((branch) => branch.is_primary) ?? branches[0] ?? null;
+  return [
+    {
+      title: `${primary?.branch_name ?? "Özel ders"} için hedefli başlangıç`,
+      body: primary
+        ? `${primary.branch_name} alanında seviye, hedef ve ders sıklığı demo/talep aşamasında netleştirilir.`
+        : "Öğrencinin hedefi ve ders beklentisi ilk görüşmede netleştirilir.",
+    },
+    {
+      title: teacher.has_video ? "Yöntemi önceden görerek karar" : "Demo ile yöntemi netleştirme",
+      body: teacher.has_video
+        ? "Tanıtım videosu, öğretmenin anlatım tarzını teklif öncesi anlamaya yardım eder."
+        : "Video yoksa demo talebiyle anlatım tarzı ve iletişim uyumu hızlıca ölçülür.",
+    },
+    {
+      title: teacher.completed_sessions_count > 0 ? "Ders geçmişiyle güven" : "Yeni eşleşme için güvenli deneme",
+      body:
+        teacher.completed_sessions_count > 0
+          ? `${teacher.completed_sessions_count} tamamlanan ders kaydı karar verirken ek güven sinyali sağlar.`
+          : "İlk paket öncesinde demo ve teklif akışıyla beklenti netleşir.",
+    },
+    {
+      title: teacher.has_exam_docs ? "Kanıt ve içerik inceleme" : "Ek doküman isteyebilme",
+      body: teacher.has_exam_docs
+        ? "Paylaşılan dokümanlar ve sınav içerikleri öğretmenin hazırlık tarzını görünür kılar."
+        : "Talep mesajında örnek materyal, kaynak veya ders planı isteyebilirsiniz.",
+    },
+  ];
+}
+
 function hourlyRateRangeLabel(branches: BranchRow[]): string | null {
   const mins = branches
     .map((branch) => branch.hourly_rate_min_minor)
@@ -197,6 +239,42 @@ const sampleLessonFlow = [
   "Canlı anlatım + ortak tahta",
   "Ders sonu ödev ve takip notu",
 ] as const;
+
+function displayNameInitials(name: string): string {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  const initials = parts.map((part) => part[0]?.toLocaleUpperCase("tr-TR")).join("");
+  return initials || "Ö";
+}
+
+function profileSlugPart(value: string): string {
+  const normalized = value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "ogretmen";
+}
+
+function teacherProfilePath(displayName: string, branchName: string | null | undefined, teacherId: string): string {
+  const slug = [displayName, branchName ?? "ozel-ders"].map(profileSlugPart).join("-");
+  return `/ogretmenler/${slug}-${teacherId}`;
+}
+
+function extractTeacherIdParam(raw: string): string {
+  const uuid = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)?.[0];
+  return uuid ?? raw;
+}
 
 function instagramHandle(rawUrl: string): string | null {
   const t = rawUrl.trim();
@@ -273,8 +351,9 @@ export default function OgretmenDetayPage() {
   const params = useParams();
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
-  const teacherId =
+  const rawTeacherParam =
     typeof params.teacherId === "string" ? params.teacherId : "";
+  const teacherId = extractTeacherIdParam(rawTeacherParam);
   const pathWithQuery = useMemo(() => {
     const base = pathname || (teacherId ? `/ogretmenler/${teacherId}` : "/ogretmenler");
     const q = searchParams.toString();
@@ -295,22 +374,26 @@ export default function OgretmenDetayPage() {
   const [directFundBusy, setDirectFundBusy] = useState(false);
   const [shortlistBusy, setShortlistBusy] = useState(false);
   const [shortlistOk, setShortlistOk] = useState<string | null>(null);
+  const [shareOk, setShareOk] = useState<string | null>(null);
+  const [introCopyOk, setIntroCopyOk] = useState<string | null>(null);
 
+  const authRole = getRoleFromToken(authToken);
+  const requestBasePath = authRole === "guardian" ? "/guardian/requests" : "/student/requests";
   const primaryBranchId = useMemo(() => {
     const p = branches.find((b) => b.is_primary);
     return (p ?? branches[0])?.branch_id;
   }, [branches]);
 
   const talepPath = primaryBranchId
-    ? `/student/requests?branchId=${primaryBranchId}`
-    : "/student/requests";
+    ? `${requestBasePath}?branchId=${primaryBranchId}`
+    : requestBasePath;
   const talepEntryHref = authToken ? talepPath : loginHrefWithReturn(talepPath);
   const demoTalepQuery = new URLSearchParams();
   demoTalepQuery.set("requestKind", "demo");
   if (primaryBranchId) demoTalepQuery.set("branchId", String(primaryBranchId));
   if (teacherId) demoTalepQuery.set("teacherId", teacherId);
   if (teacher?.display_name) demoTalepQuery.set("teacherName", teacher.display_name);
-  const demoTalepPath = `/student/requests?${demoTalepQuery.toString()}`;
+  const demoTalepPath = `${requestBasePath}?${demoTalepQuery.toString()}`;
   const demoTalepEntryHref = authToken ? demoTalepPath : loginHrefWithReturn(demoTalepPath);
   const hourlyRange = useMemo(() => hourlyRateRangeLabel(branches), [branches]);
 
@@ -460,6 +543,63 @@ export default function OgretmenDetayPage() {
     }
   }
 
+  async function shareProfile() {
+    if (!teacher) return;
+    const primary =
+      branches.find((branch) => branch.is_primary) ?? branches[0] ?? null;
+    const publicPath = teacherProfilePath(teacher.display_name, primary?.branch_name, teacher.id);
+    const shareUrl = typeof window !== "undefined" ? `${window.location.origin}${publicPath}` : publicPath;
+    const nav = typeof window !== "undefined" ? window.navigator : null;
+    const shareData = {
+      title: `${teacher.display_name} | BenimÖğretmenim`,
+      text: `${teacher.display_name} öğretmen profilini inceleyin: ${primaryBranch?.branch_name ?? "özel ders"}, demo talebi ve güvenli ödeme süreci.`,
+      url: shareUrl,
+    };
+    try {
+      if (nav?.share) {
+        await nav.share(shareData);
+        setShareOk("Paylaşım penceresi açıldı.");
+      } else if (nav?.clipboard) {
+        await nav.clipboard.writeText(shareUrl);
+        setShareOk("Profil bağlantısı kopyalandı.");
+      } else {
+        setShareOk("Profil bağlantısını tarayıcı adres çubuğundan kopyalayabilirsiniz.");
+      }
+      trackEvent("teacher_profile_share", {
+        entityType: "teacher",
+        entityId: teacher.id,
+        metadata: { source: "public_profile", teacherName: teacher.display_name },
+      });
+    } catch {
+      setShareOk("Profil bağlantısı paylaşılmadı.");
+    }
+  }
+
+  async function copyIntroText() {
+    if (!teacher) return;
+    const primary =
+      branches.find((branch) => branch.is_primary) ?? branches[0] ?? null;
+    const publicPath = teacherProfilePath(teacher.display_name, primary?.branch_name, teacher.id);
+    const shareUrl = typeof window !== "undefined" ? `${window.location.origin}${publicPath}` : publicPath;
+    const nav = typeof window !== "undefined" ? window.navigator : null;
+    const text = `${teacherIntroMessage}\n\nProfilim: ${shareUrl}`;
+    try {
+      if (nav?.clipboard) {
+        await nav.clipboard.writeText(text);
+        setIntroCopyOk("Hazır tanıtım metni kopyalandı.");
+        trackEvent("teacher_profile_intro_copy", {
+          entityType: "teacher",
+          entityId: teacher.id,
+          metadata: { source: "public_profile", teacherName: teacher.display_name },
+        });
+      } else {
+        setIntroCopyOk("Tarayıcı kopyalamayı desteklemiyor; metni seçerek kopyalayabilirsiniz.");
+      }
+    } catch {
+      setIntroCopyOk("Tanıtım metni kopyalanamadı.");
+    }
+  }
+
   const profileSchema = useMemo(() => {
     if (!teacher) return null;
     const primaryBranch = branches.find((b) => b.is_primary) ?? branches[0];
@@ -534,6 +674,100 @@ export default function OgretmenDetayPage() {
       { label: "Konum", value: teacher?.city_name ?? "Online" },
       { label: "Ücret", value: hourlyRange ?? "Teklif sonrası" },
     ];
+  const teacherInitials = teacher ? displayNameInitials(teacher.display_name) : "Ö";
+  const primaryBranchName =
+    profileSite?.primaryBranchName ?? primaryBranch?.branch_name ?? "Özel ders";
+  const publicProfilePath = teacher
+    ? teacherProfilePath(teacher.display_name, primaryBranchName, teacher.id)
+    : teacherId
+      ? `/ogretmenler/${teacherId}`
+      : "/ogretmenler";
+  useEffect(() => {
+    if (!teacher || !publicProfilePath.startsWith("/ogretmenler/")) return;
+    if (pathname === publicProfilePath) return;
+    const q = searchParams.toString();
+    router.replace(q ? `${publicProfilePath}?${q}` : publicProfilePath);
+  }, [pathname, publicProfilePath, router, searchParams, teacher]);
+  const personalSiteHighlights = teacher
+    ? [
+        {
+          title: "Kişisel ders yaklaşımı",
+          body: teacher.bio_raw
+            ? "Öğretmenin kendi anlatımı, hedefi ve ders tarzı bu sayfada tek yerde toplanır."
+            : "Demo talebiyle öğretmenin ders tarzı ve öğrenciye uygun planı netleşir.",
+        },
+        {
+          title: "Profesyonel tanıtım vitrini",
+          body: `${primaryBranchName}, konum, fiyat aralığı, yorum ve kanıt bilgileri paylaşılabilir bir sayfada görünür.`,
+        },
+        {
+          title: "Güvenli başvuru akışı",
+          body: "Öğrenci veya veli bu sayfadan demo talebi oluşturabilir, teklif alabilir ve süreci platform içinde takip eder.",
+        },
+      ]
+    : [];
+  const teacherIntroMessage = teacher
+    ? `Merhaba, ben ${teacher.display_name}. ${primaryBranchName} alanında öğrencinin seviyesini, hedefini ve ders ihtiyacını netleştirerek özel ders planı oluşturuyorum. Profilimde ders yaklaşımımı, uzmanlık alanlarımı, güven bilgilerini ve demo/teklif başvuru adımlarını inceleyebilirsiniz.`
+    : "";
+  const socialBioText = teacher
+    ? `${teacher.display_name} | ${primaryBranchName} özel ders | Demo talebi, güvenli ödeme ve ders sonrası takip için profilimi inceleyin.`
+    : "";
+  const brandKitCards = [
+    {
+      title: "WhatsApp / veli mesajı",
+      body: "Hazır tanıtım metniyle öğretmen kendini daha profesyonel anlatır.",
+    },
+    {
+      title: "Sosyal medya bio",
+      body: "Kısa tanıtım cümlesi profil linkiyle birlikte kullanılabilir.",
+    },
+    {
+      title: "Tek link başvuru",
+      body: "Demo, teklif, kısa liste ve güven bilgileri aynı sayfada toplanır.",
+    },
+  ] as const;
+  const outcomeRoadmap = [
+    {
+      step: "1",
+      title: "Seviye ve hedef analizi",
+      body: `${primaryBranchName} için öğrencinin eksik kazanımları, hedefi ve haftalık çalışma düzeni netleşir.`,
+    },
+    {
+      step: "2",
+      title: "Kişiye özel ders planı",
+      body: "Konu anlatımı, soru çözümü, ödev takibi ve tekrar düzeni öğrencinin ihtiyacına göre planlanır.",
+    },
+    {
+      step: "3",
+      title: "Düzenli ölçüm ve geri bildirim",
+      body: "Ders sonrası notlar, ödev durumu ve gelişim sinyalleri öğrenci/veli için görünür hale gelir.",
+    },
+    {
+      step: "4",
+      title: "Sürdürülebilir başarı rutini",
+      body: "Amaç tek derslik destek değil; öğrencinin çalışma alışkanlığı ve özgüvenini kalıcı şekilde güçlendirmek.",
+    },
+  ] as const;
+  const firstCallChecklist = [
+    "Öğrencinin sınıfı, hedefi ve zorlandığı konular hazır mı?",
+    "Haftalık kaç ders ve hangi günler uygun?",
+    "Demo derste seviye analizi mi, konu anlatımı mı beklenecek?",
+    "Ders sonrası ödev ve veli bilgilendirmesi nasıl takip edilecek?",
+  ] as const;
+  const audienceValueCards = [
+    {
+      title: "Öğrenci için",
+      body: "Dersi sadece dinlemek yerine nerede eksik kaldığını görür, hedefe göre çalışma planı kazanır.",
+    },
+    {
+      title: "Veli için",
+      body: "Öğretmen seçimi, ödeme, ders takibi ve gelişim notları daha görünür ve kontrollü ilerler.",
+    },
+    {
+      title: "Öğretmen için",
+      body: "Profil linki, hazır tanıtım metni ve kanıt vitriniyle kendini profesyonel şekilde sunar.",
+    },
+  ] as const;
   const quickDecisionReasons =
     profileSite?.ctaReasons ??
     [
@@ -541,6 +775,48 @@ export default function OgretmenDetayPage() {
       "Teklif ve fiyatı netleştir",
       "Güvenli ödeme sürecine geç",
     ];
+  const fitCards = teacher ? idealFitCards(teacher, branches) : [];
+  const confidenceScore = teacher ? decisionConfidenceScore(teacher) : 0;
+  const decisionQuestions = [
+    `${primaryBranch?.branch_name ?? "Bu ders"} için ilk 2 haftada hangi hedefi koyarsınız?`,
+    "Öğrencinin eksik kazanımlarını ilk derste nasıl ölçersiniz?",
+    "Ders sonrası veli/öğrenci hangi notları görebilir?",
+    "Paket başlamadan önce demo derste hangi çıktılar netleşir?",
+  ];
+  const proofCards = teacher
+    ? [
+        {
+          title: "Tanışma videosu",
+          ready: teacher.has_video,
+          body: teacher.has_video
+            ? "Anlatım tarzını ve iletişim dilini dersten önce görebilirsiniz."
+            : "Video yoksa demo talebiyle anlatım tarzını ölçün.",
+        },
+        {
+          title: "Doküman ve sınav içeriği",
+          ready: teacher.has_exam_docs,
+          body: teacher.has_exam_docs
+            ? "Paylaşılan içerikler hazırlık tarzını ve kaynak kalitesini gösterir."
+            : "Talep mesajında örnek doküman veya kaynak planı isteyin.",
+        },
+        {
+          title: "Ders geçmişi",
+          ready: teacher.completed_sessions_count > 0,
+          body:
+            teacher.completed_sessions_count > 0
+              ? `${teacher.completed_sessions_count} tamamlanan ders kaydı var.`
+              : "Yeni profillerde demo ve kısa paketle ilerlemek daha sağlıklıdır.",
+        },
+        {
+          title: "Yorum sinyali",
+          ready: Number(teacher.rating_count ?? 0) > 0,
+          body:
+            Number(teacher.rating_count ?? 0) > 0
+              ? `${Number(teacher.rating_avg ?? 0).toFixed(1)} puan ve ${Number(teacher.rating_count ?? 0)} yorum.`
+              : "İlk yorumlar oluşana kadar profil kanıtlarını ve demo deneyimini dikkate alın.",
+        },
+      ]
+    : [];
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -573,30 +849,53 @@ export default function OgretmenDetayPage() {
               dangerouslySetInnerHTML={{ __html: JSON.stringify(profileSchema) }}
             />
           ) : null}
-          <section className="mt-8 overflow-hidden rounded-[2rem] border border-brand-200 bg-[radial-gradient(circle_at_top_left,#dffafe_0%,#ffffff_42%,#fff7ed_100%)] shadow-sm">
-            <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:p-8">
+          <section className="mt-8 overflow-hidden rounded-[2rem] border border-brand-200 bg-[radial-gradient(circle_at_top_left,#cffafe_0%,#ffffff_38%,#fff7ed_100%)] shadow-xl shadow-paper-900/5">
+            <div className="border-b border-white/70 bg-white/55 px-5 py-3 backdrop-blur">
+              <div className="flex flex-col gap-2 text-xs font-semibold text-paper-800/65 sm:flex-row sm:items-center sm:justify-between">
+                <span>{teacher.display_name} kişisel ders sayfası</span>
+                <span>benimogretmenim.com{publicProfilePath}</span>
+              </div>
+            </div>
+            <div className="grid gap-8 p-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:p-8">
               <div>
                 <div className="flex flex-wrap gap-2">
                   {(profileSite?.trustBadges ?? profileTrustReasons(teacher)).slice(0, 4).map((badge) => (
-                    <span key={badge} className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-100">
+                    <span key={badge} className="rounded-full bg-white/85 px-3 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-100">
                       {badge}
                     </span>
                   ))}
+                  <span className="rounded-full bg-paper-950 px-3 py-1 text-xs font-semibold text-white">
+                    Paylaşılabilir profesyonel profil
+                  </span>
                 </div>
-                <h1 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-paper-950 sm:text-4xl">
-                  {heroHeadline}
-                </h1>
-                <p className="mt-4 max-w-3xl text-base leading-relaxed text-paper-800/75">
+                <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-start">
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.75rem] bg-brand-900 text-3xl font-semibold text-white shadow-lg shadow-brand-900/20">
+                    {teacherInitials}
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-900/70">
+                      {primaryBranchName} öğretmeni
+                    </div>
+                    <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight text-paper-950 sm:text-5xl">
+                      {heroHeadline}
+                    </h1>
+                  </div>
+                </div>
+                <p className="mt-5 max-w-3xl text-lg leading-relaxed text-paper-800/75">
                   {heroSubheadline}
                 </p>
-                <div className="mt-5 flex flex-wrap gap-3 text-sm text-paper-800/70">
-                  <span>{profileSite?.locationLabel ?? ([teacher.district_name, teacher.city_name].filter(Boolean).join(", ") || "Online / Türkiye")}</span>
-                  <span>·</span>
-                  <span>{profileSite?.ratingLabel ?? (teacher.rating_count ? `★ ${Number(teacher.rating_avg ?? 0).toFixed(1)} (${teacher.rating_count})` : "Yeni profil")}</span>
-                  <span>·</span>
-                  <span>{profileSite?.priceLabel ?? hourlyRange ?? "Ücret teklif sonrası"}</span>
+                <div className="mt-5 flex flex-wrap gap-2 text-sm font-medium text-paper-800/70">
+                  <span className="rounded-full bg-white/80 px-3 py-1 ring-1 ring-paper-200">
+                    {profileSite?.locationLabel ?? ([teacher.district_name, teacher.city_name].filter(Boolean).join(", ") || "Online / Türkiye")}
+                  </span>
+                  <span className="rounded-full bg-white/80 px-3 py-1 ring-1 ring-paper-200">
+                    {profileSite?.ratingLabel ?? (teacher.rating_count ? `★ ${Number(teacher.rating_avg ?? 0).toFixed(1)} (${teacher.rating_count})` : "Yeni profil")}
+                  </span>
+                  <span className="rounded-full bg-white/80 px-3 py-1 ring-1 ring-paper-200">
+                    {profileSite?.priceLabel ?? hourlyRange ?? "Ücret teklif sonrası"}
+                  </span>
                 </div>
-                <div className="mt-6 flex flex-wrap gap-3">
+                <div className="mt-7 flex flex-wrap gap-3">
                   <Link
                     href={demoTalepEntryHref}
                     onClick={() =>
@@ -606,7 +905,7 @@ export default function OgretmenDetayPage() {
                         metadata: { source: "teacher_profile_hero", teacherName: teacher.display_name },
                       })
                     }
-                    className="rounded-xl bg-brand-800 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-900"
+                    className="rounded-xl bg-brand-800 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-900/15 hover:bg-brand-900"
                   >
                     Demo ders talep et
                   </Link>
@@ -618,6 +917,13 @@ export default function OgretmenDetayPage() {
                   </Link>
                   <button
                     type="button"
+                    onClick={() => void shareProfile()}
+                    className="rounded-xl border border-paper-300 bg-white/80 px-5 py-3 text-sm font-semibold text-paper-900 hover:bg-white"
+                  >
+                    Profili paylaş
+                  </button>
+                  <button
+                    type="button"
                     disabled={shortlistBusy}
                     onClick={() => void addToShortlist()}
                     className="rounded-xl border border-paper-300 bg-white/80 px-5 py-3 text-sm font-semibold text-paper-900 hover:bg-white disabled:opacity-50"
@@ -626,12 +932,27 @@ export default function OgretmenDetayPage() {
                   </button>
                 </div>
                 {shortlistOk ? <p className="mt-2 text-xs font-medium text-brand-900">{shortlistOk}</p> : null}
+                {shareOk ? <p className="mt-2 text-xs font-medium text-paper-800/70">{shareOk}</p> : null}
               </div>
-              <aside className="rounded-2xl border border-white/80 bg-white/85 p-4 shadow-sm">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
-                  Profil vitrini
+              <aside className="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-xl shadow-paper-900/10">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                      Öğretmen vitrini
+                    </div>
+                    <h2 className="mt-2 text-xl font-semibold text-paper-950">
+                      {teacher.display_name}
+                    </h2>
+                    <p className="mt-1 text-sm text-paper-800/60">
+                      {primaryBranchName} için profesyonel tanıtım sayfası
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-brand-50 px-3 py-2 text-center">
+                    <div className="text-lg font-semibold text-brand-900">{confidenceScore}</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-900/60">karar güveni</div>
+                  </div>
                 </div>
-                <div className="mt-4 grid gap-3">
+                <div className="mt-5 grid grid-cols-2 gap-3">
                   {heroStats.map((stat) => (
                     <div key={stat.label} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
                       <div className="text-xs text-paper-800/55">{stat.label}</div>
@@ -640,9 +961,9 @@ export default function OgretmenDetayPage() {
                   ))}
                 </div>
                 <div className="mt-4 rounded-xl border border-warm-200 bg-warm-50 p-3">
-                  <div className="text-xs font-semibold text-warm-950">BenimÖğretmenim farkı</div>
+                  <div className="text-xs font-semibold text-warm-950">Sayfayı tanıtım linki olarak kullanabilir</div>
                   <p className="mt-1 text-xs leading-relaxed text-warm-900/80">
-                    Demo, güvenli ödeme, canlı sınıf ve veliye görünür ders sonrası takip aynı süreçte ilerler.
+                    Öğretmen bu profili velilere, öğrencilere ve sosyal medya takipçilerine kendi ders web sayfası gibi gönderebilir.
                   </p>
                 </div>
               </aside>
@@ -651,8 +972,12 @@ export default function OgretmenDetayPage() {
 
           <nav className="mt-4 flex gap-2 overflow-x-auto rounded-2xl border border-paper-200 bg-white p-2 text-sm">
             {[
+              ["Web sitesi", "#web-vitrin"],
+              ["Tanıtım paketi", "#tanitim-paketi"],
+              ["Sonuç planı", "#sonuc-plani"],
               ["Hakkımda", "#hakkimda"],
               ["Güven", "#guven"],
+              ["Uygunluk", "#uygunluk"],
               ["Uzmanlıklar", "#uzmanliklar"],
               ["Ders yöntemi", "#ders-yontemi"],
               ["Kanıtlar", "#kanitlar"],
@@ -664,6 +989,163 @@ export default function OgretmenDetayPage() {
               </a>
             ))}
           </nav>
+
+          <section id="web-vitrin" className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="rounded-2xl border border-paper-200 bg-white p-6 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                Kişisel web sayfası
+              </div>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-950">
+                {teacher.display_name} için tek linkte profesyonel tanıtım, güven ve başvuru akışı
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-relaxed text-paper-800/70">
+                Bu sayfa öğretmenin kendini anlatabileceği, ders yöntemini gösterebileceği ve öğrenci/veli başvurularını güvenli şekilde toplayabileceği kişisel tanıtım alanı olarak tasarlandı.
+              </p>
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                {personalSiteHighlights.map((item) => (
+                  <article key={item.title} className="rounded-xl border border-paper-200 bg-paper-50 p-4">
+                    <h3 className="text-sm font-semibold text-paper-950">{item.title}</h3>
+                    <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+            <aside className="rounded-2xl border border-brand-200 bg-brand-50/70 p-5">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-900/70">
+                Öğretmen için kullanım
+              </div>
+              <h2 className="mt-2 text-lg font-semibold text-paper-950">
+                Kendi web sayfan gibi paylaş
+              </h2>
+              <p className="mt-2 text-sm leading-relaxed text-paper-800/70">
+                Velilere, öğrencilere, WhatsApp mesajlarına ve sosyal medya biyografisine bu profil linki gönderilebilir.
+              </p>
+              <button
+                type="button"
+                onClick={() => void shareProfile()}
+                className="mt-4 w-full rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
+              >
+                Profil linkini paylaş
+              </button>
+              {shareOk ? <p className="mt-2 text-xs font-medium text-brand-900">{shareOk}</p> : null}
+            </aside>
+          </section>
+
+          <section id="tanitim-paketi" className="mt-6 rounded-[2rem] border border-paper-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-900/70">
+                  Tanıtım paketi
+                </div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-950">
+                  Öğretmen bu sayfayı gönderirken hazır ve profesyonel bir metin kullanabilir.
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-paper-800/70">
+                  Amaç sadece güzel profil göstermek değil; öğretmenin veliye, öğrenciye ve sosyal medya takipçilerine kendini güçlü anlatmasını kolaylaştırmak.
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => void copyIntroText()}
+                  className="rounded-xl bg-paper-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-paper-800"
+                >
+                  Tanıtım metnini kopyala
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void shareProfile()}
+                  className="rounded-xl border border-paper-300 bg-white px-4 py-2.5 text-sm font-semibold text-paper-900 hover:bg-paper-50"
+                >
+                  Profil linkini paylaş
+                </button>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+              <div className="rounded-2xl border border-paper-200 bg-paper-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-paper-800/55">
+                  Hazır mesaj
+                </div>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-paper-800/85">
+                  {teacherIntroMessage}
+                </p>
+                <div className="mt-3 rounded-xl border border-paper-200 bg-white p-3">
+                  <div className="text-xs font-semibold text-paper-900">Sosyal medya bio önerisi</div>
+                  <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{socialBioText}</p>
+                </div>
+                {introCopyOk ? <p className="mt-2 text-xs font-semibold text-brand-900">{introCopyOk}</p> : null}
+                {shareOk ? <p className="mt-2 text-xs font-semibold text-paper-800/60">{shareOk}</p> : null}
+              </div>
+              <div className="grid gap-3">
+                {brandKitCards.map((card) => (
+                  <article key={card.title} className="rounded-2xl border border-warm-200 bg-warm-50/70 p-4">
+                    <h3 className="text-sm font-semibold text-paper-950">{card.title}</h3>
+                    <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{card.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section id="sonuc-plani" className="mt-6 overflow-hidden rounded-[2rem] border border-brand-200 bg-[radial-gradient(circle_at_top_right,#dcfce7_0%,#ffffff_38%,#eff6ff_100%)] p-6 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-900/70">
+                  Sonuç odaklı ders planı
+                </div>
+                <h2 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight text-paper-950">
+                  Veli ve öğrenci, bu öğretmenle sürecin nasıl ilerleyeceğini daha ilk bakışta görür.
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-relaxed text-paper-800/70">
+                  Güçlü profil sadece öğretmeni anlatmaz; başlangıçtan gelişim takibine kadar dersin nasıl yönetileceğini de açıkça gösterir.
+                </p>
+              </div>
+              <Link
+                href={demoTalepEntryHref}
+                className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-900"
+              >
+                Demo ile planı netleştir
+              </Link>
+            </div>
+            <div className="mt-5 grid gap-3 lg:grid-cols-4">
+              {outcomeRoadmap.map((item) => (
+                <article key={item.step} className="rounded-2xl border border-white bg-white/85 p-4 shadow-sm">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-800 text-sm font-semibold text-white">
+                    {item.step}
+                  </div>
+                  <h3 className="mt-3 text-sm font-semibold text-paper-950">{item.title}</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+                </article>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="rounded-2xl border border-paper-200 bg-white/85 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-paper-800/55">
+                  Demo öncesi karar kontrolü
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {firstCallChecklist.map((item) => (
+                    <div key={item} className="rounded-xl border border-paper-200 bg-paper-50 p-3 text-xs leading-relaxed text-paper-800">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <aside className="rounded-2xl border border-warm-200 bg-warm-50/85 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-warm-900/70">
+                  Değer önerisi
+                </div>
+                <div className="mt-3 space-y-2">
+                  {audienceValueCards.map((card) => (
+                    <div key={card.title} className="rounded-xl bg-white p-3 ring-1 ring-warm-200">
+                      <h3 className="text-xs font-semibold text-paper-950">{card.title}</h3>
+                      <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{card.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </aside>
+            </div>
+          </section>
 
           <div id="guven" className="mt-6 rounded-2xl border border-paper-200 bg-white p-6">
             <h2 className="text-xl font-semibold tracking-tight text-paper-900">
@@ -822,6 +1304,59 @@ export default function OgretmenDetayPage() {
                 </p>
               </div>
             </div>
+
+            <section id="uygunluk" className="mt-4 rounded-2xl border border-paper-200 bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-800/70">
+                    Uygunluk ve karar desteği
+                  </div>
+                  <h2 className="mt-1 text-base font-semibold text-paper-950">
+                    Bu öğretmen hangi durumda daha iyi aday?
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/65">
+                    Profil sinyalleri; hedef, güven ve ödeme süreci açısından hızlı karar vermeniz için özetlenir.
+                  </p>
+                </div>
+                <div className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm text-brand-950">
+                  <div className="text-xs font-semibold text-brand-900/70">Karar güveni</div>
+                  <div className="mt-0.5 text-xl font-semibold">{confidenceScore}/100</div>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                {fitCards.map((item) => (
+                  <article key={item.title} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                    <h3 className="text-sm font-semibold text-paper-950">{item.title}</h3>
+                    <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="mt-4 flex flex-col gap-3 rounded-xl border border-brand-100 bg-brand-50/70 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-relaxed text-brand-950">
+                  {authRole === "guardian"
+                    ? "Veli hesabınızla öğrenciniz adına ilan açabilir, bu öğretmenden gelen teklifi diğer tekliflerle karşılaştırabilirsiniz."
+                    : "Öğrenci hesabınızla demo talebi oluşturabilir veya bu öğretmeni kısa listenize ekleyip teklifleri karşılaştırabilirsiniz."}
+                </p>
+                <Link
+                  href={talepEntryHref}
+                  className="shrink-0 rounded-xl bg-brand-800 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-brand-900"
+                >
+                  Bu öğretmenle talep oluştur
+                </Link>
+              </div>
+              <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-paper-800/55">
+                  Demo veya ilk mesajda sorulacak sorular
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {decisionQuestions.map((question) => (
+                    <div key={question} className="rounded-xl border border-paper-200 bg-white p-3 text-xs leading-relaxed text-paper-800">
+                      {question}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
 
             <div className="mt-4 rounded-2xl border border-warm-200 bg-warm-50/70 p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-900/70">
@@ -991,9 +1526,35 @@ export default function OgretmenDetayPage() {
               (teacher.platform_links_jsonb?.length ?? 0) > 0 ||
               (teacher.exam_docs_jsonb?.length ?? 0) > 0) && (
               <div id="kanitlar" className="mt-8">
-                <h2 className="text-sm font-semibold text-paper-900">
-                  Bağlantılar
-                </h2>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-800/70">
+                      Kanıt vitrini
+                    </div>
+                    <h2 className="mt-1 text-sm font-semibold text-paper-900">
+                      Profilde karar destekleyen içerikler
+                    </h2>
+                  </div>
+                  <Link href={demoTalepEntryHref} className="text-xs font-semibold text-brand-800 underline">
+                    İçerikleri demo ile doğrula
+                  </Link>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-4">
+                  {proofCards.map((card) => (
+                    <article
+                      key={card.title}
+                      className={`rounded-xl border p-3 ${
+                        card.ready ? "border-brand-200 bg-brand-50/50" : "border-paper-200 bg-paper-50"
+                      }`}
+                    >
+                      <div className="text-xs font-semibold text-paper-950">{card.title}</div>
+                      <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{card.body}</p>
+                      <div className={card.ready ? "mt-2 text-[11px] font-semibold text-brand-900" : "mt-2 text-[11px] font-semibold text-paper-800/55"}>
+                        {card.ready ? "Hazır" : "Sorulmalı"}
+                      </div>
+                    </article>
+                  ))}
+                </div>
                 <div className="mt-3 space-y-3 text-sm">
                   {teacher.video_url && (
                     <div>
@@ -1133,47 +1694,110 @@ export default function OgretmenDetayPage() {
               </div>
             )}
 
-            {teacher.bio_raw && (
-              <div id="hakkimda" className="mt-8">
-                <h2 className="text-sm font-semibold text-paper-900">Hakkında</h2>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-paper-800/85">
-                  {teacher.bio_raw}
-                </p>
+            <section id="hakkimda" className="mt-8 overflow-hidden rounded-2xl border border-paper-200 bg-white">
+              <div className="grid gap-0 lg:grid-cols-[260px_minmax(0,1fr)]">
+                <div className="bg-paper-950 p-6 text-white">
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/55">
+                    Hakkımda
+                  </div>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                    {teacher.display_name}
+                  </h2>
+                  <p className="mt-3 text-sm leading-relaxed text-white/70">
+                    {primaryBranchName} için hedef, seviye ve düzenli takip odaklı özel ders sayfası.
+                  </p>
+                  <div className="mt-5 rounded-2xl bg-white/10 p-4">
+                    <div className="text-xs text-white/55">Öne çıkan alan</div>
+                    <div className="mt-1 text-sm font-semibold">{primaryBranchName}</div>
+                  </div>
+                </div>
+                <div className="p-6">
+                  {teacher.bio_raw ? (
+                    <p className="whitespace-pre-wrap text-base leading-relaxed text-paper-800/85">
+                      {teacher.bio_raw}
+                    </p>
+                  ) : (
+                    <p className="text-base leading-relaxed text-paper-800/70">
+                      Bu öğretmen henüz ayrıntılı biyografi eklememiş. Demo talebi oluşturarak ders yaklaşımını, hedef planını ve öğrenciye uygun çalışma yöntemini netleştirebilirsiniz.
+                    </p>
+                  )}
+                  <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                      <div className="text-xs text-paper-800/55">Ders odağı</div>
+                      <div className="mt-1 text-sm font-semibold text-paper-950">{primaryBranchName}</div>
+                    </div>
+                    <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                      <div className="text-xs text-paper-800/55">Başlangıç</div>
+                      <div className="mt-1 text-sm font-semibold text-paper-950">Demo veya teklif</div>
+                    </div>
+                    <div className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                      <div className="text-xs text-paper-800/55">Takip</div>
+                      <div className="mt-1 text-sm font-semibold text-paper-950">Ders sonu notları</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            )}
+            </section>
 
-            <div id="uzmanliklar" className="mt-8">
-              <h2 className="text-sm font-semibold text-paper-900">Branşlar</h2>
+            <section id="uzmanliklar" className="mt-8 rounded-2xl border border-paper-200 bg-white p-6">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                    Uzmanlık vitrini
+                  </div>
+                  <h2 className="mt-1 text-xl font-semibold text-paper-950">
+                    Ders verdiği alanlar ve fiyat aralığı
+                  </h2>
+                </div>
+                <Link href={talepEntryHref} className="text-sm font-semibold text-brand-800 underline">
+                  Bu alanda teklif al
+                </Link>
+              </div>
               {branches.length === 0 ? (
-                <p className="mt-2 text-sm text-paper-800/55">Branş kaydı yok.</p>
+                <p className="mt-4 text-sm text-paper-800/55">Branş kaydı yok.</p>
               ) : (
-                <ul className="mt-3 space-y-2">
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
                   {branches.map((b) => (
-                    <li
+                    <article
                       key={b.branch_id}
-                      className="rounded-xl border border-paper-100 px-3 py-2 text-sm text-paper-800"
+                      className={`rounded-2xl border p-4 ${
+                        b.is_primary ? "border-brand-200 bg-brand-50/60" : "border-paper-200 bg-paper-50"
+                      }`}
                     >
-                      <span className="font-medium">{b.branch_name}</span>
-                      {b.is_primary && (
-                        <span className="ml-2 text-xs text-brand-700">(birincil)</span>
-                      )}
-                      {b.years_experience != null && (
-                        <span className="ml-2 text-xs text-paper-800/55">
-                          {b.years_experience} yıl
-                        </span>
-                      )}
-                      {b.hourly_rate_min_minor != null &&
-                        b.hourly_rate_max_minor != null && (
-                          <div className="mt-1 text-xs text-paper-800/55">
-                            Saatlik (TL): {minorToTl(b.hourly_rate_min_minor)} –{" "}
-                            {minorToTl(b.hourly_rate_max_minor)}
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <h3 className="text-base font-semibold text-paper-950">{b.branch_name}</h3>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {b.is_primary && (
+                              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-brand-900 ring-1 ring-brand-100">
+                                Ana uzmanlık
+                              </span>
+                            )}
+                            {b.years_experience != null && (
+                              <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-paper-800 ring-1 ring-paper-200">
+                                {b.years_experience} yıl deneyim
+                              </span>
+                            )}
                           </div>
-                        )}
-                    </li>
+                        </div>
+                        {b.hourly_rate_min_minor != null &&
+                          b.hourly_rate_max_minor != null && (
+                            <div className="rounded-xl bg-white px-3 py-2 text-right ring-1 ring-paper-200">
+                              <div className="text-[11px] text-paper-800/55">Saatlik</div>
+                              <div className="text-sm font-semibold text-paper-950">
+                                {minorToTl(b.hourly_rate_min_minor)} - {minorToTl(b.hourly_rate_max_minor)} TL
+                              </div>
+                            </div>
+                          )}
+                      </div>
+                      <p className="mt-3 text-xs leading-relaxed text-paper-800/65">
+                        Bu alan için seviye, hedef, ders sıklığı ve kaynak planı talep veya demo aşamasında netleştirilir.
+                      </p>
+                    </article>
                   ))}
-                </ul>
+                </div>
               )}
-            </div>
+            </section>
           </div>
 
           <section id="sss" className="mt-8 rounded-2xl border border-paper-200 bg-white p-6">
@@ -1244,6 +1868,37 @@ export default function OgretmenDetayPage() {
               </ul>
             )}
           </div>
+          <section className="mt-8 overflow-hidden rounded-[2rem] border border-brand-200 bg-[linear-gradient(135deg,#083344_0%,#0f766e_48%,#f97316_100%)] p-6 text-white shadow-xl shadow-paper-900/10">
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/60">
+                  Paylaşılabilir öğretmen web sayfası
+                </div>
+                <h2 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl">
+                  {teacher.display_name} bu sayfayı kendi profesyonel tanıtım linki olarak kullanabilir.
+                </h2>
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/75">
+                  Profil; öğretmenin anlatımını, uzmanlıklarını, kanıtlarını, yorumlarını, demo talebini ve güvenli ödeme sürecini tek sayfada toplar.
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/12 p-4 ring-1 ring-white/20">
+                <button
+                  type="button"
+                  onClick={() => void shareProfile()}
+                  className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-paper-950 hover:bg-paper-50"
+                >
+                  Profil linkini paylaş
+                </button>
+                <Link
+                  href={demoTalepEntryHref}
+                  className="mt-2 flex w-full justify-center rounded-xl border border-white/35 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10"
+                >
+                  Demo talebi oluştur
+                </Link>
+                {shareOk ? <p className="mt-2 text-xs font-medium text-white/75">{shareOk}</p> : null}
+              </div>
+            </div>
+          </section>
           <aside className="fixed bottom-6 right-6 z-30 hidden w-80 rounded-2xl border border-brand-200 bg-white/95 p-4 shadow-xl shadow-paper-900/10 backdrop-blur sm:block">
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
               Hızlı karar
