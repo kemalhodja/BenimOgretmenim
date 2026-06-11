@@ -272,22 +272,58 @@ lessonRequests.post("/", requireAuth, async (c) => {
           [notifyTeacherIds, parsed.data.branchId],
         )
       : await pool.query<{ teacher_id: string; user_id: string; display_name: string }>(
-          `select distinct t.id as teacher_id, t.user_id, u.display_name
-           from teachers t
-           join users u on u.id = t.user_id
-           join teacher_branches tb on tb.teacher_id = t.id
-           where tb.branch_id = $1
-             and u.role = 'teacher'
-             and t.verification_status <> 'rejected'
-             and (
-               $2::text in ('online', 'hybrid')
-               or $3::smallint is null
-               or t.city_id = $3::smallint
-             )
+          `with teacher_matches as (
+             select distinct
+                    t.id as teacher_id,
+                    t.user_id,
+                    u.display_name,
+                    u.last_login_at,
+                    t.created_at,
+                    t.updated_at,
+                    t.rating_count,
+                    t.rating_avg,
+                    t.verification_status,
+                    exists (
+                      select 1
+                      from teacher_subscriptions s
+                      where s.teacher_id = t.id
+                        and s.status = 'active'
+                        and s.expires_at > now()
+                    ) as has_active_subscription,
+                    (
+                      (case when t.verification_status = 'verified' then 15 else 0 end) +
+                      (case when t.city_id is not null then 10 else 0 end) +
+                      (case when length(trim(coalesce(t.bio_raw, ''))) >= 80 then 20
+                            when length(trim(coalesce(t.bio_raw, ''))) >= 40 then 10
+                            else 0 end) +
+                      (case when coalesce(trim(t.video_url), '') <> '' then 15 else 0 end) +
+                      (case when jsonb_typeof(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) = 'array'
+                              and jsonb_array_length(coalesce(t.exam_docs_jsonb, '[]'::jsonb)) > 0 then 10 else 0 end) +
+                      (case when coalesce(t.rating_count, 0) > 0 then 10 else 0 end)
+                    )::int as profile_quality_score
+             from teachers t
+             join users u on u.id = t.user_id
+             join teacher_branches tb on tb.teacher_id = t.id
+             where tb.branch_id = $1
+               and u.role = 'teacher'
+               and t.verification_status <> 'rejected'
+               and (
+                 $2::text in ('online', 'hybrid')
+                 or $3::smallint is null
+                 or t.city_id = $3::smallint
+               )
+           )
+           select teacher_id, user_id, display_name
+           from teacher_matches
            order by
-             case when t.verification_status = 'verified' then 0 else 1 end,
-             coalesce(t.rating_count, 0) desc,
-             t.created_at desc
+             case when has_active_subscription then 0 else 1 end,
+             case when last_login_at >= now() - interval '30 days' then 0 else 1 end,
+             case when verification_status = 'verified' then 0 else 1 end,
+             profile_quality_score desc,
+             coalesce(rating_count, 0) desc,
+             coalesce(rating_avg, 0) desc,
+             updated_at desc,
+             created_at desc
            limit 50`,
           [parsed.data.branchId, deliveryMode, cityId],
         );
@@ -318,6 +354,7 @@ lessonRequests.post("/", requireAuth, async (c) => {
           requestId,
           branchId: parsed.data.branchId,
           teacherId: recipient.teacher_id,
+          actionHref: `/teacher/requests?requestId=${requestId}`,
         }),
       ],
     );

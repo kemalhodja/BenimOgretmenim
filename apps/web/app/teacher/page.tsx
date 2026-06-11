@@ -126,6 +126,7 @@ function teacherNotifHref(payload: unknown): string | null {
   const o = payload as {
     kind?: string;
     classroomHref?: string;
+    actionHref?: string;
     requestId?: string;
     lessonSessionId?: string;
     courseSessionId?: string;
@@ -134,6 +135,9 @@ function teacherNotifHref(payload: unknown): string | null {
   };
   if (typeof o.classroomHref === "string" && o.classroomHref.startsWith("/classroom/")) {
     return o.classroomHref;
+  }
+  if (typeof o.actionHref === "string" && o.actionHref.startsWith("/teacher/")) {
+    return o.actionHref;
   }
   if (
     o.kind === "lesson_scheduled" ||
@@ -171,6 +175,7 @@ function teacherNotifHref(payload: unknown): string | null {
     (
       o.kind === "lesson_request_shortlisted" ||
       o.kind === "lesson_request_demo_targeted" ||
+      o.kind === "lesson_request_created_teacher" ||
       o.kind === "lesson_offer_accepted" ||
       o.kind === "lesson_offer_rejected" ||
       o.kind === "lesson_offer_matched_elsewhere"

@@ -62,6 +62,7 @@ export default function TeacherRequestsPage() {
   const [message, setMessage] = useState("");
   /** İsteğe bağlı; teklifle birlikte API'ye kuruş olarak gider. */
   const [hourlyTl, setHourlyTl] = useState("");
+  const [highlightRequestId, setHighlightRequestId] = useState<string | null>(null);
   const [sendingFor, setSendingFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
@@ -74,6 +75,10 @@ export default function TeacherRequestsPage() {
     }
     setToken(t);
   }, [router, pathname]);
+
+  useEffect(() => {
+    setHighlightRequestId(new URLSearchParams(window.location.search).get("requestId"));
+  }, []);
 
   const leafBranches = useMemo(() => {
     const hasChild = new Set<number>();
@@ -279,13 +284,22 @@ export default function TeacherRequestsPage() {
               Açık talep yok.
             </div>
           ) : (
-            open.map((r) => (
+            open.map((r) => {
+              const isHighlighted = highlightRequestId === r.id;
+              return (
               <div
                 key={r.id}
-                className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
+                className={`rounded-xl border bg-white p-5 shadow-sm ${
+                  isHighlighted ? "border-brand-400 ring-2 ring-brand-100" : "border-paper-200"
+                }`}
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
+                    {isHighlighted && (
+                      <div className="mb-2 inline-flex rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-900">
+                        Bildirimden açılan ilan
+                      </div>
+                    )}
                     <div className="text-sm font-semibold text-paper-900">
                       {r.request_kind === "demo" ? "Demo talebi" : "Ders talebi"} ·{" "}
                       {r.branch_name ?? "Branş bilgisi eksik"} · teklif:{" "}
@@ -339,7 +353,8 @@ export default function TeacherRequestsPage() {
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
 

@@ -89,6 +89,9 @@ async function createGuardianRequest(args: {
   studentId: string;
   branchId: number;
   topic: string;
+  requestKind?: "regular" | "demo";
+  targetTeacherId?: string;
+  availability?: Record<string, unknown>;
 }) {
   return app.request("http://localhost/v1/lesson-requests", {
     method: "POST",
@@ -100,7 +103,10 @@ async function createGuardianRequest(args: {
       studentId: args.studentId,
       branchId: args.branchId,
       topic: args.topic,
+      requestKind: args.requestKind ?? "regular",
+      targetTeacherId: args.targetTeacherId,
       deliveryMode: "online",
+      availability: args.availability ?? {},
       note: "Veli test ilanı",
       imageUrls: [],
     }),
@@ -121,10 +127,12 @@ describe("lesson requests Armut flow", () => {
     const studentIds: string[] = [];
     try {
       const branchId = await ensureBranch(suffix);
+      const unrelatedBranchId = await ensureBranch(`${suffix}-unrelated`);
       const student = await createStudent(suffix);
       const guardian = await createGuardian(suffix);
       const teacher = await createTeacher(suffix, branchId);
-      userIds.push(student.userId, guardian.userId, teacher.userId);
+      const unrelatedTeacher = await createTeacher(`${suffix}-unrelated`, unrelatedBranchId);
+      userIds.push(student.userId, guardian.userId, teacher.userId, unrelatedTeacher.userId);
       studentIds.push(student.studentId);
       await pool.query(
         `insert into student_guardians (student_id, guardian_user_id, relationship, verified_at)
@@ -141,8 +149,9 @@ describe("lesson requests Armut flow", () => {
       expect(res.status).toBe(201);
       const body = (await res.json()) as { request: { id: string } };
 
-      const notification = await pool.query<{ count: string }>(
-        `select count(*)::text as count
+      const notification = await pool.query<{ count: string; action_href: string | null }>(
+        `select count(*)::text as count,
+                max(payload_jsonb->>'actionHref') as action_href
          from parent_notifications
          where recipient_user_id = $1
            and payload_jsonb->>'kind' = 'lesson_request_created_teacher'
@@ -150,6 +159,106 @@ describe("lesson requests Armut flow", () => {
         [teacher.userId, body.request.id],
       );
       expect(notification.rows[0]?.count).toBe("1");
+      expect(notification.rows[0]?.action_href).toBe(`/teacher/requests?requestId=${body.request.id}`);
+
+      const unrelatedNotification = await pool.query<{ count: string }>(
+        `select count(*)::text as count
+         from parent_notifications
+         where recipient_user_id = $1
+           and payload_jsonb->>'requestId' = $2`,
+        [unrelatedTeacher.userId, body.request.id],
+      );
+      expect(unrelatedNotification.rows[0]?.count).toBe("0");
+    } finally {
+      await cleanup(userIds, studentIds);
+    }
+  });
+
+  it("sends targeted and shortlisted notifications only to relevant teachers", async () => {
+    if (!(await lessonRequestTablesAvailable())) return;
+
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const userIds: string[] = [];
+    const studentIds: string[] = [];
+    try {
+      const branchId = await ensureBranch(`${suffix}-targeted`);
+      const student = await createStudent(`${suffix}-targeted`);
+      const guardian = await createGuardian(`${suffix}-targeted`);
+      const targetTeacher = await createTeacher(`${suffix}-target`, branchId);
+      const shortlistedTeacher = await createTeacher(`${suffix}-short`, branchId);
+      const otherTeacher = await createTeacher(`${suffix}-other`, branchId);
+      userIds.push(
+        student.userId,
+        guardian.userId,
+        targetTeacher.userId,
+        shortlistedTeacher.userId,
+        otherTeacher.userId,
+      );
+      studentIds.push(student.studentId);
+      await pool.query(
+        `insert into student_guardians (student_id, guardian_user_id, relationship, verified_at)
+         values ($1, $2, 'parent', now())`,
+        [student.studentId, guardian.userId],
+      );
+
+      const demoRes = await createGuardianRequest({
+        token: guardian.token,
+        studentId: student.studentId,
+        branchId,
+        topic: "Demo hedefli talep",
+        requestKind: "demo",
+        targetTeacherId: targetTeacher.teacherId,
+      });
+      expect(demoRes.status).toBe(201);
+      const demoBody = (await demoRes.json()) as { request: { id: string } };
+
+      const demoTargetNotification = await pool.query<{ count: string }>(
+        `select count(*)::text as count
+         from parent_notifications
+         where recipient_user_id = $1
+           and payload_jsonb->>'kind' = 'lesson_request_demo_targeted'
+           and payload_jsonb->>'requestId' = $2`,
+        [targetTeacher.userId, demoBody.request.id],
+      );
+      expect(demoTargetNotification.rows[0]?.count).toBe("1");
+
+      const demoOtherNotification = await pool.query<{ count: string }>(
+        `select count(*)::text as count
+         from parent_notifications
+         where recipient_user_id = $1
+           and payload_jsonb->>'requestId' = $2`,
+        [otherTeacher.userId, demoBody.request.id],
+      );
+      expect(demoOtherNotification.rows[0]?.count).toBe("0");
+
+      const shortlistRes = await createGuardianRequest({
+        token: guardian.token,
+        studentId: student.studentId,
+        branchId,
+        topic: "Kısa listeli talep",
+        availability: { shortlistTeacherIds: [shortlistedTeacher.teacherId] },
+      });
+      expect(shortlistRes.status).toBe(201);
+      const shortlistBody = (await shortlistRes.json()) as { request: { id: string } };
+
+      const shortlistNotification = await pool.query<{ count: string }>(
+        `select count(*)::text as count
+         from parent_notifications
+         where recipient_user_id = $1
+           and payload_jsonb->>'kind' = 'lesson_request_shortlisted'
+           and payload_jsonb->>'requestId' = $2`,
+        [shortlistedTeacher.userId, shortlistBody.request.id],
+      );
+      expect(shortlistNotification.rows[0]?.count).toBe("1");
+
+      const shortlistOtherNotification = await pool.query<{ count: string }>(
+        `select count(*)::text as count
+         from parent_notifications
+         where recipient_user_id = $1
+           and payload_jsonb->>'requestId' = $2`,
+        [otherTeacher.userId, shortlistBody.request.id],
+      );
+      expect(shortlistOtherNotification.rows[0]?.count).toBe("0");
     } finally {
       await cleanup(userIds, studentIds);
     }
@@ -196,7 +305,14 @@ describe("lesson requests Armut flow", () => {
       const guardian = await createGuardian(`${suffix}-fee`);
       const paidTeacher = await createTeacher(`${suffix}-paid`, branchId);
       const subscribedTeacher = await createTeacher(`${suffix}-sub`, branchId, true);
-      userIds.push(student.userId, guardian.userId, paidTeacher.userId, subscribedTeacher.userId);
+      const insufficientTeacher = await createTeacher(`${suffix}-insufficient`, branchId);
+      userIds.push(
+        student.userId,
+        guardian.userId,
+        paidTeacher.userId,
+        subscribedTeacher.userId,
+        insufficientTeacher.userId,
+      );
       studentIds.push(student.studentId);
       await pool.query(
         `insert into student_guardians (student_id, guardian_user_id, relationship, verified_at)
@@ -211,6 +327,19 @@ describe("lesson requests Armut flow", () => {
       });
       expect(requestRes.status).toBe(201);
       const requestBody = (await requestRes.json()) as { request: { id: string } };
+
+      const insufficientOffer = await app.request(`http://localhost/v1/lesson-requests/${requestBody.request.id}/offers`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${insufficientTeacher.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ message: "Bakiyesiz teklif denemesi.", proposedHourlyRateMinor: 90_000 }),
+      });
+      expect(insufficientOffer.status).toBe(409);
+      const insufficientBody = (await insufficientOffer.json()) as { error: string; neededMinor: number };
+      expect(insufficientBody.error).toBe("insufficient_balance");
+      expect(insufficientBody.neededMinor).toBe(50_000);
 
       await applyWalletDelta({
         userId: paidTeacher.userId,
@@ -250,6 +379,108 @@ describe("lesson requests Armut flow", () => {
     } finally {
       if (previousOfferFee === undefined) delete process.env.OFFER_FEE_MINOR;
       else process.env.OFFER_FEE_MINOR = previousOfferFee;
+      await cleanup(userIds, studentIds);
+    }
+  });
+
+  it("lets a guardian reject and accept offers for a linked student's request", async () => {
+    if (!(await lessonRequestTablesAvailable())) return;
+
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const userIds: string[] = [];
+    const studentIds: string[] = [];
+    try {
+      const branchId = await ensureBranch(`${suffix}-decide`);
+      const student = await createStudent(`${suffix}-decide`);
+      const guardian = await createGuardian(`${suffix}-decide`);
+      const rejectTeacher = await createTeacher(`${suffix}-reject`, branchId, true);
+      const acceptTeacher = await createTeacher(`${suffix}-accept`, branchId, true);
+      userIds.push(student.userId, guardian.userId, rejectTeacher.userId, acceptTeacher.userId);
+      studentIds.push(student.studentId);
+      await pool.query(
+        `insert into student_guardians (student_id, guardian_user_id, relationship, verified_at)
+         values ($1, $2, 'parent', now())`,
+        [student.studentId, guardian.userId],
+      );
+
+      const rejectRequestRes = await createGuardianRequest({
+        token: guardian.token,
+        studentId: student.studentId,
+        branchId,
+        topic: "Reddedilecek teklif",
+      });
+      expect(rejectRequestRes.status).toBe(201);
+      const rejectRequestBody = (await rejectRequestRes.json()) as { request: { id: string } };
+      const rejectOfferRes = await app.request(`http://localhost/v1/lesson-requests/${rejectRequestBody.request.id}/offers`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${rejectTeacher.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ message: "Reddedilecek teklif.", proposedHourlyRateMinor: 0 }),
+      });
+      expect(rejectOfferRes.status).toBe(201);
+      const rejectOfferBody = (await rejectOfferRes.json()) as { offer: { id: string } };
+
+      const rejectDecision = await app.request(
+        `http://localhost/v1/lesson-requests/${rejectRequestBody.request.id}/offers/${rejectOfferBody.offer.id}/decide`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${guardian.token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ decision: "reject" }),
+        },
+      );
+      expect(rejectDecision.status).toBe(200);
+      const rejectedOffer = await pool.query<{ status: string }>(
+        `select status::text from lesson_offers where id = $1`,
+        [rejectOfferBody.offer.id],
+      );
+      expect(rejectedOffer.rows[0]?.status).toBe("rejected");
+
+      const acceptRequestRes = await createGuardianRequest({
+        token: guardian.token,
+        studentId: student.studentId,
+        branchId,
+        topic: "Kabul edilecek teklif",
+      });
+      expect(acceptRequestRes.status).toBe(201);
+      const acceptRequestBody = (await acceptRequestRes.json()) as { request: { id: string } };
+      const acceptOfferRes = await app.request(`http://localhost/v1/lesson-requests/${acceptRequestBody.request.id}/offers`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${acceptTeacher.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ message: "Kabul edilecek teklif.", proposedHourlyRateMinor: 0 }),
+      });
+      expect(acceptOfferRes.status).toBe(201);
+      const acceptOfferBody = (await acceptOfferRes.json()) as { offer: { id: string } };
+
+      const acceptDecision = await app.request(
+        `http://localhost/v1/lesson-requests/${acceptRequestBody.request.id}/offers/${acceptOfferBody.offer.id}/decide`,
+        {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${guardian.token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ decision: "accept", packageLessonCount: 2, lessonDurationMinutes: 60 }),
+        },
+      );
+      expect(acceptDecision.status).toBe(200);
+      const acceptBody = (await acceptDecision.json()) as { packageId: string; payment: { totalAmountMinor: number } };
+      expect(acceptBody.packageId).toBeTruthy();
+      expect(acceptBody.payment.totalAmountMinor).toBe(0);
+
+      const acceptedRequest = await pool.query<{ status: string }>(
+        `select status::text from lesson_requests where id = $1`,
+        [acceptRequestBody.request.id],
+      );
+      expect(acceptedRequest.rows[0]?.status).toBe("matched");
+    } finally {
       await cleanup(userIds, studentIds);
     }
   });
