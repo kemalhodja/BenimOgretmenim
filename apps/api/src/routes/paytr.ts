@@ -25,8 +25,87 @@ function paytrOperationalFlag(name: "PAYTR_TEST_MODE" | "PAYTR_DEBUG_ON"): strin
   return v;
 }
 
+type PaytrCheckoutEnv = {
+  merchantId: string;
+  merchantKey: string;
+  merchantSalt: string;
+  baseUrl: string;
+  okUrl: string;
+  failUrl: string;
+  callbackUrl: string;
+};
+
+function paytrCheckoutEnv(): PaytrCheckoutEnv {
+  return {
+    merchantId: mustEnv("PAYTR_MERCHANT_ID"),
+    merchantKey: mustEnv("PAYTR_MERCHANT_KEY"),
+    merchantSalt: mustEnv("PAYTR_MERCHANT_SALT"),
+    baseUrl: mustEnv("PAYTR_BASE_URL"),
+    okUrl: mustEnv("PAYTR_OK_URL"),
+    failUrl: mustEnv("PAYTR_FAIL_URL"),
+    callbackUrl: mustEnv("PAYTR_CALLBACK_URL"),
+  };
+}
+
 function base64HmacSha256(key: string, data: string): string {
   return crypto.createHmac("sha256", key).update(data).digest("base64");
+}
+
+async function requestPaytrIframeToken(opts: {
+  env: PaytrCheckoutEnv;
+  email: string;
+  amountMinor: number;
+  merchantOid: string;
+  title: string;
+  userName: string;
+  userPhone?: string | null;
+  userIp: string;
+  currency: string;
+}): Promise<{ token: string; iframeUrl: string } | { error: { status: string; token?: string; reason?: string } }> {
+  const basket = Buffer.from(
+    JSON.stringify([[opts.title, (opts.amountMinor / 100).toFixed(2), 1]]),
+    "utf8",
+  ).toString("base64");
+  const noInstallment = "0";
+  const maxInstallment = "0";
+  const testMode = paytrOperationalFlag("PAYTR_TEST_MODE");
+  const debugOn = paytrOperationalFlag("PAYTR_DEBUG_ON");
+  const currency = opts.currency === "TRY" ? "TL" : opts.currency;
+  const hashStr = `${opts.env.merchantId}${opts.userIp}${opts.merchantOid}${opts.email}${opts.amountMinor}${basket}${noInstallment}${maxInstallment}${currency}${testMode}`;
+  const paytrToken = base64HmacSha256(opts.env.merchantKey, hashStr + opts.env.merchantSalt);
+  const form = new URLSearchParams();
+  form.set("merchant_id", opts.env.merchantId);
+  form.set("email", opts.email);
+  form.set("payment_amount", String(opts.amountMinor));
+  form.set("merchant_oid", opts.merchantOid);
+  form.set("user_name", opts.userName);
+  form.set("user_address", "");
+  form.set("user_phone", opts.userPhone ?? "0000000000");
+  form.set("merchant_ok_url", opts.env.okUrl);
+  form.set("merchant_fail_url", opts.env.failUrl);
+  form.set("user_basket", basket);
+  form.set("user_ip", opts.userIp);
+  form.set("timeout_limit", process.env.PAYTR_TIMEOUT_LIMIT ?? "30");
+  form.set("debug_on", debugOn);
+  form.set("test_mode", testMode);
+  form.set("lang", "tr");
+  form.set("no_installment", noInstallment);
+  form.set("max_installment", maxInstallment);
+  form.set("currency", currency);
+  form.set("paytr_token", paytrToken);
+  form.set("callback_url", opts.env.callbackUrl);
+
+  const res = await fetch(`${opts.env.baseUrl}/odeme/api/get-token`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: form,
+  });
+  const text = await res.text();
+  const data = JSON.parse(text) as { status: string; token?: string; reason?: string };
+  if (data.status !== "success" || !data.token) {
+    return { error: data };
+  }
+  return { token: data.token, iframeUrl: `${opts.env.baseUrl}/odeme/guvenli/${data.token}` };
 }
 
 const checkoutQuery = z.object({
@@ -371,13 +450,7 @@ paytr.get("/wallet-topup-checkout", requireAuth, async (c) => {
   const parsed = checkoutWltQuery.safeParse(c.req.query());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-  const merchantId = mustEnv("PAYTR_MERCHANT_ID");
-  const merchantKey = mustEnv("PAYTR_MERCHANT_KEY");
-  const merchantSalt = mustEnv("PAYTR_MERCHANT_SALT");
-  const baseUrl = mustEnv("PAYTR_BASE_URL");
-  const okUrl = mustEnv("PAYTR_OK_URL");
-  const failUrl = mustEnv("PAYTR_FAIL_URL");
-  const callbackUrl = mustEnv("PAYTR_CALLBACK_URL");
+  const paytrEnv = paytrCheckoutEnv();
 
   const payment = await pool.query(
     `select id, user_id, amount_minor, currency, merchant_oid, state
@@ -402,53 +475,29 @@ paytr.get("/wallet-topup-checkout", requireAuth, async (c) => {
   if (!email) return c.json({ error: "user_email_missing" }, 400);
 
   const userIp = (c.req.header("x-forwarded-for") ?? "").split(",")[0]?.trim() || "127.0.0.1";
-  const basket = Buffer.from(
-    JSON.stringify([[title, (p.amount_minor / 100).toFixed(2), 1]]),
-    "utf8",
-  ).toString("base64");
-  const noInstallment = "0";
-  const maxInstallment = "0";
-  const testMode = paytrOperationalFlag("PAYTR_TEST_MODE");
-  const debugOn = paytrOperationalFlag("PAYTR_DEBUG_ON");
-  const currency = p.currency === "TRY" ? "TL" : p.currency;
-  const hashStr = `${merchantId}${userIp}${p.merchant_oid}${email}${p.amount_minor}${basket}${noInstallment}${maxInstallment}${currency}${testMode}`;
-  const paytrToken = base64HmacSha256(merchantKey, hashStr + merchantSalt);
-  const form = new URLSearchParams();
-  form.set("merchant_id", merchantId);
-  form.set("email", email);
-  form.set("payment_amount", String(p.amount_minor));
-  form.set("merchant_oid", p.merchant_oid);
-  form.set("user_name", (u.rows[0]?.display_name as string | undefined) ?? "Kullanıcı");
-  form.set("user_address", "");
-  form.set("user_phone", (u.rows[0]?.phone as string | undefined) ?? "0000000000");
-  form.set("merchant_ok_url", okUrl);
-  form.set("merchant_fail_url", failUrl);
-  form.set("user_basket", basket);
-  form.set("user_ip", userIp);
-  form.set("timeout_limit", process.env.PAYTR_TIMEOUT_LIMIT ?? "30");
-  form.set("debug_on", debugOn);
-  form.set("test_mode", testMode);
-  form.set("lang", "tr");
-  form.set("no_installment", noInstallment);
-  form.set("max_installment", maxInstallment);
-  form.set("currency", currency);
-  form.set("paytr_token", paytrToken);
-  form.set("callback_url", callbackUrl);
-  const res = await fetch(`${baseUrl}/odeme/api/get-token`, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: form,
+  const tokenResult = await requestPaytrIframeToken({
+    env: paytrEnv,
+    email,
+    amountMinor: p.amount_minor,
+    merchantOid: p.merchant_oid,
+    title,
+    userName: (u.rows[0]?.display_name as string | undefined) ?? "Kullanıcı",
+    userPhone: u.rows[0]?.phone as string | undefined,
+    userIp,
+    currency: p.currency,
   });
-  const text = await res.text();
-  const d2 = JSON.parse(text) as { status: string; token?: string; reason?: string };
-  if (d2.status !== "success" || !d2.token) {
-    return c.json({ error: "paytr_token_failed", details: d2 }, 502);
+  if ("error" in tokenResult) {
+    return c.json({ error: "paytr_token_failed", details: tokenResult.error }, 502);
   }
   await pool.query(
     `update wallet_topup_payments set paytr_iframe_token = $2, updated_at = now() where id = $1`,
-    [p.id, d2.token],
+    [p.id, tokenResult.token],
   );
-  return c.json({ iframeToken: d2.token, iframeUrl: `${baseUrl}/odeme/guvenli/${d2.token}`, merchantOid: p.merchant_oid });
+  return c.json({
+    iframeToken: tokenResult.token,
+    iframeUrl: tokenResult.iframeUrl,
+    merchantOid: p.merchant_oid,
+  });
 });
 
 /** PayTR callback (webhook) — hash doğrulama + idempotent işlem */

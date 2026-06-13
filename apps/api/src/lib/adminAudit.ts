@@ -10,8 +10,20 @@ let lastPaymentReconciliationWriteFailure: {
   error: string;
 } | null = null;
 
+let lastAdminAuditWriteFailure: {
+  at: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  error: string;
+} | null = null;
+
 export function getLastPaymentReconciliationWriteFailure() {
   return lastPaymentReconciliationWriteFailure;
+}
+
+export function getLastAdminAuditWriteFailure() {
+  return lastAdminAuditWriteFailure;
 }
 
 export async function writeAdminAudit(
@@ -49,8 +61,18 @@ export async function writeAdminAudit(
         JSON.stringify(opts.metadata ?? {}),
       ],
     );
-  } catch {
+    lastAdminAuditWriteFailure = null;
+  } catch (e) {
     // Audit must not break the primary admin operation during phased migrations.
+    const error = e instanceof Error ? e.message : String(e);
+    lastAdminAuditWriteFailure = {
+      at: new Date().toISOString(),
+      action: opts.action,
+      entityType: opts.entityType,
+      entityId: opts.entityId ?? null,
+      error,
+    };
+    console.error("[admin-audit] write failed", lastAdminAuditWriteFailure);
   }
 }
 

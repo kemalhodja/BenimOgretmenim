@@ -25,23 +25,54 @@ export function runtimeHealthSnapshot() {
   };
 }
 
+const PRODUCTION_REQUIRED_ENV = [
+  "CORS_ORIGINS",
+  "DATABASE_URL",
+  "JWT_SECRET",
+  "ADMIN_API_SECRET",
+  "PAYTR_MERCHANT_ID",
+  "PAYTR_MERCHANT_KEY",
+  "PAYTR_MERCHANT_SALT",
+  "PAYTR_BASE_URL",
+  "PAYTR_OK_URL",
+  "PAYTR_FAIL_URL",
+  "PAYTR_CALLBACK_URL",
+] as const;
+
+export function productionConfigurationErrors(): string[] {
+  if (process.env.NODE_ENV !== "production") return [];
+  return PRODUCTION_REQUIRED_ENV.filter((key) => !process.env[key]?.trim()).map(
+    (key) => `${key} production ortamında tanımlı olmalı.`,
+  );
+}
+
+export function assertProductionConfiguration(): void {
+  const errors = productionConfigurationErrors();
+  if (!errors.length) return;
+  throw new Error(`[config] Production configuration missing: ${errors.join(" ")}`);
+}
+
 export function configurationHealthWarnings(): string[] {
   const warnings: string[] = [];
-  if (process.env.NODE_ENV === "production" && !process.env.CORS_ORIGINS?.trim()) {
-    warnings.push("CORS_ORIGINS production ortamında tanımlı olmalı.");
+  warnings.push(...productionConfigurationErrors());
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd && process.env.API_RATE_LIMIT_STORE?.trim().toLowerCase() === "memory") {
+    warnings.push("API_RATE_LIMIT_STORE=memory production ortamında çoklu instance için önerilmez.");
   }
-  if (!process.env.JWT_SECRET?.trim()) {
+  if (!isProd && !process.env.JWT_SECRET?.trim()) {
     warnings.push("JWT_SECRET tanımlı değil; varsayılan geliştirme secret'ı kullanılabilir.");
   }
-  if (!process.env.DATABASE_URL?.trim()) {
+  if (!isProd && !process.env.DATABASE_URL?.trim()) {
     warnings.push("DATABASE_URL tanımlı değil; yerel varsayılan bağlantı kullanılabilir.");
   }
-  if (!process.env.ADMIN_API_SECRET?.trim()) {
+  if (!isProd && !process.env.ADMIN_API_SECRET?.trim()) {
     warnings.push("ADMIN_API_SECRET tanımlı değil; kritik admin onayları ek secret olmadan çalışabilir.");
   }
-  for (const key of ["PAYTR_MERCHANT_ID", "PAYTR_MERCHANT_KEY", "PAYTR_MERCHANT_SALT"]) {
-    if (!process.env[key]?.trim()) {
-      warnings.push(`${key} tanımlı değil; PayTR ödeme akışı tamamlanamaz.`);
+  if (!isProd) {
+    for (const key of ["PAYTR_MERCHANT_ID", "PAYTR_MERCHANT_KEY", "PAYTR_MERCHANT_SALT"]) {
+      if (!process.env[key]?.trim()) {
+        warnings.push(`${key} tanımlı değil; PayTR ödeme akışı tamamlanamaz.`);
+      }
     }
   }
   return warnings;

@@ -6,6 +6,7 @@ import { signAccessToken } from "../auth/jwt.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
+import { clearSessionCookie, setSessionCookie } from "../auth/sessionCookie.js";
 
 const registerSchema = z.object({
   email: z.string().email().max(320),
@@ -62,6 +63,7 @@ auth.post("/register", async (c) => {
     await client.query("commit");
 
     const token = await signAccessToken({ userId: user.id, role: user.role });
+    setSessionCookie(c, token);
     return c.json(
       {
         token,
@@ -118,6 +120,7 @@ auth.post("/login", async (c) => {
   }
 
   const token = await signAccessToken({ userId: row.id, role: row.role });
+  setSessionCookie(c, token);
   return c.json({
     token,
     user: {
@@ -127,6 +130,11 @@ auth.post("/login", async (c) => {
       role: row.role,
     },
   });
+});
+
+auth.post("/logout", (c) => {
+  clearSessionCookie(c);
+  return c.json({ ok: true });
 });
 
 auth.get("/me", requireAuth, async (c) => {

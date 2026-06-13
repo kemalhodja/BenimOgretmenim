@@ -4,7 +4,11 @@ import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { assertAdminGate } from "../lib/adminGate.js";
-import { getLastPaymentReconciliationWriteFailure, writeAdminAudit } from "../lib/adminAudit.js";
+import {
+  getLastAdminAuditWriteFailure,
+  getLastPaymentReconciliationWriteFailure,
+  writeAdminAudit,
+} from "../lib/adminAudit.js";
 import { runLessonReminderJob } from "../lib/lessonReminders.js";
 import {
   configurationHealthWarnings,
@@ -575,6 +579,7 @@ admin.get("/system-health", requireAuth, async (c) => {
         )
       : { rows: [] };
     const lastReconciliationWriteFailure = getLastPaymentReconciliationWriteFailure();
+    const lastAdminAuditWriteFailure = getLastAdminAuditWriteFailure();
     const latestSmokeRow = latestSmoke.rows[0] as { status?: string; created_at?: Date } | undefined;
     const smokeStale =
       latestSmokeRow?.created_at instanceof Date
@@ -587,6 +592,7 @@ admin.get("/system-health", requireAuth, async (c) => {
         reconciliationReady &&
         guardianInvitesReady &&
         smokeRunsReady &&
+        !lastAdminAuditWriteFailure &&
         !lastReconciliationWriteFailure &&
         latestSmokeRow?.status !== "failed" &&
         !smokeStale
@@ -600,6 +606,7 @@ admin.get("/system-health", requireAuth, async (c) => {
         latestReconciliation: latest.rows[0] ?? null,
         latestSmoke: latestSmoke.rows[0] ?? null,
         smokeStale,
+        lastAdminAuditWriteFailure,
         lastReconciliationWriteFailure,
       },
     });

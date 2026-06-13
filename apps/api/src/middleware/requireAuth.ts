@@ -1,14 +1,16 @@
 import { createMiddleware } from "hono/factory";
 import { verifyAccessToken } from "../auth/jwt.js";
+import { readSessionCookie } from "../auth/sessionCookie.js";
 
 export const requireAuth = createMiddleware(async (c, next) => {
   const header = c.req.header("authorization") ?? "";
   const m = header.match(/^Bearer\s+(.+)$/i);
-  if (!m?.[1]) {
-    return c.json({ error: "missing_bearer_token" }, 401);
+  const token = m?.[1]?.trim() || readSessionCookie(c);
+  if (!token) {
+    return c.json({ error: "missing_auth_token" }, 401);
   }
   try {
-    const { userId, role } = await verifyAccessToken(m[1].trim());
+    const { userId, role } = await verifyAccessToken(token);
     c.set("userId", userId);
     c.set("userRole", role);
     await next();

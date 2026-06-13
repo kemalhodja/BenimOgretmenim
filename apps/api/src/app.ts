@@ -29,6 +29,9 @@ import { analytics } from "./routes/analytics.js";
 import { requestId } from "./middleware/requestId.js";
 import { requestLog } from "./middleware/requestLog.js";
 import { rateLimit } from "./middleware/rateLimit.js";
+import { assertProductionConfiguration } from "./lib/systemHealth.js";
+
+assertProductionConfiguration();
 
 export const app = new Hono<{ Variables: AppVariables }>();
 
@@ -72,6 +75,7 @@ app.use(
   "/*",
   cors({
     origin: corsAllowedOrigins(),
+    credentials: true,
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: [
       "Content-Type",

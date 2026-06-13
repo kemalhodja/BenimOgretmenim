@@ -1,8 +1,11 @@
 import * as jose from "jose";
 
 function getSecretKey(): Uint8Array {
-  const raw = process.env.JWT_SECRET ?? "dev-only-change-me-use-32-chars-min";
-  return new TextEncoder().encode(raw);
+  const raw = process.env.JWT_SECRET?.trim();
+  if (!raw && process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET_required_in_production");
+  }
+  return new TextEncoder().encode(raw ?? "dev-only-change-me-use-32-chars-min");
 }
 
 export async function signAccessToken(input: {

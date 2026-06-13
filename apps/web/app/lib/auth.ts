@@ -1,5 +1,13 @@
 const TOKEN_KEY = "bo:token";
 
+function clearServerSessionCookie() {
+  void fetch("/v1/auth/logout", {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+  }).catch(() => {});
+}
+
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return window.localStorage.getItem(TOKEN_KEY);
@@ -17,6 +25,7 @@ export function setToken(token: string) {
 
 export function clearToken() {
   window.localStorage.removeItem(TOKEN_KEY);
+  clearServerSessionCookie();
   notifyAuthChanged();
 }
 

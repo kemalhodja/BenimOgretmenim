@@ -74,6 +74,7 @@ export async function apiFetch<T>(
     ...init,
     headers,
     cache: "no-store",
+    credentials: init?.credentials ?? "include",
   });
 
   const responseRequestId = res.headers.get("x-request-id") ?? undefined;
