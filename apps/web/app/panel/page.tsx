@@ -2,20 +2,28 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getRoleFromToken, getToken, panelPathForRole } from "../lib/auth";
+import { getCachedRole, getRoleFromToken, getToken, panelPathForRole, refreshSessionFromServer } from "../lib/auth";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 
 export default function PanelRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const token = getToken();
-    const role = getRoleFromToken(token);
-    if (!role) {
-      router.replace(loginHrefWithReturn("/panel"));
-      return;
-    }
-    router.replace(panelPathForRole(role));
+    let alive = true;
+    const redirect = async () => {
+      const token = getToken();
+      const role = getRoleFromToken(token) ?? getCachedRole() ?? (await refreshSessionFromServer());
+      if (!alive) return;
+      if (!role) {
+        router.replace(loginHrefWithReturn("/panel"));
+        return;
+      }
+      router.replace(panelPathForRole(role));
+    };
+    void redirect();
+    return () => {
+      alive = false;
+    };
   }, [router]);
 
   return (

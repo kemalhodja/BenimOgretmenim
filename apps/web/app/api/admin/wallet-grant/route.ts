@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminProxyHeaders, internalApiBase } from "../_upstream";
+import { adminProxyHeaders, hasAdminProxySession, internalApiBase } from "../_upstream";
 
 export async function POST(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) {
+  if (!hasAdminProxySession(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 

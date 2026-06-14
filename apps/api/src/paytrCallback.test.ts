@@ -110,6 +110,45 @@ describe("PayTR callback", () => {
     });
   });
 
+  it("rejects callbacks with malformed total_amount before touching reconciliation state", async () => {
+    const health = await app.request("http://localhost/health");
+    if (health.status !== 200) {
+      return;
+    }
+
+    await withPaytrEnv(async ({ merchantKey, merchantSalt }) => {
+      const merchantOid = `bad_amount_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      const totalAmount = "12.34";
+      const body = new URLSearchParams({
+        merchant_oid: merchantOid,
+        status: "success",
+        total_amount: totalAmount,
+        hash: paytrCallbackHash({
+          merchantOid,
+          merchantSalt,
+          status: "success",
+          totalAmount,
+          merchantKey,
+        }),
+      });
+
+      const res = await app.request("http://localhost/v1/paytr/callback", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+
+      expect(res.status).toBe(400);
+      expect(await res.text()).toContain("invalid payload");
+
+      const event = await pool.query<{ count: string }>(
+        `select count(*)::text as count from payment_reconciliation_events where merchant_oid = $1`,
+        [merchantOid],
+      );
+      expect(event.rows[0]?.count).toBe("0");
+    });
+  });
+
   it("logs unknown merchant oid as reconciliation event when database is available", async () => {
     const health = await app.request("http://localhost/health");
     if (health.status !== 200) {
@@ -310,6 +349,79 @@ describe("PayTR callback", () => {
         expect(event.rows[0]?.status).toBe("amount_mismatch");
         expect(Number(event.rows[0]?.expected_amount_minor)).toBe(Number(expectedAmount));
         expect(Number(event.rows[0]?.received_amount_minor)).toBe(Number(receivedAmount));
+
+        await pool.query(`delete from payment_reconciliation_events where merchant_oid = $1`, [merchantOid]);
+      });
+    } finally {
+      if (userId) {
+        await pool.query(`delete from users where id = $1`, [userId]);
+      }
+    }
+  });
+
+  it("marks wallet topup failed without crediting balance when PayTR reports failure", async () => {
+    const health = await app.request("http://localhost/health");
+    if (health.status !== 200) {
+      return;
+    }
+
+    const suffix = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const email = `paytr-wallet-failed-${suffix}@example.test`;
+    const merchantOid = `wallet_failed_${suffix}`;
+    const totalAmount = "12345";
+    let userId: string | null = null;
+
+    try {
+      await withPaytrEnv(async ({ merchantKey, merchantSalt }) => {
+        const user = await pool.query<{ id: string }>(
+          `insert into users (email, display_name, role)
+           values ($1, 'PayTR Wallet Failed Test', 'student')
+           returning id`,
+          [email],
+        );
+        userId = user.rows[0].id;
+
+        const payment = await pool.query<{ id: string }>(
+          `insert into wallet_topup_payments (user_id, amount_minor, merchant_oid)
+           values ($1, $2, $3)
+           returning id`,
+          [userId, Number(totalAmount), merchantOid],
+        );
+
+        const res = await postPaytrCallback({
+          merchantOid,
+          status: "failed",
+          totalAmount,
+          merchantKey,
+          merchantSalt,
+        });
+
+        expect(res.status).toBe(200);
+        expect(await res.text()).toBe("OK");
+
+        const wallet = await pool.query<{ balance_minor: string }>(
+          `select balance_minor from user_wallets where user_id = $1`,
+          [userId],
+        );
+        expect(wallet.rows[0]?.balance_minor ?? "0").toBe("0");
+
+        const paymentState = await pool.query<{ state: string }>(
+          `select state from wallet_topup_payments where id = $1`,
+          [payment.rows[0].id],
+        );
+        expect(paymentState.rows[0]?.state).toBe("failed");
+
+        const event = await pool.query<{ status: string; expected_amount_minor: number; received_amount_minor: number }>(
+          `select status, expected_amount_minor, received_amount_minor
+           from payment_reconciliation_events
+           where merchant_oid = $1
+           order by created_at desc
+           limit 1`,
+          [merchantOid],
+        );
+        expect(event.rows[0]?.status).toBe("failed");
+        expect(Number(event.rows[0]?.expected_amount_minor)).toBe(Number(totalAmount));
+        expect(Number(event.rows[0]?.received_amount_minor)).toBe(Number(totalAmount));
 
         await pool.query(`delete from payment_reconciliation_events where merchant_oid = $1`, [merchantOid]);
       });

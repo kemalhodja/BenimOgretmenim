@@ -21,6 +21,7 @@ type Bucket = { resetAt: number; count: number };
 
 const buckets = new Map<string, Bucket>();
 const hitsByLimiter = new Map<string, { allowed: number; limited: number }>();
+let lastPostgresPruneAt = 0;
 
 function nowMs() {
   return Date.now();
@@ -44,6 +45,15 @@ async function consumePostgresBucket(opts: {
   name: string;
   windowMs: number;
 }): Promise<Bucket> {
+  const t = nowMs();
+  if (t - lastPostgresPruneAt > 5 * 60_000) {
+    lastPostgresPruneAt = t;
+    void pool
+      .query(`delete from api_rate_limit_buckets where reset_at < now() - interval '10 minutes'`)
+      .catch((e) => {
+        console.error("[rate-limit] bucket prune failed", e instanceof Error ? e.message : String(e));
+      });
+  }
   const r = await pool.query<{ hit_count: number; reset_at: Date }>(
     `insert into api_rate_limit_buckets (bucket_key, limiter_name, hit_count, reset_at)
      values ($1, $2, 1, now() + ($3::int * interval '1 millisecond'))
@@ -134,7 +144,7 @@ export function rateLimit(opts: RateLimitOptions) {
 export function rateLimitSnapshot() {
   return {
     store: rateLimitStore(),
-    activeBuckets: buckets.size,
+    memoryActiveBuckets: buckets.size,
     limiters: [...hitsByLimiter.entries()].map(([name, stats]) => ({ name, ...stats })),
   };
 }

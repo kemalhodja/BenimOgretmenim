@@ -50,6 +50,10 @@ const nextConfig: NextConfig = {
       "form-action 'self' https:",
       "upgrade-insecure-requests",
     ].join("; ");
+    const cspHeaderName =
+      process.env.CSP_ENFORCE?.trim().toLowerCase() === "true"
+        ? "Content-Security-Policy"
+        : "Content-Security-Policy-Report-Only";
     const base = [
       { key: "X-Frame-Options", value: "DENY" },
       { key: "X-Content-Type-Options", value: "nosniff" },
@@ -58,7 +62,7 @@ const nextConfig: NextConfig = {
       { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
       { key: "Origin-Agent-Cluster", value: "?1" },
       { key: "X-DNS-Prefetch-Control", value: "off" },
-      { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+      { key: cspHeaderName, value: cspReportOnly },
     ] as const;
 
     const security =

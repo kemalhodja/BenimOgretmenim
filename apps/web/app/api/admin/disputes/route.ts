@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminProxyHeaders, internalApiBase } from "../_upstream";
+import { adminProxyHeaders, hasAdminProxySession, internalApiBase } from "../_upstream";
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasAdminProxySession(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const u = new URL(req.url);
   const res = await fetch(`${internalApiBase()}/v1/admin/disputes${u.search}`, {
     headers: adminProxyHeaders(req),

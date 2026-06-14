@@ -5,11 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   clearToken,
+  getCachedRole,
   getRoleFromToken,
   getToken,
   isOnRolePanel,
   panelNavLabel,
   panelPathForRole,
+  refreshSessionFromServer,
 } from "../lib/auth";
 import { loginHrefWithReturn, registerHrefWithReturn } from "../lib/authRedirect";
 
@@ -17,15 +19,24 @@ export function HeaderAuthActions() {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const [token, setTokenState] = useState<string | null>(null);
+  const [sessionRole, setSessionRole] = useState(() => getCachedRole());
   const [mounted, setMounted] = useState(false);
 
   const sync = useCallback(() => {
     setTokenState(getToken());
+    setSessionRole(getCachedRole());
   }, []);
 
   useEffect(() => {
+    let alive = true;
     setMounted(true);
     sync();
+    void refreshSessionFromServer().then(() => {
+      if (alive) sync();
+    });
+    return () => {
+      alive = false;
+    };
   }, [sync, pathname]);
 
   useEffect(() => {
@@ -50,8 +61,8 @@ export function HeaderAuthActions() {
     );
   }
 
-  if (token) {
-    const role = getRoleFromToken(token);
+  const role = getRoleFromToken(token) ?? sessionRole;
+  if (role) {
     const panelHref = role ? panelPathForRole(role) : "/panel";
     const panelLabel = role ? panelNavLabel(role) : "Panele git";
     const onPanel = role ? isOnRolePanel(role, pathname) : false;

@@ -22,6 +22,17 @@ import { holdCourseEnrollmentPayment, releaseCourseEnrollmentHold } from "../lib
 
 export const admin = new Hono<{ Variables: AppVariables }>();
 
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const text = value instanceof Date ? value.toISOString() : String(value);
+  if (!/[",\r\n]/.test(text)) return text;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function csvLine(values: unknown[]): string {
+  return values.map(csvCell).join(",");
+}
+
 const smokeRunSchema = z.object({
   status: z.enum(["ok", "failed"]),
   targetUrl: z.string().url().optional().nullable(),
@@ -1728,6 +1739,63 @@ admin.get("/payment-reconciliation", requireAuth, async (c) => {
       unknownMerchantOids30d: risk?.unknown_merchant_oids_30d ?? 0,
       failed30d: risk?.failed_30d ?? 0,
       latestIssueAt: risk?.latest_issue_at ?? null,
+    },
+  });
+});
+
+admin.get("/payment-reconciliation.csv", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const limit = Math.min(5000, Math.max(1, Number(c.req.query("limit") ?? "1000") || 1000));
+  const status = c.req.query("status")?.trim();
+  const resolutionStatus = c.req.query("resolutionStatus")?.trim();
+  const args: unknown[] = [];
+  let where = "true";
+  if (status) {
+    args.push(status);
+    where += ` and status = $${args.length}`;
+  }
+  if (resolutionStatus) {
+    args.push(resolutionStatus);
+    where += ` and resolution_status = $${args.length}`;
+  }
+  args.push(limit);
+  const rows = await pool.query(
+    `select id, provider, merchant_oid, payment_table, payment_id,
+            expected_amount_minor, received_amount_minor, status,
+            resolution_status, resolution_kind, resolution_note,
+            resolved_by_user_id, resolved_at, updated_at, created_at
+     from payment_reconciliation_events
+     where ${where}
+     order by created_at desc
+     limit $${args.length}`,
+    args,
+  );
+  const header = [
+    "id",
+    "provider",
+    "merchant_oid",
+    "payment_table",
+    "payment_id",
+    "expected_amount_minor",
+    "received_amount_minor",
+    "status",
+    "resolution_status",
+    "resolution_kind",
+    "resolution_note",
+    "resolved_by_user_id",
+    "resolved_at",
+    "updated_at",
+    "created_at",
+  ];
+  const body = rows.rows.map((row) => header.map((key) => (row as Record<string, unknown>)[key]));
+  const csv = [csvLine(header), ...body.map(csvLine)].join("\n");
+  return new Response(csv, {
+    status: 200,
+    headers: {
+      "content-type": "text/csv; charset=utf-8",
+      "content-disposition": `attachment; filename="payment-reconciliation-${new Date().toISOString().slice(0, 10)}.csv"`,
+      "cache-control": "no-store",
     },
   });
 });

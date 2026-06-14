@@ -92,7 +92,7 @@ export async function reduceWalletHoldAmount(
   if (opts.newAmountMinor === 0n) {
     await client.query(
       `update user_wallet_holds
-       set amount_minor = 0, status = 'charged', updated_at = now()
+       set status = 'charged', updated_at = now()
        where id = $1 and status = 'active'`,
       [opts.holdId],
     );

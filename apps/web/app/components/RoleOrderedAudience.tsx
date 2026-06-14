@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
-import { getRoleFromToken, getToken } from "../lib/auth";
+import { getCachedRole, getRoleFromToken, getToken, refreshSessionFromServer } from "../lib/auth";
 
 type Props = {
   studentSlot: ReactNode;
@@ -12,12 +12,23 @@ type Props = {
 export function RoleOrderedAudience({ studentSlot, teacherSlot }: Props) {
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [sessionRole, setSessionRole] = useState(() => getCachedRole());
 
-  const sync = useCallback(() => setToken(getToken()), []);
+  const sync = useCallback(() => {
+    setToken(getToken());
+    setSessionRole(getCachedRole());
+  }, []);
 
   useEffect(() => {
+    let alive = true;
     setMounted(true);
     sync();
+    void refreshSessionFromServer().then(() => {
+      if (alive) sync();
+    });
+    return () => {
+      alive = false;
+    };
   }, [sync]);
 
   useEffect(() => {
@@ -30,7 +41,7 @@ export function RoleOrderedAudience({ studentSlot, teacherSlot }: Props) {
     };
   }, [sync]);
 
-  const role = mounted ? getRoleFromToken(token) : null;
+  const role = mounted ? getRoleFromToken(token) ?? sessionRole : null;
   const teacherFirst = role === "teacher" || role === "admin";
   const studentOrder = teacherFirst ? "sm:order-2" : "";
   const teacherOrder = teacherFirst ? "sm:order-1" : "";

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { getRoleFromToken, getToken, panelNavLabel, panelPathForRole, type UserRole } from "../lib/auth";
+import { getCachedRole, getRoleFromToken, getToken, panelNavLabel, panelPathForRole, refreshSessionFromServer, type UserRole } from "../lib/auth";
 import { loginHrefWithReturn, registerHrefWithReturn } from "../lib/authRedirect";
 
 const btnPrimary =
@@ -21,12 +21,23 @@ function roleLead(role: UserRole): string {
 export function HomeHeroPersonalized() {
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [sessionRole, setSessionRole] = useState(() => getCachedRole());
 
-  const sync = useCallback(() => setToken(getToken()), []);
+  const sync = useCallback(() => {
+    setToken(getToken());
+    setSessionRole(getCachedRole());
+  }, []);
 
   useEffect(() => {
+    let alive = true;
     setMounted(true);
     sync();
+    void refreshSessionFromServer().then(() => {
+      if (alive) sync();
+    });
+    return () => {
+      alive = false;
+    };
   }, [sync]);
 
   useEffect(() => {
@@ -48,7 +59,7 @@ export function HomeHeroPersonalized() {
     );
   }
 
-  const role = getRoleFromToken(token);
+  const role = getRoleFromToken(token) ?? sessionRole;
   if (!role) {
     return (
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">

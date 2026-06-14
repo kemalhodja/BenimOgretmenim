@@ -1,6 +1,6 @@
 # Session Hardening Migration
 
-Bu not, web token'ının `localStorage` yerine HttpOnly cookie/session modeline taşınması için ayrı bir migration kapsamıdır. İlk eksik giderme turunda oturum mimarisi bilerek değiştirilmedi; production config, audit görünürlüğü ve rate limit sertleştirmesi önce tamamlandı.
+Bu not, web token'ının `localStorage` yerine HttpOnly cookie/session modeline taşınması için migration kapsamıdır. İlk adım tamamlandı: API artık login/register sonrası HttpOnly `bo_session` cookie set eder, `requireAuth` bearer token yoksa cookie okuyabilir ve cookie ile yapılan unsafe isteklerde CSRF header zorunludur.
 
 ## Neden
 
@@ -12,22 +12,25 @@ Bu not, web token'ının `localStorage` yerine HttpOnly cookie/session modeline 
 
 - Giriş ve kayıt sonrası access token client JavaScript'e dönmek yerine HttpOnly, Secure, SameSite cookie olarak set edilir.
 - Web `apiFetch` varsayılan olarak cookie credentials ile çalışır.
-- API tarafı `Authorization: Bearer` desteğini migration boyunca koruyabilir; web panel route'ları cookie oturumunu birincil yol yapar.
+- API tarafı `Authorization: Bearer` desteğini migration boyunca korur; web panel route'ları kademeli olarak cookie oturumunu birincil yol yapar.
 - Çıkış cookie'yi server response ile temizler.
 - Admin proxy route'ları upstream'e güvenli server-side header üretir; client localStorage token'ına ihtiyaç kalmaz.
+- Cookie-authenticated `POST`, `PUT`, `PATCH` ve `DELETE` istekleri `x-csrf-token` header'ı olmadan kabul edilmez.
 
 ## Uygulama Fazları
 
-1. API auth response'larına cookie set/clear yardımcıları ekle.
-2. Web login/register/logout akışlarını cookie tabanlı hale getir.
-3. `apps/web/app/lib/auth.ts` ve `apiFetch` kullanımını kademeli olarak token parametresinden cookie credentials'a taşı.
-4. Admin proxy route'larında `authorization` header bağımlılığını cookie session doğrulamasına çevir.
-5. Role guard ve Playwright role journey testlerini cookie modeline göre güncelle.
-6. Migration tamamlanınca web `localStorage` token okuma/yazma kodunu kaldır.
+1. Tamamlandı: API auth response'larına cookie set/clear yardımcıları eklendi.
+2. Tamamlandı: `requireAuth` bearer öncelikli, cookie fallback destekli hale geldi.
+3. Tamamlandı: `apiFetch` `credentials: include` ve CSRF header gönderecek şekilde hazırlandı.
+4. Sıradaki: `apps/web/app/lib/auth.ts` ve panel guard'larını token parametresinden cookie-first modele taşı.
+5. Sıradaki: Admin proxy route'larında `authorization` header bağımlılığını cookie session doğrulamasına çevir.
+6. Sıradaki: Role guard ve Playwright role journey testlerini cookie modeline göre güncelle.
+7. Son: Migration tamamlanınca web `localStorage` token okuma/yazma kodunu kaldır.
 
 ## Test Kapısı
 
 - API auth unit/integration testleri: login, register, me, logout.
+- API middleware testleri: cookie fallback, bearer önceliği, CSRF reddi ve CSRF kabulü.
 - Web E2E: öğrenci, öğretmen, veli, admin panel girişleri.
 - Güvenlik regresyonu: cookie flags `HttpOnly`, `Secure` production, `SameSite=Lax` veya daha sıkı politika.
 - Admin operasyon smoke: payment reconciliation, wallet ops, system health ve quality report proxy'leri.

@@ -1,5 +1,10 @@
 import { makeRequestId } from "./requestId";
 
+export const CSRF_HEADER_NAME = "x-csrf-token";
+export const CSRF_HEADER_VALUE = "bo-csrf-v1";
+const CSRF_COOKIE_NAME = "bo_csrf";
+const COOKIE_SESSION_TOKEN_PREFIX = "bo-cookie-session:";
+
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3002";
 
@@ -23,6 +28,22 @@ function resolveApiFetchUrl(path: string): string {
     return p;
   }
   return `${upstream}${p}`;
+}
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${name}=`;
+  const raw = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix))
+    ?.slice(prefix.length);
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 export type ApiError = { error: unknown } | { error: string } | unknown;
@@ -59,10 +80,13 @@ export async function apiFetch<T>(
   if (!headers.has("x-request-id")) {
     headers.set("x-request-id", makeRequestId());
   }
+  if (!headers.has(CSRF_HEADER_NAME)) {
+    headers.set(CSRF_HEADER_NAME, readCookie(CSRF_COOKIE_NAME) ?? CSRF_HEADER_VALUE);
+  }
   if (init?.body && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }
-  if (init?.token) {
+  if (init?.token && !init.token.startsWith(COOKIE_SESSION_TOKEN_PREFIX)) {
     headers.set("authorization", `Bearer ${init.token}`);
   }
   const g = init?.supportGuestToken?.trim();

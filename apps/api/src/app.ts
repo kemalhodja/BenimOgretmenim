@@ -80,6 +80,7 @@ app.use(
     allowHeaders: [
       "Content-Type",
       "Authorization",
+      "X-CSRF-Token",
       "X-Admin-Secret",
       "X-Request-Id",
       "X-Support-Guest-Token",

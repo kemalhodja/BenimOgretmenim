@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminProxyHeaders, internalApiBase } from "../../../_upstream";
+import { adminProxyHeaders, hasAdminProxySession, internalApiBase } from "../../../_upstream";
 
 type Ctx = { params: Promise<{ threadId: string }> };
 
 export async function GET(req: NextRequest, ctx: Ctx) {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) {
+  if (!hasAdminProxySession(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { threadId } = await ctx.params;
@@ -23,8 +22,7 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 }
 
 export async function POST(req: NextRequest, ctx: Ctx) {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) {
+  if (!hasAdminProxySession(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { threadId } = await ctx.params;

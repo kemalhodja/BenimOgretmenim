@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminProxyHeaders, internalApiBase } from "../../../_upstream";
+import { adminProxyHeaders, hasAdminProxySession, internalApiBase } from "../../../_upstream";
 
 type Ctx = { params: Promise<{ courseId: string }> };
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) {
+  if (!hasAdminProxySession(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const { courseId } = await ctx.params;

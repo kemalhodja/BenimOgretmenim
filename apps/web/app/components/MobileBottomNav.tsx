@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getRoleFromToken, getToken, type UserRole } from "../lib/auth";
+import { getCachedRole, getRoleFromToken, getToken, refreshSessionFromServer, type UserRole } from "../lib/auth";
 import { loginHrefWithReturn, registerHrefWithReturn } from "../lib/authRedirect";
 import { panelModeForPath, type PanelMode } from "../lib/panelMode";
 
@@ -90,14 +90,25 @@ export function MobileBottomNav() {
   const pathname = usePathname() ?? "/";
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [sessionRole, setSessionRole] = useState(() => getCachedRole());
   const [search, setSearch] = useState("");
 
-  const sync = useCallback(() => setToken(getToken()), []);
+  const sync = useCallback(() => {
+    setToken(getToken());
+    setSessionRole(getCachedRole());
+  }, []);
 
   useEffect(() => {
+    let alive = true;
     setMounted(true);
     setSearch(window.location.search);
     sync();
+    void refreshSessionFromServer().then(() => {
+      if (alive) sync();
+    });
+    return () => {
+      alive = false;
+    };
   }, [sync, pathname]);
 
   useEffect(() => {
@@ -111,7 +122,7 @@ export function MobileBottomNav() {
   }, [sync]);
 
   const mode = panelModeForPath(pathname);
-  const role = mounted ? getRoleFromToken(token) : null;
+  const role = mounted ? getRoleFromToken(token) ?? sessionRole : null;
   const searchParams = useMemo(() => new URLSearchParams(search), [search]);
   const items = useMemo(() => itemsFor(mode, role, pathname), [mode, pathname, role]);
 

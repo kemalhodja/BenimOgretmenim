@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CSRF_HEADER_NAME } from "../../lib/api";
 import { makeRequestId } from "../../lib/requestId";
 
 /** Sunucu tarafında Hono API adresi (Docker’da http://api:3002 gibi). */
@@ -14,6 +15,10 @@ export function adminProxyHeaders(req: Request): Headers {
   const h = new Headers();
   const auth = req.headers.get("authorization");
   if (auth) h.set("authorization", auth);
+  const cookie = req.headers.get("cookie");
+  if (cookie) h.set("cookie", cookie);
+  const csrf = req.headers.get(CSRF_HEADER_NAME);
+  if (csrf) h.set(CSRF_HEADER_NAME, csrf);
   h.set("accept", "application/json");
   const incomingRid = req.headers.get("x-request-id")?.trim();
   h.set("x-request-id", incomingRid && incomingRid.length > 0 ? incomingRid : makeRequestId());
@@ -26,6 +31,12 @@ export function adminUnauthorizedResponse() {
   return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 }
 
+export function hasAdminProxySession(req: Request): boolean {
+  const auth = req.headers.get("authorization");
+  const cookie = req.headers.get("cookie") ?? "";
+  return Boolean(auth?.startsWith("Bearer ") || cookie.includes("bo_session="));
+}
+
 export async function proxyAdminRequest(
   req: Request,
   path: string,
@@ -35,8 +46,7 @@ export async function proxyAdminRequest(
     includeSearch?: boolean;
   },
 ) {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) {
+  if (!hasAdminProxySession(req)) {
     return adminUnauthorizedResponse();
   }
 

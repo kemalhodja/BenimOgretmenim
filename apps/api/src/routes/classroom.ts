@@ -4,6 +4,7 @@ import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { verifyAccessToken } from "../auth/jwt.js";
+import { readSessionCookie } from "../auth/sessionCookie.js";
 import { settleCourseEnrollmentHold } from "../lib/courseEnrollmentWallet.js";
 import { settleCourseSessionTeacherPayout } from "../lib/courseTeacherPayout.js";
 
@@ -417,8 +418,8 @@ classroom.get("/:kind/:sessionId/events", async (c) => {
   }
   const tokenFromQuery = c.req.query("token")?.trim();
   const bearer = c.req.header("authorization")?.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
-  const token = tokenFromQuery || bearer;
-  if (!token) return c.json({ error: "missing_bearer_token" }, 401);
+  const token = tokenFromQuery || bearer || readSessionCookie(c);
+  if (!token) return c.json({ error: "missing_auth_token" }, 401);
 
   let userId: string;
   let role: string;

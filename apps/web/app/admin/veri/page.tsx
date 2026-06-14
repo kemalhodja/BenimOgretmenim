@@ -27,7 +27,11 @@ type FunnelSummary = {
   funnel: { eventName: string; count: number; conversionFromSearch: number | null }[];
   operations?: {
     quotaExceeded?: { event_name: string; count: number }[];
-    rateLimit?: { activeBuckets: number; limiters: { name: string; allowed: number; limited: number }[] };
+    rateLimit?: {
+      activeBuckets?: number;
+      memoryActiveBuckets?: number;
+      limiters: { name: string; allowed: number; limited: number }[];
+    };
   };
 };
 type CourseAccountingSummary = {
@@ -654,7 +658,9 @@ function AdminVeriInner() {
                 <div className="rounded-xl bg-paper-50 p-3">
                   <div className="text-xs font-semibold text-paper-800/60">Aktif işlem sınırı kaydı</div>
                   <div className="mt-1 text-xl font-semibold text-paper-950">
-                    {funnelSummary.operations?.rateLimit?.activeBuckets ?? 0}
+                    {funnelSummary.operations?.rateLimit?.memoryActiveBuckets ??
+                      funnelSummary.operations?.rateLimit?.activeBuckets ??
+                      0}
                   </div>
                 </div>
                 <div className="rounded-xl bg-paper-50 p-3">

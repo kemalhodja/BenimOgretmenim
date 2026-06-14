@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { getRoleFromToken, getToken, panelNavLabel, panelPathForRole } from "../lib/auth";
+import { getCachedRole, getRoleFromToken, getToken, panelNavLabel, panelPathForRole, refreshSessionFromServer } from "../lib/auth";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 
 /** Kısa liste: keşif + panel + yardım. Detaylar panele ve ana sayfa bölümlerine taşınır. */
@@ -21,14 +21,23 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
   const pathname = usePathname() ?? "";
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [sessionRole, setSessionRole] = useState(() => getCachedRole());
 
   const sync = useCallback(() => {
     setToken(getToken());
+    setSessionRole(getCachedRole());
   }, []);
 
   useEffect(() => {
+    let alive = true;
     setMounted(true);
     sync();
+    void refreshSessionFromServer().then(() => {
+      if (alive) sync();
+    });
+    return () => {
+      alive = false;
+    };
   }, [sync, pathname]);
 
   useEffect(() => {
@@ -41,7 +50,7 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
     };
   }, [sync]);
 
-  const role = mounted ? getRoleFromToken(token) : null;
+  const role = mounted ? getRoleFromToken(token) ?? sessionRole : null;
   const panelHref = role ? panelPathForRole(role) : loginHrefWithReturn("/panel");
   const panelLabel = role ? panelNavLabel(role) : "Panel";
 

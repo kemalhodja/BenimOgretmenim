@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { PointerEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "../../../lib/api";
-import { clearToken, getToken } from "../../../lib/auth";
+import { clearToken, getToken, isCookieSessionToken } from "../../../lib/auth";
 import { loginHrefWithReturn } from "../../../lib/authRedirect";
 
 type RoomResponse = {
@@ -195,9 +195,10 @@ export default function ClassroomPage() {
   useEffect(() => {
     if (!token || !sessionId) return;
     setRealtimeStatus("connecting");
-    const source = new EventSource(
-      `/v1/classroom/${endpointKind}/${sessionId}/events?token=${encodeURIComponent(token)}`,
-    );
+    const eventsUrl = isCookieSessionToken(token)
+      ? `/v1/classroom/${endpointKind}/${sessionId}/events`
+      : `/v1/classroom/${endpointKind}/${sessionId}/events?token=${encodeURIComponent(token)}`;
+    const source = new EventSource(eventsUrl);
     source.addEventListener("ready", () => {
       setRealtimeStatus("live");
     });

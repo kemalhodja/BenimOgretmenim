@@ -1,8 +1,33 @@
+import { CSRF_HEADER_NAME, CSRF_HEADER_VALUE } from "./api";
+
 const TOKEN_KEY = "bo:token";
+const ROLE_KEY = "bo:role";
+const USER_ID_KEY = "bo:user-id";
+const ROLE_COOKIE_NAME = "bo_session_role";
+const USER_ID_COOKIE_NAME = "bo_session_user_id";
+const CSRF_COOKIE_NAME = "bo_csrf";
+const COOKIE_SESSION_TOKEN_PREFIX = "bo-cookie-session:";
+
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${name}=`;
+  const raw = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix))
+    ?.slice(prefix.length);
+  if (!raw) return null;
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
 
 function clearServerSessionCookie() {
   void fetch("/v1/auth/logout", {
     method: "POST",
+    headers: { [CSRF_HEADER_NAME]: readCookie(CSRF_COOKIE_NAME) ?? CSRF_HEADER_VALUE },
     credentials: "include",
     cache: "no-store",
   }).catch(() => {});
@@ -10,7 +35,26 @@ function clearServerSessionCookie() {
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(TOKEN_KEY);
+  const cookieRole = readCookie(ROLE_COOKIE_NAME);
+  if (cookieRole === "teacher" || cookieRole === "student" || cookieRole === "guardian" || cookieRole === "admin") {
+    const userId = readCookie(USER_ID_COOKIE_NAME) ?? window.localStorage.getItem(USER_ID_KEY) ?? "";
+    return `${COOKIE_SESSION_TOKEN_PREFIX}${cookieRole}:${encodeURIComponent(userId)}`;
+  }
+  const bearer = window.localStorage.getItem(TOKEN_KEY);
+  if (bearer) return bearer;
+  const role = window.localStorage.getItem(ROLE_KEY);
+  if (role === "teacher" || role === "student" || role === "guardian" || role === "admin") {
+    const userId = window.localStorage.getItem(USER_ID_KEY) ?? "";
+    return `${COOKIE_SESSION_TOKEN_PREFIX}${role}:${encodeURIComponent(userId)}`;
+  }
+  return null;
+}
+
+function removeLocalSessionCache() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(TOKEN_KEY);
+  window.localStorage.removeItem(ROLE_KEY);
+  window.localStorage.removeItem(USER_ID_KEY);
 }
 
 function notifyAuthChanged() {
@@ -18,13 +62,47 @@ function notifyAuthChanged() {
   window.dispatchEvent(new Event("bo:auth-changed"));
 }
 
-export function setToken(token: string) {
-  window.localStorage.setItem(TOKEN_KEY, token);
+function cacheRole(role: UserRole | null) {
+  if (typeof window === "undefined") return;
+  if (role) window.localStorage.setItem(ROLE_KEY, role);
+  else window.localStorage.removeItem(ROLE_KEY);
+}
+
+function cacheUserId(userId: string | null) {
+  if (typeof window === "undefined") return;
+  if (userId) window.localStorage.setItem(USER_ID_KEY, userId);
+  else window.localStorage.removeItem(USER_ID_KEY);
+}
+
+function parseCookieSessionToken(token: string): { role: UserRole; userId: string | null } | null {
+  if (!token.startsWith(COOKIE_SESSION_TOKEN_PREFIX)) return null;
+  const rest = token.slice(COOKIE_SESSION_TOKEN_PREFIX.length);
+  const [role, encodedUserId = ""] = rest.split(":");
+  if (role !== "teacher" && role !== "student" && role !== "guardian" && role !== "admin") return null;
+  return {
+    role,
+    userId: encodedUserId ? decodeURIComponent(encodedUserId) : null,
+  };
+}
+
+export function isCookieSessionToken(token: string | null | undefined): boolean {
+  return Boolean(token?.startsWith(COOKIE_SESSION_TOKEN_PREFIX));
+}
+
+export function setToken(token: string | null) {
+  if (!token) {
+    removeLocalSessionCache();
+    notifyAuthChanged();
+    return;
+  }
+  cacheRole(getRoleFromToken(token));
+  cacheUserId(getUserIdFromToken(token));
+  window.localStorage.removeItem(TOKEN_KEY);
   notifyAuthChanged();
 }
 
 export function clearToken() {
-  window.localStorage.removeItem(TOKEN_KEY);
+  removeLocalSessionCache();
   clearServerSessionCookie();
   notifyAuthChanged();
 }
@@ -44,6 +122,8 @@ function base64UrlToJson(input: string): unknown | null {
 
 export function getRoleFromToken(token: string | null): UserRole | null {
   if (!token) return null;
+  const cookieSession = parseCookieSessionToken(token);
+  if (cookieSession) return cookieSession.role;
   const parts = token.split(".");
   if (parts.length < 2) return null;
   const payload = base64UrlToJson(parts[1]);
@@ -55,9 +135,20 @@ export function getRoleFromToken(token: string | null): UserRole | null {
   return null;
 }
 
+export function getCachedRole(): UserRole | null {
+  const fromToken = getRoleFromToken(getToken());
+  if (fromToken) return fromToken;
+  if (typeof window === "undefined") return null;
+  const role = window.localStorage.getItem(ROLE_KEY) ?? readCookie(ROLE_COOKIE_NAME);
+  if (role === "teacher" || role === "student" || role === "guardian" || role === "admin") return role;
+  return null;
+}
+
 /** JWT `sub` — oturumdaki kullanıcı kimliği (admin işlemlerinde kendi satırını ayırt etmek için). */
 export function getUserIdFromToken(token: string | null): string | null {
   if (!token) return null;
+  const cookieSession = parseCookieSessionToken(token);
+  if (cookieSession) return cookieSession.userId;
   const parts = token.split(".");
   if (parts.length < 2) return null;
   const payload = base64UrlToJson(parts[1]);
@@ -66,6 +157,51 @@ export function getUserIdFromToken(token: string | null): string | null {
       ? (payload as { sub?: unknown }).sub
       : null;
   return typeof sub === "string" && sub.length > 0 ? sub : null;
+}
+
+export function getCachedUserId(): string | null {
+  const fromToken = getUserIdFromToken(getToken());
+  if (fromToken) return fromToken;
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(USER_ID_KEY) ?? readCookie(USER_ID_COOKIE_NAME);
+}
+
+type SessionMeResponse = {
+  user?: {
+    id?: unknown;
+    role?: unknown;
+  };
+};
+
+export async function refreshSessionFromServer(): Promise<UserRole | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const res = await fetch("/v1/auth/me", {
+      headers: { accept: "application/json" },
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (res.status === 401 || res.status === 403 || res.status === 404) {
+      removeLocalSessionCache();
+      notifyAuthChanged();
+      return null;
+    }
+    if (!res.ok) return getCachedRole();
+    const json = (await res.json()) as SessionMeResponse;
+    const role = json.user?.role;
+    const userId = json.user?.id;
+    const safeRole =
+      role === "teacher" || role === "student" || role === "guardian" || role === "admin"
+        ? role
+        : null;
+    cacheRole(safeRole);
+    cacheUserId(typeof userId === "string" ? userId : null);
+    window.localStorage.removeItem(TOKEN_KEY);
+    notifyAuthChanged();
+    return safeRole;
+  } catch {
+    return getCachedRole();
+  }
 }
 
 export function panelPathForRole(role: UserRole): string {

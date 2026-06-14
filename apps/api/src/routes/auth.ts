@@ -6,7 +6,7 @@ import { signAccessToken } from "../auth/jwt.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
-import { clearSessionCookie, setSessionCookie } from "../auth/sessionCookie.js";
+import { clearSessionCookie, hasValidCsrfHeader, setSessionCookie, setSessionHintCookies } from "../auth/sessionCookie.js";
 
 const registerSchema = z.object({
   email: z.string().email().max(320),
@@ -64,6 +64,7 @@ auth.post("/register", async (c) => {
 
     const token = await signAccessToken({ userId: user.id, role: user.role });
     setSessionCookie(c, token);
+    setSessionHintCookies(c, { role: user.role, userId: user.id });
     return c.json(
       {
         token,
@@ -121,6 +122,7 @@ auth.post("/login", async (c) => {
 
   const token = await signAccessToken({ userId: row.id, role: row.role });
   setSessionCookie(c, token);
+  setSessionHintCookies(c, { role: row.role, userId: row.id });
   return c.json({
     token,
     user: {
@@ -133,6 +135,9 @@ auth.post("/login", async (c) => {
 });
 
 auth.post("/logout", (c) => {
+  if (!hasValidCsrfHeader(c)) {
+    return c.json({ error: "csrf_token_required" }, 403);
+  }
   clearSessionCookie(c);
   return c.json({ ok: true });
 });

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
-import { getRoleFromToken, getToken, panelPathForRole, type UserRole } from "../lib/auth";
+import { getCachedRole, getRoleFromToken, getToken, panelPathForRole, refreshSessionFromServer, type UserRole } from "../lib/auth";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 
 type PlanRow = {
@@ -58,29 +58,38 @@ const teacherSubscriptionBenefits = [
 export function RoleBasedPricing() {
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [sessionRole, setSessionRole] = useState(() => getCachedRole());
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [studentSub, setStudentSub] = useState<StudentSubscription | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sync = useCallback(() => setToken(getToken()), []);
+  const sync = useCallback(() => {
+    setToken(getToken());
+    setSessionRole(getCachedRole());
+  }, []);
 
   useEffect(() => {
+    let alive = true;
     setMounted(true);
     sync();
+    void refreshSessionFromServer().then(() => {
+      if (alive) sync();
+    });
     const on = () => sync();
     window.addEventListener("bo:auth-changed", on);
     window.addEventListener("storage", on);
     return () => {
+      alive = false;
       window.removeEventListener("bo:auth-changed", on);
       window.removeEventListener("storage", on);
     };
   }, [sync]);
 
-  const role = getRoleFromToken(token);
+  const role = getRoleFromToken(token) ?? sessionRole;
 
   useEffect(() => {
-    if (!mounted || !token || !role) return;
+    if (!mounted || !role) return;
     setLoading(true);
     setError(null);
     setPlans([]);
@@ -107,7 +116,7 @@ export function RoleBasedPricing() {
     );
   }
 
-  if (!token || !role) {
+  if (!role) {
     return (
       <section className="mt-10 rounded-2xl border border-brand-200 bg-brand-50 p-6 shadow-sm">
         <h2 className="text-xl font-semibold tracking-tight text-brand-950">Detaylı satın alma panelden ilerler</h2>

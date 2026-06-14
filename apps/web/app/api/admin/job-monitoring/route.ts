@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminProxyHeaders, internalApiBase } from "../_upstream";
+import { adminProxyHeaders, hasAdminProxySession, internalApiBase } from "../_upstream";
 
 export async function GET(req: NextRequest) {
-  const auth = req.headers.get("authorization");
-  if (!auth?.startsWith("Bearer ")) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasAdminProxySession(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const res = await fetch(`${internalApiBase()}/v1/admin/job-monitoring`, {
     headers: adminProxyHeaders(req),
     cache: "no-store",

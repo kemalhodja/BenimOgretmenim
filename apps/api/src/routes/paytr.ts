@@ -51,6 +51,19 @@ function base64HmacSha256(key: string, data: string): string {
   return crypto.createHmac("sha256", key).update(data).digest("base64");
 }
 
+function safeEqualText(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function parsePaytrAmountMinor(raw: string): number | null {
+  if (!/^\d+$/.test(raw)) return null;
+  const n = Number(raw);
+  if (!Number.isSafeInteger(n) || n < 0) return null;
+  return n;
+}
+
 async function requestPaytrIframeToken(opts: {
   env: PaytrCheckoutEnv;
   email: string;
@@ -510,10 +523,13 @@ paytr.post("/callback", async (c) => {
   const status = String(body["status"] ?? "");
   const totalAmount = String(body["total_amount"] ?? "");
   const hash = String(body["hash"] ?? "");
-  const receivedAmountMinor = Number(totalAmount);
+  const receivedAmountMinor = parsePaytrAmountMinor(totalAmount);
+  if (!merchantOid || !status || receivedAmountMinor === null) {
+    return c.text("PAYTR notification failed: invalid payload", 400);
+  }
 
   const calc = base64HmacSha256(merchantKey, `${merchantOid}${merchantSalt}${status}${totalAmount}`);
-  if (calc !== hash) {
+  if (!safeEqualText(calc, hash)) {
     return c.text("PAYTR notification failed: bad hash", 400);
   }
 

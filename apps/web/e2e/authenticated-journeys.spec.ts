@@ -34,6 +34,23 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
     await expect(page.getByText("Başvuru durumlarınız")).toBeVisible();
   });
 
+  test("oturum: login sonrası JWT localStorage'a yazılmaz, cookie ile panel yönlendirme çalışır", async ({ page, context }) => {
+    await loginViaUi(page, SEED_USERS.student.email, SEED_USERS.student.password);
+    await expect(page).toHaveURL(/\/student\/panel/);
+
+    const storedToken = await page.evaluate(() => window.localStorage.getItem("bo:token"));
+    const cachedRole = await page.evaluate(() => window.localStorage.getItem("bo:role"));
+    expect(storedToken).toBeNull();
+    expect(cachedRole).toBe("student");
+
+    const cookies = await context.cookies();
+    expect(cookies.some((cookie) => cookie.name === "bo_session" && cookie.httpOnly)).toBeTruthy();
+    expect(cookies.some((cookie) => cookie.name === "bo_csrf" && !cookie.httpOnly)).toBeTruthy();
+
+    await page.goto("/panel");
+    await expect(page).toHaveURL(/\/student\/panel/);
+  });
+
   test("mobil öğrenci: alt navigasyon tek elle temel akışları gösterir", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "mobile-chrome", "Mobil alt nav sadece mobile-chrome projesinde doğrulanır.");
     await loginViaUi(page, SEED_USERS.student.email, SEED_USERS.student.password);

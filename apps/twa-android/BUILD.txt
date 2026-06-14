@@ -7,6 +7,37 @@ BenimÖğretmenim — Google Play (TWA) hazırlığı
    - İlk açılışta Gradle sync; ardından Run ile cihazda/emülatörde dene.
    - applicationId: com.benimogretmenim.twa (assetlinks ile aynı olmalı)
    - Varsayılan site: strings.xml içindeki twa_default_url + AndroidManifest VIEW host
+   - Android Gradle Plugin: 8.13.0
+   - Önerilen Gradle: 8.13
+
+0.1) APK üretimi (GitHub Actions)
+   - Workflow: .github/workflows/android-apk.yml
+   - GitHub → Actions → "Build Android APK" → Run workflow
+   - Artifact adı: benimogretmenim-android-apks
+   - Debug APK: apps/twa-android/app/build/outputs/apk/debug/app-debug.apk
+   - Unsigned release APK: apps/twa-android/app/build/outputs/apk/release/app-release-unsigned.apk
+   - Debug APK cihazda test içindir. Play Store yayını için signed release gerekir.
+
+0.2) Yerel APK üretimi
+   Gerekenler:
+   - JDK 17
+   - Android SDK Platform 35
+   - Android SDK Build Tools
+   - Gradle 8.13 veya Android Studio Gradle sync
+
+   Komut:
+   cd apps/twa-android
+   gradle :app:assembleDebug
+
+   Çıktı:
+   app/build/outputs/apk/debug/app-debug.apk
+
+   Android Studio Gradle 9.x seçerse ve build hata verirse:
+   - Settings → Build, Execution, Deployment → Build Tools → Gradle
+   - Gradle JDK: Embedded JDK / JetBrains Runtime
+   - Gradle dağıtımı olarak 8.13 kullanın veya GitHub Actions artifact yolunu tercih edin.
+
+   Bu makinede JAVA_HOME / java ve Android SDK yoksa yerel build alınamaz; GitHub Actions artifact yolu kullanılır.
 
 1) Android uygulaması (TWA kabuğu)
    - Öneri: Bubblewrap ile üretim (Google’ın resmi aracı):
@@ -25,6 +56,13 @@ BenimÖğretmenim — Google Play (TWA) hazırlığı
      apps/web/public/.well-known/assetlinks.json
    - Şu an canlıda boş dizi [] bırakıldı (yanlış doğrulama riski yok).
    - Yayın öncesi: şablondaki package_name ve sha256_cert_fingerprints gerçek değerlerle değiştirin.
+   - Debug APK testinde tam TWA doğrulaması için debug certificate SHA-256 da eklenebilir.
+   - Play Store için Google Play App Signing SHA-256 değeri kullanılmalıdır.
+
+3.1) Debug APK test notu
+   - assetlinks.json boş kaldığında uygulama yine paketlenir ve siteyi açar.
+   - Digital Asset Links doğrulaması tamamlanana kadar Chrome Custom Tab davranışı görülebilir.
+   - Tam ekran TWA deneyimi için canlı web kökünde doğru assetlinks.json şarttır.
 
 4) Doğrulama
    - https://developers.google.com/digital-asset-links/tools/generator
