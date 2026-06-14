@@ -18,6 +18,22 @@ BenimÖğretmenim — Google Play (TWA) hazırlığı
    - Unsigned release APK: apps/twa-android/app/build/outputs/apk/release/app-release-unsigned.apk
    - Debug APK cihazda test içindir. Play Store yayını için signed release gerekir.
 
+0.1.1) Google Play için signed AAB üretimi (GitHub Actions)
+   - Workflow: .github/workflows/android-aab.yml
+   - GitHub → Repository → Settings → Secrets and variables → Actions → New repository secret
+   - Aşağıdaki secret değerleri eklenmeden workflow bilinçli olarak hata verir:
+     ANDROID_UPLOAD_KEYSTORE_BASE64
+     ANDROID_KEYSTORE_PASSWORD
+     ANDROID_KEY_ALIAS
+     ANDROID_KEY_PASSWORD
+   - Secret değerleri bu makinede oluşturulan yerel dosyadan alınır:
+     apps/twa-android/play-upload-key.secrets.local.txt
+   - Workflow çalışınca artifact adı:
+     benimogretmenim-release-aab
+   - Google Play'e yüklenecek dosya:
+     app/build/outputs/bundle/release/app-release.aab
+   - Keystore ve secret dosyaları git'e eklenmez; .gitignore tarafından korunur.
+
 0.2) Yerel APK üretimi
    Gerekenler:
    - JDK 17
@@ -49,6 +65,10 @@ BenimÖğretmenim — Google Play (TWA) hazırlığı
    - Uygulama kimliği (applicationId / package name) sabitlenir.
    - İmzalama: "App signing by Google Play" açıksa Play’in gösterdiği SHA-256 parmak izini kullanın.
    - Yerel debug için ayrıca upload key / debug SHA eklemeniz gerekebilir.
+   - İlk AAB yüklemesinden sonra Play Console → Setup → App integrity ekranındaki
+     "App signing key certificate" SHA-256 değerini assetlinks.json içine yazın.
+   - Upload key SHA-256 değeri imzalama/anahtar takibi için saklanır; Play dağıtımında
+     genellikle assetlinks için Play App Signing SHA-256 gerekir.
 
 3) Digital Asset Links
    - Bu repodaki şablon: apps/twa-android/assetlinks.template.json

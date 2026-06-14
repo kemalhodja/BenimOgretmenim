@@ -2,6 +2,11 @@
 /build/
 **/build/
 local.properties
+keystore.properties
+*.jks
+*.keystore
+*.secrets.local.txt
+upload-key-certificate.txt
 *.iml
 .idea/
 .DS_Store
