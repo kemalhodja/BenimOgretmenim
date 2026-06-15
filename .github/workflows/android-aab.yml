@@ -7,9 +7,9 @@ jobs:
   build-aab:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -46,7 +46,7 @@ jobs:
         run: gradle :app:bundleRelease
 
       - name: Upload AAB artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benimogretmenim-release-aab
           path: apps/twa-android/app/build/outputs/bundle/release/*.aab
