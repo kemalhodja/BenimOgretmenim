@@ -31,7 +31,7 @@ const audiencePlans = [
   {
     title: "Öğretmen",
     price: "1750 TL / 30 ay · 2500 TL / 60 ay",
-    comparePrice: "14.000 TL / 30 ay · 20.000 TL / 60 ay",
+    comparePrice: "14.000 TL / 6 ay · 20.000 TL / 12 ay",
     campaignNote: "Erken erişim hediyesi: 6 ay aboneliğe 24 ay, 12 ay aboneliğe 48 ay ücretsiz hediye süre. 9 Eylül’e kadar veya ilk 500 öğretmen dolana kadar geçerlidir.",
     body: "Sınırsız teklif, öğretmen görünürlüğü ve kampanya ilan hakkı. İlk kampanya ilanı ücretsiz; sonraki ilanlar için 1000 TL ödersiniz.",
     href: "/kayit?role=teacher",
