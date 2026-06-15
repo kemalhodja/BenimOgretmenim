@@ -7,6 +7,8 @@ BenimÖğretmenim — Google Play (TWA) hazırlığı
    - İlk açılışta Gradle sync; ardından Run ile cihazda/emülatörde dene.
    - applicationId: com.benimogretmenim.twa (assetlinks ile aynı olmalı)
    - Varsayılan site: strings.xml içindeki twa_default_url + AndroidManifest VIEW host
+   - compileSdk: 36
+   - targetSdk: 35
    - Android Gradle Plugin: 8.13.0
    - Önerilen Gradle: 8.13
 
@@ -37,7 +39,7 @@ BenimÖğretmenim — Google Play (TWA) hazırlığı
 0.2) Yerel APK üretimi
    Gerekenler:
    - JDK 17
-   - Android SDK Platform 35
+   - Android SDK Platform 36
    - Android SDK Build Tools
    - Gradle 8.13 veya Android Studio Gradle sync
 

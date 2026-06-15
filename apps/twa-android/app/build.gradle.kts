@@ -27,7 +27,7 @@ val hasReleaseSigningConfig =
 
 android {
     namespace = "com.benimogretmenim.twa"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.benimogretmenim.twa"
