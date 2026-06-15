@@ -941,7 +941,10 @@ export default function OgretmenDetayPage() {
               dangerouslySetInnerHTML={{ __html: JSON.stringify(profileSchema) }}
             />
           ) : null}
-          <section className="mt-8 overflow-hidden rounded-[2rem] border border-brand-200 bg-[radial-gradient(circle_at_top_left,#cffafe_0%,#ffffff_38%,#fff7ed_100%)] shadow-xl shadow-paper-900/5">
+          <section className="relative mt-8 overflow-hidden rounded-[2rem] border border-brand-200 bg-[radial-gradient(circle_at_top_left,#cffafe_0%,#ffffff_38%,#fff7ed_100%)] shadow-xl shadow-paper-900/5">
+            <div className="bo-ambient-orb pointer-events-none absolute -left-12 top-14 h-36 w-36 rounded-full bg-brand-300/30 blur-3xl" aria-hidden />
+            <div className="bo-ambient-orb pointer-events-none absolute -right-10 bottom-14 h-40 w-40 rounded-full bg-warm-300/30 blur-3xl [animation-delay:1.6s]" aria-hidden />
+            <div className="bo-shimmer-line absolute inset-x-8 top-0 h-px bg-white/70" aria-hidden />
             <div className="border-b border-white/70 bg-white/55 px-5 py-3 backdrop-blur">
               <div className="flex flex-col gap-2 text-xs font-semibold text-paper-800/65 sm:flex-row sm:items-center sm:justify-between">
                 <span>{teacher.display_name} kişisel ders sayfası</span>
@@ -961,7 +964,7 @@ export default function OgretmenDetayPage() {
                   </span>
                 </div>
                 <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-start">
-                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.75rem] bg-brand-900 text-3xl font-semibold text-white shadow-lg shadow-brand-900/20">
+                  <div className="bo-float-delayed flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.75rem] bg-brand-900 text-3xl font-semibold text-white shadow-lg shadow-brand-900/20">
                     {teacherInitials}
                   </div>
                   <div>
@@ -997,7 +1000,7 @@ export default function OgretmenDetayPage() {
                         metadata: { source: "teacher_profile_hero", teacherName: teacher.display_name },
                       })
                     }
-                    className="rounded-xl bg-brand-800 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-900/15 hover:bg-brand-900"
+                    className="bo-glow-pulse rounded-xl bg-brand-800 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-900/15 hover:bg-brand-900"
                   >
                     Demo ders talep et
                   </Link>
@@ -1044,7 +1047,7 @@ export default function OgretmenDetayPage() {
                 {shortlistOk ? <p className="mt-2 text-xs font-medium text-brand-900">{shortlistOk}</p> : null}
                 {shareOk ? <p className="mt-2 text-xs font-medium text-paper-800/70">{shareOk}</p> : null}
               </div>
-              <aside className="rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-xl shadow-paper-900/10">
+              <aside className="bo-card-lift rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-xl shadow-paper-900/10">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
@@ -1057,7 +1060,7 @@ export default function OgretmenDetayPage() {
                       {primaryBranchName} için profesyonel tanıtım sayfası
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-brand-50 px-3 py-2 text-center">
+                  <div className="rounded-2xl bg-brand-50 px-3 py-2 text-center ring-1 ring-brand-100">
                     <div className="text-lg font-semibold text-brand-900">{confidenceScore}</div>
                     <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-900/60">karar güveni</div>
                   </div>

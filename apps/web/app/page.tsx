@@ -316,6 +316,8 @@ export default function Home() {
       <HomeLaunchAnnouncement />
       <section className="relative overflow-hidden border-b border-brand-100 bg-[linear-gradient(135deg,#f7faf8_0%,#eef9f8_48%,#fff8f1_100%)] text-paper-950">
         <HeroArt />
+        <div className="bo-ambient-orb pointer-events-none absolute left-[8%] top-16 h-40 w-40 rounded-full bg-brand-300/25 blur-3xl" aria-hidden />
+        <div className="bo-ambient-orb pointer-events-none absolute right-[10%] top-28 h-44 w-44 rounded-full bg-warm-300/25 blur-3xl [animation-delay:1.4s]" aria-hidden />
         <div
           className="pointer-events-none absolute inset-0 opacity-80 [background-image:linear-gradient(115deg,rgba(88,170,169,0.14),transparent_30%),linear-gradient(245deg,rgba(235,163,107,0.13),transparent_32%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.42),transparent_34%)]"
           aria-hidden
@@ -344,7 +346,7 @@ export default function Home() {
                 {heroSignals.map((signal) => (
                   <span
                     key={signal}
-                    className="rounded-full border border-brand-200 bg-white/75 px-3 py-1.5 text-xs font-semibold text-brand-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
+                    className="bo-card-lift rounded-full border border-brand-200 bg-white/75 px-3 py-1.5 text-xs font-semibold text-brand-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
                   >
                     {signal}
                   </span>
@@ -370,7 +372,7 @@ export default function Home() {
                   />
                   <button
                     type="submit"
-                    className="mt-2 w-full rounded-2xl bg-gradient-to-r from-brand-500 via-brand-400 to-warm-300 px-5 py-3 text-sm font-bold text-white shadow-[0_12px_42px_rgba(88,170,169,0.22)] hover:brightness-105 sm:mt-0 sm:w-auto"
+                    className="bo-glow-pulse mt-2 w-full rounded-2xl bg-gradient-to-r from-brand-500 via-brand-400 to-warm-300 px-5 py-3 text-sm font-bold text-white shadow-[0_12px_42px_rgba(88,170,169,0.22)] hover:brightness-105 sm:mt-0 sm:w-auto"
                   >
                     Ara
                   </button>
@@ -410,7 +412,7 @@ export default function Home() {
               <HomeHeroPersonalized />
               <dl className="mt-10 grid grid-cols-2 gap-3 border-t border-brand-100 pt-10 sm:grid-cols-4 sm:gap-4">
                 {homeHighlights.map((item) => (
-                  <div key={item.title} className="rounded-2xl border border-brand-100 bg-white/70 p-4 backdrop-blur">
+                  <div key={item.title} className="bo-card-lift rounded-2xl border border-brand-100 bg-white/70 p-4 backdrop-blur">
                     <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand-50 text-brand-800 ring-1 ring-brand-100">
                       <HighlightIcon name={item.icon} />
                     </div>
@@ -422,7 +424,8 @@ export default function Home() {
             </div>
 
             <figure className="order-first mx-auto w-full max-w-md lg:order-none lg:mx-0 lg:max-w-none">
-              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[2rem] border border-white/70 bg-white/80 p-3 shadow-[0_30px_110px_rgba(88,170,169,0.22)] backdrop-blur-xl">
+              <div className="bo-float-slow relative aspect-[4/3] w-full overflow-hidden rounded-[2rem] border border-white/70 bg-white/80 p-3 shadow-[0_30px_110px_rgba(88,170,169,0.22)] backdrop-blur-xl">
+                <div className="bo-shimmer-line absolute inset-x-6 top-3 z-10 h-px rounded-full bg-white/55" aria-hidden />
                 <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[1rem]">
                   <Image
                     src={HERO_PHOTO}
@@ -433,7 +436,7 @@ export default function Home() {
                     priority
                   />
                   <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-brand-950/55 via-brand-950/12 to-warm-100/20" />
-                  <div className="absolute left-4 top-4 rounded-2xl border border-white/55 bg-white/82 px-4 py-3 text-paper-950 shadow-xl backdrop-blur">
+                  <div className="bo-float-delayed absolute left-4 top-4 rounded-2xl border border-white/55 bg-white/82 px-4 py-3 text-paper-950 shadow-xl backdrop-blur">
                     <div className="text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-brand-800/75">
                       Bugünkü özet
                     </div>
@@ -441,7 +444,7 @@ export default function Home() {
                   </div>
                   <div className="absolute bottom-4 left-4 right-4 grid gap-2 sm:grid-cols-3">
                     {avantPreviewCards.map((card) => (
-                      <div key={card.label} className="rounded-2xl border border-white/55 bg-white/80 p-3 text-paper-950 backdrop-blur-md">
+                      <div key={card.label} className="bo-card-lift rounded-2xl border border-white/55 bg-white/80 p-3 text-paper-950 backdrop-blur-md">
                         <div className="text-[0.65rem] uppercase tracking-wide text-paper-800/60">{card.label}</div>
                         <div className="mt-1 text-lg font-semibold">{card.value}</div>
                         <div className="mt-1 text-[0.68rem] leading-tight text-paper-800/65">{card.hint}</div>

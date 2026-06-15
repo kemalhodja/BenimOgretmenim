@@ -1320,11 +1320,14 @@ function OgretmenlerPageInner() {
               const favorite = favoriteTeacherIds.has(t.id);
               const compared = compareTeachers.some((x) => x.id === t.id);
               const reasons = recommendationReasons(t);
+              const score = trustScore(t);
               return (
               <article
                 key={t.id}
-                className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm transition hover:border-brand-200 hover:bg-brand-50/20"
+                className="bo-card-lift group relative overflow-hidden rounded-2xl border border-paper-200 bg-white p-4 shadow-sm hover:border-brand-200 hover:bg-brand-50/20"
               >
+                <span className="bo-shimmer-line absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-300 via-white to-warm-300 opacity-70" aria-hidden />
+                <span className="pointer-events-none absolute -right-12 -top-16 h-32 w-32 rounded-full bg-brand-200/0 blur-3xl transition group-hover:bg-brand-200/35" aria-hidden />
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <Link href={`/ogretmenler/${t.id}`} className="text-sm font-semibold text-paper-900 hover:text-brand-800">
@@ -1341,8 +1344,8 @@ function OgretmenlerPageInner() {
                         : `Durum: ${t.verification_status}`}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-900">
-                        Güven {trustScore(t)}/100
+                      <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-900 ring-1 ring-brand-100">
+                        Güven {score}/100
                       </span>
                       <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
                         {qualityLabel(t.profile_quality_score)} · {t.profile_quality_score ?? 0}/100
@@ -1372,7 +1375,16 @@ function OgretmenlerPageInner() {
                       </span>
                     </div>
                     <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3">
-                      <div className="text-xs font-semibold text-paper-900">{trustActionLabel(t)}</div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs font-semibold text-paper-900">{trustActionLabel(t)}</div>
+                        <div className="text-[11px] font-semibold text-brand-900">{score}%</div>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white ring-1 ring-paper-200">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-brand-400 to-warm-300 transition-[width]"
+                          style={{ width: `${score}%` }}
+                        />
+                      </div>
                       <div className="mt-1 flex flex-wrap gap-1.5">
                         {(reasons.length ? reasons : ["Yeni profil; demo ve mesajla beklentiyi netleştirin"]).map((reason) => (
                           <span key={reason} className="rounded-full bg-white px-2 py-0.5 text-[11px] text-paper-800 ring-1 ring-paper-200">
@@ -1398,7 +1410,7 @@ function OgretmenlerPageInner() {
                         metadata: { source: "teacher_search", teacherName: t.display_name },
                       })
                     }
-                    className="rounded-xl bg-brand-800 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-900"
+                    className="rounded-xl bg-brand-800 px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_28px_rgba(37,87,105,0.18)] hover:bg-brand-900"
                   >
                     Demo talep et
                   </Link>
