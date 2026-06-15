@@ -1,6 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
+const webServerPort = (() => {
+  try {
+    const url = new URL(baseURL);
+    return url.port || (url.protocol === "https:" ? "443" : "80");
+  } catch {
+    return "3000";
+  }
+})();
 
 export default defineConfig({
   testDir: "e2e",
@@ -26,7 +34,7 @@ export default defineConfig({
     stderr: "pipe",
     env: {
       ...process.env,
-      PORT: "3000",
+      PORT: process.env.PORT ?? webServerPort,
       HOSTNAME: "127.0.0.1",
       /** Yerel Playwright: build + start için (ci-web.mjs ile uyumlu) */
       WEB_ALLOW_HTTP: process.env.WEB_ALLOW_HTTP ?? "1",

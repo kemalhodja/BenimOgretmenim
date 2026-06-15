@@ -4,7 +4,7 @@ import {
   getTeacherPublicPayload,
   teacherJsonLd,
   teacherPageMetadata,
-  isTeacherIdParam,
+  extractTeacherIdParam,
 } from "./teacherPublicMeta";
 
 const siteUrl = publicSiteUrl();
@@ -26,16 +26,17 @@ export default async function OgretmenProfileLayout({
   params: Promise<{ teacherId: string }>;
 }>) {
   const { teacherId } = await params;
-  if (!isTeacherIdParam(teacherId)) {
+  const canonicalTeacherId = extractTeacherIdParam(teacherId);
+  if (!canonicalTeacherId) {
     return children;
   }
-  const data = await getTeacherPublicPayload(teacherId);
+  const data = await getTeacherPublicPayload(canonicalTeacherId);
   if (!data?.teacher) {
     return children;
   }
   const t = data.teacher;
   const jsonLd = teacherJsonLd({
-    teacherId,
+    teacherId: canonicalTeacherId,
     siteUrl,
     name: t.display_name?.trim() || "Öğretmen",
     description: t.bio_raw,

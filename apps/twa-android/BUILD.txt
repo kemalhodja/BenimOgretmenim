@@ -35,6 +35,8 @@ BenimÖğretmenim — Google Play (TWA) hazırlığı
    - Google Play'e yüklenecek dosya:
      app/build/outputs/bundle/release/app-release.aab
    - Keystore ve secret dosyaları git'e eklenmez; .gitignore tarafından korunur.
+   - Play Console açıklama, Data Safety ve ekran görüntüsü hazırlığı:
+     apps/twa-android/PLAY_STORE_LISTING.md
 
 0.2) Yerel APK üretimi
    Gerekenler:

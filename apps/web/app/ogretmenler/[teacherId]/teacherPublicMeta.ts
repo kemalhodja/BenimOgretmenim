@@ -11,6 +11,7 @@ type TeacherPublicPayload = {
     rating_avg: number | null;
     rating_count: number | null;
     verification_status: string;
+    has_active_subscription?: boolean;
     profile_site?: {
       headline?: string;
       subheadline?: string;
@@ -30,11 +31,39 @@ export function isTeacherIdParam(id: string): boolean {
   return uuidRe.test(id.trim());
 }
 
+export function extractTeacherIdParam(raw: string): string | null {
+  const value = raw.trim();
+  if (isTeacherIdParam(value)) return value;
+  return value.match(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)?.[0] ?? null;
+}
+
+function profileSlugPart(value: string): string {
+  const normalized = value
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return normalized || "ogretmen";
+}
+
+function teacherProfilePath(displayName: string, branchName: string | null | undefined, teacherId: string): string {
+  const slug = [displayName, branchName ?? "ozel-ders"].map(profileSlugPart).join("-");
+  return `/ogretmenler/${slug}-${teacherId}`;
+}
+
 export const getTeacherPublicPayload = cache(async (teacherId: string): Promise<TeacherPublicPayload | null> => {
-  if (!isTeacherIdParam(teacherId)) return null;
+  const id = extractTeacherIdParam(teacherId);
+  if (!id) return null;
   const base = getServerApiBaseUrl();
   try {
-    const res = await fetch(`${base}/v1/teachers/${encodeURIComponent(teacherId)}`, {
+    const res = await fetch(`${base}/v1/teachers/${encodeURIComponent(id)}`, {
       headers: { accept: "application/json" },
       next: { revalidate: 300 },
     });
@@ -56,7 +85,7 @@ export function teacherJsonLd(opts: {
   faq?: Array<{ question: string; answer: string }> | null;
 }): Record<string, unknown> {
   const base = opts.siteUrl.replace(/\/$/, "");
-  const url = `${base}/ogretmenler/${opts.teacherId}`;
+  const url = `${base}${teacherProfilePath(opts.name, opts.branchName, opts.teacherId)}`;
   const person: Record<string, unknown> = {
     "@type": "Person",
     "@id": `${url}#person`,
@@ -112,6 +141,13 @@ export async function teacherPageMetadata(
   const loc = [t.district_name, t.city_name].filter(Boolean).join(", ");
   const branch = t.profile_site?.primaryBranchName?.trim() || "özel ders";
   const title = loc ? `${name} · ${branch} (${loc})` : `${name} · ${branch}`;
+  if (t.has_active_subscription === false) {
+    return {
+      title,
+      description: `${name} için temel öğretmen profil bilgileri. Detaylı tanıtım, iletişim ve kişisel web sayfası abonelik sonrası açılır.`,
+      robots: { index: false, follow: true },
+    };
+  }
   const rawBio = (t.bio_raw ?? "").replace(/\s+/g, " ").trim();
   const stars =
     t.rating_avg != null && t.rating_count != null && t.rating_count > 0
@@ -124,10 +160,12 @@ export async function teacherPageMetadata(
     (profileIntro.length > 110 ? "…" : "") +
     stars +
     price +
-    " Demo ders, güvenli ödeme ve veli takibiyle profili inceleyin."
+    " Demo ders, WhatsApp/iletişim tercihi, güvenli ödeme ve veli takibiyle profili inceleyin."
   ).slice(0, 170);
 
-  const canonical = `${base}/ogretmenler/${teacherId}`;
+  const id = extractTeacherIdParam(teacherId);
+  const canonical = `${base}${teacherProfilePath(name, branch, id ?? teacherId)}`;
+  const image = `${base}/logo-marketing.png`;
 
   return {
     title,
@@ -139,11 +177,13 @@ export async function teacherPageMetadata(
       title: `${name} · ${branch} · BenimÖğretmenim`,
       description: description.slice(0, 200),
       locale: "tr_TR",
+      images: [{ url: image, width: 1200, height: 630, alt: `${name} öğretmen profili` }],
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title: `${name} · ${branch} · BenimÖğretmenim`,
       description: description.slice(0, 200),
+      images: [image],
     },
   };
 }

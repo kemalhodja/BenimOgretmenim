@@ -79,19 +79,38 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
 
   test("public öğretmen profili: kişisel web sitesi bölümleri görünür", async ({ page, request }) => {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3002";
-    const list = await request.get(`${apiBase}/v1/teachers?limit=1&sort=recommended`);
+    const list = await request.get(`${apiBase}/v1/teachers?limit=5&sort=recommended`);
     expect(list.ok()).toBeTruthy();
     const body = (await list.json()) as { teachers?: Array<{ id?: string }> };
-    const teacherId = body.teachers?.find((teacher) => typeof teacher.id === "string")?.id;
+    let teacherId: string | undefined;
+    for (const candidate of body.teachers ?? []) {
+      if (typeof candidate.id !== "string") continue;
+      const detail = await request.get(`${apiBase}/v1/teachers/${candidate.id}`);
+      if (!detail.ok()) continue;
+      const payload = (await detail.json()) as { teacher?: { has_active_subscription?: boolean } };
+      if (payload.teacher?.has_active_subscription !== false) {
+        teacherId = candidate.id;
+        break;
+      }
+    }
     test.skip(!teacherId, "Seed öğretmen bulunamadı.");
 
     await page.goto(`/ogretmenler/${teacherId}`);
-    await expect(page.getByRole("heading", { name: /güvenli başlangıç|güvenli ders akışı/i })).toBeVisible();
-    await expect(page.getByText("Profil vitrini")).toBeVisible();
-    await expect(page.getByText("BenimÖğretmenim farkı")).toBeVisible();
+    await expect(page).toHaveURL(/\/ogretmenler\/.+-[0-9a-f-]{36}/);
+    await expect(page).toHaveTitle(/BenimÖğretmenim|·/);
+    await expect(page.getByRole("heading", { name: /güvenli başlangıç|güvenli ders akışı|özel ders/i })).toBeVisible();
+    await expect(page.getByText("Kişisel web sayfası")).toBeVisible();
+    await expect(page.getByText("Tanıtım paketi")).toBeVisible();
+    await expect(page.getByText("Sonuç odaklı ders planı")).toBeVisible();
     await expect(page.getByText("Sadece ilan değil, yönetilen ders süreci")).toBeVisible();
     await expect(page.getByRole("link", { name: /Demo ders talep et|Demo talep et/ }).first()).toBeVisible();
     await expect(page.getByText("Sık sorulan sorular")).toBeVisible();
+    const graphSchemas = await page.locator('script[type="application/ld+json"]').evaluateAll((nodes) =>
+      nodes
+        .map((node) => JSON.parse(node.textContent ?? "{}") as { "@graph"?: Array<{ "@type"?: string }> })
+        .filter((schema) => Array.isArray(schema["@graph"])),
+    );
+    expect(graphSchemas.some((schema) => schema["@graph"]?.some((item) => item["@type"] === "Person"))).toBeTruthy();
   });
 
   test("veli: giriş → veli paneli", async ({ page }) => {
