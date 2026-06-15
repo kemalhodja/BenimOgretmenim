@@ -6,6 +6,9 @@
 #   API:  https://benim-ogretmenim.onrender.com
 #   Web: https://benimogretmenim.onrender.com
 #
+# API ve Web servislerinde autoDeploy aciktir; main'e push canli yayini tetikler.
+# GitHub deploy hook'lari sadece autoDeploy kapatilirsa veya manuel hook istenirse gerekir.
+#
 # API (isteğe bağlı): API_GLOBAL_RATE_LIMIT = IP başına penceredeki maks. istek (varsayılan 800);
 #   pencere ms: API_GLOBAL_RATE_WINDOW_MS (varsayılan 60000). Kapatmak için "0".
 #   Hariç: GET /health, POST /v1/paytr/callback. Vitest / NODE_ENV=test otomatik devre dışı.
@@ -34,6 +37,7 @@ services:
     plan: free
     region: frankfurt
     branch: main
+    autoDeploy: true
     rootDir: apps/api
     # db:migrate tsx ile çalışır; tsx prod dependencies içinde tutulur (Render preDeploy ortamında
     # devDependencies her zaman gelmeyebilir).
@@ -151,6 +155,7 @@ services:
     plan: free
     region: frankfurt
     branch: main
+    autoDeploy: true
     rootDir: apps/web
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start

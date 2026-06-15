@@ -13,6 +13,7 @@ BenimOgretmenim uzerinde calisirken sadece kod yazma; urun, gelir, guven, operas
 - Profesyonel SaaS gibi davran: para hareketi, audit izi, bildirim, yetki kontrolu, idempotency ve hata durumlarini varsayilan kalite olarak ele al.
 - Gelir modeliyle celismeyen karar ver: ogrenci platforma oder; ogretmen komisyon odemez, platform ogretmene belirlenen ders/saat hak edisini oder.
 - Gereksiz ozellik ekleme; once en yuksek etki/risk oranina sahip dar iyilestirmeyi sec.
+- Her isi bitirdikten sonra durup kalan en onemli riski, eksigi veya otomasyon ihtiyacini degerlendir; gerekliyse bunu da uygula ya da kullanici onayi gerektiriyorsa acikca soyle.
 - UI degisikliklerinde sadece guzel gorunum degil, operasyonel netlik hedefle: kim ne yapacak, ne durumda, siradaki aksiyon ne?
 - Kritik akislarda test ekle: odeme, iade, hak edis, kayit, yetki, bildirim, sinif erisimi ve admin operasyonlari testsiz birakilmaz.
 - Mevcut mimariye uy: Hono API, Next.js App Router, PostgreSQL migration, wallet/audit/notification desenlerini tekrar kullan.
