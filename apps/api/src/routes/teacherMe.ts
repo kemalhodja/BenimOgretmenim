@@ -9,6 +9,7 @@ export const teacherMe = new Hono<{ Variables: AppVariables }>();
 const patchMeSchema = z.object({
   displayName: z.string().min(1).max(120).optional(),
   phone: z.string().max(40).nullable().optional(),
+  contactPublic: z.boolean().optional(),
   bioRaw: z.string().max(20000).nullable().optional(),
   videoUrl: z
     .union([z.string().url().max(2000), z.literal(""), z.null()])
@@ -78,6 +79,7 @@ teacherMe.get("/me", requireAuth, async (c) => {
        t.bio_raw,
        t.bio_ai_generated,
        t.video_url,
+       t.contact_public,
        t.instagram_url,
        t.platform_links_jsonb,
        t.exam_docs_jsonb,
@@ -147,6 +149,10 @@ teacherMe.get("/me", requireAuth, async (c) => {
     instagramLinked:
       typeof row.instagram_url === "string" &&
       row.instagram_url.trim().length > 0,
+    publicContactEnabled:
+      row.contact_public === true &&
+      typeof row.phone === "string" &&
+      row.phone.trim().length > 0,
     platformLinksAdded:
       Array.isArray(row.platform_links_jsonb) &&
       row.platform_links_jsonb.length > 0,
@@ -230,6 +236,7 @@ teacherMe.get("/me", requireAuth, async (c) => {
       bioRaw: row.bio_raw,
       bioAiGenerated: row.bio_ai_generated,
       videoUrl: row.video_url,
+      contactPublic: row.contact_public,
       instagramUrl: row.instagram_url,
       platformLinks: row.platform_links_jsonb,
       examDocs: row.exam_docs_jsonb,
@@ -310,6 +317,10 @@ teacherMe.patch("/me", requireAuth, async (c) => {
         body.videoUrl === "" || body.videoUrl === null ? null : body.videoUrl;
       tSets.push(`video_url = $${ti++}`);
       tVals.push(v);
+    }
+    if (body.contactPublic !== undefined) {
+      tSets.push(`contact_public = $${ti++}`);
+      tVals.push(body.contactPublic);
     }
     if (body.instagramUrl !== undefined) {
       const v =

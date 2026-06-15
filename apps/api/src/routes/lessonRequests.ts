@@ -651,7 +651,7 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
   const teacherId = tr.rows[0].id as string;
   const teacherDisplayName = (tr.rows[0].display_name as string | undefined) ?? "Öğretmen";
 
-  // Abonelik kontrolü: aktif abonelik varsa ücretsiz; yoksa teklif başına ücret (500 TL).
+  // Abonelik kontrolü: aktif abonelik varsa ücretsiz; yoksa günde 1 normal teklif ücretsiz, sonrası ücretli.
   const activeSub = await pool.query(
     `select 1
      from teacher_subscriptions s
@@ -662,13 +662,22 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
     [teacherId],
   );
   const offerFeeMinor = Number(process.env.OFFER_FEE_MINOR ?? "50000"); // 500 TL
+  const dailyFreeOfferLimit = Number(process.env.FREE_DAILY_TEACHER_OFFERS ?? "1");
   if (!Number.isFinite(offerFeeMinor) || offerFeeMinor < 0 || offerFeeMinor > 1_000_000_00) {
     return c.json({ error: "offer_fee_invalid" }, 500);
+  }
+  if (
+    !Number.isInteger(dailyFreeOfferLimit) ||
+    dailyFreeOfferLimit < 0 ||
+    dailyFreeOfferLimit > 20
+  ) {
+    return c.json({ error: "free_daily_offer_limit_invalid" }, 500);
   }
 
   const client = await pool.connect();
   try {
     await client.query("begin");
+    await client.query(`select pg_advisory_xact_lock(hashtext($1))`, [`teacher_offer:${teacherId}`]);
 
     const reqRow = await client.query(
       `select lr.id,
@@ -701,8 +710,27 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
     const isTargetedDemo =
       reqRow.rows[0].request_kind === "demo" && targetTeacherId === teacherId;
 
-    // Hedefli demo yanıtı ücretsiz; normal taleplerde abonelik yoksa teklif ücreti alınır.
+    let chargedOfferFeeMinor = 0;
+    let freeDailyOfferUsed = false;
+    let dailyNormalOfferCount = 0;
+
+    // Hedefli demo yanıtı ücretsiz; normal taleplerde abonelik yoksa günlük ücretsiz hak kontrol edilir.
     if (!isTargetedDemo && !activeSub.rowCount && offerFeeMinor > 0) {
+      const dailyUsage = await client.query<{ count: string }>(
+        `select count(*)::text as count
+         from lesson_offers o
+         join lesson_requests lr on lr.id = o.request_id
+         where o.teacher_id = $1
+           and not (lr.request_kind = 'demo' and lr.target_teacher_id = $1)
+           and o.created_at >= (date_trunc('day', now() at time zone 'Europe/Istanbul') at time zone 'Europe/Istanbul')
+           and o.created_at < ((date_trunc('day', now() at time zone 'Europe/Istanbul') + interval '1 day') at time zone 'Europe/Istanbul')`,
+        [teacherId],
+      );
+      dailyNormalOfferCount = Number(dailyUsage.rows[0]?.count ?? "0");
+      freeDailyOfferUsed = dailyNormalOfferCount < dailyFreeOfferLimit;
+    }
+
+    if (!isTargetedDemo && !activeSub.rowCount && offerFeeMinor > 0 && !freeDailyOfferUsed) {
       const available = await getWalletAvailableMinor(userId, client);
       if (available < BigInt(offerFeeMinor)) {
         await client.query("rollback");
@@ -720,6 +748,7 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
         metadata: { offerFeeMinor, requestId, teacherId },
         client,
       });
+      chargedOfferFeeMinor = offerFeeMinor;
     }
 
     const offer = await client.query(
@@ -766,7 +795,12 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
     return c.json(
       {
         offer: offer.rows[0],
-        chargedOfferFeeMinor: !isTargetedDemo && !activeSub.rowCount ? offerFeeMinor : 0,
+        chargedOfferFeeMinor,
+        freeDailyOfferUsed,
+        remainingFreeDailyOffers:
+          !isTargetedDemo && !activeSub.rowCount
+            ? Math.max(0, dailyFreeOfferLimit - dailyNormalOfferCount - 1)
+            : dailyFreeOfferLimit,
       },
       201,
     );

@@ -17,6 +17,21 @@ async function tableExists(table: string): Promise<boolean> {
   return r.rows[0]?.exists === true;
 }
 
+async function columnExists(table: string, column: string): Promise<boolean> {
+  if (!(await dbReady())) return false;
+  const r = await pool.query<{ exists: boolean }>(
+    `select exists (
+       select 1
+       from information_schema.columns
+       where table_schema = 'public'
+         and table_name = $1
+         and column_name = $2
+     ) as exists`,
+    [table, column],
+  );
+  return r.rows[0]?.exists === true;
+}
+
 describe("quality contract surfaces", () => {
   it("accepts valid funnel analytics events and rejects unknown events", async () => {
     if (!(await tableExists("funnel_events"))) return;
@@ -113,6 +128,95 @@ describe("quality contract surfaces", () => {
     expect(Array.isArray(detailBody.teacher?.profile_site?.stats)).toBe(true);
     expect(Array.isArray(detailBody.teacher?.profile_site?.methodSteps)).toBe(true);
     expect(Array.isArray(detailBody.teacher?.profile_site?.faq)).toBe(true);
+  });
+
+  it("limits public teacher profile details until subscription is active", async () => {
+    if (!(await tableExists("teachers"))) return;
+    if (!(await tableExists("teacher_subscriptions"))) return;
+    if (!(await columnExists("teachers", "contact_public"))) return;
+
+    const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const branch = await pool.query<{ id: number }>(
+      `insert into branches (name, slug)
+       values ($1, $2)
+       on conflict (slug) do update set name = excluded.name
+       returning id`,
+      [`Sınırlı Profil ${suffix}`, `sinirli-profil-${suffix}`],
+    );
+    const user = await pool.query<{ id: string }>(
+      `insert into users (email, display_name, role, phone)
+       values ($1, $2, 'teacher', $3)
+       returning id`,
+      [`limited-teacher-${suffix}@example.test`, "Sınırlı Profil Öğretmeni", "+90 555 111 22 33"],
+    );
+    const teacher = await pool.query<{ id: string }>(
+      `insert into teachers (
+         user_id, verification_status, contact_public, bio_raw, video_url, instagram_url, platform_links_jsonb, exam_docs_jsonb
+       ) values ($1, 'verified', true, $2, $3, $4, $5::jsonb, $6::jsonb)
+       returning id`,
+      [
+        user.rows[0].id,
+        "Bu zengin biyografi abonesiz public profilde görünmemeli.",
+        "https://example.com/video",
+        "https://instagram.com/sinirli",
+        JSON.stringify([{ title: "Kişisel site", url: "https://example.com" }]),
+        JSON.stringify([{ title: "Doküman", url: "https://example.com/doc.pdf", kind: "dokuman" }]),
+      ],
+    );
+    await pool.query(
+      `insert into teacher_branches (teacher_id, branch_id, is_primary, hourly_rate_range)
+       values ($1, $2, true, int4range(100000, 200000, '[]'))`,
+      [teacher.rows[0].id, branch.rows[0].id],
+    );
+
+    try {
+      const limited = await app.request(`http://localhost/v1/teachers/${teacher.rows[0].id}`);
+      expect(limited.status).toBe(200);
+      const limitedBody = (await limited.json()) as {
+        teacher?: {
+          contact_phone?: unknown;
+          bio_raw?: unknown;
+          video_url?: unknown;
+          instagram_url?: unknown;
+          has_active_subscription?: boolean;
+          profile_site?: { stats?: Array<{ label: string; value: string }> };
+        };
+        branches?: Array<{ branch_name?: string; hourly_rate_min_minor?: unknown }>;
+        reviews?: unknown[];
+      };
+      expect(limitedBody.teacher?.has_active_subscription).toBe(false);
+      expect(limitedBody.teacher?.contact_phone).toBeNull();
+      expect(limitedBody.teacher?.bio_raw).toBeNull();
+      expect(limitedBody.teacher?.video_url).toBeNull();
+      expect(limitedBody.teacher?.instagram_url).toBeNull();
+      expect(limitedBody.branches?.[0]?.branch_name).toBe(`Sınırlı Profil ${suffix}`);
+      expect(limitedBody.branches?.[0]?.hourly_rate_min_minor).toBeNull();
+      expect(limitedBody.reviews).toEqual([]);
+
+      await pool.query(
+        `insert into teacher_subscriptions (
+           teacher_id, plan_code, status, started_at, expires_at, promo_multiplier, paid_amount_minor, currency
+         ) values ($1, 'teacher_6m', 'active', now(), now() + interval '30 days', 1, 0, 'TRY')`,
+        [teacher.rows[0].id],
+      );
+
+      const full = await app.request(`http://localhost/v1/teachers/${teacher.rows[0].id}`);
+      expect(full.status).toBe(200);
+      const fullBody = (await full.json()) as {
+        teacher?: {
+          contact_phone?: unknown;
+          bio_raw?: unknown;
+          video_url?: unknown;
+          has_active_subscription?: boolean;
+        };
+      };
+      expect(fullBody.teacher?.has_active_subscription).toBe(true);
+      expect(fullBody.teacher?.contact_phone).toBe("+90 555 111 22 33");
+      expect(typeof fullBody.teacher?.bio_raw).toBe("string");
+      expect(fullBody.teacher?.video_url).toBe("https://example.com/video");
+    } finally {
+      await pool.query(`delete from users where id = $1`, [user.rows[0].id]);
+    }
   });
 
   it("serves curriculum tests without leaking answer keys and recommends support below 15/20", async () => {

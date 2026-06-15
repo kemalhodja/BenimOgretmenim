@@ -14,6 +14,7 @@ type TeacherMe = {
   teacher: {
     displayName: string;
     phone: string | null;
+    contactPublic?: boolean;
     bioRaw: string | null;
     videoUrl: string | null;
     instagramUrl?: string | null;
@@ -35,6 +36,7 @@ const checklistLabels: Record<string, string> = {
   availabilitySet: "Müsaitlik saatlerini doldur",
   bioFilled: "En az 40 karakterlik biyografi yaz",
   videoLinked: "Tanıtım videosu ekle",
+  publicContactEnabled: "İletişim görünürlüğü tercihini ayarla",
   instagramLinked: "Instagram/profil bağlantısı ekle",
   platformLinksAdded: "Ders bağlantısı ekle",
   examDocsAdded: "Örnek doküman veya başarı belgesi ekle",
@@ -82,6 +84,8 @@ export default function TeacherEditPage() {
 
   const [bioRaw, setBioRaw] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
+  const [phone, setPhone] = useState("");
+  const [contactPublic, setContactPublic] = useState(false);
   const [instagramUrl, setInstagramUrl] = useState("");
   const [platformLinks, setPlatformLinks] = useState<
     Array<{ title: string; url: string }>
@@ -124,6 +128,8 @@ export default function TeacherEditPage() {
 
       setBioRaw(m.teacher.bioRaw ?? "");
       setVideoUrl(m.teacher.videoUrl ?? "");
+      setPhone(m.teacher.phone ?? "");
+      setContactPublic(m.teacher.contactPublic === true);
       setInstagramUrl(m.teacher.instagramUrl ?? "");
       setPlatformLinks(m.teacher.platformLinks ?? []);
       setExamDocs(m.teacher.examDocs ?? []);
@@ -275,6 +281,8 @@ export default function TeacherEditPage() {
         token,
         body: JSON.stringify({
           bioRaw,
+          phone: phone.trim() || null,
+          contactPublic,
           videoUrl: videoUrl || null,
           instagramUrl: instagramUrl || null,
           platformLinks: cleanPlatformLinks,
@@ -341,6 +349,7 @@ export default function TeacherEditPage() {
     { key: "bioFilled", focus: "bio", title: "Güçlü açılış metni", body: "Profilinizin üst bölümü biyografinizin ilk cümlelerinden beslenir." },
     { key: "branchesSelected", focus: "branches", title: "Uzmanlık vitrini", body: "Birincil branş ve fiyat aralığı profilinizde net görünür." },
     { key: "videoLinked", focus: "video", title: "Video tanıtım", body: "Kendi web siteniz gibi ilk güven temasını hızlandırır." },
+    { key: "publicContactEnabled", focus: "contact", title: "İletişim tercihi", body: "Abonelik aktifken telefon ve WhatsApp bilgisini isteğe bağlı açabilirsiniz." },
     { key: "examDocsAdded", focus: "examDocs", title: "Kanıt ve içerik", body: "Belgeler, yazılı hazırlık içerikleri ve örnek dokümanlar karar güvenini artırır." },
     { key: "availabilitySet", focus: "availability", title: "Müsaitlik", body: "Veli/öğrenci derse başlama ihtimalini saat bilgisiyle daha hızlı değerlendirir." },
   ];
@@ -571,6 +580,42 @@ export default function TeacherEditPage() {
                   </div>
                 )}
               </label>
+
+              <div className="rounded-2xl border border-brand-100 bg-brand-50/60 p-4" data-focus="contact">
+                <div className="text-sm font-semibold text-paper-950">Profil iletişim bilgileri</div>
+                <p className="mt-1 text-xs leading-relaxed text-paper-800/65">
+                  Abone öğretmenler isterse telefon bilgisini herkese açık profilde gösterebilir. Açıldığında
+                  telefonun yanında WhatsApp mesaj bağlantısı da görünür.
+                </p>
+                <label className="mt-3 block">
+                  <div className="mb-1 text-sm font-medium text-paper-800">Telefon numarası</div>
+                  <input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                    placeholder="+90 5xx xxx xx xx"
+                    inputMode="tel"
+                    autoComplete="tel"
+                  />
+                </label>
+                <label className="mt-3 flex items-start gap-3 rounded-xl border border-brand-100 bg-white p-3">
+                  <input
+                    type="checkbox"
+                    checked={contactPublic}
+                    onChange={(e) => setContactPublic(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-paper-300 text-brand-700"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-paper-950">
+                      Telefonumu ve WhatsApp mesaj bağlantısını profilimde göster
+                    </span>
+                    <span className="mt-1 block text-xs leading-relaxed text-paper-800/60">
+                      Bu tercih sadece aktif öğretmen aboneliğinde yayınlanır. Öğrenci ve veliler profili kendi
+                      web sayfanız gibi açıp doğrudan mesaj başlatabilir.
+                    </span>
+                  </span>
+                </label>
+              </div>
 
               <label className="block" data-focus="instagram">
                 <div className="mb-1 text-sm font-medium text-paper-800">

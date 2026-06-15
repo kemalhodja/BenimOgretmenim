@@ -291,11 +291,13 @@ describe("lesson requests Armut flow", () => {
     }
   });
 
-  it("charges non-subscribed teachers 500 TL and subscribed teachers 0 TL for offers", async () => {
+  it("gives non-subscribed teachers one free daily offer then charges 500 TL", async () => {
     if (!(await lessonRequestTablesAvailable())) return;
 
     const previousOfferFee = process.env.OFFER_FEE_MINOR;
+    const previousFreeDailyOffers = process.env.FREE_DAILY_TEACHER_OFFERS;
     delete process.env.OFFER_FEE_MINOR;
+    process.env.FREE_DAILY_TEACHER_OFFERS = "1";
     const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const userIds: string[] = [];
     const studentIds: string[] = [];
@@ -323,21 +325,48 @@ describe("lesson requests Armut flow", () => {
         token: guardian.token,
         studentId: student.studentId,
         branchId,
-        topic: "TYT matematik teklif ücreti",
+        topic: "TYT matematik ilk teklif",
       });
       expect(requestRes.status).toBe(201);
       const requestBody = (await requestRes.json()) as { request: { id: string } };
 
-      const insufficientOffer = await app.request(`http://localhost/v1/lesson-requests/${requestBody.request.id}/offers`, {
+      const firstFreeOffer = await app.request(`http://localhost/v1/lesson-requests/${requestBody.request.id}/offers`, {
         method: "POST",
         headers: {
           authorization: `Bearer ${insufficientTeacher.token}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify({ message: "Bakiyesiz teklif denemesi.", proposedHourlyRateMinor: 90_000 }),
+        body: JSON.stringify({ message: "Günün ücretsiz teklif denemesi.", proposedHourlyRateMinor: 90_000 }),
       });
-      expect(insufficientOffer.status).toBe(409);
-      const insufficientBody = (await insufficientOffer.json()) as { error: string; neededMinor: number };
+      expect(firstFreeOffer.status).toBe(201);
+      const firstFreeBody = (await firstFreeOffer.json()) as {
+        chargedOfferFeeMinor: number;
+        freeDailyOfferUsed: boolean;
+        remainingFreeDailyOffers: number;
+      };
+      expect(firstFreeBody.chargedOfferFeeMinor).toBe(0);
+      expect(firstFreeBody.freeDailyOfferUsed).toBe(true);
+      expect(firstFreeBody.remainingFreeDailyOffers).toBe(0);
+
+      const secondRequestRes = await createGuardianRequest({
+        token: guardian.token,
+        studentId: student.studentId,
+        branchId,
+        topic: "TYT matematik ikinci teklif",
+      });
+      expect(secondRequestRes.status).toBe(201);
+      const secondRequestBody = (await secondRequestRes.json()) as { request: { id: string } };
+
+      const insufficientSecondOffer = await app.request(`http://localhost/v1/lesson-requests/${secondRequestBody.request.id}/offers`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${insufficientTeacher.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ message: "Günlük ücretsiz hakkım bitti.", proposedHourlyRateMinor: 90_000 }),
+      });
+      expect(insufficientSecondOffer.status).toBe(409);
+      const insufficientBody = (await insufficientSecondOffer.json()) as { error: string; neededMinor: number };
       expect(insufficientBody.error).toBe("insufficient_balance");
       expect(insufficientBody.neededMinor).toBe(50_000);
 
@@ -356,8 +385,22 @@ describe("lesson requests Armut flow", () => {
         body: JSON.stringify({ message: "Bu derse teklif vermek istiyorum.", proposedHourlyRateMinor: 100_000 }),
       });
       expect(paidOffer.status).toBe(201);
-      const paidBody = (await paidOffer.json()) as { chargedOfferFeeMinor: number };
-      expect(paidBody.chargedOfferFeeMinor).toBe(50_000);
+      const paidBody = (await paidOffer.json()) as { chargedOfferFeeMinor: number; freeDailyOfferUsed: boolean };
+      expect(paidBody.chargedOfferFeeMinor).toBe(0);
+      expect(paidBody.freeDailyOfferUsed).toBe(true);
+
+      const paidSecondOffer = await app.request(`http://localhost/v1/lesson-requests/${secondRequestBody.request.id}/offers`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${paidTeacher.token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ message: "Bugünkü ikinci teklif ücretli.", proposedHourlyRateMinor: 110_000 }),
+      });
+      expect(paidSecondOffer.status).toBe(201);
+      const paidSecondBody = (await paidSecondOffer.json()) as { chargedOfferFeeMinor: number; freeDailyOfferUsed: boolean };
+      expect(paidSecondBody.chargedOfferFeeMinor).toBe(50_000);
+      expect(paidSecondBody.freeDailyOfferUsed).toBe(false);
 
       const wallet = await pool.query<{ balance_minor: string }>(
         `select balance_minor from user_wallets where user_id = $1`,
@@ -379,6 +422,8 @@ describe("lesson requests Armut flow", () => {
     } finally {
       if (previousOfferFee === undefined) delete process.env.OFFER_FEE_MINOR;
       else process.env.OFFER_FEE_MINOR = previousOfferFee;
+      if (previousFreeDailyOffers === undefined) delete process.env.FREE_DAILY_TEACHER_OFFERS;
+      else process.env.FREE_DAILY_TEACHER_OFFERS = previousFreeDailyOffers;
       await cleanup(userIds, studentIds);
     }
   });

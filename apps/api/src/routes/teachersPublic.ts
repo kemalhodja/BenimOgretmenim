@@ -440,6 +440,20 @@ teachersPublic.get("/:teacherId", async (c) => {
   const tr = await pool.query(
     `select t.id,
             u.display_name,
+            case
+              when t.contact_public = true
+               and coalesce(trim(u.phone), '') <> ''
+               and exists (
+                 select 1
+                 from teacher_subscriptions s
+                 where s.teacher_id = t.id
+                   and s.status = 'active'
+                   and s.expires_at > now()
+               )
+              then u.phone
+              else null
+            end as contact_phone,
+            t.contact_public,
             t.bio_raw,
             t.video_url,
             t.instagram_url,
@@ -453,6 +467,13 @@ teachersPublic.get("/:teacherId", async (c) => {
             d.name as district_name,
             t.rating_avg,
             t.rating_count,
+            exists (
+              select 1
+              from teacher_subscriptions s
+              where s.teacher_id = t.id
+                and s.status = 'active'
+                and s.expires_at > now()
+            ) as has_active_subscription,
             (
               (case when t.verification_status = 'verified' then 15 else 0 end) +
               (case when t.city_id is not null then 10 else 0 end) +
@@ -531,6 +552,68 @@ teachersPublic.get("/:teacherId", async (c) => {
   );
 
   const teacher = tr.rows[0] as Record<string, unknown>;
+  const hasActiveSubscription = teacher.has_active_subscription === true;
+  if (!hasActiveSubscription) {
+    const primaryBranch = br.rows.find((row) => row.is_primary) ?? br.rows[0] ?? null;
+    const limitedBranches = br.rows.map((row) => ({
+      branch_id: row.branch_id,
+      branch_name: row.branch_name,
+      years_experience: null,
+      is_primary: row.is_primary,
+      hourly_rate_min_minor: null,
+      hourly_rate_max_minor: null,
+    }));
+    return c.json({
+      teacher: {
+        id: teacher.id,
+        display_name: teacher.display_name,
+        bio_raw: null,
+        video_url: null,
+        instagram_url: null,
+        platform_links_jsonb: [],
+        exam_docs_jsonb: [],
+        availability_jsonb: {},
+        teaching_style_jsonb: {},
+        verification_status: "limited",
+        city_id: null,
+        city_name: null,
+        district_name: null,
+        rating_avg: null,
+        rating_count: null,
+        profile_quality_score: 0,
+        has_video: false,
+        has_exam_docs: false,
+        has_platform_links: false,
+        branch_count: limitedBranches.length,
+        completed_sessions_count: 0,
+        contact_phone: null,
+        contact_public: false,
+        has_active_subscription: false,
+        created_at: teacher.created_at,
+        profile_site: {
+          headline: `${teacher.display_name} · ${primaryBranch?.branch_name ?? "Öğretmen"} profili`,
+          subheadline:
+            "Bu öğretmen henüz aboneliğini tamamlamadığı için profilde yalnızca temel ad ve branş bilgileri gösterilir.",
+          primaryBranchName: primaryBranch?.branch_name ?? null,
+          locationLabel: "Abonelik sonrası açılır",
+          priceLabel: "Abonelik sonrası açılır",
+          ratingLabel: "Abonelik sonrası açılır",
+          trustBadges: ["Sınırlı profil"],
+          stats: [
+            { label: "Profil durumu", value: "Sınırlı" },
+            { label: "Uzmanlık", value: primaryBranch?.branch_name ?? "Branş bilgisi" },
+          ],
+          methodSteps: [],
+          availabilitySummary: "Abonelik sonrası görünür",
+          proofSummary: [],
+          faq: [],
+          ctaReasons: ["Abonelik sonrası detaylı profil açılır"],
+        },
+      },
+      branches: limitedBranches,
+      reviews: [],
+    });
+  }
   const rates = br.rows
     .flatMap((row) => [row.hourly_rate_min_minor, row.hourly_rate_max_minor])
     .filter((value): value is number => typeof value === "number" && Number.isFinite(value));

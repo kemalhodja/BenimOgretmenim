@@ -99,6 +99,7 @@ function verificationStatusLabel(status?: string | null): string {
 
 const teacherSubscriptionBenefits = [
   "Öğrenci ders taleplerine sınırsız teklif verebilirsiniz.",
+  "Public profiliniz kişisel web sayfanız gibi tam görünür; isteğe bağlı telefon ve WhatsApp iletişimi açabilirsiniz.",
   "Kendi reklam kampanyanızı yayınlarsınız; ilk kampanya ücretsiz, sonraki yeni ilanlar 1000 TL cüzdan bakiyesiyle açılır.",
   "Kurs, grup ders, doğrudan ders ve Akademi alanlarında öğretmen olarak görünürlük kazanırsınız.",
   "Başvuru, bildirim, cüzdan ve ödeme kayıtlarını öğretmen panelinden takip edersiniz.",
@@ -1166,7 +1167,7 @@ export default function TeacherHomePage() {
               <div className="mt-1 text-xs text-paper-800/75">
                 {sub?.active && sub.subscription
                   ? `${sub.subscription.title} · bitiş: ${new Date(sub.subscription.expires_at).toLocaleDateString("tr-TR")} · ${teacherCampaignSummary(sub.subscription.plan_code, sub.subscription.promo_multiplier)}`
-                  : "Sınırsız teklif ve Akademi’de ders verme hakkı için abonelik gerekli."}
+                  : "Abonelik yokken public profil sınırlı görünür. Günde 1 normal teklif ücretsizdir; sınırsız teklif ve tam profil için abonelik gerekir."}
               </div>
             </div>
 

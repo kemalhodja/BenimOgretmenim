@@ -161,8 +161,8 @@ export default function TeacherTekliflerPage() {
           «Talepler».
         </p>
         <p className="mt-2 max-w-3xl rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs leading-relaxed text-brand-950">
-          Aktif öğretmen aboneliğinde teklif göndermek ücretsizdir. Abonelik yoksa her yeni teklif için
-          cüzdandan iadesiz 500 TL düşülür.
+          Aktif öğretmen aboneliğinde teklif göndermek ücretsizdir. Abonelik yoksa her gün ilk normal teklif
+          ücretsizdir; aynı gün sonraki teklifler için cüzdandan iadesiz 500 TL düşülür.
         </p>
       </div>
 

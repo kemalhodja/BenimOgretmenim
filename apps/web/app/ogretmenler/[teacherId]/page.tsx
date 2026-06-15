@@ -12,6 +12,7 @@ import { trackEvent } from "../../lib/trackEvent";
 type TeacherDetail = {
   id: string;
   display_name: string;
+  contact_phone?: string | null;
   bio_raw: string | null;
   video_url?: string | null;
   instagram_url?: string | null;
@@ -29,6 +30,7 @@ type TeacherDetail = {
   has_platform_links: boolean;
   branch_count: number;
   completed_sessions_count: number;
+  has_active_subscription?: boolean;
   created_at: string;
   trust_summary?: {
     verificationStatus: string;
@@ -139,6 +141,20 @@ function hostLabel(rawUrl: string): string | null {
   } catch {
     return null;
   }
+}
+
+function normalizePhoneForWhatsApp(raw: string | null | undefined): string | null {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.startsWith("90") && digits.length >= 12) return digits;
+  if (digits.startsWith("0") && digits.length === 11) return `90${digits.slice(1)}`;
+  if (digits.length === 10) return `90${digits}`;
+  return digits.length >= 10 ? digits : null;
+}
+
+function telHref(raw: string): string {
+  const compact = raw.replace(/[^\d+]/g, "");
+  return `tel:${compact}`;
 }
 
 function qualityLabel(score: number | null | undefined): string {
@@ -625,6 +641,7 @@ export default function OgretmenDetayPage() {
       "@type": "Person",
       name: teacher.display_name,
       description: teacher.bio_raw ?? `${teacher.display_name} öğretmen profili`,
+      telephone: teacher.contact_phone ?? undefined,
       areaServed: teacher.city_name ?? "Türkiye",
       knowsAbout: primaryBranch?.branch_name,
       hasCredential: teacher.trust_summary?.evidence.hasExamDocs ? "Paylaşılan sınav/doküman kanıtları" : undefined,
@@ -712,6 +729,15 @@ export default function OgretmenDetayPage() {
   const socialBioText = teacher
     ? `${teacher.display_name} | ${primaryBranchName} özel ders | Demo talebi, güvenli ödeme ve ders sonrası takip için profilimi inceleyin.`
     : "";
+  const contactPhone = teacher?.contact_phone?.trim() || "";
+  const whatsappPhone = normalizePhoneForWhatsApp(contactPhone);
+  const whatsappText = teacher
+    ? `Merhaba ${teacher.display_name}, BenimÖğretmenim profiliniz üzerinden ${primaryBranchName} dersi için bilgi almak istiyorum.`
+    : "";
+  const whatsappHref =
+    whatsappPhone && whatsappText
+      ? `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappText)}`
+      : null;
   const brandKitCards = [
     {
       title: "WhatsApp / veli mesajı",
@@ -818,6 +844,72 @@ export default function OgretmenDetayPage() {
       ]
     : [];
 
+  if (teacher && teacher.has_active_subscription === false) {
+    return (
+      <div className="min-h-screen bg-paper-50">
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
+          <Link
+            href="/ogretmenler"
+            className="text-sm font-medium text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
+          >
+            ← Öğretmen listesi
+          </Link>
+          <section className="mt-8 overflow-hidden rounded-[2rem] border border-paper-200 bg-white shadow-xl shadow-paper-900/5">
+            <div className="border-b border-paper-100 bg-paper-50 px-5 py-3 text-xs font-semibold text-paper-800/65">
+              Sınırlı öğretmen profili
+            </div>
+            <div className="p-6 sm:p-8">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.5rem] bg-brand-900 text-2xl font-semibold text-white">
+                  {teacherInitials}
+                </div>
+                <div>
+                  <div className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-900/70">
+                    {primaryBranchName} öğretmeni
+                  </div>
+                  <h1 className="mt-3 text-3xl font-semibold tracking-tight text-paper-950 sm:text-4xl">
+                    {teacher.display_name}
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-sm leading-relaxed text-paper-800/65">
+                    Bu öğretmen henüz aboneliğini tamamlamadığı için profilde yalnızca temel bilgiler gösterilir.
+                    İletişim bilgileri, WhatsApp bağlantısı, tanıtım içerikleri ve detaylı vitrin abonelikten sonra açılır.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 rounded-2xl border border-paper-200 bg-paper-50 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-paper-800/55">
+                  Branş bilgileri
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {branches.length > 0 ? (
+                    branches.map((branch) => (
+                      <span
+                        key={branch.branch_id}
+                        className="rounded-full bg-white px-3 py-1 text-sm font-medium text-paper-900 ring-1 ring-paper-200"
+                      >
+                        {branch.branch_name}
+                        {branch.is_primary ? " · ana branş" : ""}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-paper-800/60">Branş bilgisi henüz eklenmemiş.</span>
+                  )}
+                </div>
+              </div>
+              <div className="mt-6 rounded-2xl border border-warm-200 bg-warm-50 p-4">
+                <div className="text-sm font-semibold text-warm-950">Abonelik sonrası profil web sayfası açılır</div>
+                <p className="mt-2 text-sm leading-relaxed text-warm-900/75">
+                  Öğretmen aboneliği aktif olduğunda bu sayfa tanıtım metni, güven kanıtları, ders yöntemi,
+                  profil paylaşımı ve isteğe bağlı telefon/WhatsApp iletişimiyle kişisel web sayfası gibi kullanılabilir.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -922,6 +1014,24 @@ export default function OgretmenDetayPage() {
                   >
                     Profili paylaş
                   </button>
+                  {contactPhone && (
+                    <a
+                      href={telHref(contactPhone)}
+                      className="rounded-xl border border-brand-200 bg-white/85 px-5 py-3 text-sm font-semibold text-brand-900 hover:bg-white"
+                    >
+                      Telefonla ara
+                    </a>
+                  )}
+                  {whatsappHref && (
+                    <a
+                      href={whatsappHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl bg-[#25D366] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-green-700/15 hover:bg-[#1eb85a]"
+                    >
+                      WhatsApp ile mesajlaş
+                    </a>
+                  )}
                   <button
                     type="button"
                     disabled={shortlistBusy}
@@ -966,6 +1076,33 @@ export default function OgretmenDetayPage() {
                     Öğretmen bu profili velilere, öğrencilere ve sosyal medya takipçilerine kendi ders web sayfası gibi gönderebilir.
                   </p>
                 </div>
+                {contactPhone && (
+                  <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3">
+                    <div className="text-xs font-semibold text-brand-950">Doğrudan iletişim</div>
+                    <p className="mt-1 text-sm font-semibold text-paper-950">{contactPhone}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <a
+                        href={telHref(contactPhone)}
+                        className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-900 hover:bg-brand-50"
+                      >
+                        Telefon
+                      </a>
+                      {whatsappHref && (
+                        <a
+                          href={whatsappHref}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#1eb85a]"
+                        >
+                          WhatsApp mesaj
+                        </a>
+                      )}
+                    </div>
+                    <p className="mt-2 text-[11px] leading-relaxed text-brand-900/65">
+                      Öğretmen bu bilgiyi profilinde isteğe bağlı olarak yayınlamıştır.
+                    </p>
+                  </div>
+                )}
               </aside>
             </div>
           </section>
