@@ -5,7 +5,7 @@ BenimÖğretmenim — Google Play (TWA) hazırlığı
    - Klasör: apps/twa-android
    - Android Studio → File → Open → apps/twa-android
    - İlk açılışta Gradle sync; ardından Run ile cihazda/emülatörde dene.
-   - applicationId: com.benimogretmenim.twa (assetlinks ile aynı olmalı)
+   - applicationId: benimogretmenim.com.tr (assetlinks ile aynı olmalı)
    - Varsayılan site: strings.xml içindeki twa_default_url + AndroidManifest VIEW host
    - compileSdk: 36
    - targetSdk: 35

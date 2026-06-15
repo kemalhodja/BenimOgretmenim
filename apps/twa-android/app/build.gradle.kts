@@ -26,11 +26,11 @@ val hasReleaseSigningConfig =
         releaseKeyPassword != null
 
 android {
-    namespace = "com.benimogretmenim.twa"
+    namespace = "benimogretmenim.com.tr"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.benimogretmenim.twa"
+        applicationId = "benimogretmenim.com.tr"
         minSdk = 23
         targetSdk = 35
         versionCode = 1
