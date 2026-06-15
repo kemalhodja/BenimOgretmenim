@@ -9,6 +9,9 @@
 # render.yaml API/Web servisleri icin autoDeploy: true tutar; main push zaten deploy eder.
 # Hook secret'lari opsiyoneldir ve sadece Render autoDeploy kapatilirsa gerekir.
 #
+# Smoke sonucu API'ye yazilsin istenirse GitHub Actions secret'i SMOKE_RUN_SECRET,
+# Render API servisindeki SMOKE_RUN_SECRET ile ayni deger olmalidir.
+#
 # Not: secrets.* ifadesi adım düzeyinde `if:` içinde kullanılamaz (workflow invalid).
 # Hook koşulu env + shell ile yapılır.
 

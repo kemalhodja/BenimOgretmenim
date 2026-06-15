@@ -15,6 +15,9 @@
 #
 # API (isteğe bağlı): API_REQUEST_LOG — üretimde varsayılan açık (tek satır JSON http logu).
 #   Kapatmak için "0"; geliştirmede açmak için "1". GET /health ve 200 ise log yazılmaz (gürültü).
+#
+# API (isteğe bağlı): SMOKE_RUN_SECRET — production smoke sonucunu admin audit tablosuna
+# yazmak icin GitHub Actions secret'i ile ayni deger olmalidir.
 
 databases:
   - name: benimogretmenim-db
@@ -85,6 +88,8 @@ services:
         sync: false
       - key: CORS_ORIGINS
         value: https://benimogretmenim.onrender.com
+      - key: SMOKE_RUN_SECRET
+        sync: false
       # Ödev memnuniyet ödülü öğretmen bu kullanıcının cüzdanından düşer (admin grant ile yükleyin).
       # Dashboard'dan ekleyin: PLATFORM_HOMEWORK_WALLET_USER_ID = <users.id UUID>
       - fromGroup: benimogretmenim-shared
