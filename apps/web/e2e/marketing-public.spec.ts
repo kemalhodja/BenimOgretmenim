@@ -46,6 +46,10 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByText(/yıllık 1500 TL/)).toBeVisible();
     await expect(page.getByText(/12\.000 TL/).first()).toBeVisible();
     await expect(page.getByText(/Erken erişim hediyesi/)).toBeVisible();
+    await expect(page.getByText("Neden abone olmalıyım?")).toBeVisible();
+    await expect(page.getByText("Abonelikle kazanılanlar").first()).toBeVisible();
+    await expect(page.getByText(/Günlük 1 ders ilanı yerine 5 ders ilanı/)).toBeVisible();
+    await expect(page.getByText(/Public profiliniz tam açılır/)).toBeVisible();
   });
 
   test("/kayit — roller platformda bulacaklarını görür", async ({ page }) => {
@@ -63,6 +67,8 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await page.getByRole("button", { name: "Öğretmen hesabını incele" }).click();
     await expect(page.locator("select").first()).toHaveValue("teacher");
     await expect(page.getByText(/profilinizi web siteniz gibi kurup/)).toBeVisible();
+    await expect(page.getByText("Abonelikle açılanlar").first()).toBeVisible();
+    await expect(page.getByText(/Sınırsız teklif; abonesizken/)).toBeVisible();
   });
 
   test("/ogretmenler — seçim sihirbazı filtreleri hazırlar", async ({ page }) => {
