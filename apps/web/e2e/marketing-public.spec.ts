@@ -43,7 +43,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByRole("heading", { name: "Üyelik ve kullanım bilgileri" })).toBeVisible();
     await expect(page.getByText(/1750 TL \/ 30 ay/)).toBeVisible();
     await expect(page.getByText(/2500 TL \/ 60 ay/)).toBeVisible();
-    await expect(page.getByText(/yıllık 1500 TL/)).toBeVisible();
+    await expect(page.getByText(/yıllık abonelik 1500 TL/)).toBeVisible();
     await expect(page.getByText(/12\.000 TL/).first()).toBeVisible();
     await expect(page.getByText(/Erken erişim hediyesi/)).toBeVisible();
     await expect(page.getByText("Neden abone olmalıyım?")).toBeVisible();
@@ -68,13 +68,14 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.locator("select").first()).toHaveValue("teacher");
     await expect(page.getByText(/profilinizi web siteniz gibi kurup/)).toBeVisible();
     await expect(page.getByText("Abonelikle açılanlar").first()).toBeVisible();
-    await expect(page.getByText(/Sınırsız teklif; abonesizken/)).toBeVisible();
+    await expect(page.getByText(/Sınırsız teklif; abonesizken/).first()).toBeVisible();
   });
 
   test("/ogretmenler — seçim sihirbazı filtreleri hazırlar", async ({ page }) => {
     const res = await page.goto("/ogretmenler", { waitUntil: "domcontentloaded" });
     expect(res?.ok() ?? false).toBeTruthy();
-    await expect(page.getByText("Öğretmen seçim sihirbazı")).toBeVisible();
+    await expect(page.getByText("Öğretmen seçmeme yardım et")).toBeVisible();
+    await expect(page.getByText("Hedefinize göre filtreleri hazırlayalım")).toBeVisible();
     await page.getByRole("button", { name: "YKS / TYT" }).click();
     await page.getByRole("button", { name: "Bütçeye uygun" }).click();
     await page.getByRole("button", { name: "Saatlik 750 TL altı" }).click();
