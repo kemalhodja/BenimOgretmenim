@@ -98,11 +98,27 @@ function verificationStatusLabel(status?: string | null): string {
 }
 
 const teacherSubscriptionBenefits = [
-  "Öğrenci ders taleplerine sınırsız teklif verebilirsiniz.",
-  "Public profiliniz kişisel web sayfanız gibi tam görünür; isteğe bağlı telefon ve WhatsApp iletişimi açabilirsiniz.",
-  "Kendi reklam kampanyanızı yayınlarsınız; ilk kampanya ücretsiz, sonraki yeni ilanlar 1000 TL cüzdan bakiyesiyle açılır.",
-  "Kurs, grup ders, doğrudan ders ve Akademi alanlarında öğretmen olarak görünürlük kazanırsınız.",
-  "Başvuru, bildirim, cüzdan ve ödeme kayıtlarını öğretmen panelinden takip edersiniz.",
+  "Sınırsız teklif: abonesizken günde 1 normal teklif ücretsiz, abonelikte teklif sınırı yok.",
+  "Tam public profil: bio, video, kanıtlar, fiyat, yorum, telefon ve WhatsApp tercihi görünür.",
+  "Kişisel web sayfası: profil linkinizi velilere, öğrencilere ve sosyal medyaya gönderebilirsiniz.",
+  "Reklam/kampanya alanı: ilk kampanya ücretsiz, sonraki yeni ilanlar 1000 TL cüzdan bakiyesiyle açılır.",
+  "Daha fazla gelir kanalı: kurs, grup ders, doğrudan ders ve Akademi alanlarında görünürlük kazanırsınız.",
+  "Operasyon kontrolü: başvuru, bildirim, cüzdan, hak ediş ve ödeme kayıtlarını panelden takip edersiniz.",
+] as const;
+
+const teacherSubscriptionReasons = [
+  {
+    title: "Daha çok öğrenciye görünürsünüz",
+    body: "Profiliniz sınırlı görünümden çıkar; ders yaklaşımı, kanıtlar, fiyat aralığı ve iletişim tercihleri karar vermeyi kolaylaştırır.",
+  },
+  {
+    title: "Teklif fırsatını kaçırmazsınız",
+    body: "Günlük ücretsiz teklif sınırına takılmadan öğrenci taleplerine hızlı dönebilir, kısa liste ve demo fırsatlarını değerlendirebilirsiniz.",
+  },
+  {
+    title: "Profiliniz reklam sayfasına dönüşür",
+    body: "Paylaşılabilir profil linki, hazır tanıtım metni ve kampanya alanı öğretmenin kendi pazarlamasını güçlendirir.",
+  },
 ] as const;
 
 function tryYoutubeEmbed(url: string | null): string | null {
@@ -1160,6 +1176,10 @@ export default function TeacherHomePage() {
 
           <div id="ogretmen-aboneligi" className="rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-paper-900">Abonelik</h2>
+            <p className="mt-1 text-sm leading-relaxed text-paper-800/70">
+              Abonelik, öğretmenin sadece panel kullanması değil; daha çok öğrenciye görünmesi, daha çok teklif
+              verebilmesi ve profilini satış sayfası gibi kullanması içindir.
+            </p>
             <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3">
               <div className="text-sm font-medium text-paper-900">
                 {sub?.active ? "Aktif" : "Aktif değil"}
@@ -1178,10 +1198,22 @@ export default function TeacherHomePage() {
             </p>
 
             <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/60 p-4">
-              <div className="text-sm font-semibold text-brand-950">Abone öğretmen neler kazanır?</div>
+              <div className="text-sm font-semibold text-brand-950">Neden abone olmalıyım?</div>
+              <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                {teacherSubscriptionReasons.map((reason) => (
+                  <article key={reason.title} className="rounded-xl border border-brand-100 bg-white/80 p-3">
+                    <h3 className="text-xs font-semibold text-brand-950">{reason.title}</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-brand-900/80">{reason.body}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="mt-4 text-sm font-semibold text-brand-950">Abone öğretmen neler kazanır?</div>
               <ul className="mt-3 space-y-2 text-xs leading-relaxed text-brand-900">
                 {teacherSubscriptionBenefits.map((benefit) => (
-                  <li key={benefit}>• {benefit}</li>
+                  <li key={benefit} className="flex gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
+                    <span>{benefit}</span>
+                  </li>
                 ))}
               </ul>
             </div>

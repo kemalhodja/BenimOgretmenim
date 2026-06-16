@@ -24,7 +24,12 @@ const audiencePlans = [
     price: "Ücretsiz kullanım var · yıllık abonelik 1500 TL",
     comparePrice: "12.000 TL",
     campaignNote: "Bugün ödeyeceğiniz tutar değişmez. Üstü çizili tutar sadece karşılaştırma bilgisidir.",
-    body: "Ücretsiz kullanımda günlük 1 ders ilanı ve 5 soru; yıllık abonelikte günlük 5 ilan ve 10 soru hakkı.",
+    body: "Abonelik, daha fazla öğretmene ulaşmak ve takıldığınız soruları bekletmeden çözmek içindir.",
+    why: [
+      "Günlük 1 ders ilanı yerine 5 ders ilanı açın; daha çok öğretmenden teklif alın.",
+      "Günlük 5 soru yerine 10 soru gönderin; ödev ve sınav hazırlığında tıkanmayın.",
+      "Demo, teklif, cüzdan, ders ve çalışma takibini tek öğrenci panelinde görün.",
+    ],
     href: "/kayit?role=student",
     cta: "Öğrenci hesabı aç",
   },
@@ -33,14 +38,24 @@ const audiencePlans = [
     price: "1750 TL / 30 ay · 2500 TL / 60 ay",
     comparePrice: "14.000 TL / 6 ay · 20.000 TL / 12 ay",
     campaignNote: "Erken erişim hediyesi: 6 ay aboneliğe 24 ay, 12 ay aboneliğe 48 ay ücretsiz hediye süre. 9 Eylül’e kadar veya ilk 500 öğretmen dolana kadar geçerlidir.",
-    body: "Sınırsız teklif, öğretmen görünürlüğü ve kampanya ilan hakkı. İlk kampanya ilanı ücretsiz; sonraki ilanlar için 1000 TL ödersiniz.",
+    body: "Abonelik, öğretmenin görünürlük, teklif ve reklam gücünü açar; profiliniz satış sayfası gibi çalışır.",
+    why: [
+      "Sınırsız teklif verin; abonesizken günde yalnızca 1 normal teklif ücretsizdir.",
+      "Public profiliniz tam açılır: bio, video, kanıtlar, fiyat, telefon ve WhatsApp tercihi görünür.",
+      "Profil linkinizi kendi web sayfanız gibi paylaşın; ilk kampanya ilanı ücretsizdir.",
+    ],
     href: "/kayit?role=teacher",
     cta: "Öğretmen olarak başvur",
   },
   {
     title: "Veli",
     price: "Takip hesabı",
-    body: "Öğrencinin ders bildirimlerini, çalışma planı ilerlemesini, deneme ortalamasını ve canlı sınıf bağlantılarını takip edin.",
+    body: "Veli hesabı ödeme yapan ayrı bir plan değil; öğrencinin abonelik ve ders sürecini görünür kılan takip katmanıdır.",
+    why: [
+      "Çocuğunuzun ders, ödev, canlı sınıf ve çalışma planı özetini görün.",
+      "Ödeme, destek ve ders kayıtları gerektiğinde takip edilebilir kalsın.",
+      "Öğrenci aboneliğiyle açılan yoğun kullanım haklarının neye dönüştüğünü izleyin.",
+    ],
     href: "/kayit?role=guardian",
     cta: "Veli hesabı aç",
   },
@@ -65,6 +80,21 @@ const conversionPromises = [
   "Demo ve teklifler öğretmen seçimini netleştirir.",
   "Paket kabulünde ödeme ve ders adımları kayıtlı ilerler.",
   "Ders sonrası çalışma, ödev ve veli takibi görünür kalır.",
+] as const;
+
+const subscriptionDecisionCards = [
+  {
+    title: "Öğrenci neden abone olur?",
+    body: "Daha çok ilan ve soru hakkı sayesinde tek öğretmene mahkum kalmaz; daha fazla seçenek, daha hızlı çözüm ve daha düzenli takip kazanır.",
+  },
+  {
+    title: "Öğretmen neden abone olur?",
+    body: "Profilini kapalı bir karttan çıkarıp paylaşılabilir satış sayfasına çevirir; sınırsız teklif, tam görünürlük ve reklam hakkı kazanır.",
+  },
+  {
+    title: "Veli için değer nedir?",
+    body: "Ders, ödeme, ödev ve ilerleme bilgisi dağılmaz; veli öğrencinin abonelikten aldığı faydayı panelde takip eder.",
+  },
 ] as const;
 
 const paymentTransparency = [
@@ -101,8 +131,8 @@ export default function FiyatlarPage() {
               Üyelik ve kullanım bilgileri
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">
-              Temel fiyatlar ve kullanım hakları açıktır. Ödeme, dekont, cüzdan ve kişisel durum bilgileri ilgili
-              panelde görünür.
+              Sadece fiyat değil, abonelikle ne kazanacağınız da açıktır. Öğrenci daha fazla hak, öğretmen daha fazla
+              görünürlük, veli ise daha net takip kazanır.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/kayit?role=student" className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-paper-950 hover:bg-brand-50">
@@ -185,6 +215,27 @@ export default function FiyatlarPage() {
           </div>
         </section>
 
+        <section className="mt-8 rounded-[2rem] border border-brand-200 bg-[linear-gradient(135deg,#ffffff_0%,#eef9f8_54%,#fff8f1_100%)] p-5 shadow-sm">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-800/70">
+            Neden abone olmalıyım?
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-950">
+            Abonelik, kullanım hakkını ve güven veren görünürlüğü artırır.
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-paper-800/70">
+            Öğrenci için daha fazla deneme ve soru hakkı, öğretmen için daha çok müşteri adayı ve profesyonel vitrin,
+            veli için daha anlaşılır takip demektir.
+          </p>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {subscriptionDecisionCards.map((card) => (
+              <article key={card.title} className="rounded-2xl border border-paper-200 bg-white/85 p-4">
+                <h3 className="text-base font-semibold text-paper-950">{card.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-paper-800/70">{card.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {audiencePlans.map((plan) => (
             <div key={plan.title} className="rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
@@ -201,6 +252,19 @@ export default function FiyatlarPage() {
                 </p>
               ) : null}
               <p className="mt-3 text-sm leading-relaxed text-paper-800/75">{plan.body}</p>
+              <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/70 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/65">
+                  Abonelikle kazanılanlar
+                </div>
+                <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-brand-950">
+                  {plan.why.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
               <Link
                 href={plan.href}
                 className="mt-4 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"

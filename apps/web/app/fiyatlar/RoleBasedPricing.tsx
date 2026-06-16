@@ -49,10 +49,18 @@ function teacherCampaignLabel(plan: PlanRow): string {
 }
 
 const teacherSubscriptionBenefits = [
-  "Sınırsız teklif verme ve öğrenci taleplerine hızlı dönüş",
+  "Sınırsız teklif verme; abonesizken günde yalnızca 1 normal teklif ücretsizdir",
+  "Tam public profil: bio, video, kanıt, fiyat, telefon ve WhatsApp tercihi",
+  "Profil linkini kendi web sayfan gibi paylaşma ve öğrenci başvurularını tek yerde toplama",
   "Kendi kampanya/reklam ilanını oluşturma; ilk ilan ücretsiz, sonrası 1000 TL cüzdan bakiyesi",
   "Kurs, grup ders, doğrudan ders ve Akademi görünürlüğü",
-  "Başvuru, bildirim, cüzdan ve ödeme kayıtlarını panelden takip",
+  "Başvuru, bildirim, cüzdan, hak ediş ve ödeme kayıtlarını panelden takip",
+] as const;
+
+const studentSubscriptionBenefits = [
+  "Günlük ders ilanı hakkı 1'den 5'e çıkar; daha fazla öğretmenden teklif alırsınız",
+  "Günlük soru hakkı 5'ten 10'a çıkar; ödev ve sınav hazırlığında daha az beklersiniz",
+  "Demo, teklif, cüzdan, ders ve çalışma takibi aynı öğrenci panelinde kalır",
 ] as const;
 
 export function RoleBasedPricing() {
@@ -121,8 +129,8 @@ export function RoleBasedPricing() {
       <section className="mt-10 rounded-2xl border border-brand-200 bg-brand-50 p-6 shadow-sm">
         <h2 className="text-xl font-semibold tracking-tight text-brand-950">Detaylı satın alma panelden ilerler</h2>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-brand-900">
-          Temel fiyatlar bu sayfada açıktır. Hesap açtıktan sonra kendi rolünüze uygun ödeme, kota, cüzdan ve
-          abonelik durumunu panelinizde yönetirsiniz.
+          Temel fiyatlar bu sayfada açıktır. Hesap açınca abonelikle hangi hakların açıldığını, kotanızı,
+          cüzdanınızı ve ödeme durumunu kendi panelinizde görürsünüz.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link href="/kayit?role=student" className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white">
@@ -180,9 +188,17 @@ export function RoleBasedPricing() {
             {minorToTl(studentSub.annualPriceMinor)} TL / yıl
           </div>
           <p className="mt-2 text-sm text-brand-900">
-            Ücretsiz kullanımda günlük 1 ders ilanı ve 5 soru hakkı vardır. Yıllık abonelikte günlük 5 ders ilanı
-            ve 10 soru hakkı açılır.
+            Yıllık abonelik sadece kota artırımı değildir; daha çok öğretmenden teklif alma, daha çok soru çözme ve
+            ders takibini tek panelde yönetme avantajı sağlar.
           </p>
+          <ul className="mt-3 space-y-1.5 text-sm leading-relaxed text-brand-950">
+            {studentSubscriptionBenefits.map((benefit) => (
+              <li key={benefit} className="flex gap-2">
+                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
+                <span>{benefit}</span>
+              </li>
+            ))}
+          </ul>
           <Link
             href="/student/panel"
             className="mt-4 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white"
@@ -196,9 +212,16 @@ export function RoleBasedPricing() {
         <>
           <div className="mt-5 rounded-xl border border-brand-200 bg-brand-50 p-5">
             <div className="text-sm font-semibold text-brand-950">Öğretmen aboneliğine dahil özellikler</div>
+            <p className="mt-2 text-sm leading-relaxed text-brand-900">
+              Abonelik; öğretmenin öğrenci bulma gücünü artırır. Profiliniz kapalı bir kart olmaktan çıkar,
+              paylaşılabilir bir satış sayfasına dönüşür.
+            </p>
             <ul className="mt-3 grid gap-2 text-sm leading-relaxed text-brand-900 sm:grid-cols-2">
               {teacherSubscriptionBenefits.map((benefit) => (
-                <li key={benefit}>• {benefit}</li>
+                <li key={benefit} className="flex gap-2">
+                  <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
+                  <span>{benefit}</span>
+                </li>
               ))}
             </ul>
           </div>
@@ -238,8 +261,9 @@ export function RoleBasedPricing() {
         <div className="mt-5 rounded-xl border border-paper-200 bg-paper-50 p-5">
           <div className="text-sm font-semibold text-paper-900">Veli hesabı takip hesabıdır</div>
           <p className="mt-2 text-sm text-paper-800/70">
-            Veli panelinde bağlı öğrencinin ders, bildirim ve çalışma ilerlemesini takip edersiniz. Öğrenci aboneliği
-            öğrencinin kendi panelinde görünür ve yönetilir.
+            Veli panelinde bağlı öğrencinin ders, bildirim, ödeme ve çalışma ilerlemesini takip edersiniz.
+            Öğrenci aboneliği öğrencinin kendi panelinde yönetilir; veli ise bu aboneliğin derse ve gelişime nasıl
+            yansıdığını görür.
           </p>
           <Link
             href="/guardian"

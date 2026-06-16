@@ -92,19 +92,19 @@ const platformTracks = [
 const homeActionCards = [
   {
     title: "Öğrenciyim",
-    body: "Öğretmen bulun, soru gönderin, kursa katılın ve çalışmanızı takip edin.",
+    body: "Ücretsiz başlayın; yıllık abonelikle günlük 5 ders ilanı ve 10 soru hakkına çıkın.",
     href: "/kayit?role=student",
     cta: "Öğrenci hesabı aç",
   },
   {
     title: "Öğretmenim",
-    body: "Profilinizi kurun, öğrenci taleplerini alın ve kazancınızı takip edin.",
+    body: "Abonelikle profilinizi web sayfası gibi açın, sınırsız teklif verin ve kampanya yayınlayın.",
     href: "/kayit?role=teacher",
     cta: "Öğretmen başvurusu",
   },
   {
     title: "Veliyim",
-    body: "Çocuğunuzun derslerini, bildirimlerini ve gelişimini görün.",
+    body: "Öğrencinin ders, ödeme, soru ve abonelikten doğan hak kullanımını tek panelden takip edin.",
     href: "/kayit?role=guardian",
     cta: "Veli hesabı aç",
   },
@@ -244,21 +244,33 @@ const plainRoleGuide = [
   {
     role: "Öğrenci",
     title: "Ders almak veya soru sormak istiyorum",
-    points: ["Öğretmen veya kurs seç", "Ödemeyi cüzdanda güvenceye al", "Derse gir ve gelişimini takip et"],
+    points: [
+      "Ücretsiz günlük 1 ilan ve 5 soru ile başla",
+      "Yıllık abonelikle 5 ilan ve 10 soru hakkına çık",
+      "Demo, ödeme, ders ve çalışma takibini tek panelde gör",
+    ],
     href: "/kayit?role=student",
     cta: "Öğrenci olarak başla",
   },
   {
     role: "Öğretmen",
     title: "Öğrenci bulmak ve kazancımı görmek istiyorum",
-    points: ["Profilini web siten gibi kur", "Talepleri, kursları ve kampanyaları yönet", "Net kazancını cüzdanda gör"],
+    points: [
+      "Abonelikle sınırsız teklif ver",
+      "Profilini web siten gibi tam aç ve WhatsApp/telefon tercihini göster",
+      "Kampanya, kurs, grup ders ve kazanç kayıtlarını yönet",
+    ],
     href: "/kayit?role=teacher",
     cta: "Öğretmen olarak başla",
   },
   {
     role: "Veli",
     title: "Çocuğumun sürecini takip etmek istiyorum",
-    points: ["Öğrenci hesabını eşleştir", "Ders, soru ve çalışma özetini gör", "Ödeme ve destek kayıtlarını izle"],
+    points: [
+      "Öğrenci hesabını eşleştir",
+      "Ders, soru, çalışma ve abonelik hak kullanımını gör",
+      "Ödeme ve destek kayıtlarını izle",
+    ],
     href: "/kayit?role=guardian",
     cta: "Veli olarak başla",
   },

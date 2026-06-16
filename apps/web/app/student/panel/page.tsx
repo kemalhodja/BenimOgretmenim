@@ -396,7 +396,7 @@ function StudentPanelPageInner() {
   const nextBestAction = !sub?.active
     ? {
         title: "Ücretsiz kotayı kullan veya yıllık abonelikle yükselt",
-        body: "Kayıtlı öğrenciler ücretsiz günlük 1 ilan ve 5 soru hakkı kullanır. Yıllık abonelik bu hakları 5 ilan ve 10 soruya çıkarır.",
+        body: "Yıllık abonelik daha çok öğretmene ulaşmanızı ve takıldığınız soruları daha hızlı çözmenizi sağlar: günlük 5 ilan ve 10 soru.",
         href: "#platform-aboneligi",
         cta: "Kotaları gör",
       }
@@ -928,6 +928,10 @@ function StudentPanelPageInner() {
 
         <div className="mt-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-paper-900">Platform aboneliği</h2>
+          <p className="mt-2 text-sm leading-relaxed text-paper-800/70">
+            Abonelik; daha çok öğretmenle deneme yapmanız, daha çok soru göndermeniz ve ders sürecini tek panelde
+            düzenli takip etmeniz için tasarlandı.
+          </p>
           {sub?.active && sub.subscription ? (
             <p className="mt-2 text-sm text-paper-800">
               Aktif. Bitiş:{" "}
@@ -945,12 +949,20 @@ function StudentPanelPageInner() {
               <div className="rounded-xl border border-paper-100 bg-paper-50 p-3">
                 <div className="text-xs font-semibold text-paper-800/60">Ücretsiz öğrenci</div>
                 <p className="mt-1 text-sm text-paper-900">Günlük 1 ders ilanı, günlük 5 soru hakkı.</p>
+                <p className="mt-2 text-xs leading-relaxed text-paper-800/60">
+                  Temel kullanım için yeterli; ancak birden fazla öğretmen denemek veya yoğun soru çözmek için sınırlıdır.
+                </p>
               </div>
               <div className="rounded-xl border border-brand-200 bg-brand-50 p-3">
                 <div className="text-xs font-semibold text-brand-900/70">Yıllık abone</div>
                 <p className="mt-1 text-sm text-brand-950">
                   {tl(sub.annualPriceMinor)} TL / {sub.annualMonths} ay: günlük 5 ders ilanı, günlük 10 soru hakkı.
                 </p>
+                <ul className="mt-2 space-y-1 text-xs leading-relaxed text-brand-900">
+                  <li>• Daha fazla öğretmenden teklif alma</li>
+                  <li>• Ödev ve sınav hazırlığında daha çok soru hakkı</li>
+                  <li>• Demo, teklif, ödeme ve çalışma takibini tek panelde toplama</li>
+                </ul>
               </div>
             </div>
           ) : null}

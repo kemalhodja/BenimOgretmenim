@@ -72,35 +72,50 @@ const roleDiscovery = {
   student: {
     label: "Öğrenci",
     eyebrow: "Öğretmen, soru desteği ve çalışma planı",
-    summary: "Öğrenci hesabı ile öğretmen bulabilir, soru gönderebilir, kurslara katılabilir ve çalışmanızı takip edebilirsiniz.",
+    summary: "Öğrenci hesabı ile öğretmen bulabilir, soru gönderebilir, kurslara katılabilir ve çalışmanızı takip edebilirsiniz. Abonelik, daha fazla ilan ve daha fazla soru hakkı açar.",
     finds: [
       "Branş, şehir, ücret, doğrulama ve yorumlarla karşılaştırılabilir öğretmen profilleri",
       "Demo ders, teklif, canlı ders, kurs ve kampanya başvuruları",
       "Soru gönderme, ödev takibi ve çalışma planı",
     ],
-    nextStep: "Kayıttan sonra öğrenci paneliniz açılır. Öğretmen arayabilir, soru gönderebilir ve derslerinizi takip edebilirsiniz.",
+    subscriptionWins: [
+      "Ücretsiz: günlük 1 ders ilanı ve 5 soru",
+      "Yıllık abonelik: günlük 5 ders ilanı ve 10 soru",
+      "Daha çok öğretmenden teklif alma ve daha hızlı soru çözümü",
+    ],
+    nextStep: "Kayıttan sonra öğrenci paneliniz açılır. Ücretsiz haklarınızı kullanabilir veya yıllık abonelikle kotanızı büyütebilirsiniz.",
   },
   guardian: {
     label: "Veli",
     eyebrow: "Çocuğunuzun ders sürecini görün",
-    summary: "Veli hesabı ile öğrencinin ders, kurs, ödev, ödeme ve destek sürecini anlaşılır şekilde takip edebilirsiniz.",
+    summary: "Veli hesabı ile öğrencinin ders, kurs, ödev, ödeme ve destek sürecini anlaşılır şekilde takip edebilirsiniz. Veli hesabı, öğrencinin abonelikten aldığı faydayı görünür kılar.",
     finds: [
       "Öğrenci hesabı eşleştirme, veli bildirimleri ve durum özetleri",
       "Ders, kurs, ödev, çalışma planı ve uyarıların tek ekranda takibi",
       "Güvenli ödeme, destek ve sorun çözümünde şeffaf kayıt",
+    ],
+    subscriptionWins: [
+      "Öğrenci aboneliğiyle artan ders ilanı ve soru haklarını takip",
+      "Ders, ödev, ödeme ve destek kayıtlarının tek yerden görünmesi",
+      "Çocuğunuzun ilerlemesini dağınık mesajlar yerine panelden izleme",
     ],
     nextStep: "Kayıttan sonra veli paneliniz açılır. Öğrencinizi eşleştirip bildirimleri, ödeme ve destek kayıtlarını izleyebilirsiniz.",
   },
   teacher: {
     label: "Öğretmen",
     eyebrow: "Profil, öğrenci talepleri ve kazanç takibi",
-    summary: "Öğretmen hesabı ile profilinizi kendi web siteniz gibi sunabilir, öğrenci taleplerini alabilir ve kazancınızı takip edebilirsiniz.",
+    summary: "Öğretmen hesabı ile profilinizi kendi web siteniz gibi sunabilir, öğrenci taleplerini alabilir ve kazancınızı takip edebilirsiniz. Abonelik, görünürlüğünüzü ve teklif gücünüzü açar.",
     finds: [
       "Kendi web sitesi gibi çalışan öğretmen profili, uzmanlık alanları, ücret ve güven göstergeleri",
       "Ders talepleri, öğrenci mesajları, kampanyalar ve kurs başvuruları",
       "Cüzdan, kazanç, para çekme, abonelik ve kampanya yönetimi",
     ],
-    nextStep: "Kayıttan sonra öğretmen paneliniz açılır. Profilinizi tamamlayıp ders taleplerine ve kampanyalara hazırlanabilirsiniz.",
+    subscriptionWins: [
+      "Sınırsız teklif; abonesizken günde 1 normal teklif ücretsiz",
+      "Tam public profil, telefon/WhatsApp tercihi, video, kanıt ve fiyat vitrini",
+      "Profilinizi web siteniz gibi kurup reklam kampanyasıyla öğrenci çekme",
+    ],
+    nextStep: "Kayıttan sonra öğretmen paneliniz açılır. Profilinizi tamamlayıp abonelikle tam görünürlük, sınırsız teklif ve kampanya alanını açabilirsiniz.",
   },
 } as const;
 
@@ -133,10 +148,10 @@ function KayitForm() {
   const loginHref = returnUrl ? loginHrefWithReturn(returnUrl) : "/login";
   const roleHint =
     role === "teacher"
-      ? "Öğretmen hesabı ile profilinizi web siteniz gibi kurabilir, talepleri ve kampanyaları yönetebilir, kazancınızı takip edebilirsiniz."
+      ? "Öğretmen hesabı ile profilinizi web siteniz gibi kurup öğrenciye profesyonel görünebilirsiniz; abonelikle sınırsız teklif, tam profil, WhatsApp/telefon tercihi ve kampanya görünürlüğü kazanabilirsiniz."
       : role === "guardian"
-        ? "Veli hesabı ile öğrencinizin ders, çalışma, ödeme ve destek özetlerini güvenli şekilde takip edebilirsiniz."
-        : "Öğrenci hesabı ile öğretmen arayabilir, soru sorabilir, kurslara katılabilir ve çalışma planı oluşturabilirsiniz.";
+        ? "Veli hesabı ile öğrencinizin ders, çalışma, ödeme ve abonelikten doğan kullanım haklarını güvenli şekilde takip edebilirsiniz."
+        : "Öğrenci hesabı ile öğretmen arayabilir, soru sorabilir, kurslara katılabilir; yıllık abonelikle günlük ilan ve soru hakkınızı büyütebilirsiniz.";
 
   const canSubmit = useMemo(
     () =>
@@ -221,6 +236,19 @@ function KayitForm() {
                 </li>
               ))}
             </ul>
+            <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/65">
+                Abonelikle güçlenen taraf
+              </div>
+              <ul className="mt-2 space-y-1.5">
+                {selectedRoleDiscovery.subscriptionWins.map((item) => (
+                  <li key={item} className="flex gap-2 text-xs leading-relaxed text-brand-950">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
             <p className="mt-4 rounded-xl bg-brand-50 px-3 py-2 text-xs font-semibold leading-relaxed text-brand-950">
               {selectedRoleDiscovery.nextStep}
             </p>
@@ -350,6 +378,14 @@ function KayitForm() {
                         </li>
                       ))}
                     </ul>
+                    <div className="mt-2 rounded-lg border border-brand-100 bg-brand-50 px-2 py-1.5">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-900/60">
+                        Abonelikle açılanlar
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-brand-950/80">
+                        {info.subscriptionWins[0]} · {info.subscriptionWins[1]}
+                      </p>
+                    </div>
                     <p className="mt-2 rounded-lg bg-paper-50 px-2 py-1.5 text-xs font-medium leading-relaxed text-paper-800/70">
                       {info.nextStep}
                     </p>
