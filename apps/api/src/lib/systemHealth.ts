@@ -25,11 +25,14 @@ export function runtimeHealthSnapshot() {
   };
 }
 
-const PRODUCTION_REQUIRED_ENV = [
+const PRODUCTION_CORE_REQUIRED = [
   "CORS_ORIGINS",
   "DATABASE_URL",
   "JWT_SECRET",
   "ADMIN_API_SECRET",
+] as const;
+
+const PAYTR_PRODUCTION_REQUIRED = [
   "PAYTR_MERCHANT_ID",
   "PAYTR_MERCHANT_KEY",
   "PAYTR_MERCHANT_SALT",
@@ -39,9 +42,22 @@ const PRODUCTION_REQUIRED_ENV = [
   "PAYTR_CALLBACK_URL",
 ] as const;
 
+/** Ödeme canlıya alınmadan önce geçici olarak 1 — API açılır, PayTR uçları yapılandırma hatası döner. */
+export function paytrOptionalInProduction(): boolean {
+  return process.env.PAYTR_OPTIONAL?.trim() === "1";
+}
+
+export function isPaytrFullyConfigured(): boolean {
+  return PAYTR_PRODUCTION_REQUIRED.every((key) => Boolean(process.env[key]?.trim()));
+}
+
 export function productionConfigurationErrors(): string[] {
   if (process.env.NODE_ENV !== "production") return [];
-  return PRODUCTION_REQUIRED_ENV.filter((key) => !process.env[key]?.trim()).map(
+  const required = [...PRODUCTION_CORE_REQUIRED];
+  if (!paytrOptionalInProduction()) {
+    required.push(...PAYTR_PRODUCTION_REQUIRED);
+  }
+  return required.filter((key) => !process.env[key]?.trim()).map(
     (key) => `${key} production ortamında tanımlı olmalı.`,
   );
 }
@@ -49,7 +65,10 @@ export function productionConfigurationErrors(): string[] {
 export function assertProductionConfiguration(): void {
   const errors = productionConfigurationErrors();
   if (!errors.length) return;
-  throw new Error(`[config] Production configuration missing: ${errors.join(" ")}`);
+  const paytrHint = paytrOptionalInProduction()
+    ? ""
+    : " PayTR merchant bilgileri için Render → benimogretmenim-api → Environment; geçici olarak ödeme hariç açmak için PAYTR_OPTIONAL=1.";
+  throw new Error(`[config] Production configuration missing: ${errors.join(" ")}${paytrHint}`);
 }
 
 export function configurationHealthWarnings(): string[] {
@@ -67,6 +86,11 @@ export function configurationHealthWarnings(): string[] {
   }
   if (!isProd && !process.env.ADMIN_API_SECRET?.trim()) {
     warnings.push("ADMIN_API_SECRET tanımlı değil; kritik admin onayları ek secret olmadan çalışabilir.");
+  }
+  if (isProd && paytrOptionalInProduction() && !isPaytrFullyConfigured()) {
+    warnings.push(
+      "PAYTR_OPTIONAL=1: API ödeme hariç açık; PayTR merchant ve URL env'leri tamamlanınca PAYTR_OPTIONAL kaldırın.",
+    );
   }
   if (!isProd) {
     for (const key of ["PAYTR_MERCHANT_ID", "PAYTR_MERCHANT_KEY", "PAYTR_MERCHANT_SALT"]) {

@@ -67,7 +67,7 @@ export default function IletisimPage() {
             <div>
               <dt className="font-medium text-paper-900">E-posta</dt>
               <dd className="mt-1 text-paper-800/75">
-                <span className="font-mono text-paper-800/65">destek@benimogretmenim.com</span>
+                <span className="font-mono text-paper-800/65">destek@benimogretmenim.com.tr</span>
               </dd>
             </div>
             <div>

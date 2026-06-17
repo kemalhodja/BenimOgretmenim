@@ -1,10 +1,17 @@
 # Render Blueprint — BenimÖğretmenim (Postgres + API + Web)
 # https://render.com/docs/infrastructure-as-code
 #
-# Oluşan varsayılan adresler (hizmet adları çakışırsa Render hostu değişebilir; o zaman
-# aşağıdaki CORS_ORIGINS ve NEXT_PUBLIC_* değerlerini Dashboard'dan güncelle):
+# Canlı domain (Render Custom Domains + DNS):
+#   Web:  https://benimogretmenim.com.tr  (+ isteğe bağlı www → apex yönlendirme)
+#   API:  https://api.benimogretmenim.com.tr
+# Yedek Render hostları (geçiş süresince):
 #   API:  https://benim-ogretmenim.onrender.com
-#   Web: https://benimogretmenim.onrender.com
+#   Web:  https://benimogretmenim.onrender.com
+#
+# PayTR (Dashboard'da sync:false — elle güncelle):
+#   PAYTR_CALLBACK_URL=https://api.benimogretmenim.com.tr/v1/paytr/callback
+#   PAYTR_OK_URL=https://benimogretmenim.com.tr/odeme/ok
+#   PAYTR_FAIL_URL=https://benimogretmenim.com.tr/odeme/hata
 #
 # API ve Web servislerinde autoDeploy aciktir; main'e push canli yayini tetikler.
 # GitHub deploy hook'lari sadece autoDeploy kapatilirsa veya manuel hook istenirse gerekir.
@@ -81,13 +88,17 @@ services:
       - key: PAYTR_BASE_URL
         value: https://www.paytr.com
       - key: PAYTR_CALLBACK_URL
-        sync: false
+        value: https://api.benimogretmenim.com.tr/v1/paytr/callback
       - key: PAYTR_OK_URL
-        sync: false
+        value: https://benimogretmenim.com.tr/odeme/ok
       - key: PAYTR_FAIL_URL
-        sync: false
+        value: https://benimogretmenim.com.tr/odeme/hata
+      # Merchant bilgileri PayTR panelinden; Render Dashboard'da sync:false ile elle girilir.
+      # Henüz PayTR yoksa geçici: PAYTR_OPTIONAL=1 (ödeme uçları kapalı kalır; canlı ödeme açmayın).
+      - key: PAYTR_OPTIONAL
+        value: "1"
       - key: CORS_ORIGINS
-        value: https://benimogretmenim.onrender.com
+        value: https://benimogretmenim.com.tr,https://www.benimogretmenim.com.tr,https://benimogretmenim.onrender.com
       - key: SMOKE_RUN_SECRET
         sync: false
       # Ödev memnuniyet ödülü öğretmen bu kullanıcının cüzdanından düşer (admin grant ile yükleyin).
@@ -170,9 +181,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://benim-ogretmenim.onrender.com
+        value: https://api.benimogretmenim.com.tr
       - key: INTERNAL_API_BASE_URL
-        value: https://benim-ogretmenim.onrender.com
+        value: https://api.benimogretmenim.com.tr
       - key: NEXT_PUBLIC_SITE_URL
-        value: https://benimogretmenim.onrender.com
+        value: https://benimogretmenim.com.tr
       - fromGroup: benimogretmenim-shared

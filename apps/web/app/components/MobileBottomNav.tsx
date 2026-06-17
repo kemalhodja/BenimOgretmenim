@@ -12,9 +12,12 @@ type Item = {
   label: string;
   shortLabel?: string;
   ariaLabel?: string;
+  icon?: IconName;
   match?: (pathname: string, searchParams: URLSearchParams) => boolean;
   primary?: boolean;
 };
+
+type IconName = "home" | "requests" | "lessons" | "wallet" | "profile" | "menu";
 
 function starts(pathname: string, href: string): boolean {
   const path = pathname.replace(/\/+$/, "") || "/";
@@ -35,11 +38,29 @@ function itemsFor(mode: PanelMode, role: UserRole | null, pathname: string): Ite
   }
   if (effective === "teacher") {
     return [
-      { href: "/teacher", label: "Özet" },
-      { href: "/teacher/requests", label: "Talepler" },
-      { href: "/teacher/dersler", label: "Dersler", primary: true },
-      { href: "/teacher/cuzdan", label: "Cüzdan" },
-      { href: "/teacher/edit", label: "Profil" },
+      {
+        href: "/teacher/requests",
+        label: "Talepler",
+        ariaLabel: "Öğretmen ders talepleri",
+        icon: "requests",
+        match: (p) => starts(p, "/teacher/requests") || starts(p, "/teacher/teklifler"),
+      },
+      { href: "/teacher/dersler", label: "Dersler", ariaLabel: "Öğretmen dersleri", icon: "lessons", primary: true },
+      { href: "/teacher/edit", label: "Profil", ariaLabel: "Öğretmen profili", icon: "profile" },
+      { href: "/teacher/cuzdan", label: "Cüzdan", ariaLabel: "Öğretmen cüzdanı", icon: "wallet" },
+      {
+        href: "/teacher",
+        label: "Menü",
+        ariaLabel: "Öğretmen menüsü",
+        icon: "menu",
+        match: (p) =>
+          p === "/teacher" ||
+          starts(p, "/teacher/kurslar") ||
+          starts(p, "/teacher/kampanyalar") ||
+          starts(p, "/teacher/odev-havuzu") ||
+          starts(p, "/teacher/dogrudan-dersler") ||
+          starts(p, "/teacher/grup-dersler"),
+      },
     ];
   }
   if (effective === "guardian") {
@@ -83,6 +104,71 @@ function shouldHideMobileNav(pathname: string): boolean {
     pathname === "/login" ||
     pathname === "/kayit" ||
     pathname.startsWith("/odeme/")
+  );
+}
+
+function BottomNavIcon({ name, active, primary }: { name: IconName; active: boolean; primary: boolean }) {
+  const stroke = primary ? "text-white" : active ? "text-brand-800" : "text-paper-800/65";
+  const common = {
+    className: `h-5 w-5 ${stroke}`,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  if (name === "requests") {
+    return (
+      <svg {...common}>
+        <path d="M7 8h10" />
+        <path d="M7 12h6" />
+        <path d="M5 20a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-4 3Z" />
+      </svg>
+    );
+  }
+  if (name === "lessons") {
+    return (
+      <svg {...common}>
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z" />
+        <path d="M8 7h8" />
+        <path d="M8 11h6" />
+      </svg>
+    );
+  }
+  if (name === "profile") {
+    return (
+      <svg {...common}>
+        <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" />
+        <path d="M4 21a8 8 0 0 1 16 0" />
+      </svg>
+    );
+  }
+  if (name === "wallet") {
+    return (
+      <svg {...common}>
+        <path d="M4 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v3H6a2 2 0 0 0 0 4h14v5a1 1 0 0 1-1 1H6a2 2 0 0 1-2-2V7Z" />
+        <path d="M17 13h3V9h-3a2 2 0 0 0 0 4Z" />
+      </svg>
+    );
+  }
+  if (name === "menu") {
+    return (
+      <svg {...common}>
+        <path d="M4 6h16" />
+        <path d="M4 12h16" />
+        <path d="M4 18h16" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <path d="m3 11 9-8 9 8" />
+      <path d="M5 10v10h14V10" />
+      <path d="M9 20v-6h6v6" />
+    </svg>
   );
 }
 
@@ -147,7 +233,7 @@ export function MobileBottomNav() {
               }}
               aria-current={active ? "page" : undefined}
               className={[
-                "relative flex min-h-12 flex-col items-center justify-center rounded-2xl px-1.5 text-center text-[11px] font-semibold leading-tight transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400",
+                "relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl px-1.5 text-center text-[11px] font-semibold leading-tight transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400",
                 item.primary
                   ? "bg-brand-800 text-white shadow-sm shadow-brand-900/15"
                   : active
@@ -161,7 +247,8 @@ export function MobileBottomNav() {
                   aria-hidden
                 />
               ) : null}
-              <span className="block max-w-full truncate pt-1">{item.shortLabel ?? item.label}</span>
+              {item.icon ? <BottomNavIcon name={item.icon} active={active} primary={Boolean(item.primary)} /> : null}
+              <span className="block max-w-full truncate pt-0.5">{item.shortLabel ?? item.label}</span>
             </Link>
           );
         })}

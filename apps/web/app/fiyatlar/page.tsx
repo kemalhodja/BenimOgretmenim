@@ -118,14 +118,15 @@ const paymentTransparency = [
 
 export default function FiyatlarPage() {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.14),transparent_28%),radial-gradient(circle_at_88%_8%,rgba(255,122,77,0.12),transparent_30%),#f4fafc]">
+    <div className="bo-edu-bg min-h-screen">
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-paper-950 px-5 py-10 text-white shadow-[0_24px_90px_rgba(7,13,17,0.18)] sm:px-8">
-          <div className="pointer-events-none absolute -left-16 top-8 h-44 w-44 rounded-full bg-brand-300/20 blur-3xl" aria-hidden />
-          <div className="pointer-events-none absolute -right-20 bottom-0 h-52 w-52 rounded-full bg-warm-400/20 blur-3xl" aria-hidden />
+        <section className="relative overflow-hidden rounded-[2rem] border border-edu-indigo-900 bg-edu-indigo-950 px-5 py-10 text-white shadow-[0_24px_90px_rgba(30,27,75,0.22)] sm:px-8">
+          <div className="pointer-events-none absolute -left-16 top-8 h-44 w-44 rounded-full bg-edu-blue-400/25 blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute -right-20 bottom-0 h-52 w-52 rounded-full bg-edu-sun-300/25 blur-3xl" aria-hidden />
+          <div className="pointer-events-none absolute left-1/2 top-20 h-36 w-36 rounded-full bg-edu-success-300/15 blur-3xl" aria-hidden />
           <div className="relative max-w-3xl">
-            <p className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-brand-100">
-              Role özel üyelik
+            <p className="inline-flex rounded-full border border-edu-blue-200/25 bg-edu-blue-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-edu-blue-100">
+              Role özel üyelik · eğitim hakları
             </p>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               Üyelik ve kullanım bilgileri
@@ -135,7 +136,7 @@ export default function FiyatlarPage() {
               görünürlük, veli ise daha net takip kazanır.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link href="/kayit?role=student" className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-paper-950 hover:bg-brand-50">
+              <Link href="/kayit?role=student" className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-edu-indigo-950 hover:bg-edu-blue-50">
                 Öğrenci olarak başla
               </Link>
               <Link
@@ -150,17 +151,17 @@ export default function FiyatlarPage() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           {valuePillars.map((pillar) => (
-            <div key={pillar.title} className="rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+            <div key={pillar.title} className="rounded-2xl border border-edu-blue-100 bg-white/92 p-5 shadow-sm">
               <h2 className="text-base font-semibold text-paper-900">{pillar.title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-paper-800/70">{pillar.body}</p>
             </div>
           ))}
         </div>
 
-        <section className="mt-8 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+        <section className="mt-8 rounded-2xl border border-edu-blue-100 bg-white/94 p-5 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-paper-800/55">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-edu-indigo-700/70">
                 Değer karşılığı
               </div>
               <h2 className="mt-1 text-lg font-semibold text-paper-900">
@@ -169,25 +170,25 @@ export default function FiyatlarPage() {
             </div>
             <Link
               href="/uygulama"
-              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900 hover:bg-brand-100"
+              className="w-fit rounded-xl border border-edu-indigo-200 bg-edu-indigo-50 px-3 py-2 text-xs font-semibold text-edu-indigo-800 hover:bg-edu-indigo-100"
             >
               Mobil kullanım
             </Link>
           </div>
           <ol className="mt-4 grid gap-2 sm:grid-cols-3">
             {conversionPromises.map((item, index) => (
-              <li key={item} className="rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm">
-                <div className="text-xs font-semibold text-brand-900">Adım {index + 1}</div>
+              <li key={item} className="rounded-xl border border-edu-blue-100 bg-edu-blue-50/65 p-3 text-sm">
+                <div className="text-xs font-semibold text-edu-indigo-800">Adım {index + 1}</div>
                 <p className="mt-1 text-xs leading-relaxed text-paper-800/70">{item}</p>
               </li>
             ))}
           </ol>
         </section>
 
-        <section className="mt-8 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+        <section className="mt-8 rounded-2xl border border-edu-blue-100 bg-white/94 p-5 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-paper-800/55">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-edu-indigo-700/70">
                 Güven ve ücretlendirme
               </div>
               <h2 className="mt-1 text-lg font-semibold text-paper-900">
@@ -200,14 +201,14 @@ export default function FiyatlarPage() {
             </div>
             <Link
               href="/kullanim-kosullari"
-              className="w-fit rounded-xl border border-paper-200 bg-paper-50 px-3 py-2 text-xs font-semibold text-paper-900 hover:border-brand-200 hover:bg-brand-50"
+              className="w-fit rounded-xl border border-edu-blue-100 bg-edu-blue-50 px-3 py-2 text-xs font-semibold text-paper-900 hover:border-edu-indigo-200 hover:bg-white"
             >
               Koşulları incele
             </Link>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {paymentTransparency.map((item) => (
-              <div key={item.title} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+              <div key={item.title} className="rounded-xl border border-edu-blue-100 bg-edu-blue-50/65 p-3">
                 <h3 className="text-sm font-semibold text-paper-900">{item.title}</h3>
                 <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
               </div>
@@ -215,8 +216,8 @@ export default function FiyatlarPage() {
           </div>
         </section>
 
-        <section className="mt-8 rounded-[2rem] border border-brand-200 bg-[linear-gradient(135deg,#ffffff_0%,#eef9f8_54%,#fff8f1_100%)] p-5 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-800/70">
+        <section className="bo-edu-card mt-8 rounded-[2rem] border border-edu-indigo-200 p-5">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-edu-indigo-700/70">
             Neden abone olmalıyım?
           </div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-950">
@@ -228,7 +229,7 @@ export default function FiyatlarPage() {
           </p>
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             {subscriptionDecisionCards.map((card) => (
-              <article key={card.title} className="rounded-2xl border border-paper-200 bg-white/85 p-4">
+              <article key={card.title} className="rounded-2xl border border-white bg-white/88 p-4 shadow-sm">
                 <h3 className="text-base font-semibold text-paper-950">{card.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-paper-800/70">{card.body}</p>
               </article>
@@ -238,28 +239,28 @@ export default function FiyatlarPage() {
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {audiencePlans.map((plan) => (
-            <div key={plan.title} className="rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+            <div key={plan.title} className="rounded-2xl border border-edu-blue-100 bg-white/94 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-edu-indigo-200 hover:shadow-[0_22px_70px_rgba(79,70,229,0.12)]">
               <h2 className="text-lg font-semibold text-paper-900">{plan.title}</h2>
               {"comparePrice" in plan ? (
                 <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-paper-800/45">
                   <span className="line-through">{plan.comparePrice}</span>
                 </p>
               ) : null}
-              <p className="mt-1 text-sm font-medium text-brand-900">{plan.price}</p>
+              <p className="mt-1 text-sm font-medium text-edu-indigo-800">{plan.price}</p>
               {"campaignNote" in plan ? (
-                <p className="mt-2 rounded-xl border border-warm-200 bg-warm-50 px-3 py-2 text-xs font-semibold leading-relaxed text-warm-900">
+                <p className="mt-2 rounded-xl border border-edu-sun-300 bg-edu-sun-50 px-3 py-2 text-xs font-semibold leading-relaxed text-edu-sun-900">
                   {plan.campaignNote}
                 </p>
               ) : null}
               <p className="mt-3 text-sm leading-relaxed text-paper-800/75">{plan.body}</p>
-              <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/70 p-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/65">
+              <div className="mt-4 rounded-xl border border-edu-indigo-100 bg-edu-indigo-50/80 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-edu-indigo-800/70">
                   Abonelikle kazanılanlar
                 </div>
-                <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-brand-950">
+                <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-edu-indigo-950">
                   {plan.why.map((item) => (
                     <li key={item} className="flex gap-2">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-edu-success-500" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -267,7 +268,7 @@ export default function FiyatlarPage() {
               </div>
               <Link
                 href={plan.href}
-                className="mt-4 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+                className="mt-4 inline-flex rounded-xl bg-edu-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-edu-indigo-800"
               >
                 {plan.cta}
               </Link>
@@ -275,22 +276,22 @@ export default function FiyatlarPage() {
           ))}
         </div>
 
-        <div className="mt-8 rounded-xl border border-brand-200 bg-brand-50 p-5">
-          <h2 className="text-base font-semibold text-brand-950">Öğrenci için demo ders süreci</h2>
-          <p className="mt-2 text-sm text-brand-900">
+        <div className="mt-8 rounded-xl border border-edu-success-100 bg-edu-success-50 p-5">
+          <h2 className="text-base font-semibold text-edu-success-900">Öğrenci için demo ders süreci</h2>
+          <p className="mt-2 text-sm text-edu-success-900/80">
             Öğrenci öğretmen seçer, demo talebi gönderir, öğretmen yanıtlar ve kabul sonrası 30 dakikalık
             online demo oturumu oluşur. Demo sonrası paket, kurs veya ödev desteğine geçilebilir.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href="/ogretmenler"
-              className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+              className="rounded-xl bg-edu-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-edu-indigo-800"
             >
               Öğretmen seç ve demo talep et
             </Link>
             <Link
               href="/student/requests"
-              className="rounded-xl border border-brand-200 bg-white px-4 py-2 text-sm font-medium text-brand-900 hover:bg-brand-100"
+              className="rounded-xl border border-edu-success-100 bg-white px-4 py-2 text-sm font-medium text-edu-success-900 hover:bg-edu-success-50"
             >
               Taleplerim
             </Link>

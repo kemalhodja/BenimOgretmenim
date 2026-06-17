@@ -35,9 +35,9 @@ jobs:
         working-directory: apps/web
         env:
           CI: "true"
-          NEXT_PUBLIC_API_BASE_URL: https://benim-ogretmenim.onrender.com
-          INTERNAL_API_BASE_URL: https://benim-ogretmenim.onrender.com
-          NEXT_PUBLIC_SITE_URL: https://benimogretmenim.onrender.com
+          NEXT_PUBLIC_API_BASE_URL: https://api.benimogretmenim.com.tr
+          INTERNAL_API_BASE_URL: https://api.benimogretmenim.com.tr
+          NEXT_PUBLIC_SITE_URL: https://benimogretmenim.com.tr
         run: npm run build
 
       - name: Install Playwright Chromium

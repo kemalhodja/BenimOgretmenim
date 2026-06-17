@@ -26,6 +26,12 @@ export function inferInternalApiUrlIfNeeded(siteRaw, publicApiRaw, existingInter
     }
   }
 
+  if (
+    siteUrl.hostname === "benimogretmenim.com.tr" ||
+    siteUrl.hostname === "www.benimogretmenim.com.tr"
+  ) {
+    return "https://api.benimogretmenim.com.tr";
+  }
   if (siteUrl.hostname === "benimogretmenim.onrender.com") {
     return "https://benim-ogretmenim.onrender.com";
   }

@@ -97,7 +97,7 @@ export function HeaderAuthActions() {
         href={loginHrefWithReturn(pathname)}
         className="rounded-lg px-3 py-1.5 text-sm font-medium text-paper-800/80 hover:bg-paper-100/80"
       >
-        Giriş
+        Giriş yap
       </Link>
       <Link
         href={registerHrefWithReturn(pathname)}

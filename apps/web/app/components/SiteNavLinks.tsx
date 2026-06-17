@@ -4,9 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { getCachedRole, getRoleFromToken, getToken, panelNavLabel, panelPathForRole, refreshSessionFromServer } from "../lib/auth";
-import { loginHrefWithReturn } from "../lib/authRedirect";
 
-/** Kısa liste: keşif + panel + yardım. Detaylar panele ve ana sayfa bölümlerine taşınır. */
+/** Kısa liste: keşif + yardım. Panel yalnızca oturum açıkken gösterilir; giriş header'da. */
 const NAV_PUBLIC = [
   { href: "/#nasil", label: "Nasıl işler?" },
   { href: "/ogretmenler", label: "Öğretmen ara" },
@@ -51,8 +50,8 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
   }, [sync]);
 
   const role = mounted ? getRoleFromToken(token) ?? sessionRole : null;
-  const panelHref = role ? panelPathForRole(role) : loginHrefWithReturn("/panel");
-  const panelLabel = role ? panelNavLabel(role) : "Panel";
+  const panelHref = role ? panelPathForRole(role) : null;
+  const panelLabel = role ? panelNavLabel(role) : null;
 
   const deskCls =
     "rounded-lg px-2.5 py-1.5 text-sm font-medium text-paper-800/80 transition hover:bg-paper-100 hover:text-paper-900";
@@ -85,9 +84,11 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
             {item.label}
           </Link>
         ))}
-        <Link href={panelHref} className={deskCls}>
-          {panelLabel}
-        </Link>
+        {panelHref && panelLabel ? (
+          <Link href={panelHref} className={deskCls}>
+            {panelLabel}
+          </Link>
+        ) : null}
       </>
     );
   }
@@ -99,9 +100,11 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
           {item.label}
         </Link>
       ))}
-      <Link href={panelHref} className={`${mobCls} font-medium text-brand-900`}>
-        {panelLabel}
-      </Link>
+      {panelHref && panelLabel ? (
+        <Link href={panelHref} className={`${mobCls} font-medium text-brand-900`}>
+          {panelLabel}
+        </Link>
+      ) : null}
     </>
   );
 }

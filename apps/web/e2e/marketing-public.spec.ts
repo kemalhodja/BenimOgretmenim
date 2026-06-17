@@ -37,6 +37,13 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByRole("link", { name: "Soru havuzu" })).toBeVisible();
   });
 
+  test("/ — oturumsuz üst menüde Panel yok, Giriş yap var", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("link", { name: "Giriş yap" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("link", { name: "Panel", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Kayıt ol" })).toBeVisible();
+  });
+
   test("/fiyatlar — ziyaretçiye şeffaf temel ücretleri gösterir", async ({ page }) => {
     const res = await page.goto("/fiyatlar", { waitUntil: "domcontentloaded" });
     expect(res?.ok() ?? false).toBeTruthy();

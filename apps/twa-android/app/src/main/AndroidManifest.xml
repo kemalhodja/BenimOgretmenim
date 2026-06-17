@@ -44,7 +44,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="benimogretmenim.onrender.com"
+                    android:host="benimogretmenim.com.tr"
                     android:pathPrefix="/" />
             </intent-filter>
         </activity>

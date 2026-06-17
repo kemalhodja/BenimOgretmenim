@@ -46,6 +46,42 @@
   --color-warm-900: #6b3c28;
   --color-warm-950: #3d2116;
 
+  /* Eğitim katmanı: sınav, başarı ve dijital öğrenme hissi için canlı ama okunabilir vurgu renkleri. */
+  --color-edu-blue-50: #eff6ff;
+  --color-edu-blue-100: #dbeafe;
+  --color-edu-blue-200: #bfdbfe;
+  --color-edu-blue-300: #93c5fd;
+  --color-edu-blue-400: #60a5fa;
+  --color-edu-blue-500: #3b82f6;
+  --color-edu-blue-700: #1d4ed8;
+  --color-edu-blue-900: #1e3a8a;
+
+  --color-edu-indigo-50: #eef2ff;
+  --color-edu-indigo-100: #e0e7ff;
+  --color-edu-indigo-200: #c7d2fe;
+  --color-edu-indigo-300: #a5b4fc;
+  --color-edu-indigo-400: #818cf8;
+  --color-edu-indigo-500: #6366f1;
+  --color-edu-indigo-600: #4f46e5;
+  --color-edu-indigo-700: #4338ca;
+  --color-edu-indigo-800: #3730a3;
+  --color-edu-indigo-900: #312e81;
+  --color-edu-indigo-950: #1e1b4b;
+
+  --color-edu-success-50: #ecfdf5;
+  --color-edu-success-100: #d1fae5;
+  --color-edu-success-300: #6ee7b7;
+  --color-edu-success-500: #10b981;
+  --color-edu-success-700: #047857;
+  --color-edu-success-900: #064e3b;
+
+  --color-edu-sun-50: #fffbeb;
+  --color-edu-sun-100: #fef3c7;
+  --color-edu-sun-300: #fcd34d;
+  --color-edu-sun-400: #fbbf24;
+  --color-edu-sun-600: #d97706;
+  --color-edu-sun-900: #78350f;
+
   /**
    * Uyum katmanı: eski sayfalarda kalan zinc-* sınıfları,
    * yeni "paper" nötrlerine düşsün (tam taşıma bitene kadar).
@@ -70,6 +106,9 @@
 body {
   background-color: var(--background);
   background-image:
+    radial-gradient(55% 38% at 52% -8%, rgb(99 102 241 / 0.09), transparent 58%),
+    radial-gradient(55% 36% at 18% 8%, rgb(16 185 129 / 0.08), transparent 56%),
+    radial-gradient(42% 30% at 86% 12%, rgb(251 191 36 / 0.1), transparent 55%),
     radial-gradient(100% 50% at 100% 0%, rgb(235 163 107 / 0.08), transparent 50%),
     radial-gradient(90% 45% at 0% 15%, rgb(88 170 169 / 0.08), transparent 48%);
   background-attachment: fixed;
@@ -83,6 +122,38 @@ input,
 select,
 textarea {
   -webkit-tap-highlight-color: transparent;
+}
+
+.bo-edu-bg {
+  background-color: #f6f9ff;
+  background-image:
+    radial-gradient(circle at 10% 0%, rgb(99 102 241 / 0.16), transparent 28%),
+    radial-gradient(circle at 86% 8%, rgb(251 191 36 / 0.18), transparent 26%),
+    radial-gradient(circle at 50% 28%, rgb(16 185 129 / 0.1), transparent 32%),
+    linear-gradient(180deg, #f8fbff 0%, #eef6ff 42%, #ffffff 100%);
+}
+
+.bo-edu-hero {
+  background-image:
+    radial-gradient(circle at 16% 12%, rgb(96 165 250 / 0.34), transparent 26%),
+    radial-gradient(circle at 82% 6%, rgb(252 211 77 / 0.34), transparent 25%),
+    radial-gradient(circle at 60% 88%, rgb(110 231 183 / 0.2), transparent 32%),
+    linear-gradient(135deg, #eef2ff 0%, #eff6ff 42%, #ecfdf5 72%, #fffbeb 100%);
+}
+
+.bo-edu-card {
+  background-image:
+    radial-gradient(circle at 0% 0%, rgb(99 102 241 / 0.1), transparent 32%),
+    radial-gradient(circle at 100% 0%, rgb(251 191 36 / 0.12), transparent 30%),
+    linear-gradient(135deg, rgb(255 255 255 / 0.96), rgb(239 246 255 / 0.78));
+  box-shadow: 0 22px 70px rgb(30 58 138 / 0.1);
+}
+
+.bo-edu-grid {
+  background-image:
+    linear-gradient(rgb(79 70 229 / 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(79 70 229 / 0.08) 1px, transparent 1px);
+  background-size: 34px 34px;
 }
 
 @keyframes bo-float {
@@ -189,16 +260,16 @@ textarea {
   }
 
   body:has(.mobile-app-nav) {
-    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom));
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
   }
 
   body:has(.mobile-app-nav) .install-app-banner {
-    bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    bottom: calc(5.25rem + env(safe-area-inset-bottom));
   }
 
   body:has(.mobile-app-nav) .support-widget-trigger {
     right: 1rem;
-    bottom: calc(5.75rem + env(safe-area-inset-bottom));
+    bottom: calc(6.25rem + env(safe-area-inset-bottom));
   }
 
   input,

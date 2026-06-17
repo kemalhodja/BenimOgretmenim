@@ -12,7 +12,7 @@
 # Hedef URL önceliği:
 #   1) workflow_dispatch: api_url (varsayılan prod)
 #   2) Secret: SMOKE_API_URL (cron’da farklı host için; boşsa prod varsayılanı)
-#   3) Varsayılan: https://benim-ogretmenim.onrender.com
+#   3) Varsayılan: https://api.benimogretmenim.com.tr
 #
 # İsteğe bağlı secret (staging / ayrı API):
 #   SMOKE_API_URL
@@ -30,7 +30,7 @@ on:
       api_url:
         description: "API kök URL (sonunda / olmasın)"
         required: false
-        default: "https://benim-ogretmenim.onrender.com"
+        default: "https://api.benimogretmenim.com.tr"
         type: string
 
 permissions:
@@ -68,7 +68,7 @@ jobs:
           elif [ -n "${SMOKE_API_URL_SECRET:-}" ]; then
             export SMOKE_API_URL="${SMOKE_API_URL_SECRET}"
           else
-            export SMOKE_API_URL="https://benim-ogretmenim.onrender.com"
+            export SMOKE_API_URL="https://api.benimogretmenim.com.tr"
           fi
           echo "::notice::SMOKE_API_URL=${SMOKE_API_URL}"
           npm run smoke:suite

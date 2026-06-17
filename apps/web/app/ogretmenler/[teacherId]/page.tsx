@@ -8,6 +8,7 @@ import { apiFetch } from "../../lib/api";
 import { clearToken, getRoleFromToken, getToken } from "../../lib/auth";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { trackEvent } from "../../lib/trackEvent";
+import { publicSiteHost } from "../../lib/siteUrl";
 
 type TeacherDetail = {
   id: string;
@@ -846,7 +847,7 @@ export default function OgretmenDetayPage() {
 
   if (teacher && teacher.has_active_subscription === false) {
     return (
-      <div className="min-h-screen bg-paper-50">
+      <div className="bo-edu-bg min-h-screen">
         <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
           <Link
             href="/ogretmenler"
@@ -854,17 +855,17 @@ export default function OgretmenDetayPage() {
           >
             ← Öğretmen listesi
           </Link>
-          <section className="mt-8 overflow-hidden rounded-[2rem] border border-paper-200 bg-white shadow-xl shadow-paper-900/5">
-            <div className="border-b border-paper-100 bg-paper-50 px-5 py-3 text-xs font-semibold text-paper-800/65">
+          <section className="mt-8 overflow-hidden rounded-[2rem] border border-edu-blue-100 bg-white/94 shadow-xl shadow-paper-900/5">
+            <div className="border-b border-edu-blue-100 bg-edu-blue-50/70 px-5 py-3 text-xs font-semibold text-paper-800/65">
               Sınırlı öğretmen profili
             </div>
             <div className="p-6 sm:p-8">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.5rem] bg-brand-900 text-2xl font-semibold text-white">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[1.5rem] bg-edu-indigo-950 text-2xl font-semibold text-white">
                   {teacherInitials}
                 </div>
                 <div>
-                  <div className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-900/70">
+                  <div className="text-sm font-semibold uppercase tracking-[0.22em] text-edu-indigo-700/70">
                     {primaryBranchName} öğretmeni
                   </div>
                   <h1 className="mt-3 text-3xl font-semibold tracking-tight text-paper-950 sm:text-4xl">
@@ -876,8 +877,8 @@ export default function OgretmenDetayPage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-6 rounded-2xl border border-paper-200 bg-paper-50 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-paper-800/55">
+              <div className="mt-6 rounded-2xl border border-edu-blue-100 bg-edu-blue-50/65 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-edu-indigo-700/70">
                   Branş bilgileri
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -896,9 +897,9 @@ export default function OgretmenDetayPage() {
                   )}
                 </div>
               </div>
-              <div className="mt-6 rounded-2xl border border-warm-200 bg-warm-50 p-4">
-                <div className="text-sm font-semibold text-warm-950">Abonelik sonrası profil web sayfası açılır</div>
-                <p className="mt-2 text-sm leading-relaxed text-warm-900/75">
+              <div className="mt-6 rounded-2xl border border-edu-sun-300 bg-edu-sun-50 p-4">
+                <div className="text-sm font-semibold text-edu-sun-900">Abonelik sonrası profil web sayfası açılır</div>
+                <p className="mt-2 text-sm leading-relaxed text-edu-sun-900/75">
                   Öğretmen aboneliği aktif olduğunda bu sayfa tanıtım metni, güven kanıtları, ders yöntemi,
                   profil paylaşımı ve isteğe bağlı telefon/WhatsApp iletişimiyle kişisel web sayfası gibi kullanılabilir.
                 </p>
@@ -911,7 +912,7 @@ export default function OgretmenDetayPage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper-50">
+    <div className="bo-edu-bg min-h-screen">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
@@ -941,34 +942,35 @@ export default function OgretmenDetayPage() {
               dangerouslySetInnerHTML={{ __html: JSON.stringify(profileSchema) }}
             />
           ) : null}
-          <section className="relative mt-8 overflow-hidden rounded-[2rem] border border-brand-200 bg-[radial-gradient(circle_at_top_left,#cffafe_0%,#ffffff_38%,#fff7ed_100%)] shadow-xl shadow-paper-900/5">
-            <div className="bo-ambient-orb pointer-events-none absolute -left-12 top-14 h-36 w-36 rounded-full bg-brand-300/30 blur-3xl" aria-hidden />
-            <div className="bo-ambient-orb pointer-events-none absolute -right-10 bottom-14 h-40 w-40 rounded-full bg-warm-300/30 blur-3xl [animation-delay:1.6s]" aria-hidden />
+          <section className="relative mt-8 overflow-hidden rounded-[2rem] border border-edu-indigo-200 bg-[radial-gradient(circle_at_top_left,#dbeafe_0%,#ffffff_36%,#ecfdf5_70%,#fffbeb_100%)] shadow-xl shadow-paper-900/5">
+            <div className="bo-ambient-orb pointer-events-none absolute -left-12 top-14 h-36 w-36 rounded-full bg-edu-blue-400/30 blur-3xl" aria-hidden />
+            <div className="bo-ambient-orb pointer-events-none absolute -right-10 bottom-14 h-40 w-40 rounded-full bg-edu-sun-300/34 blur-3xl [animation-delay:1.6s]" aria-hidden />
+            <div className="bo-ambient-orb pointer-events-none absolute left-1/2 bottom-6 h-32 w-32 rounded-full bg-edu-success-300/22 blur-3xl [animation-delay:2.2s]" aria-hidden />
             <div className="bo-shimmer-line absolute inset-x-8 top-0 h-px bg-white/70" aria-hidden />
             <div className="border-b border-white/70 bg-white/55 px-5 py-3 backdrop-blur">
               <div className="flex flex-col gap-2 text-xs font-semibold text-paper-800/65 sm:flex-row sm:items-center sm:justify-between">
                 <span>{teacher.display_name} kişisel ders sayfası</span>
-                <span>benimogretmenim.com{publicProfilePath}</span>
+                <span>{publicSiteHost()}{publicProfilePath}</span>
               </div>
             </div>
             <div className="grid gap-8 p-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:p-8">
               <div>
                 <div className="flex flex-wrap gap-2">
                   {(profileSite?.trustBadges ?? profileTrustReasons(teacher)).slice(0, 4).map((badge) => (
-                    <span key={badge} className="rounded-full bg-white/85 px-3 py-1 text-xs font-semibold text-brand-900 ring-1 ring-brand-100">
+                    <span key={badge} className="rounded-full bg-white/88 px-3 py-1 text-xs font-semibold text-edu-indigo-800 ring-1 ring-edu-indigo-100">
                       {badge}
                     </span>
                   ))}
-                  <span className="rounded-full bg-paper-950 px-3 py-1 text-xs font-semibold text-white">
+                  <span className="rounded-full bg-edu-indigo-950 px-3 py-1 text-xs font-semibold text-white">
                     Paylaşılabilir profesyonel profil
                   </span>
                 </div>
                 <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-start">
-                  <div className="bo-float-delayed flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.75rem] bg-brand-900 text-3xl font-semibold text-white shadow-lg shadow-brand-900/20">
+                  <div className="bo-float-delayed flex h-24 w-24 shrink-0 items-center justify-center rounded-[1.75rem] bg-edu-indigo-950 text-3xl font-semibold text-white shadow-lg shadow-edu-indigo-900/20">
                     {teacherInitials}
                   </div>
                   <div>
-                    <div className="text-sm font-semibold uppercase tracking-[0.22em] text-brand-900/70">
+                    <div className="text-sm font-semibold uppercase tracking-[0.22em] text-edu-indigo-700/70">
                       {primaryBranchName} öğretmeni
                     </div>
                     <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight text-paper-950 sm:text-5xl">
@@ -1000,13 +1002,13 @@ export default function OgretmenDetayPage() {
                         metadata: { source: "teacher_profile_hero", teacherName: teacher.display_name },
                       })
                     }
-                    className="bo-glow-pulse rounded-xl bg-brand-800 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-brand-900/15 hover:bg-brand-900"
+                    className="bo-glow-pulse rounded-xl bg-edu-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-edu-indigo-900/15 hover:bg-edu-indigo-800"
                   >
                     Demo ders talep et
                   </Link>
                   <Link
                     href={talepEntryHref}
-                    className="rounded-xl border border-brand-200 bg-white/85 px-5 py-3 text-sm font-semibold text-brand-900 hover:bg-white"
+                    className="rounded-xl border border-edu-indigo-200 bg-white/85 px-5 py-3 text-sm font-semibold text-edu-indigo-800 hover:bg-white"
                   >
                     Teklif al
                   </Link>
@@ -1020,7 +1022,7 @@ export default function OgretmenDetayPage() {
                   {contactPhone && (
                     <a
                       href={telHref(contactPhone)}
-                      className="rounded-xl border border-brand-200 bg-white/85 px-5 py-3 text-sm font-semibold text-brand-900 hover:bg-white"
+                      className="rounded-xl border border-edu-blue-200 bg-white/85 px-5 py-3 text-sm font-semibold text-edu-blue-900 hover:bg-white"
                     >
                       Telefonla ara
                     </a>
@@ -1047,10 +1049,10 @@ export default function OgretmenDetayPage() {
                 {shortlistOk ? <p className="mt-2 text-xs font-medium text-brand-900">{shortlistOk}</p> : null}
                 {shareOk ? <p className="mt-2 text-xs font-medium text-paper-800/70">{shareOk}</p> : null}
               </div>
-              <aside className="bo-card-lift rounded-[1.75rem] border border-white/80 bg-white/90 p-5 shadow-xl shadow-paper-900/10">
+              <aside className="bo-card-lift rounded-[1.75rem] border border-white/80 bg-white/92 p-5 shadow-xl shadow-edu-indigo-900/10">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/70">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-edu-indigo-700/70">
                       Öğretmen vitrini
                     </div>
                     <h2 className="mt-2 text-xl font-semibold text-paper-950">
@@ -1060,33 +1062,33 @@ export default function OgretmenDetayPage() {
                       {primaryBranchName} için profesyonel tanıtım sayfası
                     </p>
                   </div>
-                  <div className="rounded-2xl bg-brand-50 px-3 py-2 text-center ring-1 ring-brand-100">
-                    <div className="text-lg font-semibold text-brand-900">{confidenceScore}</div>
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-brand-900/60">karar güveni</div>
+                  <div className="rounded-2xl bg-edu-indigo-50 px-3 py-2 text-center ring-1 ring-edu-indigo-100">
+                    <div className="text-lg font-semibold text-edu-indigo-800">{confidenceScore}</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-edu-indigo-800/60">karar güveni</div>
                   </div>
                 </div>
                 <div className="mt-5 grid grid-cols-2 gap-3">
                   {heroStats.map((stat) => (
-                    <div key={stat.label} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
+                    <div key={stat.label} className="rounded-xl border border-edu-blue-100 bg-edu-blue-50/60 p-3">
                       <div className="text-xs text-paper-800/55">{stat.label}</div>
                       <div className="mt-1 text-sm font-semibold text-paper-950">{stat.value}</div>
                     </div>
                   ))}
                 </div>
-                <div className="mt-4 rounded-xl border border-warm-200 bg-warm-50 p-3">
-                  <div className="text-xs font-semibold text-warm-950">Sayfayı tanıtım linki olarak kullanabilir</div>
-                  <p className="mt-1 text-xs leading-relaxed text-warm-900/80">
+                <div className="mt-4 rounded-xl border border-edu-sun-300 bg-edu-sun-50 p-3">
+                  <div className="text-xs font-semibold text-edu-sun-900">Sayfayı tanıtım linki olarak kullanabilir</div>
+                  <p className="mt-1 text-xs leading-relaxed text-edu-sun-900/80">
                     Öğretmen bu profili velilere, öğrencilere ve sosyal medya takipçilerine kendi ders web sayfası gibi gönderebilir.
                   </p>
                 </div>
                 {contactPhone && (
-                  <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3">
-                    <div className="text-xs font-semibold text-brand-950">Doğrudan iletişim</div>
+                  <div className="mt-4 rounded-xl border border-edu-success-100 bg-edu-success-50 p-3">
+                    <div className="text-xs font-semibold text-edu-success-900">Doğrudan iletişim</div>
                     <p className="mt-1 text-sm font-semibold text-paper-950">{contactPhone}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <a
                         href={telHref(contactPhone)}
-                        className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-900 hover:bg-brand-50"
+                        className="rounded-lg border border-edu-success-100 bg-white px-3 py-1.5 text-xs font-semibold text-edu-success-900 hover:bg-edu-success-50"
                       >
                         Telefon
                       </a>
@@ -1101,7 +1103,7 @@ export default function OgretmenDetayPage() {
                         </a>
                       )}
                     </div>
-                    <p className="mt-2 text-[11px] leading-relaxed text-brand-900/65">
+                    <p className="mt-2 text-[11px] leading-relaxed text-edu-success-900/65">
                       Öğretmen bu bilgiyi profilinde isteğe bağlı olarak yayınlamıştır.
                     </p>
                   </div>
@@ -1110,7 +1112,7 @@ export default function OgretmenDetayPage() {
             </div>
           </section>
 
-          <nav className="mt-4 flex gap-2 overflow-x-auto rounded-2xl border border-paper-200 bg-white p-2 text-sm">
+          <nav className="mt-4 flex gap-2 overflow-x-auto rounded-2xl border border-edu-blue-100 bg-white/94 p-2 text-sm">
             {[
               ["Web sitesi", "#web-vitrin"],
               ["Tanıtım paketi", "#tanitim-paketi"],
@@ -1124,15 +1126,15 @@ export default function OgretmenDetayPage() {
               ["Yorumlar", "#yorumlar"],
               ["SSS", "#sss"],
             ].map(([label, href]) => (
-              <a key={href} href={href} className="shrink-0 rounded-xl px-3 py-2 font-medium text-paper-800 hover:bg-brand-50 hover:text-brand-900">
+              <a key={href} href={href} className="shrink-0 rounded-xl px-3 py-2 font-medium text-paper-800 hover:bg-edu-indigo-50 hover:text-edu-indigo-800">
                 {label}
               </a>
             ))}
           </nav>
 
           <section id="web-vitrin" className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="rounded-2xl border border-paper-200 bg-white p-6 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+            <div className="rounded-2xl border border-edu-blue-100 bg-white/94 p-6 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-edu-indigo-700/70">
                 Kişisel web sayfası
               </div>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-950">
@@ -1143,15 +1145,15 @@ export default function OgretmenDetayPage() {
               </p>
               <div className="mt-5 grid gap-3 md:grid-cols-3">
                 {personalSiteHighlights.map((item) => (
-                  <article key={item.title} className="rounded-xl border border-paper-200 bg-paper-50 p-4">
+                  <article key={item.title} className="rounded-xl border border-edu-blue-100 bg-edu-blue-50/60 p-4">
                     <h3 className="text-sm font-semibold text-paper-950">{item.title}</h3>
                     <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
                   </article>
                 ))}
               </div>
             </div>
-            <aside className="rounded-2xl border border-brand-200 bg-brand-50/70 p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-900/70">
+            <aside className="rounded-2xl border border-edu-indigo-200 bg-edu-indigo-50/70 p-5">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-edu-indigo-800/70">
                 Öğretmen için kullanım
               </div>
               <h2 className="mt-2 text-lg font-semibold text-paper-950">
@@ -1163,18 +1165,18 @@ export default function OgretmenDetayPage() {
               <button
                 type="button"
                 onClick={() => void shareProfile()}
-                className="mt-4 w-full rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
+                className="mt-4 w-full rounded-xl bg-edu-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-edu-indigo-800"
               >
                 Profil linkini paylaş
               </button>
-              {shareOk ? <p className="mt-2 text-xs font-medium text-brand-900">{shareOk}</p> : null}
+              {shareOk ? <p className="mt-2 text-xs font-medium text-edu-indigo-800">{shareOk}</p> : null}
             </aside>
           </section>
 
-          <section id="tanitim-paketi" className="mt-6 rounded-[2rem] border border-paper-200 bg-white p-6 shadow-sm">
+          <section id="tanitim-paketi" className="mt-6 rounded-[2rem] border border-edu-sun-300 bg-white/94 p-6 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-warm-900/70">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-edu-sun-900/70">
                   Tanıtım paketi
                 </div>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-950">
@@ -1188,7 +1190,7 @@ export default function OgretmenDetayPage() {
                 <button
                   type="button"
                   onClick={() => void copyIntroText()}
-                  className="rounded-xl bg-paper-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-paper-800"
+                  className="rounded-xl bg-edu-indigo-950 px-4 py-2.5 text-sm font-semibold text-white hover:bg-edu-indigo-800"
                 >
                   Tanıtım metnini kopyala
                 </button>
@@ -1202,7 +1204,7 @@ export default function OgretmenDetayPage() {
               </div>
             </div>
             <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-              <div className="rounded-2xl border border-paper-200 bg-paper-50 p-4">
+              <div className="rounded-2xl border border-edu-blue-100 bg-edu-blue-50/60 p-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-paper-800/55">
                   Hazır mesaj
                 </div>
@@ -1218,7 +1220,7 @@ export default function OgretmenDetayPage() {
               </div>
               <div className="grid gap-3">
                 {brandKitCards.map((card) => (
-                  <article key={card.title} className="rounded-2xl border border-warm-200 bg-warm-50/70 p-4">
+                  <article key={card.title} className="rounded-2xl border border-edu-sun-300 bg-edu-sun-50/75 p-4">
                     <h3 className="text-sm font-semibold text-paper-950">{card.title}</h3>
                     <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{card.body}</p>
                   </article>
@@ -1227,10 +1229,10 @@ export default function OgretmenDetayPage() {
             </div>
           </section>
 
-          <section id="sonuc-plani" className="mt-6 overflow-hidden rounded-[2rem] border border-brand-200 bg-[radial-gradient(circle_at_top_right,#dcfce7_0%,#ffffff_38%,#eff6ff_100%)] p-6 shadow-sm">
+          <section id="sonuc-plani" className="mt-6 overflow-hidden rounded-[2rem] border border-edu-success-100 bg-[radial-gradient(circle_at_top_right,#d1fae5_0%,#ffffff_36%,#eff6ff_70%,#fffbeb_100%)] p-6 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-900/70">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-edu-success-900/70">
                   Sonuç odaklı ders planı
                 </div>
                 <h2 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight text-paper-950">
@@ -1242,7 +1244,7 @@ export default function OgretmenDetayPage() {
               </div>
               <Link
                 href={demoTalepEntryHref}
-                className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-brand-900"
+                className="shrink-0 rounded-xl bg-edu-indigo-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-edu-indigo-800"
               >
                 Demo ile planı netleştir
               </Link>
@@ -1250,7 +1252,7 @@ export default function OgretmenDetayPage() {
             <div className="mt-5 grid gap-3 lg:grid-cols-4">
               {outcomeRoadmap.map((item) => (
                 <article key={item.step} className="rounded-2xl border border-white bg-white/85 p-4 shadow-sm">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-800 text-sm font-semibold text-white">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-edu-indigo-600 via-edu-blue-500 to-edu-success-500 text-sm font-semibold text-white">
                     {item.step}
                   </div>
                   <h3 className="mt-3 text-sm font-semibold text-paper-950">{item.title}</h3>
@@ -1271,13 +1273,13 @@ export default function OgretmenDetayPage() {
                   ))}
                 </div>
               </div>
-              <aside className="rounded-2xl border border-warm-200 bg-warm-50/85 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-warm-900/70">
+              <aside className="rounded-2xl border border-edu-sun-300 bg-edu-sun-50/85 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-edu-sun-900/70">
                   Değer önerisi
                 </div>
                 <div className="mt-3 space-y-2">
                   {audienceValueCards.map((card) => (
-                    <div key={card.title} className="rounded-xl bg-white p-3 ring-1 ring-warm-200">
+                    <div key={card.title} className="rounded-xl bg-white p-3 ring-1 ring-edu-sun-300">
                       <h3 className="text-xs font-semibold text-paper-950">{card.title}</h3>
                       <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{card.body}</p>
                     </div>

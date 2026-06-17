@@ -324,28 +324,29 @@ function HighlightIcon({ name }: { name: (typeof homeHighlights)[number]["icon"]
 
 export default function Home() {
   return (
-    <div className="bg-[radial-gradient(circle_at_12%_0%,rgba(88,170,169,0.12),transparent_28%),radial-gradient(circle_at_88%_12%,rgba(235,163,107,0.12),transparent_30%),linear-gradient(180deg,#f7faf8_0%,#edf4f1_42%,#ffffff_100%)]">
+    <div className="bo-edu-bg">
       <HomeLaunchAnnouncement />
-      <section className="relative overflow-hidden border-b border-brand-100 bg-[linear-gradient(135deg,#f7faf8_0%,#eef9f8_48%,#fff8f1_100%)] text-paper-950">
+      <section className="bo-edu-hero relative overflow-hidden border-b border-edu-indigo-100 text-paper-950">
         <HeroArt />
-        <div className="bo-ambient-orb pointer-events-none absolute left-[8%] top-16 h-40 w-40 rounded-full bg-brand-300/25 blur-3xl" aria-hidden />
-        <div className="bo-ambient-orb pointer-events-none absolute right-[10%] top-28 h-44 w-44 rounded-full bg-warm-300/25 blur-3xl [animation-delay:1.4s]" aria-hidden />
+        <div className="bo-ambient-orb pointer-events-none absolute left-[8%] top-16 h-40 w-40 rounded-full bg-edu-blue-400/30 blur-3xl" aria-hidden />
+        <div className="bo-ambient-orb pointer-events-none absolute right-[10%] top-28 h-44 w-44 rounded-full bg-edu-sun-300/35 blur-3xl [animation-delay:1.4s]" aria-hidden />
+        <div className="bo-ambient-orb pointer-events-none absolute left-[42%] bottom-14 h-36 w-36 rounded-full bg-edu-success-300/25 blur-3xl [animation-delay:2.1s]" aria-hidden />
         <div
-          className="pointer-events-none absolute inset-0 opacity-80 [background-image:linear-gradient(115deg,rgba(88,170,169,0.14),transparent_30%),linear-gradient(245deg,rgba(235,163,107,0.13),transparent_32%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.42),transparent_34%)]"
+          className="pointer-events-none absolute inset-0 opacity-80 [background-image:linear-gradient(115deg,rgba(79,70,229,0.14),transparent_30%),linear-gradient(245deg,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.5),transparent_34%)]"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.2] [background-image:linear-gradient(rgba(88,170,169,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(88,170,169,0.18)_1px,transparent_1px)] [background-size:36px_36px]"
+          className="bo-edu-grid pointer-events-none absolute inset-0 opacity-[0.55]"
           aria-hidden
         />
         <div className="relative z-0 mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_min(44%,min(440px,100%))] lg:items-center lg:gap-12">
             <div className="max-lg:order-2 lg:order-none">
-              <div className="mb-5 inline-flex rounded-3xl border border-brand-100 bg-white/80 px-4 py-3 shadow-[0_18px_55px_rgba(88,170,169,0.16)] backdrop-blur">
+              <div className="mb-5 inline-flex rounded-3xl border border-white/80 bg-white/82 px-4 py-3 shadow-[0_18px_55px_rgba(79,70,229,0.14)] backdrop-blur">
                 <BrandLockup asLink={false} className="[&_img]:h-14 sm:[&_img]:h-16" />
               </div>
-              <p className="mb-3 inline-flex rounded-full border border-brand-200 bg-white/75 px-3 py-1 text-xs font-semibold text-brand-900 shadow-[0_10px_30px_rgba(88,170,169,0.14)] backdrop-blur">
-                Dijital eğitim merkezi
+              <p className="mb-3 inline-flex rounded-full border border-edu-indigo-200 bg-white/78 px-3 py-1 text-xs font-semibold text-edu-indigo-800 shadow-[0_10px_30px_rgba(79,70,229,0.15)] backdrop-blur">
+                Dijital eğitim merkezi · sınav, ödev, takip
               </p>
               <h1 className="max-w-3xl text-balance text-4xl font-semibold tracking-tight text-paper-950 sm:text-[2.7rem] sm:leading-[1.05]">
                 Öğretmen bul, ders al, soru sor ve gelişimini takip et
@@ -358,7 +359,7 @@ export default function Home() {
                 {heroSignals.map((signal) => (
                   <span
                     key={signal}
-                    className="bo-card-lift rounded-full border border-brand-200 bg-white/75 px-3 py-1.5 text-xs font-semibold text-brand-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
+                    className="bo-card-lift rounded-full border border-edu-blue-200 bg-white/78 px-3 py-1.5 text-xs font-semibold text-edu-blue-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
                   >
                     {signal}
                   </span>
@@ -366,9 +367,9 @@ export default function Home() {
               </div>
               <form
                 action="/ogretmenler"
-                className="mt-6 rounded-3xl border border-brand-100 bg-white/82 p-3 shadow-[0_24px_80px_rgba(88,170,169,0.16)] backdrop-blur-xl"
+                className="mt-6 rounded-3xl border border-white/80 bg-white/88 p-3 shadow-[0_24px_80px_rgba(79,70,229,0.14)] backdrop-blur-xl"
               >
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-800/75">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-edu-indigo-800/75">
                   Ders, sınav veya konu ara
                 </div>
                 <div className="mt-2 sm:flex sm:items-center sm:gap-2">
@@ -380,11 +381,11 @@ export default function Home() {
                     name="q"
                     type="search"
                     placeholder="Örn. LGS matematik, İngilizce konuşma, fizik"
-                    className="w-full rounded-2xl border border-brand-100 bg-white/95 px-4 py-3 text-sm text-paper-950 outline-none ring-brand-300 placeholder:text-paper-800/50 focus:ring-2"
+                    className="w-full rounded-2xl border border-edu-blue-100 bg-white/95 px-4 py-3 text-sm text-paper-950 outline-none ring-edu-indigo-300 placeholder:text-paper-800/50 focus:ring-2"
                   />
                   <button
                     type="submit"
-                    className="bo-glow-pulse mt-2 w-full rounded-2xl bg-gradient-to-r from-brand-500 via-brand-400 to-warm-300 px-5 py-3 text-sm font-bold text-white shadow-[0_12px_42px_rgba(88,170,169,0.22)] hover:brightness-105 sm:mt-0 sm:w-auto"
+                    className="bo-glow-pulse mt-2 w-full rounded-2xl bg-gradient-to-r from-edu-indigo-600 via-edu-blue-500 to-edu-sun-400 px-5 py-3 text-sm font-bold text-white shadow-[0_12px_42px_rgba(79,70,229,0.24)] hover:brightness-105 sm:mt-0 sm:w-auto"
                   >
                     Ara
                   </button>
@@ -394,7 +395,7 @@ export default function Home() {
                     <Link
                       key={label}
                       href={`/ogretmenler?q=${encodeURIComponent(label)}`}
-                      className="rounded-full border border-brand-200 bg-white/70 px-3 py-1.5 text-xs font-medium text-paper-800 hover:border-brand-300 hover:bg-white"
+                      className="rounded-full border border-edu-blue-200 bg-white/72 px-3 py-1.5 text-xs font-medium text-paper-800 hover:border-edu-indigo-300 hover:bg-white"
                     >
                       {label}
                     </Link>
@@ -404,19 +405,19 @@ export default function Home() {
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
                   href="/kayit?role=student"
-                  className="rounded-2xl bg-brand-800 px-4 py-2.5 text-sm font-bold text-white shadow-[0_14px_45px_rgba(88,170,169,0.2)] hover:bg-brand-900"
+                  className="rounded-2xl bg-edu-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-[0_14px_45px_rgba(79,70,229,0.22)] hover:bg-edu-indigo-800"
                 >
                   Öğrenci olarak başla
                 </Link>
                 <Link
                   href="/ogretmenler?verifiedOnly=1&sort=recommended"
-                  className="rounded-2xl border border-brand-200 bg-white/75 px-4 py-2.5 text-sm font-semibold text-brand-900 backdrop-blur hover:bg-white"
+                  className="rounded-2xl border border-edu-blue-200 bg-white/75 px-4 py-2.5 text-sm font-semibold text-edu-blue-900 backdrop-blur hover:bg-white"
                 >
                   Öğretmenleri keşfet
                 </Link>
                 <Link
                   href="/kayit?role=teacher"
-                  className="rounded-2xl border border-warm-200 bg-warm-50 px-4 py-2.5 text-sm font-semibold text-warm-900 hover:bg-warm-100"
+                  className="rounded-2xl border border-edu-sun-300 bg-edu-sun-50 px-4 py-2.5 text-sm font-semibold text-edu-sun-900 hover:bg-edu-sun-100"
                 >
                   Öğretmen başvurusu
                 </Link>
@@ -424,8 +425,8 @@ export default function Home() {
               <HomeHeroPersonalized />
               <dl className="mt-10 grid grid-cols-2 gap-3 border-t border-brand-100 pt-10 sm:grid-cols-4 sm:gap-4">
                 {homeHighlights.map((item) => (
-                  <div key={item.title} className="bo-card-lift rounded-2xl border border-brand-100 bg-white/70 p-4 backdrop-blur">
-                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand-50 text-brand-800 ring-1 ring-brand-100">
+                  <div key={item.title} className="bo-card-lift rounded-2xl border border-white/80 bg-white/76 p-4 shadow-sm backdrop-blur">
+                    <div className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-edu-indigo-50 text-edu-indigo-800 ring-1 ring-edu-indigo-100">
                       <HighlightIcon name={item.icon} />
                     </div>
                     <dt className="mt-2 text-sm font-semibold text-paper-950">{item.title}</dt>
@@ -436,7 +437,7 @@ export default function Home() {
             </div>
 
             <figure className="order-first mx-auto w-full max-w-md lg:order-none lg:mx-0 lg:max-w-none">
-              <div className="bo-float-slow relative aspect-[4/3] w-full overflow-hidden rounded-[2rem] border border-white/70 bg-white/80 p-3 shadow-[0_30px_110px_rgba(88,170,169,0.22)] backdrop-blur-xl">
+              <div className="bo-float-slow relative aspect-[4/3] w-full overflow-hidden rounded-[2rem] border border-white/75 bg-white/82 p-3 shadow-[0_30px_110px_rgba(79,70,229,0.2)] backdrop-blur-xl">
                 <div className="bo-shimmer-line absolute inset-x-6 top-3 z-10 h-px rounded-full bg-white/55" aria-hidden />
                 <div className="relative h-full min-h-0 w-full overflow-hidden rounded-[1rem]">
                   <Image
@@ -447,7 +448,7 @@ export default function Home() {
                     sizes="(max-width: 1024px) 100vw, 440px"
                     priority
                   />
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-brand-950/55 via-brand-950/12 to-warm-100/20" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-edu-indigo-950/58 via-edu-blue-900/10 to-edu-sun-100/24" />
                   <div className="bo-float-delayed absolute left-4 top-4 rounded-2xl border border-white/55 bg-white/82 px-4 py-3 text-paper-950 shadow-xl backdrop-blur">
                     <div className="text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-brand-800/75">
                       Bugünkü özet
@@ -456,7 +457,7 @@ export default function Home() {
                   </div>
                   <div className="absolute bottom-4 left-4 right-4 grid gap-2 sm:grid-cols-3">
                     {avantPreviewCards.map((card) => (
-                      <div key={card.label} className="bo-card-lift rounded-2xl border border-white/55 bg-white/80 p-3 text-paper-950 backdrop-blur-md">
+                      <div key={card.label} className="bo-card-lift rounded-2xl border border-white/60 bg-white/84 p-3 text-paper-950 backdrop-blur-md">
                         <div className="text-[0.65rem] uppercase tracking-wide text-paper-800/60">{card.label}</div>
                         <div className="mt-1 text-lg font-semibold">{card.value}</div>
                         <div className="mt-1 text-[0.68rem] leading-tight text-paper-800/65">{card.hint}</div>
@@ -492,12 +493,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="nasil" className="scroll-mt-24 border-b border-paper-200 bg-white py-10">
+      <section id="nasil" className="scroll-mt-24 border-b border-edu-blue-100 bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="rounded-[2rem] border border-brand-200 bg-[linear-gradient(135deg,#ffffff_0%,#eef9f8_58%,#fff8f1_100%)] p-5 shadow-sm sm:p-6">
+          <div className="bo-edu-card rounded-[2rem] border border-edu-blue-100 p-5 sm:p-6">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-edu-indigo-700/70">
                   Platformu 30 saniyede anlayın
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-950">
@@ -510,7 +511,7 @@ export default function Home() {
               </div>
               <Link
                 href="/kayit"
-                className="w-fit rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-brand-900"
+                className="w-fit rounded-xl bg-edu-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-edu-indigo-800"
               >
                 Rolümü seçip kayıt ol
               </Link>
@@ -521,26 +522,26 @@ export default function Home() {
                 <Link
                   key={item.role}
                   href={item.href}
-                  className="group rounded-2xl border border-paper-200 bg-white/88 p-5 transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-white hover:shadow-[0_18px_50px_rgba(88,170,169,0.14)]"
+                  className="group rounded-2xl border border-edu-blue-100 bg-white/90 p-5 transition hover:-translate-y-0.5 hover:border-edu-indigo-200 hover:bg-white hover:shadow-[0_18px_50px_rgba(79,70,229,0.13)]"
                 >
-                  <div className="text-xs font-semibold uppercase tracking-wide text-brand-800/70">{item.role}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-edu-indigo-700/70">{item.role}</div>
                   <h3 className="mt-2 text-base font-semibold text-paper-950">{item.title}</h3>
                   <ul className="mt-4 space-y-2">
                     {item.points.map((point) => (
                       <li key={point} className="flex gap-2 text-sm leading-relaxed text-paper-800/75">
-                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-500" />
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-edu-success-500" />
                         <span>{point}</span>
                       </li>
                     ))}
                   </ul>
-                  <span className="mt-5 inline-flex text-sm font-semibold text-brand-800 transition group-hover:translate-x-1">
+                  <span className="mt-5 inline-flex text-sm font-semibold text-edu-indigo-700 transition group-hover:translate-x-1">
                     {item.cta} →
                   </span>
                 </Link>
               ))}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-brand-200 bg-white/82 p-4">
+            <div className="mt-6 rounded-2xl border border-edu-blue-100 bg-white/86 p-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="text-base font-semibold text-paper-950">Ödeme ve iade en basit haliyle</h3>
@@ -549,14 +550,14 @@ export default function Home() {
                     panelde görünür.
                   </p>
                 </div>
-                <Link href="/guven" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
+                <Link href="/guven" className="text-sm font-semibold text-edu-indigo-700 underline underline-offset-4">
                   Güven sayfasını incele
                 </Link>
               </div>
               <ol className="mt-4 grid gap-3 md:grid-cols-4">
                 {simplePaymentFlow.map((step, index) => (
-                  <li key={step} className="rounded-xl border border-paper-200 bg-paper-50 p-3">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-900">
+                  <li key={step} className="rounded-xl border border-edu-blue-100 bg-edu-blue-50/60 p-3">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-edu-sun-300 text-xs font-bold text-edu-indigo-950">
                       {index + 1}
                     </div>
                     <p className="mt-3 text-xs leading-relaxed text-paper-800/75">{step}</p>
@@ -568,11 +569,11 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-b border-paper-200 bg-white py-10">
+      <section className="border-b border-edu-blue-100 bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-edu-indigo-700/70">
                 Neden güvenilir?
               </p>
               <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-900">
@@ -585,7 +586,7 @@ export default function Home() {
             </div>
             <Link
               href="/uygulama"
-              className="w-fit rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-100"
+              className="w-fit rounded-xl border border-edu-indigo-200 bg-edu-indigo-50 px-4 py-2 text-sm font-semibold text-edu-indigo-800 hover:bg-edu-indigo-100"
             >
               Telefona ekle
             </Link>
@@ -595,7 +596,7 @@ export default function Home() {
               <Link
                 key={item.title}
                 href={item.href}
-                className="rounded-2xl border border-paper-200 bg-paper-50 p-5 transition hover:border-brand-200 hover:bg-white"
+                className="rounded-2xl border border-edu-blue-100 bg-edu-blue-50/60 p-5 transition hover:border-edu-indigo-200 hover:bg-white hover:shadow-[0_18px_55px_rgba(29,78,216,0.1)]"
               >
                 <h3 className="text-base font-semibold text-paper-900">{item.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-paper-800/70">{item.body}</p>
@@ -605,9 +606,9 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden border-b border-paper-200 bg-paper-950 py-14 text-white sm:py-16">
+      <section className="relative overflow-hidden border-b border-edu-indigo-900 bg-edu-indigo-950 py-14 text-white sm:py-16">
         <div
-          className="pointer-events-none absolute inset-0 opacity-70 [background-image:radial-gradient(circle_at_12%_18%,rgba(34,211,238,0.2),transparent_24%),radial-gradient(circle_at_86%_8%,rgba(255,122,77,0.18),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent_55%)]"
+          className="pointer-events-none absolute inset-0 opacity-80 [background-image:radial-gradient(circle_at_12%_18%,rgba(96,165,250,0.24),transparent_24%),radial-gradient(circle_at_86%_8%,rgba(251,191,36,0.22),transparent_26%),radial-gradient(circle_at_50%_82%,rgba(16,185,129,0.16),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.05),transparent_55%)]"
           aria-hidden
         />
         <div
@@ -617,7 +618,7 @@ export default function Home() {
         <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
             <div>
-              <p className="inline-flex rounded-full border border-brand-200/20 bg-brand-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-brand-100">
+              <p className="inline-flex rounded-full border border-edu-blue-200/25 bg-edu-blue-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-edu-blue-100">
                 Ders süreci
               </p>
               <h2 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
@@ -635,7 +636,7 @@ export default function Home() {
                   </div>
                   <div className="mt-1 text-lg font-semibold text-white">Dersin adımları</div>
                 </div>
-                <div className="rounded-full border border-brand-200/25 bg-brand-300/10 px-3 py-1 text-xs font-semibold text-brand-100">
+                <div className="rounded-full border border-edu-sun-300/35 bg-edu-sun-300/15 px-3 py-1 text-xs font-semibold text-edu-sun-100">
                   Online
                 </div>
               </div>
@@ -643,7 +644,7 @@ export default function Home() {
                 {commandTimeline.map((item, index) => (
                   <div key={item} className="rounded-2xl border border-white/10 bg-paper-950/60 p-4">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-300 to-warm-400 text-xs font-bold text-paper-950">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-edu-blue-400 via-edu-success-300 to-edu-sun-300 text-xs font-bold text-edu-indigo-950">
                         {index + 1}
                       </span>
                       <span className="text-sm font-medium text-white/85">{item}</span>
@@ -658,11 +659,11 @@ export default function Home() {
             {commandDeckCards.map((card) => (
               <article
                 key={card.title}
-                className="group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.06] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-0.5 hover:border-brand-200/40 hover:bg-white/[0.08]"
+                className="group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.07] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:-translate-y-0.5 hover:border-edu-blue-200/45 hover:bg-white/[0.09]"
               >
-                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-brand-300/10 blur-2xl transition group-hover:bg-warm-300/15" />
+                <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-edu-blue-300/12 blur-2xl transition group-hover:bg-edu-sun-300/18" />
                 <div className="relative">
-                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-100/65">
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-edu-blue-100/70">
                     {card.eyebrow}
                   </div>
                   <h3 className="mt-4 text-lg font-semibold text-white">{card.title}</h3>
@@ -678,12 +679,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-b border-paper-200 bg-white py-10">
+      <section className="border-b border-edu-blue-100 bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="rounded-[2rem] border border-paper-200 bg-[linear-gradient(135deg,#ffffff_0%,#f4fafc_55%,#fff7f3_100%)] p-5 shadow-sm sm:p-6">
+          <div className="rounded-[2rem] border border-edu-blue-100 bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_50%,#ecfdf5_72%,#fffbeb_100%)] p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-edu-indigo-700/70">
                   Güven bilgileri
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold tracking-tight text-paper-900">
@@ -696,8 +697,8 @@ export default function Home() {
               </div>
               <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[28rem]">
                 {socialProofStats.map((stat) => (
-                  <div key={stat.value} className="rounded-2xl border border-paper-200 bg-white p-4">
-                    <div className="text-2xl font-semibold text-paper-950">{stat.value}</div>
+                  <div key={stat.value} className="rounded-2xl border border-white bg-white/88 p-4 shadow-sm">
+                    <div className="text-2xl font-semibold text-edu-indigo-800">{stat.value}</div>
                     <div className="mt-1 text-xs leading-relaxed text-paper-800/60">{stat.label}</div>
                   </div>
                 ))}
@@ -705,9 +706,9 @@ export default function Home() {
             </div>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {trustQuotes.map((item) => (
-                <figure key={item.source} className="rounded-2xl border border-paper-200 bg-white/80 p-4">
+                <figure key={item.source} className="rounded-2xl border border-edu-blue-100 bg-white/84 p-4">
                   <blockquote className="text-sm leading-relaxed text-paper-800">“{item.quote}”</blockquote>
-                  <figcaption className="mt-3 text-xs font-semibold uppercase tracking-wide text-brand-800/70">
+                  <figcaption className="mt-3 text-xs font-semibold uppercase tracking-wide text-edu-indigo-700/70">
                     {item.source}
                   </figcaption>
                 </figure>
@@ -718,12 +719,12 @@ export default function Home() {
                 <Link
                   key={story.title}
                   href={story.href}
-                  className="group rounded-2xl border border-paper-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-brand-50/40"
+                  className="group rounded-2xl border border-white bg-white/88 p-4 transition hover:-translate-y-0.5 hover:border-edu-indigo-200 hover:bg-white hover:shadow-[0_18px_55px_rgba(79,70,229,0.12)]"
                 >
-                  <div className="text-xs font-semibold uppercase tracking-wide text-brand-800/70">{story.role}</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-edu-indigo-700/70">{story.role}</div>
                   <h3 className="mt-2 text-base font-semibold text-paper-950">{story.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-paper-800/65">{story.body}</p>
-                  <span className="mt-4 inline-flex text-sm font-semibold text-brand-800 transition group-hover:translate-x-1">
+                  <span className="mt-4 inline-flex text-sm font-semibold text-edu-indigo-700 transition group-hover:translate-x-1">
                     {story.action} →
                   </span>
                 </Link>
@@ -733,9 +734,9 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden border-b border-paper-200 bg-paper-50 py-10">
-        <div className="pointer-events-none absolute -left-24 top-8 h-48 w-48 rounded-full bg-brand-200/35 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -right-24 bottom-0 h-52 w-52 rounded-full bg-warm-200/35 blur-3xl" aria-hidden />
+      <section className="relative overflow-hidden border-b border-edu-blue-100 bg-edu-blue-50/55 py-10">
+        <div className="pointer-events-none absolute -left-24 top-8 h-48 w-48 rounded-full bg-edu-indigo-300/35 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -right-24 bottom-0 h-52 w-52 rounded-full bg-edu-sun-300/35 blur-3xl" aria-hidden />
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -744,7 +745,7 @@ export default function Home() {
                 En sık kullanılan işlemlere buradan başlayın.
               </p>
             </div>
-            <Link href="/fiyatlar" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
+            <Link href="/fiyatlar" className="text-sm font-semibold text-edu-indigo-700 underline underline-offset-4">
               Şeffaf fiyatları incele
             </Link>
           </div>
@@ -753,12 +754,12 @@ export default function Home() {
               <Link
                 key={action.title}
                 href={action.href}
-                className="group relative overflow-hidden rounded-[1.4rem] border border-paper-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_22px_60px_rgba(10,102,128,0.14)]"
+                className="group relative overflow-hidden rounded-[1.4rem] border border-white bg-white/92 p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-edu-indigo-200 hover:shadow-[0_22px_60px_rgba(79,70,229,0.14)]"
               >
-                <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-300 via-white to-warm-300 opacity-80" />
+                <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-edu-indigo-500 via-edu-success-300 to-edu-sun-300 opacity-90" />
                 <h3 className="text-base font-semibold text-paper-900">{action.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-paper-800/70">{action.body}</p>
-                <span className="mt-4 inline-flex text-sm font-semibold text-brand-800 transition group-hover:translate-x-1">
+                <span className="mt-4 inline-flex text-sm font-semibold text-edu-indigo-700 transition group-hover:translate-x-1">
                   Başla →
                 </span>
               </Link>
@@ -767,7 +768,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-b border-paper-200 bg-white py-10">
+      <section className="border-b border-edu-blue-100 bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -776,7 +777,7 @@ export default function Home() {
                 Öğrenci, öğretmen ve veli farklı araçlar kullanır. Size uygun hesabı seçin.
               </p>
             </div>
-            <Link href="/login" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
+            <Link href="/login" className="text-sm font-semibold text-edu-indigo-700 underline underline-offset-4">
               Hesabım var, giriş yap
             </Link>
           </div>
@@ -785,14 +786,14 @@ export default function Home() {
               <Link
                 key={card.title}
                 href={card.href}
-                className="group rounded-[1.5rem] border border-paper-200 bg-[linear-gradient(135deg,#ffffff_0%,#f4fafc_62%,#ecfeff_100%)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_22px_70px_rgba(10,102,128,0.12)]"
+                className="group rounded-[1.5rem] border border-edu-blue-100 bg-[linear-gradient(135deg,#ffffff_0%,#eff6ff_54%,#eef2ff_76%,#fffbeb_100%)] p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-edu-indigo-200 hover:shadow-[0_22px_70px_rgba(79,70,229,0.13)]"
               >
-                <div className="mb-4 h-10 w-10 rounded-2xl bg-paper-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
-                  <div className="h-full w-full rounded-2xl bg-[radial-gradient(circle_at_25%_25%,#67e8f9,transparent_35%),radial-gradient(circle_at_78%_70%,#ff7a4d,transparent_34%)]" />
+                <div className="mb-4 h-10 w-10 rounded-2xl bg-edu-indigo-950 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]">
+                  <div className="h-full w-full rounded-2xl bg-[radial-gradient(circle_at_25%_25%,#60a5fa,transparent_35%),radial-gradient(circle_at_78%_70%,#fcd34d,transparent_34%),radial-gradient(circle_at_50%_95%,#6ee7b7,transparent_32%)]" />
                 </div>
                 <h3 className="text-lg font-semibold text-paper-900">{card.title}</h3>
                 <p className="mt-2 min-h-[3rem] text-sm leading-relaxed text-paper-800/70">{card.body}</p>
-                <span className="mt-4 inline-flex rounded-2xl bg-paper-950 px-4 py-2 text-sm font-semibold text-white transition group-hover:bg-brand-800">
+                <span className="mt-4 inline-flex rounded-2xl bg-edu-indigo-950 px-4 py-2 text-sm font-semibold text-white transition group-hover:bg-edu-indigo-700">
                   {card.cta}
                 </span>
               </Link>
@@ -801,7 +802,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="adimlar" className="scroll-mt-20 border-b border-paper-200 bg-paper-950 py-14 text-white sm:py-16">
+      <section id="adimlar" className="scroll-mt-20 border-b border-edu-indigo-900 bg-edu-indigo-950 py-14 text-white sm:py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Kullanım adımları</h2>
           <p className="mt-2 max-w-xl text-sm text-white/70">
@@ -810,7 +811,7 @@ export default function Home() {
           <ol className="mt-8 grid gap-6 sm:grid-cols-3">
             {howSteps.map((item) => (
               <li key={item.step} className="rounded-[1.5rem] border border-white/10 bg-white/[0.07] p-5 backdrop-blur">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-300 to-warm-400 text-sm font-bold text-paper-950">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-edu-blue-400 via-edu-success-300 to-edu-sun-300 text-sm font-bold text-edu-indigo-950">
                   {item.step}
                 </span>
                 <h3 className="mt-4 text-base font-semibold text-white">{item.title}</h3>
@@ -821,7 +822,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="border-b border-paper-200 bg-white py-14 sm:py-16">
+      <section className="border-b border-edu-blue-100 bg-white py-14 sm:py-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -833,7 +834,7 @@ export default function Home() {
                 toplanır.
               </p>
             </div>
-            <Link href="/fiyatlar" className="text-sm font-semibold text-brand-800 underline underline-offset-4">
+            <Link href="/fiyatlar" className="text-sm font-semibold text-edu-indigo-700 underline underline-offset-4">
               Üyelikleri gör
             </Link>
           </div>
@@ -842,11 +843,11 @@ export default function Home() {
               <Link
                 key={track.title}
                 href={track.href}
-                className="group rounded-[1.5rem] border border-paper-200 bg-paper-50 p-5 transition hover:-translate-y-0.5 hover:border-brand-200 hover:bg-white hover:shadow-[0_22px_70px_rgba(10,102,128,0.12)]"
+                className="group rounded-[1.5rem] border border-edu-blue-100 bg-edu-blue-50/55 p-5 transition hover:-translate-y-0.5 hover:border-edu-indigo-200 hover:bg-white hover:shadow-[0_22px_70px_rgba(79,70,229,0.12)]"
               >
                 <h3 className="text-base font-semibold text-paper-900">{track.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-paper-800/75">{track.body}</p>
-                <span className="mt-4 inline-flex text-sm font-semibold text-brand-800 transition group-hover:translate-x-1">
+                <span className="mt-4 inline-flex text-sm font-semibold text-edu-indigo-700 transition group-hover:translate-x-1">
                   İncele →
                 </span>
               </Link>
@@ -862,11 +863,11 @@ export default function Home() {
         />
       </section>
 
-      <section className="border-t border-paper-200 bg-white py-12">
+      <section className="border-t border-edu-blue-100 bg-white py-12">
         <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-          <div className="relative overflow-hidden rounded-[2rem] border border-paper-200 bg-paper-950 px-5 py-10 text-white shadow-[0_30px_100px_rgba(7,13,17,0.18)] sm:px-10">
-            <div className="pointer-events-none absolute -left-16 -top-16 h-44 w-44 rounded-full bg-brand-300/25 blur-3xl" aria-hidden />
-            <div className="pointer-events-none absolute -bottom-20 -right-14 h-52 w-52 rounded-full bg-warm-400/25 blur-3xl" aria-hidden />
+          <div className="relative overflow-hidden rounded-[2rem] border border-edu-indigo-900 bg-edu-indigo-950 px-5 py-10 text-white shadow-[0_30px_100px_rgba(30,27,75,0.22)] sm:px-10">
+            <div className="pointer-events-none absolute -left-16 -top-16 h-44 w-44 rounded-full bg-edu-blue-400/25 blur-3xl" aria-hidden />
+            <div className="pointer-events-none absolute -bottom-20 -right-14 h-52 w-52 rounded-full bg-edu-sun-300/25 blur-3xl" aria-hidden />
             <div className="relative">
               <h2 className="text-2xl font-semibold tracking-tight text-white">Nereden başlayacağınızı seçin</h2>
               <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-white/70">
@@ -876,7 +877,7 @@ export default function Home() {
               <div className="mt-6 flex flex-wrap justify-center gap-3">
                 <Link
                   href="/kayit?role=student"
-                  className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-paper-950 hover:bg-brand-50"
+                  className="rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-edu-indigo-950 hover:bg-edu-blue-50"
                 >
                   Ücretsiz kayıt ol
                 </Link>

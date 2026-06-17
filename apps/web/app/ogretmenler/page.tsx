@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AuthEntryLink } from "../components/AuthEntryLink";
 import { apiFetch } from "../lib/api";
 import { getToken } from "../lib/auth";
 import { loginHrefWithReturn } from "../lib/authRedirect";
@@ -587,7 +586,7 @@ function OgretmenlerPageInner() {
   }, [rows]);
 
   return (
-    <div className="min-h-screen bg-paper-50">
+    <div className="bo-edu-bg min-h-screen">
       <div className="mx-auto max-w-4xl px-6 py-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -597,26 +596,20 @@ function OgretmenlerPageInner() {
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
-            <AuthEntryLink
-              path="/panel"
-              className="rounded-xl border border-paper-300 bg-white px-4 py-2 text-sm font-medium text-paper-900 hover:bg-paper-50"
-            >
-              Panel
-            </AuthEntryLink>
             <Link
               href={talepHref}
-              className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+              className="rounded-xl bg-edu-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-edu-indigo-800"
             >
               Talep oluştur
             </Link>
           </div>
         </div>
 
-        <section className="mt-6 rounded-2xl border border-brand-200 bg-brand-50/70 p-5">
+        <section className="bo-edu-card mt-6 rounded-2xl border border-edu-indigo-200 p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-base font-semibold text-brand-950">Doğru öğretmeni daha hızlı bulun</h2>
-              <p className="mt-1 max-w-2xl text-sm text-brand-900/85">
+              <h2 className="text-base font-semibold text-edu-indigo-950">Doğru öğretmeni daha hızlı bulun</h2>
+              <p className="mt-1 max-w-2xl text-sm text-edu-indigo-900/80">
                 Önce doğrulanmış ve güçlü profilleri inceleyin; emin değilseniz tek talep açıp gelen teklifleri
                 puan, ücret, yanıt hızı ve profil kalitesiyle karşılaştırın.
               </p>
@@ -636,7 +629,7 @@ function OgretmenlerPageInner() {
                         sort: "recommended",
                       });
                     }}
-                    className="rounded-full border border-brand-200 bg-white px-3 py-1.5 text-xs font-medium text-brand-900"
+                    className="rounded-full border border-edu-blue-200 bg-white/86 px-3 py-1.5 text-xs font-medium text-edu-blue-900 hover:border-edu-indigo-300"
                   >
                     {preset.label}
                   </button>
@@ -645,17 +638,17 @@ function OgretmenlerPageInner() {
             </div>
             <Link
               href={talepHref}
-              className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
+              className="shrink-0 rounded-xl bg-edu-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-edu-indigo-800"
             >
               Tek taleple teklif topla
             </Link>
           </div>
         </section>
 
-        <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+        <section className="mt-6 rounded-2xl border border-edu-blue-100 bg-white/94 p-5 shadow-sm">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-paper-800/55">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-edu-indigo-700/70">
                 Öğretmen seçmeme yardım et
               </div>
               <h2 className="mt-1 text-lg font-semibold text-paper-950">Hedefinize göre filtreleri hazırlayalım</h2>
@@ -682,8 +675,8 @@ function OgretmenlerPageInner() {
                     onClick={() => setAdvisorGoal(item.id)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
                       advisorGoal === item.id
-                        ? "border-brand-300 bg-brand-50 text-brand-950"
-                        : "border-paper-200 bg-paper-50 text-paper-800"
+                        ? "border-edu-indigo-300 bg-edu-indigo-50 text-edu-indigo-950"
+                        : "border-edu-blue-100 bg-edu-blue-50/65 text-paper-800"
                     }`}
                   >
                     {item.label}
@@ -701,8 +694,8 @@ function OgretmenlerPageInner() {
                     onClick={() => setAdvisorMode(item.id)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
                       advisorMode === item.id
-                        ? "border-brand-300 bg-brand-50 text-brand-950"
-                        : "border-paper-200 bg-paper-50 text-paper-800"
+                        ? "border-edu-indigo-300 bg-edu-indigo-50 text-edu-indigo-950"
+                        : "border-edu-blue-100 bg-edu-blue-50/65 text-paper-800"
                     }`}
                   >
                     {item.label}
@@ -720,8 +713,8 @@ function OgretmenlerPageInner() {
                     onClick={() => setAdvisorBudget(item.id)}
                     className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
                       advisorBudget === item.id
-                        ? "border-brand-300 bg-brand-50 text-brand-950"
-                        : "border-paper-200 bg-paper-50 text-paper-800"
+                        ? "border-edu-indigo-300 bg-edu-indigo-50 text-edu-indigo-950"
+                        : "border-edu-blue-100 bg-edu-blue-50/65 text-paper-800"
                     }`}
                   >
                     {item.label}
@@ -732,7 +725,7 @@ function OgretmenlerPageInner() {
           </div>
         </section>
 
-        <div className="mt-6 rounded-xl border border-paper-200 bg-white p-4">
+        <div className="mt-6 rounded-xl border border-edu-blue-100 bg-white/94 p-4">
           <div className="mb-1 text-xs font-medium text-paper-800/65">Metin ara</div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
@@ -745,13 +738,13 @@ function OgretmenlerPageInner() {
                 }
               }}
               placeholder="Örn. matematik…"
-              className="min-w-0 flex-1 rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+              className="min-w-0 flex-1 rounded-xl border border-edu-blue-100 px-3 py-2 text-sm outline-none focus:border-edu-indigo-400"
               maxLength={120}
             />
             <button
               type="button"
               onClick={() => commitTextSearch()}
-              className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-medium text-white hover:bg-brand-900"
+              className="rounded-xl bg-edu-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-edu-indigo-800"
             >
               Ara
             </button>
@@ -775,16 +768,16 @@ function OgretmenlerPageInner() {
           <button
             type="button"
             onClick={() => setMobileFiltersOpen(true)}
-            className="flex-1 rounded-xl border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-900"
+            className="flex-1 rounded-xl border border-edu-indigo-200 bg-white px-4 py-2 text-sm font-semibold text-edu-indigo-800"
           >
             Filtreleri aç
           </button>
-          <Link href={shortlistRequestHref(favoriteTeacherDetails)} className="flex-1 rounded-xl bg-brand-800 px-4 py-2 text-center text-sm font-semibold text-white">
+          <Link href={shortlistRequestHref(favoriteTeacherDetails)} className="flex-1 rounded-xl bg-edu-indigo-600 px-4 py-2 text-center text-sm font-semibold text-white">
             Kısa listeden talep
           </Link>
         </div>
 
-        <div className="sticky top-14 z-10 -mx-6 mt-6 border-y border-paper-200 bg-paper-50/95 px-6 py-3 backdrop-blur-sm">
+        <div className="sticky top-14 z-10 -mx-6 mt-6 border-y border-edu-blue-100 bg-white/92 px-6 py-3 backdrop-blur-sm">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block flex-1">
               <div className="mb-1 text-xs font-medium text-paper-800/65">Branş</div>
@@ -1046,10 +1039,10 @@ function OgretmenlerPageInner() {
           </div>
         )}
 
-        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_54%,#fff7ed_100%)] p-5 shadow-sm">
+        <section className="mt-6 rounded-2xl border border-edu-indigo-200 bg-[linear-gradient(135deg,#eef2ff_0%,#ffffff_48%,#ecfdf5_76%,#fffbeb_100%)] p-5 shadow-sm">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-900/65">
+              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-edu-indigo-700/70">
                 Güvenle öğretmen seçin
               </div>
               <h2 className="mt-2 text-lg font-semibold text-paper-900">
@@ -1060,16 +1053,16 @@ function OgretmenlerPageInner() {
               </p>
             </div>
             <div className="grid min-w-full grid-cols-3 gap-2 text-center sm:min-w-[24rem]">
-              <div className="rounded-xl border border-paper-200 bg-white p-3">
-                <div className="text-xl font-semibold text-paper-900">{marketplaceSignals.verified}</div>
+              <div className="rounded-xl border border-white bg-white/88 p-3 shadow-sm">
+                <div className="text-xl font-semibold text-edu-indigo-800">{marketplaceSignals.verified}</div>
                 <div className="mt-1 text-[11px] text-paper-800/55">doğrulanmış</div>
               </div>
-              <div className="rounded-xl border border-paper-200 bg-white p-3">
-                <div className="text-xl font-semibold text-paper-900">{marketplaceSignals.strongQuality}</div>
+              <div className="rounded-xl border border-white bg-white/88 p-3 shadow-sm">
+                <div className="text-xl font-semibold text-edu-success-700">{marketplaceSignals.strongQuality}</div>
                 <div className="mt-1 text-[11px] text-paper-800/55">70+ kalite</div>
               </div>
-              <div className="rounded-xl border border-paper-200 bg-white p-3">
-                <div className="text-xl font-semibold text-paper-900">{marketplaceSignals.withProof}</div>
+              <div className="rounded-xl border border-white bg-white/88 p-3 shadow-sm">
+                <div className="text-xl font-semibold text-edu-sun-600">{marketplaceSignals.withProof}</div>
                 <div className="mt-1 text-[11px] text-paper-800/55">kanıtlı profil</div>
               </div>
             </div>
@@ -1080,7 +1073,7 @@ function OgretmenlerPageInner() {
               ["Karar rehberi", "Önce demo", "Emin olmadığınızda tek talep açıp teklifleri aynı ölçekte karşılaştırın."],
               ["Ödeme güveni", "Güvenceli paket", "Kabul sonrası toplam tutar cüzdanda tutulur; ders süreci kayıtlı ilerler."],
             ].map(([title, value, body]) => (
-              <div key={title} className="rounded-xl border border-paper-200 bg-white/80 p-3 text-sm">
+              <div key={title} className="rounded-xl border border-white bg-white/84 p-3 text-sm shadow-sm">
                 <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">{title}</div>
                 <div className="mt-1 font-semibold text-paper-900">{value}</div>
                 <p className="mt-1 text-xs leading-relaxed text-paper-800/60">{body}</p>
@@ -1090,7 +1083,7 @@ function OgretmenlerPageInner() {
         </section>
 
         {favoriteTeacherDetails.length > 0 && (
-          <section className="mt-6 rounded-2xl border border-warm-200 bg-warm-50/60 p-5 shadow-sm">
+          <section className="mt-6 rounded-2xl border border-edu-sun-300 bg-edu-sun-50/75 p-5 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-paper-900">Favori öğretmenler</h2>
@@ -1101,7 +1094,7 @@ function OgretmenlerPageInner() {
               <div className="flex flex-wrap gap-2">
                 <Link
                   href={shortlistRequestHref(favoriteTeacherDetails.slice(0, MAX_COMPARE_TEACHERS))}
-                  className="w-fit rounded-xl bg-brand-800 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-900"
+                  className="w-fit rounded-xl bg-edu-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-edu-indigo-800"
                 >
                   Favorilerle talep oluştur
                 </Link>
@@ -1113,7 +1106,7 @@ function OgretmenlerPageInner() {
                     window.localStorage.removeItem(FAVORITE_TEACHERS_KEY);
                     window.localStorage.removeItem(FAVORITE_TEACHER_DETAILS_KEY);
                   }}
-                  className="w-fit rounded-xl border border-warm-300 bg-white px-3 py-2 text-xs font-semibold text-paper-900 hover:bg-warm-50"
+                  className="w-fit rounded-xl border border-edu-sun-300 bg-white px-3 py-2 text-xs font-semibold text-paper-900 hover:bg-edu-sun-50"
                 >
                   Favorileri temizle
                 </button>
@@ -1129,7 +1122,7 @@ function OgretmenlerPageInner() {
                 const demoPath = `/student/requests?${demoParams.toString()}`;
                 const demoHref = sessionToken ? demoPath : loginHrefWithReturn(demoPath);
                 return (
-                  <article key={teacher.id} className="rounded-xl border border-warm-200 bg-white p-4 text-sm">
+                  <article key={teacher.id} className="rounded-xl border border-edu-sun-300 bg-white/92 p-4 text-sm">
                     <Link href={`/ogretmenler/${teacher.id}`} className="font-semibold text-paper-900 hover:text-brand-800">
                       {teacher.display_name}
                     </Link>
@@ -1146,7 +1139,7 @@ function OgretmenlerPageInner() {
                         </span>
                       ) : null}
                       {teacher.verification_status === "verified" ? (
-                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                        <span className="rounded-full bg-edu-success-50 px-2 py-0.5 text-[11px] font-medium text-edu-success-900">
                           Doğrulanmış
                         </span>
                       ) : null}
@@ -1154,7 +1147,7 @@ function OgretmenlerPageInner() {
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
                         href={demoHref}
-                        className="rounded-xl bg-brand-800 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-900"
+                        className="rounded-xl bg-edu-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-edu-indigo-800"
                       >
                         Demo talep et
                       </Link>
@@ -1180,7 +1173,7 @@ function OgretmenlerPageInner() {
                             return next;
                           });
                         }}
-                        className="rounded-xl border border-warm-300 bg-warm-50 px-3 py-2 text-xs font-semibold text-warm-900 hover:bg-white"
+                        className="rounded-xl border border-edu-sun-300 bg-edu-sun-50 px-3 py-2 text-xs font-semibold text-edu-sun-900 hover:bg-white"
                       >
                         Favoriden çıkar
                       </button>
@@ -1193,7 +1186,7 @@ function OgretmenlerPageInner() {
         )}
 
         {compareTeachers.length > 0 && (
-          <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+          <section className="mt-6 rounded-2xl border border-edu-indigo-200 bg-white/94 p-5 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-paper-900">Karşılaştırma tepsisi</h2>
@@ -1204,7 +1197,7 @@ function OgretmenlerPageInner() {
               <div className="flex flex-wrap gap-2">
                 <Link
                   href={shortlistRequestHref(compareTeachers)}
-                  className="w-fit rounded-xl bg-brand-800 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-900"
+                  className="w-fit rounded-xl bg-edu-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-edu-indigo-800"
                 >
                   Bu listeyle talep oluştur
                 </Link>
@@ -1224,10 +1217,10 @@ function OgretmenlerPageInner() {
                     ? `${Number(teacher.rating_avg ?? 0).toFixed(1)} (${teacher.rating_count})`
                     : "Yorum yok";
                 return (
-                  <article key={teacher.id} className="rounded-xl border border-paper-200 bg-paper-50 p-4 text-sm">
+                  <article key={teacher.id} className="rounded-xl border border-edu-blue-100 bg-edu-blue-50/60 p-4 text-sm">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <Link href={`/ogretmenler/${teacher.id}`} className="font-semibold text-paper-900 hover:text-brand-800">
+                        <Link href={`/ogretmenler/${teacher.id}`} className="font-semibold text-paper-900 hover:text-edu-indigo-700">
                           {teacher.display_name}
                         </Link>
                         <div className="mt-1 text-xs text-paper-800/55">
@@ -1264,17 +1257,17 @@ function OgretmenlerPageInner() {
                     </dl>
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {teacher.verification_status === "verified" && (
-                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                        <span className="rounded-full bg-edu-success-50 px-2 py-0.5 text-[11px] font-medium text-edu-success-900">
                           Doğrulanmış
                         </span>
                       )}
                       {teacher.has_video && (
-                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                        <span className="rounded-full bg-edu-indigo-50 px-2 py-0.5 text-[11px] font-medium text-edu-indigo-800">
                           Video
                         </span>
                       )}
                       {teacher.has_exam_docs && (
-                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                        <span className="rounded-full bg-edu-sun-50 px-2 py-0.5 text-[11px] font-medium text-edu-sun-900">
                           Doküman
                         </span>
                       )}
@@ -1324,13 +1317,13 @@ function OgretmenlerPageInner() {
               return (
               <article
                 key={t.id}
-                className="bo-card-lift group relative overflow-hidden rounded-2xl border border-paper-200 bg-white p-4 shadow-sm hover:border-brand-200 hover:bg-brand-50/20"
+                className="bo-card-lift group relative overflow-hidden rounded-2xl border border-edu-blue-100 bg-white/94 p-4 shadow-sm hover:border-edu-indigo-200 hover:bg-white hover:shadow-[0_22px_70px_rgba(79,70,229,0.12)]"
               >
-                <span className="bo-shimmer-line absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-300 via-white to-warm-300 opacity-70" aria-hidden />
-                <span className="pointer-events-none absolute -right-12 -top-16 h-32 w-32 rounded-full bg-brand-200/0 blur-3xl transition group-hover:bg-brand-200/35" aria-hidden />
+                <span className="bo-shimmer-line absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-edu-indigo-500 via-edu-success-300 to-edu-sun-300 opacity-80" aria-hidden />
+                <span className="pointer-events-none absolute -right-12 -top-16 h-32 w-32 rounded-full bg-edu-indigo-200/0 blur-3xl transition group-hover:bg-edu-indigo-200/35" aria-hidden />
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <Link href={`/ogretmenler/${t.id}`} className="text-sm font-semibold text-paper-900 hover:text-brand-800">
+                    <Link href={`/ogretmenler/${t.id}`} className="text-sm font-semibold text-paper-900 hover:text-edu-indigo-700">
                       {t.display_name}
                     </Link>
                     <div className="text-xs text-paper-800/55">
@@ -1344,44 +1337,44 @@ function OgretmenlerPageInner() {
                         : `Durum: ${t.verification_status}`}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-900 ring-1 ring-brand-100">
+                      <span className="rounded-full bg-edu-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-edu-indigo-800 ring-1 ring-edu-indigo-100">
                         Güven {score}/100
                       </span>
-                      <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                      <span className="rounded-full bg-edu-success-50 px-2 py-0.5 text-[11px] font-medium text-edu-success-900">
                         {qualityLabel(t.profile_quality_score)} · {t.profile_quality_score ?? 0}/100
                       </span>
                       {t.has_video && (
-                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                        <span className="rounded-full bg-edu-blue-50 px-2 py-0.5 text-[11px] font-medium text-edu-blue-900">
                           Video tanıtım
                         </span>
                       )}
                       {t.has_exam_docs && (
-                        <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-medium text-brand-900">
+                        <span className="rounded-full bg-edu-sun-50 px-2 py-0.5 text-[11px] font-medium text-edu-sun-900">
                           Dokümanlı
                         </span>
                       )}
                       {t.has_platform_links && (
-                        <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                        <span className="rounded-full bg-edu-indigo-50 px-2 py-0.5 text-[11px] font-medium text-edu-indigo-800">
                           Ek çalışma bağlantıları
                         </span>
                       )}
                       {t.completed_sessions_count > 0 && (
-                        <span className="rounded-full bg-paper-100 px-2 py-0.5 text-[11px] font-medium text-paper-800">
+                        <span className="rounded-full bg-edu-success-50 px-2 py-0.5 text-[11px] font-medium text-edu-success-900">
                           {t.completed_sessions_count} tamamlanan ders
                         </span>
                       )}
-                      <span className="rounded-full bg-warm-50 px-2 py-0.5 text-[11px] font-medium text-warm-900">
+                      <span className="rounded-full bg-edu-sun-50 px-2 py-0.5 text-[11px] font-medium text-edu-sun-900">
                         Güvenli ödeme süreci
                       </span>
                     </div>
-                    <div className="mt-3 rounded-xl border border-paper-100 bg-paper-50 p-3">
+                    <div className="mt-3 rounded-xl border border-edu-blue-100 bg-edu-blue-50/60 p-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-xs font-semibold text-paper-900">{trustActionLabel(t)}</div>
-                        <div className="text-[11px] font-semibold text-brand-900">{score}%</div>
+                        <div className="text-[11px] font-semibold text-edu-indigo-800">{score}%</div>
                       </div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white ring-1 ring-paper-200">
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white ring-1 ring-edu-blue-100">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-brand-400 to-warm-300 transition-[width]"
+                          className="h-full rounded-full bg-gradient-to-r from-edu-indigo-500 via-edu-success-500 to-edu-sun-300 transition-[width]"
                           style={{ width: `${score}%` }}
                         />
                       </div>
@@ -1400,7 +1393,7 @@ function OgretmenlerPageInner() {
                       : "Henüz değerlendirme yok"}
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2 border-t border-paper-100 pt-3">
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-edu-blue-100 pt-3">
                   <Link
                     href={demoHref}
                     onClick={() =>
@@ -1410,7 +1403,7 @@ function OgretmenlerPageInner() {
                         metadata: { source: "teacher_search", teacherName: t.display_name },
                       })
                     }
-                    className="rounded-xl bg-brand-800 px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_28px_rgba(37,87,105,0.18)] hover:bg-brand-900"
+                    className="rounded-xl bg-edu-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_28px_rgba(79,70,229,0.2)] hover:bg-edu-indigo-800"
                   >
                     Demo talep et
                   </Link>
@@ -1419,7 +1412,7 @@ function OgretmenlerPageInner() {
                     onClick={() => toggleCompareTeacher(t)}
                     className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
                       compared
-                        ? "border-brand-300 bg-brand-50 text-brand-900"
+                        ? "border-edu-indigo-300 bg-edu-indigo-50 text-edu-indigo-800"
                         : "border-paper-300 bg-white text-paper-900 hover:bg-paper-50"
                     }`}
                   >
@@ -1430,7 +1423,7 @@ function OgretmenlerPageInner() {
                     onClick={() => toggleFavoriteTeacher(t)}
                     className={`rounded-xl border px-3 py-2 text-xs font-semibold ${
                       favorite
-                        ? "border-warm-300 bg-warm-50 text-warm-900"
+                        ? "border-edu-sun-300 bg-edu-sun-50 text-edu-sun-900"
                         : "border-paper-300 bg-white text-paper-900 hover:bg-paper-50"
                     }`}
                   >
@@ -1442,7 +1435,7 @@ function OgretmenlerPageInner() {
             })
           )}
         </div>
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-paper-200 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur sm:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-edu-blue-100 bg-white/96 px-4 py-3 shadow-[0_-8px_30px_rgba(79,70,229,0.1)] backdrop-blur sm:hidden">
           <div className="mx-auto flex max-w-md items-center gap-2">
             <button
               type="button"
@@ -1451,10 +1444,10 @@ function OgretmenlerPageInner() {
             >
               Filtre
             </button>
-            <Link href={shortlistRequestHref(favoriteTeacherDetails)} className="flex-1 rounded-xl bg-brand-800 px-3 py-2 text-center text-xs font-semibold text-white">
+            <Link href={shortlistRequestHref(favoriteTeacherDetails)} className="flex-1 rounded-xl bg-edu-indigo-600 px-3 py-2 text-center text-xs font-semibold text-white">
               {favoriteTeacherIds.size ? `${favoriteTeacherIds.size} öğretmenle talep` : "Kısa listeyle talep"}
             </Link>
-            <Link href={talepHref} className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900">
+            <Link href={talepHref} className="rounded-xl border border-edu-indigo-200 bg-edu-indigo-50 px-3 py-2 text-xs font-semibold text-edu-indigo-800">
               Tek talep
             </Link>
           </div>

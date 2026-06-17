@@ -49,9 +49,9 @@ jobs:
         working-directory: apps/web
         env:
           CI: "true"
-          NEXT_PUBLIC_API_BASE_URL: https://benim-ogretmenim.onrender.com
-          INTERNAL_API_BASE_URL: https://benim-ogretmenim.onrender.com
-          NEXT_PUBLIC_SITE_URL: https://benimogretmenim.onrender.com
+          NEXT_PUBLIC_API_BASE_URL: https://api.benimogretmenim.com.tr
+          INTERNAL_API_BASE_URL: https://api.benimogretmenim.com.tr
+          NEXT_PUBLIC_SITE_URL: https://benimogretmenim.com.tr
           NEXT_TELEMETRY_DISABLED: "1"
         run: npm ci --include=dev && npm run lint && npm run build
 
@@ -93,7 +93,7 @@ jobs:
 
       - name: Wait until API health is ready
         env:
-          SMOKE_API_URL: https://benim-ogretmenim.onrender.com
+          SMOKE_API_URL: https://api.benimogretmenim.com.tr
           SMOKE_RUN_SECRET: ${{ secrets.SMOKE_RUN_SECRET }}
           GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
           GITHUB_SHA_VALUE: ${{ github.sha }}
@@ -120,7 +120,7 @@ jobs:
       - name: Run production smoke and report result
         working-directory: apps/api
         env:
-          SMOKE_API_URL: https://benim-ogretmenim.onrender.com
+          SMOKE_API_URL: https://api.benimogretmenim.com.tr
           SMOKE_RUN_SECRET: ${{ secrets.SMOKE_RUN_SECRET }}
           GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
           GITHUB_SHA_VALUE: ${{ github.sha }}

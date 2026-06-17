@@ -63,6 +63,19 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
     await expect(nav.getByRole("link", { name: "Ödev" })).toBeVisible();
   });
 
+  test("mobil öğretmen: alt ikon menüsü öncelikli işleri gösterir", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-chrome", "Mobil alt nav sadece mobile-chrome projesinde doğrulanır.");
+    await loginViaUi(page, SEED_USERS.teacher.email, SEED_USERS.teacher.password);
+    const nav = page.getByRole("navigation", { name: "Mobil hızlı gezinme" });
+    await expect(nav).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Öğretmen ders talepleri" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Öğretmen dersleri" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Öğretmen profili" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Öğretmen cüzdanı" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Öğretmen menüsü" })).toBeVisible();
+    await expect(nav.locator("svg")).toHaveCount(5);
+  });
+
   test("öğretmen: giriş → panel özeti", async ({ page }) => {
     await loginViaUi(page, SEED_USERS.teacher.email, SEED_USERS.teacher.password);
     await expect(page).toHaveURL(/\/teacher\/?$/);

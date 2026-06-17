@@ -49,6 +49,7 @@ describe("configurationHealthWarnings", () => {
     PAYTR_OK_URL: process.env.PAYTR_OK_URL,
     PAYTR_FAIL_URL: process.env.PAYTR_FAIL_URL,
     PAYTR_CALLBACK_URL: process.env.PAYTR_CALLBACK_URL,
+    PAYTR_OPTIONAL: process.env.PAYTR_OPTIONAL,
   };
 
   function restoreEnv(key: keyof typeof originalEnv) {
@@ -73,6 +74,7 @@ describe("configurationHealthWarnings", () => {
     restoreEnv("PAYTR_OK_URL");
     restoreEnv("PAYTR_FAIL_URL");
     restoreEnv("PAYTR_CALLBACK_URL");
+    restoreEnv("PAYTR_OPTIONAL");
   });
 
   it("warns about missing production CORS origins without leaking secret values", () => {
@@ -134,5 +136,25 @@ describe("configurationHealthWarnings", () => {
       "ADMIN_API_SECRET production ortamında tanımlı olmalı.",
     ]);
     expect(() => assertProductionConfiguration()).toThrow("ADMIN_API_SECRET");
+  });
+
+  it("allows production boot without PayTR when PAYTR_OPTIONAL=1", () => {
+    process.env.NODE_ENV = "production";
+    process.env.CORS_ORIGINS = "https://example.test";
+    process.env.DATABASE_URL = "postgres://example";
+    process.env.JWT_SECRET = "secret-value";
+    process.env.ADMIN_API_SECRET = "admin-secret";
+    process.env.PAYTR_OPTIONAL = "1";
+    delete process.env.PAYTR_MERCHANT_ID;
+    delete process.env.PAYTR_MERCHANT_KEY;
+    delete process.env.PAYTR_MERCHANT_SALT;
+    delete process.env.PAYTR_BASE_URL;
+    delete process.env.PAYTR_OK_URL;
+    delete process.env.PAYTR_FAIL_URL;
+    delete process.env.PAYTR_CALLBACK_URL;
+
+    expect(productionConfigurationErrors()).toEqual([]);
+    expect(() => assertProductionConfiguration()).not.toThrow();
+    expect(configurationHealthWarnings().join(" ")).toContain("PAYTR_OPTIONAL=1");
   });
 });
