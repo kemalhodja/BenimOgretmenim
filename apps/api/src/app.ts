@@ -26,6 +26,8 @@ import { userWallet } from "./routes/userWallet.js";
 import { groupLessons } from "./routes/groupLessons.js";
 import { support } from "./routes/support.js";
 import { analytics } from "./routes/analytics.js";
+import { userMessages } from "./routes/userMessages.js";
+import { zigo } from "./routes/zigo.js";
 import { requestId } from "./middleware/requestId.js";
 import { requestLog } from "./middleware/requestLog.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -146,7 +148,7 @@ app.get("/", (c) => {
       classroom:
         "/v1/classroom/lesson-sessions/:id, /course-sessions/:id (+ POST /notes) — platform içi canlı oda + tahta/not arşivi",
       learning:
-        "/v1/learning/content, /overview, /study-plan, /exam-attempts, /curriculum-tests — içerik, kazanım testi ve kişisel çalışma planı",
+        "/v1/learning/content, /overview, /study-plan, /teacher-match, /exam-attempts, /curriculum-tests — içerik, kazanım testi ve kişisel çalışma planı",
       studentPlatform:
         "/v1/student-platform/subscription, /homework-posts (mine, view/:id, mark-satisfied, reject-answer, cancel; öğretmen: teacher/feed, teacher/claims, :id/claim|answer), /direct-bookings …",
       wallet: "/v1/wallet/me, GET /v1/wallet/ledger, POST /v1/wallet/topup; PayTR /v1/paytr/wallet-topup-checkout",
@@ -156,6 +158,10 @@ app.get("/", (c) => {
         "/v1/support/me (GET), POST /me/messages (girişli); POST /guest/session, GET /guest/me, POST /guest/messages (X-Support-Guest-Token; misafir)",
       analytics:
         "/v1/analytics/events — funnel events: search, profile, demo, payment, campaign, homework",
+      messages:
+        "/v1/messages/threads, GET|POST /v1/messages/threads/:threadId/messages — öğrenci/öğretmen birleşik DM",
+      zigo:
+        "/v1/zigo/teacher-feed (public), POST /v1/zigo/teacher-content (öğretmen) — Zigo flywheel senkronu",
       admin:
         "/v1/admin/* — overview, users(+role,wallet), teachers(+PATCH verification), courses(+PATCH status), lesson-requests(+PATCH cancel), subscription-payments, group-lesson-requests(+PATCH status), wallet-ledger, payment-reconciliation, homework(+PATCH cancel), direct-bookings(+PATCH cancel), lesson-packages, teacher-subscriptions, wallet-topups, student-sub-payments, course-enrollments, parent-notifications, guardian-invites, support-threads(+messages), POST /reminders/run",
       paytr:
@@ -196,6 +202,8 @@ app.route("/v1/wallet", userWallet);
 app.route("/v1/group-lessons", groupLessons);
 app.route("/v1/support", support);
 app.route("/v1/analytics", analytics);
+app.route("/v1/messages", userMessages);
+app.route("/v1/zigo", zigo);
 app.route("/v1/subscriptions", subscriptions);
 app.route("/v1/admin", admin);
 app.route("/v1/paytr", paytr);

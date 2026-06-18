@@ -1,4 +1,6 @@
 import { pool } from "../db.js";
+import { queueUserEmail } from "./emailDelivery.js";
+import { queueUserSms } from "./smsDelivery.js";
 
 type ReminderWindow = {
   kind: "lesson_reminder_24h" | "lesson_reminder_2h";
@@ -15,6 +17,7 @@ export type ReminderRunResult = {
     kind: ReminderWindow["kind"];
     lessonSessionNotifications: number;
     courseSessionNotifications: number;
+    directBookingNotifications: number;
   }>;
 };
 
@@ -203,16 +206,108 @@ async function createCourseSessionReminders(client: Queryable, w: ReminderWindow
   return Number(r.rows[0]?.created ?? 0);
 }
 
+async function createDirectBookingReminders(client: Queryable, w: ReminderWindow): Promise<number> {
+  try {
+    const r = await client.query<{
+      recipient_user_id: string;
+      scheduled_start: string;
+      meeting_url: string | null;
+    }>(
+      `with due as (
+         select b.id,
+                b.scheduled_start,
+                b.meeting_url,
+                b.student_id,
+                st.user_id as student_user_id,
+                tt.user_id as teacher_user_id
+         from direct_lesson_bookings b
+         join students st on st.id = b.student_id
+         join teachers tt on tt.id = b.teacher_id
+         where b.status = 'funded'
+           and b.scheduled_start is not null
+           and b.scheduled_start >= now() + ($2::int * interval '1 minute')
+           and b.scheduled_start < now() + ($3::int * interval '1 minute')
+       ),
+       recipients as (
+         select d.id, d.scheduled_start, d.meeting_url, d.student_id, d.student_user_id as recipient_user_id from due d
+         union all
+         select d.id, d.scheduled_start, d.meeting_url, d.student_id, sg.guardian_user_id
+         from due d
+         join student_guardians sg on sg.student_id = d.student_id
+         union all
+         select d.id, d.scheduled_start, d.meeting_url, d.student_id, d.teacher_user_id from due d
+       ),
+       ins as (
+         insert into parent_notifications (
+           recipient_user_id, student_id, snapshot_id, channel,
+           title, body, payload_jsonb, delivery_status, sent_at,
+           dedupe_key, reminder_kind, scheduled_for
+         )
+         select r.recipient_user_id,
+                r.student_id,
+                null,
+                'in_app',
+                case when $1 = 'lesson_reminder_24h' then 'Doğrudan ders hatırlatması: 24 saat kaldı'
+                     else 'Doğrudan ders hatırlatması: 2 saat kaldı' end,
+                concat('Doğrudan ders ', $4::text, ' sonra başlıyor.'),
+                jsonb_build_object(
+                  'kind', 'direct_booking_reminder',
+                  'directBookingId', r.id,
+                  'scheduledStart', r.scheduled_start,
+                  'meetingUrl', r.meeting_url
+                ),
+                'sent',
+                now(),
+                concat($1, ':direct_booking:', r.id::text, ':', r.recipient_user_id::text),
+                $1,
+                r.scheduled_start
+         from recipients r
+         on conflict (dedupe_key) where dedupe_key is not null do nothing
+         returning recipient_user_id, scheduled_for as scheduled_start,
+                   (payload_jsonb->>'meetingUrl') as meeting_url
+       )
+       select * from ins`,
+      [w.kind, w.lowerMinutes, w.upperMinutes, w.label],
+    );
+
+    for (const row of r.rows) {
+      const when = row.scheduled_start
+        ? new Date(row.scheduled_start).toLocaleString("tr-TR")
+        : w.label;
+      const body = `Doğrudan dersiniz ${when} tarihinde başlıyor.${row.meeting_url ? ` Link: ${row.meeting_url}` : ""}`;
+      await queueUserEmail({
+        userId: row.recipient_user_id,
+        templateKey: `lesson_${w.kind}`,
+        subject: w.kind === "lesson_reminder_24h" ? "Ders hatırlatması (24 saat)" : "Ders hatırlatması (2 saat)",
+        bodyText: body,
+      }, client as typeof pool);
+      await queueUserSms({
+        userId: row.recipient_user_id,
+        templateKey: `lesson_${w.kind}`,
+        bodyText: body.slice(0, 160),
+      }, client as typeof pool);
+    }
+
+    return r.rowCount ?? 0;
+  } catch (e) {
+    const err = e as { code?: string };
+    if (err.code === "42P01") return 0;
+    throw e;
+  }
+}
+
 export async function runLessonReminderJob(client: Queryable = pool): Promise<ReminderRunResult> {
   const result: ReminderRunResult = { created: 0, windows: [] };
   for (const w of windows) {
     const lessonSessionNotifications = await createLessonSessionReminders(client, w);
     const courseSessionNotifications = await createCourseSessionReminders(client, w);
-    result.created += lessonSessionNotifications + courseSessionNotifications;
+    const directBookingNotifications = await createDirectBookingReminders(client, w);
+    result.created += lessonSessionNotifications + courseSessionNotifications + directBookingNotifications;
     result.windows.push({
       kind: w.kind,
       lessonSessionNotifications,
       courseSessionNotifications,
+      directBookingNotifications,
     });
   }
   return result;

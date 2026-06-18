@@ -10,6 +10,7 @@ import {
   writeAdminAudit,
 } from "../lib/adminAudit.js";
 import { runLessonReminderJob } from "../lib/lessonReminders.js";
+import { runGuardianWeeklyReports } from "../lib/guardianWeeklyReports.js";
 import {
   configurationHealthWarnings,
   runtimeHealthSnapshot,
@@ -656,6 +657,13 @@ admin.post("/reminders/run", requireAuth, async (c) => {
   const denied = assertAdminGate(c);
   if (denied) return denied;
   const result = await runLessonReminderJob(pool);
+  return c.json({ ok: true, result });
+});
+
+admin.post("/weekly-reports/run", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const result = await runGuardianWeeklyReports(pool);
   return c.json({ ok: true, result });
 });
 

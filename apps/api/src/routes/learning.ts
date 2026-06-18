@@ -290,58 +290,124 @@ async function queryCurriculumAttempts(studentIds: string[]) {
   }
 }
 
-async function recommendTeachersForBranch(branchSlug: string, studentId: string): Promise<TeacherRecommendation[]> {
+function outcomeMatchScore(weakOutcomes: string[], teacherOutcomes: string[]): number {
+  if (!weakOutcomes.length || !teacherOutcomes.length) return 0;
+  let score = 0;
+  for (const weak of weakOutcomes) {
+    const w = weak.toLocaleLowerCase("tr-TR");
+    for (const tag of teacherOutcomes) {
+      const t = tag.toLocaleLowerCase("tr-TR");
+      if (t === w || t.includes(w) || w.includes(t)) {
+        score += 10;
+        break;
+      }
+    }
+  }
+  return Math.min(30, score);
+}
+
+async function recommendTeachersForBranch(
+  branchSlug: string,
+  studentId: string,
+  weakOutcomes: string[] = [],
+): Promise<TeacherRecommendation[]> {
   const branchSlugs = recommendationBranchSlugs(branchSlug);
-  const r = await pool.query(
-    `select t.id,
-            u.display_name,
-            t.rating_avg,
-            t.rating_count,
-            c.name as city_name,
-            string_agg(distinct b.name, ', ' order by b.name) as branch_name,
-            min(case when tb.hourly_rate_range is null then null else lower(tb.hourly_rate_range)::int end) as min_hourly_rate_minor,
-            bool_or(tb.is_primary) as has_primary_branch,
-            bool_or(b.slug = $1) as exact_branch_match,
-            bool_or(st.city_id is not null and t.city_id = st.city_id) as city_match
-     from teachers t
-     join users u on u.id = t.user_id
-     join teacher_branches tb on tb.teacher_id = t.id
-     join branches b on b.id = tb.branch_id
-     left join students st on st.id = $2
-     left join cities c on c.id = t.city_id
-     where b.slug = any($3::text[])
-       and t.verification_status = 'verified'
-     group by t.id, u.display_name, t.rating_avg, t.rating_count, c.name
-     order by bool_or(b.slug = $1) desc,
-              bool_or(tb.is_primary) desc,
-              coalesce(t.rating_avg, 0) desc,
-              t.rating_count desc
-     limit 12`,
-    [branchSlug, studentId, branchSlugs],
-  );
+  let r;
+  try {
+    r = await pool.query(
+      `select t.id,
+              u.display_name,
+              t.rating_avg,
+              t.rating_count,
+              c.name as city_name,
+              string_agg(distinct b.name, ', ' order by b.name) as branch_name,
+              min(case when tb.hourly_rate_range is null then null else lower(tb.hourly_rate_range)::int end) as min_hourly_rate_minor,
+              bool_or(tb.is_primary) as has_primary_branch,
+              bool_or(b.slug = $1) as exact_branch_match,
+              bool_or(st.city_id is not null and t.city_id = st.city_id) as city_match,
+              coalesce(
+                array_agg(distinct tot.outcome_title) filter (where tot.outcome_title is not null),
+                '{}'::text[]
+              ) as outcome_tags
+       from teachers t
+       join users u on u.id = t.user_id
+       join teacher_branches tb on tb.teacher_id = t.id
+       join branches b on b.id = tb.branch_id
+       left join students st on st.id = $2
+       left join cities c on c.id = t.city_id
+       left join teacher_outcome_tags tot on tot.teacher_id = t.id
+       where b.slug = any($3::text[])
+         and t.verification_status = 'verified'
+       group by t.id, u.display_name, t.rating_avg, t.rating_count, c.name
+       order by bool_or(b.slug = $1) desc,
+                bool_or(tb.is_primary) desc,
+                coalesce(t.rating_avg, 0) desc,
+                t.rating_count desc
+       limit 12`,
+      [branchSlug, studentId, branchSlugs],
+    );
+  } catch (e) {
+    if (!isMissingRelation(e)) throw e;
+    r = await pool.query(
+      `select t.id,
+              u.display_name,
+              t.rating_avg,
+              t.rating_count,
+              c.name as city_name,
+              string_agg(distinct b.name, ', ' order by b.name) as branch_name,
+              min(case when tb.hourly_rate_range is null then null else lower(tb.hourly_rate_range)::int end) as min_hourly_rate_minor,
+              bool_or(tb.is_primary) as has_primary_branch,
+              bool_or(b.slug = $1) as exact_branch_match,
+              bool_or(st.city_id is not null and t.city_id = st.city_id) as city_match,
+              '{}'::text[] as outcome_tags
+       from teachers t
+       join users u on u.id = t.user_id
+       join teacher_branches tb on tb.teacher_id = t.id
+       join branches b on b.id = tb.branch_id
+       left join students st on st.id = $2
+       left join cities c on c.id = t.city_id
+       where b.slug = any($3::text[])
+         and t.verification_status = 'verified'
+       group by t.id, u.display_name, t.rating_avg, t.rating_count, c.name
+       order by bool_or(b.slug = $1) desc,
+                bool_or(tb.is_primary) desc,
+                coalesce(t.rating_avg, 0) desc,
+                t.rating_count desc
+       limit 12`,
+      [branchSlug, studentId, branchSlugs],
+    );
+  }
   return r.rows
-    .map((row) => ({
-      id: String(row.id),
-      displayName: String(row.display_name),
-      ratingAvg: row.rating_avg as string | number | null,
-      ratingCount: Number(row.rating_count ?? 0),
-      cityName: (row.city_name as string | null) ?? null,
-      branchName: (row.branch_name as string | null) ?? null,
-      minHourlyRateMinor: row.min_hourly_rate_minor == null ? null : Number(row.min_hourly_rate_minor),
-      recommendationScore:
-        (row.exact_branch_match ? 35 : 16) +
-        (row.has_primary_branch ? 20 : 0) +
-        (row.city_match ? 12 : 0) +
-        Math.min(25, Math.round(Number(row.rating_avg ?? 0) * 5)) +
-        Math.min(8, Number(row.rating_count ?? 0)),
-      reasons: [
-        row.exact_branch_match ? "Aynı branş eşleşmesi" : "Yakın branş eşleşmesi",
-        row.has_primary_branch ? "Birincil uzmanlık alanı" : "",
-        row.city_match ? "Aynı şehir avantajı" : "",
-        Number(row.rating_avg ?? 0) >= 4.5 ? "Yüksek veli/öğrenci puanı" : "",
-        row.min_hourly_rate_minor != null ? "Ücret bandı görünür" : "Profil bilgileri incelenebilir",
-      ].filter(Boolean),
-    }))
+    .map((row) => {
+      const outcomeTags = Array.isArray(row.outcome_tags)
+        ? row.outcome_tags.map((x: unknown) => String(x))
+        : [];
+      const outcomeBoost = outcomeMatchScore(weakOutcomes, outcomeTags);
+      return {
+        id: String(row.id),
+        displayName: String(row.display_name),
+        ratingAvg: row.rating_avg as string | number | null,
+        ratingCount: Number(row.rating_count ?? 0),
+        cityName: (row.city_name as string | null) ?? null,
+        branchName: (row.branch_name as string | null) ?? null,
+        minHourlyRateMinor: row.min_hourly_rate_minor == null ? null : Number(row.min_hourly_rate_minor),
+        recommendationScore:
+          (row.exact_branch_match ? 35 : 16) +
+          (row.has_primary_branch ? 20 : 0) +
+          (row.city_match ? 12 : 0) +
+          outcomeBoost +
+          Math.min(25, Math.round(Number(row.rating_avg ?? 0) * 5)) +
+          Math.min(8, Number(row.rating_count ?? 0)),
+        reasons: [
+          row.exact_branch_match ? "Aynı branş eşleşmesi" : "Yakın branş eşleşmesi",
+          row.has_primary_branch ? "Birincil uzmanlık alanı" : "",
+          row.city_match ? "Aynı şehir avantajı" : "",
+          outcomeBoost > 0 ? "Zayıf kazanımlarınızla eşleşen etiketler" : "",
+          Number(row.rating_avg ?? 0) >= 4.5 ? "Yüksek veli/öğrenci puanı" : "",
+          row.min_hourly_rate_minor != null ? "Ücret bandı görünür" : "Profil bilgileri incelenebilir",
+        ].filter(Boolean),
+      };
+    })
     .sort((a, b) => b.recommendationScore - a.recommendationScore || b.ratingCount - a.ratingCount)
     .slice(0, 3);
 }
@@ -736,6 +802,24 @@ learning.post("/study-plan", requireAuth, async (c) => {
      limit 8`,
     [studentId],
   );
+  let curriculumWeak: unknown[] = [];
+  try {
+    const cr = await pool.query(
+      `select weak_outcomes_jsonb
+       from student_curriculum_test_attempts
+       where student_id = $1
+       order by created_at desc
+       limit 5`,
+      [studentId],
+    );
+    for (const row of cr.rows as Array<{ weak_outcomes_jsonb: unknown }>) {
+      if (Array.isArray(row.weak_outcomes_jsonb)) {
+        curriculumWeak.push(...row.weak_outcomes_jsonb);
+      }
+    }
+  } catch (e) {
+    if (!isMissingRelation(e)) throw e;
+  }
   const recentTopicCounts = new Map<string, number>();
   for (const row of recentAttempts.rows as Array<{ weak_topics_jsonb: unknown }>) {
     const values = Array.isArray(row.weak_topics_jsonb) ? row.weak_topics_jsonb : [];
@@ -743,6 +827,10 @@ learning.post("/study-plan", requireAuth, async (c) => {
       const topic = String(value).trim();
       if (topic) recentTopicCounts.set(topic, (recentTopicCounts.get(topic) ?? 0) + 1);
     }
+  }
+  for (const value of curriculumWeak) {
+    const topic = String(value).trim();
+    if (topic) recentTopicCounts.set(topic, (recentTopicCounts.get(topic) ?? 0) + 2);
   }
   const weakTopics = [
     ...parsed.data.weakTopics.map((x) => x.trim()).filter(Boolean),
@@ -825,6 +913,61 @@ learning.patch("/study-plan-items/:itemId", requireAuth, async (c) => {
   );
   if (!updated.rowCount) return c.json({ error: "not_found_or_inactive_plan" }, 404);
   return c.json({ item: updated.rows[0] });
+});
+
+learning.get("/teacher-match", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+  const studentId = await studentIdForUser(userId);
+  if (!studentId) return c.json({ error: "student_profile_missing" }, 400);
+
+  const branchSlug = (c.req.query("branchSlug") ?? "matematik").trim() || "matematik";
+  const weakOutcomes = (c.req.query("weakOutcomes") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (!weakOutcomes.length) {
+    try {
+      const plan = await pool.query(
+        `select weak_topics_jsonb
+         from student_study_plans
+         where student_id = $1 and status = 'active'
+         order by created_at desc
+         limit 1`,
+        [studentId],
+      );
+      const topics = plan.rows[0]?.weak_topics_jsonb;
+      if (Array.isArray(topics)) {
+        weakOutcomes.push(...topics.map((x) => String(x).trim()).filter(Boolean));
+      }
+    } catch {
+      /* optional */
+    }
+    try {
+      const cr = await pool.query(
+        `select weak_outcomes_jsonb
+         from student_curriculum_test_attempts
+         where student_id = $1
+         order by created_at desc
+         limit 1`,
+        [studentId],
+      );
+      const outcomes = cr.rows[0]?.weak_outcomes_jsonb;
+      if (Array.isArray(outcomes)) {
+        weakOutcomes.push(...outcomes.map((x) => String(x).trim()).filter(Boolean));
+      }
+    } catch (e) {
+      if (!isMissingRelation(e)) throw e;
+    }
+  }
+
+  const uniqueWeak = weakOutcomes.filter(
+    (topic, index, arr) =>
+      arr.findIndex((x) => x.toLocaleLowerCase("tr-TR") === topic.toLocaleLowerCase("tr-TR")) === index,
+  );
+  const recommendations = await recommendTeachersForBranch(branchSlug, studentId, uniqueWeak);
+  return c.json({ branchSlug, weakOutcomes: uniqueWeak, recommendations });
 });
 
 learning.post("/exam-attempts", requireAuth, async (c) => {

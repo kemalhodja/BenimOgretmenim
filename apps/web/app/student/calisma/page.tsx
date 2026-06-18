@@ -234,6 +234,8 @@ export default function StudentCalismaPage() {
   const [testAnswers, setTestAnswers] = useState<Record<string, "A" | "B" | "C" | "D">>({});
   const [curriculumResult, setCurriculumResult] = useState<CurriculumResult | null>(null);
   const [curriculumBusy, setCurriculumBusy] = useState(false);
+  const [teacherMatch, setTeacherMatch] = useState<TeacherRecommendation[]>([]);
+  const [teacherMatchBranch, setTeacherMatchBranch] = useState("matematik");
 
   useEffect(() => {
     const t = getToken();
@@ -413,6 +415,35 @@ export default function StudentCalismaPage() {
     }
   }
 
+  useEffect(() => {
+    if (!token || !data) return;
+    const attempts = data.attempts ?? [];
+    const weakTopicCounts = new Map<string, number>();
+    for (const attempt of attempts) {
+      for (const topic of topicsFrom(attempt.weak_topics_jsonb)) {
+        weakTopicCounts.set(topic, (weakTopicCounts.get(topic) ?? 0) + 1);
+      }
+    }
+    const focus = [...weakTopicCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([topic]) => topic);
+    const curriculumAttempts = data.curriculumAttempts ?? [];
+    const branch =
+      curriculumAttempts[0]?.branch_slug ??
+      (focus.some((t) => /paragraf|türkçe|turkce/i.test(t)) ? "turkce" : "matematik");
+    setTeacherMatchBranch(branch);
+    const weak = [...focus, ...topicsFrom(curriculumAttempts[0]?.weak_outcomes_jsonb)]
+      .filter(Boolean)
+      .slice(0, 8)
+      .join(",");
+    const qs = new URLSearchParams({ branchSlug: branch });
+    if (weak) qs.set("weakOutcomes", weak);
+    apiFetch<{ recommendations: TeacherRecommendation[] }>(`/v1/learning/teacher-match?${qs}`, { token })
+      .then((r) => setTeacherMatch(r.recommendations ?? []))
+      .catch(() => setTeacherMatch([]));
+  }, [token, data]);
+
   if (!token) return null;
 
   const latestPlan = data?.plans[0] ?? null;
@@ -507,6 +538,48 @@ export default function StudentCalismaPage() {
             </a>
           </div>
         </section>
+
+        {teacherMatch.length > 0 ? (
+          <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-semibold text-paper-900">AI öğretmen eşleşmesi</h2>
+                <p className="mt-1 text-sm text-paper-800/70">
+                  Zayıf kazanımlarınıza göre {teacherMatchBranch} branşında önerilen öğretmenler.
+                </p>
+              </div>
+              <Link
+                href={teacherSearchHref(teacherMatchBranch, teacherMatchBranch)}
+                className="text-sm font-medium text-brand-800 underline"
+              >
+                Tümünü gör
+              </Link>
+            </div>
+            <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+              {teacherMatch.map((teacher) => (
+                <li key={teacher.id} className="rounded-xl border border-paper-200 bg-paper-50 p-4">
+                  <div className="font-semibold text-paper-900">{teacher.displayName}</div>
+                  <div className="mt-1 text-xs text-paper-800/60">
+                    {teacher.branchName ?? teacherMatchBranch}
+                    {teacher.cityName ? ` · ${teacher.cityName}` : ""}
+                  </div>
+                  <div className="mt-1 text-xs text-paper-800/60">{moneyLabel(teacher.minHourlyRateMinor)}</div>
+                  <ul className="mt-2 space-y-0.5 text-xs text-paper-800/70">
+                    {teacher.reasons.slice(0, 2).map((reason) => (
+                      <li key={reason}>• {reason}</li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={`/ogretmenler/${teacher.id}`}
+                    className="mt-3 inline-flex rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-900"
+                  >
+                    Profili aç
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <section className="mt-6 grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">

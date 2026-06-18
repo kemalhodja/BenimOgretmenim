@@ -36,6 +36,9 @@ export default function TeacherDogrulamaPage() {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [docTitle, setDocTitle] = useState("");
+  const [docUrl, setDocUrl] = useState("");
+  const [docBusy, setDocBusy] = useState(false);
 
   useEffect(() => {
     const t = getToken();
@@ -60,6 +63,36 @@ export default function TeacherDogrulamaPage() {
         setError(m);
       });
   }, [token, router, pathname]);
+
+  async function addDocument() {
+    if (!token || !me) return;
+    const title = docTitle.trim();
+    const url = docUrl.trim();
+    if (title.length < 2 || !url) {
+      setError("Belge başlığı ve URL zorunlu.");
+      return;
+    }
+    setDocBusy(true);
+    setError(null);
+    setOk(null);
+    try {
+      const nextDocs = [...(me.teacher.examDocs ?? []), { title, url, kind: "dokuman" as const }];
+      await apiFetch("/v1/teacher/me", {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ examDocs: nextDocs }),
+      });
+      setDocTitle("");
+      setDocUrl("");
+      setOk("Belge eklendi.");
+      const r = await apiFetch<TeacherMe>("/v1/teacher/me", { token });
+      setMe(r);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "yüklenemedi");
+    } finally {
+      setDocBusy(false);
+    }
+  }
 
   async function requestVerification() {
     if (!token) return;
@@ -133,6 +166,29 @@ export default function TeacherDogrulamaPage() {
               ))}
             </ul>
           )}
+          <div className="mt-4 space-y-2 border-t border-paper-100 pt-4">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">Yeni belge ekle</h3>
+            <input
+              value={docTitle}
+              onChange={(e) => setDocTitle(e.target.value)}
+              className="w-full rounded-lg border border-paper-200 px-3 py-2 text-sm"
+              placeholder="Belge adı (ör. Kimlik, diploma)"
+            />
+            <input
+              value={docUrl}
+              onChange={(e) => setDocUrl(e.target.value)}
+              className="w-full rounded-lg border border-paper-200 px-3 py-2 text-sm"
+              placeholder="Belge URL (Google Drive, bulut linki)"
+            />
+            <button
+              type="button"
+              disabled={docBusy}
+              onClick={() => void addDocument()}
+              className="rounded-lg bg-brand-800 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {docBusy ? "Kaydediliyor…" : "Belgeyi kaydet"}
+            </button>
+          </div>
         </div>
 
         {canRequest ? (

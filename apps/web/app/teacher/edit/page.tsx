@@ -96,6 +96,8 @@ export default function TeacherEditPage() {
   const [cityId, setCityId] = useState<number | "">("");
   const [districtId, setDistrictId] = useState<number | "">("");
   const [availability, setAvailability] = useState<string>("{}");
+  const [outcomeTagsText, setOutcomeTagsText] = useState("");
+  const [outcomeTagsBusy, setOutcomeTagsBusy] = useState(false);
 
   const [selectedBranchIds, setSelectedBranchIds] = useState<number[]>([]);
   const [primaryBranchId, setPrimaryBranchId] = useState<number | "">("");
@@ -118,10 +120,13 @@ export default function TeacherEditPage() {
   useEffect(() => {
     if (!token) return;
     (async () => {
-      const [m, b, c] = await Promise.all([
+      const [m, b, c, tags] = await Promise.all([
         apiFetch<TeacherMe>("/v1/teacher/me", { token }),
         apiFetch<{ branches: Branch[] }>("/v1/meta/branches"),
         apiFetch<{ cities: City[] }>("/v1/meta/cities"),
+        apiFetch<{ tags: Array<{ outcome_title: string }> }>("/v1/teacher/me/outcome-tags", { token }).catch(
+          () => ({ tags: [] as Array<{ outcome_title: string }> }),
+        ),
       ]);
       setBranches(b.branches);
       setCities(c.cities);
@@ -136,6 +141,7 @@ export default function TeacherEditPage() {
       setCityId(m.teacher.cityId ?? "");
       setDistrictId(m.teacher.districtId ?? "");
       setAvailability(JSON.stringify(m.teacher.availability ?? {}, null, 2));
+      setOutcomeTagsText((tags.tags ?? []).map((t) => t.outcome_title).join(", "));
       setCompletionScore(m.completionScore ?? 0);
       setChecklist(m.checklist ?? {});
 
@@ -305,6 +311,30 @@ export default function TeacherEditPage() {
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveOutcomeTags() {
+    if (!token) return;
+    setOutcomeTagsBusy(true);
+    setError(null);
+    setOk(null);
+    try {
+      const tags = outcomeTagsText
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((outcomeTitle) => ({ outcomeTitle }));
+      await apiFetch("/v1/teacher/me/outcome-tags", {
+        method: "PUT",
+        token,
+        body: JSON.stringify({ tags }),
+      });
+      setOk("Kazanım etiketleri kaydedildi.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "save_failed");
+    } finally {
+      setOutcomeTagsBusy(false);
     }
   }
 
@@ -903,6 +933,26 @@ export default function TeacherEditPage() {
                   className="min-h-40 w-full rounded-xl border border-paper-200 px-3 py-2 font-mono text-xs outline-none focus:border-brand-400"
                   aria-label="Müsait olduğunuz gün ve saatler"
                 />
+              </label>
+
+              <label className="block">
+                <div className="mb-1 text-sm font-medium text-paper-800">
+                  Kazanım etiketleri (virgülle)
+                </div>
+                <input
+                  value={outcomeTagsText}
+                  onChange={(e) => setOutcomeTagsText(e.target.value)}
+                  className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                  placeholder="Örn. Oran-orantı, Paragraf ana düşünce, Üslü sayılar"
+                />
+                <button
+                  type="button"
+                  onClick={() => void saveOutcomeTags()}
+                  disabled={outcomeTagsBusy}
+                  className="mt-2 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-medium text-brand-900 disabled:opacity-50"
+                >
+                  {outcomeTagsBusy ? "Kaydediliyor…" : "Etiketleri kaydet"}
+                </button>
               </label>
 
               <button

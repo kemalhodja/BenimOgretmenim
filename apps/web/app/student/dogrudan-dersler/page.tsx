@@ -15,6 +15,9 @@ type DirectBooking = {
   funded_at: string | null;
   completed_at: string | null;
   created_at: string;
+  scheduled_start: string | null;
+  scheduled_end: string | null;
+  meeting_url: string | null;
   teacher_display_name: string | null;
 };
 
@@ -250,8 +253,29 @@ export default function StudentDogrudanDerslerPage() {
                     <div className="mt-1 text-xs text-paper-800/55">
                       {new Date(b.created_at).toLocaleString("tr-TR")}
                     </div>
+                    {b.scheduled_start ? (
+                      <div className="mt-1 text-xs font-medium text-brand-900">
+                        Ders: {new Date(b.scheduled_start).toLocaleString("tr-TR")}
+                        {b.meeting_url ? (
+                          <>
+                            {" · "}
+                            <a href={b.meeting_url} target="_blank" rel="noreferrer" className="underline">
+                              Toplantı linki
+                            </a>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+                    {b.status === "funded" ? (
+                      <Link
+                        href="/mesajlar"
+                        className="rounded-xl border border-paper-300 bg-white px-3 py-2 text-center text-sm font-medium text-paper-900 hover:bg-paper-50"
+                      >
+                        Mesajlaş
+                      </Link>
+                    ) : null}
                     {b.status === "pending_funding" && (
                       <button
                         type="button"

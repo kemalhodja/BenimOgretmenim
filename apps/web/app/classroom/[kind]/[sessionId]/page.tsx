@@ -81,6 +81,14 @@ function toLocal(value: string | null): string {
   return new Date(value).toLocaleString("tr-TR");
 }
 
+function detectMaterialType(url: string): "link" | "pdf" | "video" | "image" {
+  const lower = url.toLowerCase();
+  if (lower.endsWith(".pdf") || lower.includes(".pdf?")) return "pdf";
+  if (/youtube\.com|youtu\.be|vimeo\.com/.test(lower)) return "video";
+  if (/\.(png|jpe?g|webp|gif)(\?|$)/.test(lower)) return "image";
+  return "link";
+}
+
 function roomStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     scheduled: "Planlandı",
@@ -416,7 +424,7 @@ export default function ClassroomPage() {
         token,
         body: JSON.stringify({
           title,
-          materialType: materialUrl.trim() ? "link" : "note",
+          materialType: materialUrl.trim() ? detectMaterialType(materialUrl.trim()) : "note",
           url: materialUrl.trim() || null,
           description: materialDescription.trim() || null,
         }),
@@ -777,9 +785,17 @@ export default function ClassroomPage() {
                         {m.material_type} · {new Date(m.created_at).toLocaleString("tr-TR")}
                       </div>
                       {m.url ? (
-                        <a href={m.url} target="_blank" rel="noreferrer" className="text-xs text-brand-800 underline">
-                          Aç
-                        </a>
+                        m.material_type === "pdf" ? (
+                          <iframe
+                            title={m.title}
+                            src={m.url}
+                            className="mt-2 h-64 w-full rounded-lg border border-paper-200"
+                          />
+                        ) : (
+                          <a href={m.url} target="_blank" rel="noreferrer" className="text-xs text-brand-800 underline">
+                            Aç
+                          </a>
+                        )
                       ) : null}
                       {m.description ? <p className="mt-1 text-xs text-paper-800/70">{m.description}</p> : null}
                     </li>

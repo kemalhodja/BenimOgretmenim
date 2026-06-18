@@ -103,6 +103,31 @@ function percentLabel(value: number): string {
   return `${Math.round(value)}%`;
 }
 
+function teacherRecommendationsFrom(value: unknown): Array<{
+  id: string;
+  displayName: string;
+  branchName?: string | null;
+  minHourlyRateMinor?: number | null;
+}> {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const row = item as Record<string, unknown>;
+      const id = typeof row.id === "string" ? row.id : "";
+      const displayName = typeof row.displayName === "string" ? row.displayName : "";
+      if (!id || !displayName) return null;
+      return {
+        id,
+        displayName,
+        branchName: typeof row.branchName === "string" ? row.branchName : null,
+        minHourlyRateMinor:
+          typeof row.minHourlyRateMinor === "number" ? row.minHourlyRateMinor : null,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+}
+
 function teacherSearchHref(branchName: string, branchSlug?: string): string {
   const query = branchSlug?.includes("matematik") ? "Matematik" : branchName;
   return `/ogretmenler?verifiedOnly=1&sort=recommended&q=${encodeURIComponent(query)}`;
@@ -153,6 +178,23 @@ export default function GuardianPage() {
     paymentEnabled: true,
   });
   const [emailPrefsBusy, setEmailPrefsBusy] = useState(false);
+  const [creditStudentId, setCreditStudentId] = useState("");
+  const [monthlyCredits, setMonthlyCredits] = useState(4);
+  const [perLessonTl, setPerLessonTl] = useState("150");
+  const [creditPools, setCreditPools] = useState<
+    Array<{
+      id: string;
+      student_display_name: string;
+      credits_remaining: number;
+      monthly_lesson_credits: number;
+      per_lesson_budget_minor: number;
+      period_month: string;
+    }>
+  >([]);
+  const [weeklyReports, setWeeklyReports] = useState<
+    Array<{ id: string; report_title: string; report_preview: string; week_start: string }>
+  >([]);
+  const [creditBusy, setCreditBusy] = useState(false);
   const [weekStart] = useState(() => Date.now() - 1000 * 60 * 60 * 24 * 7);
 
   useEffect(() => {
@@ -173,7 +215,7 @@ export default function GuardianPage() {
     (async () => {
       setError(null);
       try {
-        const [r, n, prefs] = await Promise.all([
+        const [r, n, prefs, credits, reports] = await Promise.all([
           apiFetch<{
             students: StudentRow[];
             progress: ProgressRow[];
@@ -194,6 +236,8 @@ export default function GuardianPage() {
           ).catch(() => ({
             preferences: { homeworkEnabled: true, lessonEnabled: true, paymentEnabled: true },
           })),
+          apiFetch<{ pools: typeof creditPools }>("/v1/guardians/lesson-credits", { token }).catch(() => ({ pools: [] })),
+          apiFetch<{ reports: typeof weeklyReports }>("/v1/guardians/weekly-reports", { token }).catch(() => ({ reports: [] })),
         ]);
         setStudents(r.students);
         setProgress(r.progress);
@@ -203,6 +247,11 @@ export default function GuardianPage() {
         setCurriculumAttempts(r.curriculumAttempts ?? []);
         setNotifications(n.notifications);
         setEmailPrefs(prefs.preferences);
+        setCreditPools(credits.pools ?? []);
+        setWeeklyReports(reports.reports ?? []);
+        if (r.students[0]?.student_id) {
+          setCreditStudentId((prev) => prev ?? r.students[0].student_id);
+        }
       } catch (e) {
         const msg = e instanceof Error ? e.message : "load_failed";
         setError(msg);
@@ -216,6 +265,36 @@ export default function GuardianPage() {
       }
     })();
   }, [token, router, pathname]);
+
+  async function allocateCredits() {
+    if (!token || !creditStudentId) return;
+    const perLessonBudgetMinor = Math.round(Number(perLessonTl.replace(",", ".")) * 100);
+    if (!Number.isFinite(perLessonBudgetMinor) || perLessonBudgetMinor < 5000) {
+      setError("Ders başı bütçe en az 50 TL olmalı.");
+      return;
+    }
+    setCreditBusy(true);
+    setError(null);
+    setOk(null);
+    try {
+      await apiFetch("/v1/guardians/lesson-credits", {
+        method: "POST",
+        token,
+        body: JSON.stringify({
+          studentId: creditStudentId,
+          monthlyCredits,
+          perLessonBudgetMinor,
+        }),
+      });
+      setOk("Güvenli havuz kredileri tanımlandı. Ders tamamlanınca öğretmene aktarılır.");
+      const credits = await apiFetch<{ pools: typeof creditPools }>("/v1/guardians/lesson-credits", { token });
+      setCreditPools(credits.pools ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "credit_allocate_failed");
+    } finally {
+      setCreditBusy(false);
+    }
+  }
 
   async function acceptInvite() {
     if (!token) return;
@@ -578,6 +657,19 @@ export default function GuardianPage() {
                   </Link>
                 ) : null}
               </div>
+              {latestCurriculumAttempt.teacher_support_recommended ? (
+                <ul className="mt-4 grid gap-2 sm:grid-cols-3">
+                  {teacherRecommendationsFrom(latestCurriculumAttempt.teacher_recommendations_jsonb).map((t) => (
+                    <li key={t.id} className="rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm">
+                      <div className="font-semibold text-paper-900">{t.displayName}</div>
+                      <div className="mt-1 text-xs text-paper-800/60">{t.branchName ?? latestCurriculumAttempt.branch_name}</div>
+                      <Link href={`/ogretmenler/${t.id}`} className="mt-2 inline-block text-xs font-semibold text-brand-800 underline">
+                        Profili incele
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ) : (
             <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-4 text-sm text-paper-800/65">
@@ -602,6 +694,87 @@ export default function GuardianPage() {
             </div>
           ) : null}
         </section>
+
+        <section id="guvenli-havuz" className="mt-8 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-paper-900">Güvenli havuz — aylık ders kredisi</h2>
+          <p className="mt-1 text-sm text-paper-800/70">
+            Cüzdanınızdan ayrılan bütçe ile çocuğunuza ders kredisi tanımlayın. Ders tamamlanınca ücret öğretmene aktarılır.
+          </p>
+          {students.length === 0 ? (
+            <p className="mt-3 text-sm text-paper-800/55">Önce öğrenci bağlayın.</p>
+          ) : (
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <label className="text-sm">
+                Öğrenci
+                <select
+                  value={creditStudentId}
+                  onChange={(e) => setCreditStudentId(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                >
+                  {students.map((s) => (
+                    <option key={s.student_id} value={s.student_id}>
+                      {s.student_display_name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-sm">
+                Aylık ders kredisi
+                <input
+                  type="number"
+                  min={1}
+                  max={30}
+                  value={monthlyCredits}
+                  onChange={(e) => setMonthlyCredits(Number(e.target.value))}
+                  className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                />
+              </label>
+              <label className="text-sm">
+                Ders başı bütçe (TL)
+                <input
+                  value={perLessonTl}
+                  onChange={(e) => setPerLessonTl(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                />
+              </label>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  disabled={creditBusy}
+                  onClick={() => void allocateCredits()}
+                  className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {creditBusy ? "…" : "Kredi tanımla"}
+                </button>
+              </div>
+            </div>
+          )}
+          {creditPools.length > 0 ? (
+            <ul className="mt-4 space-y-2 text-sm">
+              {creditPools.map((p) => (
+                <li key={p.id} className="rounded-lg border border-paper-100 bg-paper-50 p-3">
+                  {p.student_display_name}: {p.credits_remaining}/{p.monthly_lesson_credits} kredi ·{" "}
+                  {Math.round(p.per_lesson_budget_minor / 100)} TL/ders
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+
+        {weeklyReports.length > 0 ? (
+          <section className="mt-8 rounded-2xl border border-brand-200 bg-brand-50/50 p-5">
+            <h2 className="text-base font-semibold text-brand-950">AI haftalık gelişim raporları</h2>
+            <ul className="mt-3 space-y-2 text-sm">
+              {weeklyReports.map((rep) => (
+                <li key={rep.id} className="rounded-lg bg-white/80 p-3">
+                  <div className="font-semibold text-paper-900">{rep.report_title}</div>
+                  <div className="mt-1 text-xs text-paper-800/60">{rep.week_start}</div>
+                  <p className="mt-2 text-paper-800/75">{rep.report_preview}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <section id="ogrenci-baglama" className="mt-8">
           <h2 className="text-base font-semibold text-paper-900">Bağlı öğrenciler</h2>

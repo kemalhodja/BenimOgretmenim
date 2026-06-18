@@ -296,6 +296,8 @@ export default function TeacherHomePage() {
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [notifBusyId, setNotifBusyId] = useState<string | null>(null);
   const [sharePanelOk, setSharePanelOk] = useState<string | null>(null);
+  const [instantReady, setInstantReady] = useState(false);
+  const [instantBusy, setInstantBusy] = useState(false);
 
   useEffect(() => {
     const t = getToken();
@@ -588,10 +590,65 @@ export default function TeacherHomePage() {
   const teacherProfileHref = me
     ? teacherProfilePath(me.teacher.displayName, primaryTeacherBranch?.name, me.teacher.id)
     : "/ogretmenler";
+
+  async function toggleInstantReady() {
+    if (!token) return;
+    setInstantBusy(true);
+    try {
+      const next = !instantReady;
+      await apiFetch("/v1/teacher/me/instant-ready", {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ available: next, readyMinutes: 120 }),
+      });
+      setInstantReady(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "instant_ready_failed");
+    } finally {
+      setInstantBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-6 py-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <section className="rounded-2xl border border-brand-200 bg-brand-50/70 p-5">
+          <h2 className="text-sm font-semibold text-brand-950">Neden BenimÖğretmenim? (Armut / komisyonlu platformlara karşı)</h2>
+          <ul className="mt-3 grid gap-2 text-sm text-brand-900 sm:grid-cols-3">
+            <li className="rounded-xl bg-white/80 p-3">
+              <strong>Komisyon yok:</strong> Öğrenci platforma öder; sizden kesinti alınmaz, hak ediş net aktarılır.
+            </li>
+            <li className="rounded-xl bg-white/80 p-3">
+              <strong>Platform içi ders:</strong> Tahta, materyal, kayıt ve mesaj tek akışta; WhatsApp dağınıklığı yok.
+            </li>
+            <li className="rounded-xl bg-white/80 p-3">
+              <strong>Doğrulama rozeti:</strong> KYC ile güven artar; kazanım etiketleriyle doğru öğrenciye görünürsünüz.
+            </li>
+          </ul>
+        </section>
+
+        <section className="mt-4 rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-paper-900">Anlık derse hazırım</h2>
+              <p className="mt-1 text-xs text-paper-800/65">
+                Açıkken öğrenciler 10–15 dk hızlı soru çözümü talep edebilir (ek gelir).
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={instantBusy}
+              onClick={() => void toggleInstantReady()}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold disabled:opacity-50 ${
+                instantReady ? "bg-brand-800 text-white" : "border border-paper-300 bg-paper-50 text-paper-900"
+              }`}
+            >
+              {instantBusy ? "…" : instantReady ? "Hazır (açık)" : "Hazır değil"}
+            </button>
+          </div>
+        </section>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Panel özeti</h1>
             <p className="mt-1 text-lg font-medium text-paper-800">{me?.teacher.displayName ?? "—"}</p>

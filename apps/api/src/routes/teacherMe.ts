@@ -54,6 +54,36 @@ const putBranchesSchema = z.object({
   branches: z.array(branchRowSchema).max(40),
 });
 
+const outcomeTagsSchema = z.object({
+  tags: z
+    .array(
+      z.object({
+        outcomeTitle: z.string().min(2).max(200),
+        branchSlug: z.string().max(80).optional().nullable(),
+        gradeLevel: z.number().int().min(1).max(12).optional().nullable(),
+        confidence: z.number().int().min(1).max(5).optional().default(3),
+      }),
+    )
+    .max(30),
+});
+
+async function logVerificationEvent(
+  teacherId: string,
+  eventKind: "documents_uploaded" | "verification_requested" | "admin_verified" | "admin_rejected",
+  actorUserId: string | null,
+  note?: string,
+): Promise<void> {
+  try {
+    await pool.query(
+      `insert into teacher_verification_events (teacher_id, event_kind, actor_user_id, note)
+       values ($1, $2, $3, $4)`,
+      [teacherId, eventKind, actorUserId, note ?? null],
+    );
+  } catch {
+    /* migration optional */
+  }
+}
+
 function availabilityHasSlots(value: unknown): boolean {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return false;
@@ -360,6 +390,9 @@ teacherMe.patch("/me", requireAuth, async (c) => {
     }
 
     await client.query("commit");
+    if (body.examDocs !== undefined) {
+      await logVerificationEvent(tr.rows[0].id as string, "documents_uploaded", userId);
+    }
   } catch (e) {
     await client.query("rollback").catch(() => {});
     const err = e as { code?: string };
@@ -402,6 +435,7 @@ teacherMe.post("/verification-request", requireAuth, async (c) => {
     `update teachers set verification_status = 'pending', updated_at = now() where id = $1`,
     [row.id],
   );
+  await logVerificationEvent(row.id, "verification_requested", userId);
   await notifyUserInApp(
     userId,
     "Doğrulama başvurunuz alındı",
@@ -411,7 +445,94 @@ teacherMe.post("/verification-request", requireAuth, async (c) => {
   return c.json({ ok: true, status: "pending" });
 });
 
-/** Öğretmen: branş listesini atomik olarak yenile (arama / analitik için ID’li veri) */
+teacherMe.get("/me/outcome-tags", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
+  const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
+  if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
+  try {
+    const r = await pool.query(
+      `select id, outcome_title, branch_slug, grade_level, confidence, created_at
+       from teacher_outcome_tags
+       where teacher_id = $1
+       order by confidence desc, outcome_title asc`,
+      [tr.rows[0].id as string],
+    );
+    return c.json({ tags: r.rows });
+  } catch {
+    return c.json({ tags: [] });
+  }
+});
+
+teacherMe.put("/me/outcome-tags", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
+  const parsed = outcomeTagsSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
+  if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
+  const teacherId = tr.rows[0].id as string;
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query(`delete from teacher_outcome_tags where teacher_id = $1`, [teacherId]);
+    for (const tag of parsed.data.tags) {
+      await client.query(
+        `insert into teacher_outcome_tags (teacher_id, outcome_title, branch_slug, grade_level, confidence)
+         values ($1, $2, $3, $4, $5)
+         on conflict (teacher_id, outcome_title, branch_slug) do update
+           set grade_level = excluded.grade_level, confidence = excluded.confidence`,
+        [
+          teacherId,
+          tag.outcomeTitle.trim(),
+          tag.branchSlug?.trim() || null,
+          tag.gradeLevel ?? null,
+          tag.confidence ?? 3,
+        ],
+      );
+    }
+    await client.query("commit");
+    return c.json({ ok: true, count: parsed.data.tags.length });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    const err = e as { code?: string };
+    if (err.code === "42P01") return c.json({ error: "outcome_tags_not_available" }, 503);
+    throw e;
+  } finally {
+    client.release();
+  }
+});
+
+const instantReadySchema = z.object({
+  available: z.boolean(),
+  readyMinutes: z.number().int().min(15).max(240).optional().default(120),
+});
+
+teacherMe.patch("/me/instant-ready", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
+  const parsed = instantReadySchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const readyUntil = parsed.data.available
+    ? new Date(Date.now() + parsed.data.readyMinutes * 60_000).toISOString()
+    : null;
+
+  await pool.query(
+    `update teachers
+     set instant_lesson_available = $2,
+         instant_ready_until = $3::timestamptz,
+         last_presence_at = case when $2 then now() else last_presence_at end,
+         updated_at = now()
+     where user_id = $1`,
+    [userId, parsed.data.available, readyUntil],
+  );
+  return c.json({ ok: true, available: parsed.data.available, readyUntil });
+});
+
+/** Öğretmen: branş listesini atomik olarak yenile (arama / analitik için ID'li veri) */
 teacherMe.put("/me/branches", requireAuth, async (c) => {
   const userId = c.get("userId");
   const role = c.get("userRole");

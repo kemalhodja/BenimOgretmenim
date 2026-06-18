@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { matchCurriculumWithTrgm } from "./curriculumMatcher.js";
 
 export function homeworkResolveMinutes(): number {
   const n = Number(process.env.HOMEWORK_CLAIM_RESOLVE_MINUTES ?? "20");
@@ -33,10 +34,22 @@ function homeworkAiConfig(): { apiKey: string; baseUrl: string; model: string } 
   };
 }
 
-async function callHomeworkAiJson(prompt: string): Promise<HomeworkAiJson | null> {
+async function callHomeworkAiJson(
+  prompt: string,
+  imageUrls: string[] = [],
+): Promise<HomeworkAiJson | null> {
   const config = homeworkAiConfig();
   if (!config) return null;
   try {
+    const userContent: Array<{ type: string; text?: string; image_url?: { url: string; detail?: string } }> = [
+      { type: "text", text: prompt },
+    ];
+    for (const url of imageUrls.slice(0, 2)) {
+      if (/^https:\/\//i.test(url) || /^data:image\//i.test(url)) {
+        userContent.push({ type: "image_url", image_url: { url, detail: "low" } });
+      }
+    }
+
     const response = await fetch(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: {
@@ -51,9 +64,9 @@ async function callHomeworkAiJson(prompt: string): Promise<HomeworkAiJson | null
           {
             role: "system",
             content:
-              "Sen Türkçe eğitim platformunda OCR/konu sınıflandırma ve çözüm kalite değerlendirmesi yapan kısa JSON üreten asistansın.",
+              "Sen Türkçe eğitim platformunda görsel OCR, LGS/YKS kazanım tespiti ve soru sınıflandırması yapan asistansın. Yalnızca JSON dön.",
           },
-          { role: "user", content: prompt },
+          { role: "user", content: userContent },
         ],
       }),
     });
@@ -143,6 +156,7 @@ function buildHomeworkHeuristicMetadata(input: {
 
 export async function classifyHomeworkPost(input: {
   branchId: number;
+  branchSlug?: string | null;
   topic: string;
   helpText: string;
   gradeLevelText?: string | null;
@@ -156,12 +170,16 @@ export async function classifyHomeworkPost(input: {
     process.env.HOMEWORK_STORAGE_PROVIDER ??
     (hasInlineImages ? "inline_data_url_pending_object_storage" : input.imageUrls.length ? "external_https_url" : "text_only");
   const fallback = buildHomeworkHeuristicMetadata(input);
+  const hasVision = input.imageUrls.length > 0;
 
   const ai = await callHomeworkAiJson(
     [
-      "Soru gönderisini sınıflandır. Yalnızca JSON dön.",
-      "Alanlar: ocr_text, subject, topic_hint, difficulty, estimated_solution_minutes, similar_practice, routing_note, routing_priority (0-100), needs_clarification (boolean), content_quality (low|medium|high), recommended_teacher_tags (string[]).",
+      hasVision
+        ? "Soru fotoğrafını OCR ile oku ve LGS/YKS müfredat kazanımını tahmin et. Yalnızca JSON dön."
+        : "Soru gönderisini sınıflandır. Yalnızca JSON dön.",
+      "Alanlar: ocr_text, subject, topic_hint, difficulty, estimated_solution_minutes, similar_practice, routing_note, routing_priority (0-100), needs_clarification (boolean), content_quality (low|medium|high), recommended_teacher_tags (string[]), detected_exam (LGS|YKS|TYT|AYT|null), detected_branch_slug, detected_outcome_title, detected_unit_title.",
       `Branş id: ${input.branchId}`,
+      `Branş slug: ${input.branchSlug ?? ""}`,
       `Konu: ${input.topic}`,
       `Açıklama: ${input.helpText}`,
       `Sınıf: ${input.gradeLevelText ?? ""}`,
@@ -170,15 +188,44 @@ export async function classifyHomeworkPost(input: {
       `Aciliyet: ${input.urgencyLevel}`,
       `Görsel sayısı: ${input.imageUrls.length}`,
     ].join("\n"),
+    hasVision ? input.imageUrls : [],
   );
+
+  const ocrText = typeof ai?.ocr_text === "string" ? ai.ocr_text : "";
+  const topicHint =
+    (typeof ai?.detected_outcome_title === "string" && ai.detected_outcome_title) ||
+    (typeof ai?.topic_hint === "string" && ai.topic_hint) ||
+    input.learningObjective?.trim() ||
+    input.topic;
+
+  const branchSlug = input.branchSlug ?? (typeof ai?.detected_branch_slug === "string" ? ai.detected_branch_slug : null);
+  let matchedOutcomes: Awaited<ReturnType<typeof matchCurriculumWithTrgm>> = [];
+  try {
+    matchedOutcomes = await matchCurriculumWithTrgm({
+      queryText: [ocrText, topicHint, input.helpText, input.topic].filter(Boolean).join(" "),
+      branchSlug,
+      limit: 3,
+    });
+  } catch {
+    matchedOutcomes = [];
+  }
 
   const merged: HomeworkAiJson = {
     ...fallback,
     ...(ai ?? {}),
     storage_backend: storageBackend,
-    provider: ai ? "llm_provider_v1" : "heuristic_v2",
+    provider: ai ? (hasVision ? "vision_llm_v1" : "llm_provider_v1") : "heuristic_v2",
+    ocr_status: hasVision ? (ocrText ? "vision_ocr_done" : "vision_ocr_pending") : fallback.ocr_status,
+    matched_curriculum_outcomes: matchedOutcomes,
+    primary_outcome: matchedOutcomes[0] ?? null,
   };
   merged.routing_priority = homeworkRoutingPriorityFromMetadata(merged);
+  if (matchedOutcomes.length > 0) {
+    merged.routing_priority = Math.min(100, homeworkRoutingPriorityFromMetadata(merged) + 8);
+    const tags = Array.isArray(merged.recommended_teacher_tags) ? [...merged.recommended_teacher_tags] : [];
+    tags.push(matchedOutcomes[0].outcomeTitle);
+    merged.recommended_teacher_tags = [...new Set(tags.map(String))].slice(0, 8);
+  }
 
   return {
     aiMetadata: merged,

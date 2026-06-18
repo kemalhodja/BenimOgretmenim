@@ -30,6 +30,8 @@ import {
 import { linkHomeworkMediaToPost, persistHomeworkImageUrls } from "../lib/homeworkObjectStorage.js";
 import { isPaytrConfigured, paytrNotConfiguredBody } from "../lib/systemHealth.js";
 import { queueGuardianEmail } from "../lib/emailDelivery.js";
+import { ensureDirectBookingThread } from "../lib/userMessaging.js";
+import { allocateGuardianLessonCredits, consumeGuardianLessonCredit } from "../lib/guardianLessonCredits.js";
 
 export const studentPlatform = new Hono<{ Variables: AppVariables }>();
 
@@ -207,8 +209,12 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
   const studentId = sr.rows[0].id as string;
   const targetMinutes = homeworkTargetMinutesForUrgency(parsed.data.urgencyLevel);
   const persistedImages = await persistHomeworkImageUrls(parsed.data.imageUrls ?? [], userId, null);
+  const branchRow = await pool.query<{ slug: string }>(`select slug from branches where id = $1`, [
+    parsed.data.branchId,
+  ]);
   const homeworkAi = await classifyHomeworkPost({
     branchId: parsed.data.branchId,
+    branchSlug: branchRow.rows[0]?.slug ?? null,
     topic: parsed.data.topic.trim(),
     helpText: parsed.data.helpText.trim(),
     gradeLevelText: parsed.data.gradeLevelText?.trim() || null,
@@ -383,9 +389,18 @@ studentPlatform.get("/homework-posts/mine", requireAuth, async (c) => {
   return c.json({ posts: r.rows });
 });
 
+const scheduleFieldsSchema = z.object({
+  scheduledStart: z.string().datetime().optional(),
+  scheduledEnd: z.string().datetime().optional(),
+  meetingUrl: z.string().url().max(500).optional().nullable(),
+});
+
 const createDirectSchema = z.object({
   teacherId: z.string().uuid(),
-  agreedAmountMinor: z.number().int().min(1000), // 10,00 TL minimum
+  agreedAmountMinor: z.number().int().min(1000),
+  scheduledStart: z.string().datetime().optional(),
+  scheduledEnd: z.string().datetime().optional(),
+  meetingUrl: z.string().url().max(500).optional().nullable(),
 });
 
 function moneyTl(minor: number): string {
@@ -420,10 +435,18 @@ studentPlatform.post("/direct-bookings", requireAuth, async (c) => {
 
   const ins = await pool.query(
     `insert into direct_lesson_bookings (
-       student_id, teacher_id, agreed_amount_minor, status
-     ) values ($1, $2, $3, 'pending_funding')
-     returning id, status, created_at, agreed_amount_minor, currency`,
-    [studentId, parsed.data.teacherId, parsed.data.agreedAmountMinor],
+       student_id, teacher_id, agreed_amount_minor, status,
+       scheduled_start, scheduled_end, meeting_url
+     ) values ($1, $2, $3, 'pending_funding', $4::timestamptz, $5::timestamptz, $6)
+     returning id, status, created_at, agreed_amount_minor, currency, scheduled_start, scheduled_end, meeting_url`,
+    [
+      studentId,
+      parsed.data.teacherId,
+      parsed.data.agreedAmountMinor,
+      parsed.data.scheduledStart ?? null,
+      parsed.data.scheduledEnd ?? null,
+      parsed.data.meetingUrl ?? null,
+    ],
   );
   await pool.query(
     `insert into parent_notifications (
@@ -465,6 +488,7 @@ studentPlatform.get("/direct-bookings/mine", requireAuth, async (c) => {
   if (!sr.rowCount) return c.json({ bookings: [] });
   const r = await pool.query(
     `select b.id, b.teacher_id, b.agreed_amount_minor, b.status, b.funded_at, b.completed_at, b.created_at,
+            b.scheduled_start, b.scheduled_end, b.meeting_url,
             u.display_name as teacher_display_name
      from direct_lesson_bookings b
      join teachers t on t.id = b.teacher_id
@@ -485,6 +509,7 @@ studentPlatform.get("/direct-bookings/teacher-mine", requireAuth, async (c) => {
   if (!tr.rowCount) return c.json({ bookings: [] });
   const r = await pool.query(
     `select b.id, b.student_id, b.agreed_amount_minor, b.status, b.funded_at, b.completed_at, b.teacher_payout_minor, b.created_at,
+            b.scheduled_start, b.scheduled_end, b.meeting_url,
             u.display_name as student_display_name
      from direct_lesson_bookings b
      join students s on s.id = b.student_id
@@ -507,11 +532,21 @@ studentPlatform.post("/direct-bookings/:bookingId/fund-from-wallet", requireAuth
   if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
   const studentId = sr.rows[0].id as string;
 
+  let scheduleBody: z.infer<typeof scheduleFieldsSchema> = {};
+  try {
+    const raw = await c.req.json();
+    const fundParsed = scheduleFieldsSchema.safeParse(raw);
+    if (fundParsed.success) scheduleBody = fundParsed.data;
+  } catch {
+    /* empty body ok */
+  }
+
   const cpool = await pool.connect();
   try {
     await cpool.query("begin");
     const bq = await cpool.query(
-      `select b.id, b.agreed_amount_minor, b.status, b.student_id, b.teacher_id
+      `select b.id, b.agreed_amount_minor, b.status, b.student_id, b.teacher_id,
+              b.scheduled_start, b.scheduled_end, b.meeting_url
        from direct_lesson_bookings b
        where b.id = $1
        for update`,
@@ -527,6 +562,9 @@ studentPlatform.post("/direct-bookings/:bookingId/fund-from-wallet", requireAuth
       status: string;
       student_id: string;
       teacher_id: string;
+      scheduled_start: string | null;
+      scheduled_end: string | null;
+      meeting_url: string | null;
     };
     if (b.student_id !== studentId) {
       await cpool.query("rollback");
@@ -555,11 +593,28 @@ studentPlatform.post("/direct-bookings/:bookingId/fund-from-wallet", requireAuth
       }
       throw e;
     }
+    const scheduledStart = scheduleBody.scheduledStart ?? b.scheduled_start;
+    const scheduledEnd = scheduleBody.scheduledEnd ?? b.scheduled_end;
+    const meetingUrl = scheduleBody.meetingUrl ?? b.meeting_url;
+
+    if (scheduledStart) {
+      await cpool.query(`select pg_advisory_xact_lock(hashtext($1))`, [
+        `teacher_slot:${b.teacher_id}:${scheduledStart}`,
+      ]);
+    }
+
     await cpool.query(
       `update direct_lesson_bookings
-       set status = 'funded', funded_at = now(), updated_at = now()
+       set status = 'funded', funded_at = now(), updated_at = now(),
+           scheduled_start = coalesce($2::timestamptz, scheduled_start),
+           scheduled_end = coalesce($3::timestamptz, scheduled_end),
+           meeting_url = coalesce($4, meeting_url)
        where id = $1`,
-      [b.id],
+      [b.id, scheduledStart, scheduledEnd, meetingUrl],
+    );
+    await ensureDirectBookingThread(
+      { bookingId: b.id, studentId: b.student_id, teacherId: b.teacher_id },
+      cpool,
     );
     await cpool.query(
       `insert into parent_notifications (
@@ -1470,4 +1525,211 @@ studentPlatform.post("/homework-posts/:postId/cancel", requireAuth, async (c) =>
     );
   }
   return c.json({ ok: true, status: "cancelled" });
+});
+
+const instantLessonSchema = z.object({
+  teacherId: z.string().uuid(),
+  branchId: z.number().int().positive().optional(),
+  durationMinutes: z.number().int().min(10).max(20).optional().default(15),
+  agreedAmountMinor: z.number().int().min(5000).max(500_000).optional(),
+  useGuardianCredit: z.boolean().optional().default(false),
+});
+
+function defaultInstantAmountMinor(): number {
+  const n = Number(process.env.INSTANT_LESSON_DEFAULT_MINOR ?? "15000");
+  return Number.isFinite(n) && n >= 5000 ? Math.floor(n) : 15000;
+}
+
+/** Anlık özel ders: çevrimiçi öğretmene hızlı soru çözümü talebi */
+studentPlatform.post("/instant-lessons", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+
+  const parsed = instantLessonSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
+  if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
+  const studentId = sr.rows[0].id as string;
+
+  const tr = await pool.query(
+    `select t.id from teachers t
+     where t.id = $1
+       and t.instant_lesson_available = true
+       and (t.instant_ready_until is null or t.instant_ready_until > now())`,
+    [parsed.data.teacherId],
+  );
+  if (!tr.rowCount) return c.json({ error: "teacher_not_instant_ready" }, 409);
+
+  const amount = parsed.data.agreedAmountMinor ?? defaultInstantAmountMinor();
+  const ins = await pool.query(
+    `insert into instant_lesson_sessions (
+       student_id, teacher_id, branch_id, duration_minutes, agreed_amount_minor, status
+     ) values ($1, $2, $3, $4, $5, 'pending_payment')
+     returning id, status, agreed_amount_minor, duration_minutes, created_at`,
+    [studentId, parsed.data.teacherId, parsed.data.branchId ?? null, parsed.data.durationMinutes, amount],
+  );
+  return c.json({ session: ins.rows[0] }, 201);
+});
+
+studentPlatform.post("/instant-lessons/:sessionId/fund", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+  const sessionId = c.req.param("sessionId");
+  if (!z.string().uuid().safeParse(sessionId).success) return c.json({ error: "invalid_session_id" }, 400);
+
+  const body = z.object({ useGuardianCredit: z.boolean().optional() }).safeParse(await c.req.json().catch(() => ({})));
+  const useGuardianCredit = body.success ? body.data.useGuardianCredit : false;
+
+  const sr = await pool.query(`select id from students where user_id = $1`, [userId]);
+  if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
+  const studentId = sr.rows[0].id as string;
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const sq = await client.query(
+      `select s.id, s.student_id, s.teacher_id, s.agreed_amount_minor, s.status
+       from instant_lesson_sessions s where s.id = $1 for update`,
+      [sessionId],
+    );
+    if (!sq.rowCount) {
+      await client.query("rollback");
+      return c.json({ error: "not_found" }, 404);
+    }
+    const row = sq.rows[0] as {
+      id: string;
+      student_id: string;
+      teacher_id: string;
+      agreed_amount_minor: number;
+      status: string;
+    };
+    if (row.student_id !== studentId) {
+      await client.query("rollback");
+      return c.json({ error: "forbidden" }, 403);
+    }
+    if (row.status !== "pending_payment") {
+      await client.query("rollback");
+      return c.json({ error: "not_pending_payment" }, 409);
+    }
+
+    let fundedBy = "student_wallet";
+    if (useGuardianCredit) {
+      const guardian = await client.query<{ guardian_user_id: string }>(
+        `select guardian_user_id from student_guardians where student_id = $1 limit 1`,
+        [studentId],
+      );
+      const guardianUserId = guardian.rows[0]?.guardian_user_id;
+      if (!guardianUserId) {
+        await client.query("rollback");
+        return c.json({ error: "guardian_not_linked" }, 409);
+      }
+      const credit = await consumeGuardianLessonCredit(
+        {
+          guardianUserId,
+          studentId,
+          lessonRefType: "instant_lesson_sessions",
+          lessonRefId: row.id,
+        },
+        client,
+      );
+      if (!credit) {
+        await client.query("rollback");
+        return c.json({ error: "guardian_credits_exhausted" }, 409);
+      }
+      fundedBy = "guardian_credit_pool";
+    } else {
+      await applyWalletDelta({
+        userId,
+        deltaMinor: -row.agreed_amount_minor,
+        kind: "instant_lesson_hold",
+        refType: "instant_lesson_sessions",
+        refId: row.id,
+        client,
+        metadata: { note: "Anlık ders" },
+      });
+    }
+
+    await client.query(
+      `update instant_lesson_sessions
+       set status = 'funded', funded_at = now(), updated_at = now()
+       where id = $1`,
+      [row.id],
+    );
+    await client.query(
+      `insert into parent_notifications (
+         recipient_user_id, student_id, snapshot_id, channel, title, body, payload_jsonb, delivery_status, sent_at
+       )
+       select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
+       from teachers t join users u on u.id = t.user_id where t.id = $1`,
+      [
+        row.teacher_id,
+        studentId,
+        "Anlık ders talebi",
+        "Öğrenci anlık soru çözümü için ödeme tamamladı. Derse başlayabilirsiniz.",
+        JSON.stringify({ kind: "instant_lesson_funded", sessionId: row.id, fundedBy }),
+      ],
+    );
+    await client.query("commit");
+    return c.json({ ok: true, status: "funded", fundedBy });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    const err = e as { message?: string };
+    if (err?.message === "insufficient_balance") return c.json({ error: "insufficient_balance" }, 409);
+    throw e;
+  } finally {
+    client.release();
+  }
+});
+
+studentPlatform.post("/instant-lessons/:sessionId/complete", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
+  const sessionId = c.req.param("sessionId");
+
+  const tr = await pool.query(`select id from teachers where user_id = $1`, [userId]);
+  if (!tr.rowCount) return c.json({ error: "teacher_profile_missing" }, 400);
+  const teacherId = tr.rows[0].id as string;
+
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const sq = await client.query(
+      `select id, teacher_id, agreed_amount_minor, status
+       from instant_lesson_sessions where id = $1 for update`,
+      [sessionId],
+    );
+    const row = sq.rows[0] as { id: string; teacher_id: string; agreed_amount_minor: number; status: string } | undefined;
+    if (!row || row.teacher_id !== teacherId) {
+      await client.query("rollback");
+      return c.json({ error: "not_found" }, 404);
+    }
+    if (row.status !== "funded" && row.status !== "in_progress") {
+      await client.query("rollback");
+      return c.json({ error: "not_completable" }, 409);
+    }
+    const { payout } = teacherPayoutFromGross(row.agreed_amount_minor);
+    const tu = await client.query(`select user_id from teachers where id = $1`, [teacherId]);
+    await applyWalletDelta({
+      userId: tu.rows[0].user_id as string,
+      deltaMinor: payout,
+      kind: "instant_lesson_payout",
+      refType: "instant_lesson_sessions",
+      refId: row.id,
+      client,
+    });
+    await client.query(
+      `update instant_lesson_sessions
+       set status = 'completed', completed_at = now(), teacher_payout_minor = $2, updated_at = now()
+       where id = $1`,
+      [row.id, payout],
+    );
+    await client.query("commit");
+    return c.json({ ok: true, status: "completed", teacherPayoutMinor: payout });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
 });

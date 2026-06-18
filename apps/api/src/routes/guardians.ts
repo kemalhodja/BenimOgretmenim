@@ -4,6 +4,7 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { allocateGuardianLessonCredits } from "../lib/guardianLessonCredits.js";
 
 const linkSchema = z.object({
   guardianUserId: z.string().uuid(),
@@ -467,4 +468,80 @@ guardians.patch("/email-preferences", requireAuth, async (c) => {
   return c.json({
     preferences: { homeworkEnabled, lessonEnabled, paymentEnabled },
   });
+});
+
+const lessonCreditSchema = z.object({
+  studentId: z.string().uuid(),
+  monthlyCredits: z.number().int().min(1).max(30),
+  perLessonBudgetMinor: z.number().int().min(5000).max(500_000),
+});
+
+guardians.get("/lesson-credits", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "guardian") return c.json({ error: "forbidden_guardians_only" }, 403);
+  try {
+    const r = await pool.query(
+      `select p.id, p.student_id, su.display_name as student_display_name,
+              p.period_month, p.monthly_lesson_credits, p.credits_remaining,
+              p.per_lesson_budget_minor, p.status, p.created_at
+       from guardian_lesson_credit_pools p
+       join students s on s.id = p.student_id
+       join users su on su.id = s.user_id
+       where p.guardian_user_id = $1
+       order by p.period_month desc, p.created_at desc
+       limit 20`,
+      [userId],
+    );
+    return c.json({ pools: r.rows });
+  } catch {
+    return c.json({ pools: [] });
+  }
+});
+
+guardians.post("/lesson-credits", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "guardian") return c.json({ error: "forbidden_guardians_only" }, 403);
+  const parsed = lessonCreditSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const link = await pool.query(
+    `select 1 from student_guardians where guardian_user_id = $1 and student_id = $2`,
+    [userId, parsed.data.studentId],
+  );
+  if (!link.rowCount) return c.json({ error: "student_not_linked" }, 403);
+
+  try {
+    const result = await allocateGuardianLessonCredits({
+      guardianUserId: userId,
+      studentId: parsed.data.studentId,
+      monthlyCredits: parsed.data.monthlyCredits,
+      perLessonBudgetMinor: parsed.data.perLessonBudgetMinor,
+    });
+    return c.json({ ok: true, ...result });
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === "insufficient_wallet_available") {
+      return c.json({ error: "insufficient_wallet_available" }, 409);
+    }
+    throw e;
+  }
+});
+
+guardians.get("/weekly-reports", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "guardian") return c.json({ error: "forbidden_guardians_only" }, 403);
+  try {
+    const r = await pool.query(
+      `select id, student_id, week_start, report_title, left(report_body, 600) as report_preview,
+              delivery_status, sent_at, created_at
+       from guardian_weekly_reports
+       where guardian_user_id = $1
+       order by week_start desc
+       limit 12`,
+      [userId],
+    );
+    return c.json({ reports: r.rows });
+  } catch {
+    return c.json({ reports: [] });
+  }
 });

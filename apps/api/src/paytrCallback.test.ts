@@ -17,19 +17,31 @@ function paytrCallbackHash(args: {
 }
 
 async function withPaytrEnv<T>(fn: (env: { merchantKey: string; merchantSalt: string }) => Promise<T>): Promise<T> {
-  const previousKey = process.env.PAYTR_MERCHANT_KEY;
-  const previousSalt = process.env.PAYTR_MERCHANT_SALT;
+  const previous: Record<string, string | undefined> = {
+    PAYTR_MERCHANT_ID: process.env.PAYTR_MERCHANT_ID,
+    PAYTR_MERCHANT_KEY: process.env.PAYTR_MERCHANT_KEY,
+    PAYTR_MERCHANT_SALT: process.env.PAYTR_MERCHANT_SALT,
+    PAYTR_BASE_URL: process.env.PAYTR_BASE_URL,
+    PAYTR_OK_URL: process.env.PAYTR_OK_URL,
+    PAYTR_FAIL_URL: process.env.PAYTR_FAIL_URL,
+    PAYTR_CALLBACK_URL: process.env.PAYTR_CALLBACK_URL,
+  };
   const merchantKey = "test-paytr-key";
   const merchantSalt = "test-paytr-salt";
+  process.env.PAYTR_MERCHANT_ID = "test-merchant-id";
   process.env.PAYTR_MERCHANT_KEY = merchantKey;
   process.env.PAYTR_MERCHANT_SALT = merchantSalt;
+  process.env.PAYTR_BASE_URL = "https://www.paytr.com";
+  process.env.PAYTR_OK_URL = "https://example.test/ok";
+  process.env.PAYTR_FAIL_URL = "https://example.test/fail";
+  process.env.PAYTR_CALLBACK_URL = "https://api.example.test/v1/paytr/callback";
   try {
     return await fn({ merchantKey, merchantSalt });
   } finally {
-    if (previousKey === undefined) delete process.env.PAYTR_MERCHANT_KEY;
-    else process.env.PAYTR_MERCHANT_KEY = previousKey;
-    if (previousSalt === undefined) delete process.env.PAYTR_MERCHANT_SALT;
-    else process.env.PAYTR_MERCHANT_SALT = previousSalt;
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   }
 }
 

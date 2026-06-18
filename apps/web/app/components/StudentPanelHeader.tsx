@@ -20,7 +20,9 @@ const nav = [
   { href: "/student/calisma", label: "Çalışma" },
   { href: "/student/kurslar", label: "Kurslar" },
   { href: "/student/odev-sor", label: "Ödev" },
+  { href: "/student/anlik-ders", label: "Anlık" },
   { href: "/student/dogrudan-dersler", label: "Doğrudan" },
+  { href: "/mesajlar", label: "Mesajlar" },
   { href: "/student/grup-dersler", label: "Grup" },
 ] as const;
 

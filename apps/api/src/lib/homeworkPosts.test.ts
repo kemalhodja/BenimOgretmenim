@@ -155,6 +155,8 @@ describe("homework AI helpers", () => {
       expect.arrayContaining(["LGS deneyimi", "8. sınıf seviyesi", "görsel çözüm"]),
     );
     expect(r.aiMetadata.similar_practice).toEqual(expect.arrayContaining([expect.stringContaining("Oran orantı")]));
+    expect(Array.isArray(r.aiMetadata.matched_curriculum_outcomes)).toBe(true);
+    expect(r.aiMetadata).toHaveProperty("primary_outcome");
   });
 
   it("flags short text-only posts as needing clarification with lower routing priority", async () => {

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { pool } from "../db.js";
+import { generateSlotsFromAvailability } from "../lib/availabilitySlots.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 
@@ -428,6 +429,102 @@ teachersPublic.get("/batch", async (c) => {
     [ids],
   );
   return c.json({ teachers: r.rows, total: r.rowCount ?? 0 });
+});
+
+/** Öğretmen müsaitlik slotları (takvim rezervasyonu için) */
+teachersPublic.get("/instant-ready", async (c) => {
+  const branchId = c.req.query("branchId") ? Number(c.req.query("branchId")) : null;
+  const branchSlug = c.req.query("branchSlug")?.trim() || null;
+
+  const args: unknown[] = [];
+  let join = "";
+  if (branchId && Number.isFinite(branchId)) {
+    args.push(branchId);
+    join = `join teacher_branches tb on tb.teacher_id = t.id and tb.branch_id = $1`;
+  } else if (branchSlug) {
+    args.push(branchSlug);
+    join = `join teacher_branches tb on tb.teacher_id = t.id
+            join branches b on b.id = tb.branch_id and b.slug = $1`;
+  }
+
+  try {
+    const r = await pool.query(
+      `select t.id,
+              u.display_name,
+              t.rating_avg,
+              t.rating_count,
+              t.instant_ready_until,
+              c.name as city_name
+       from teachers t
+       join users u on u.id = t.user_id
+       left join cities c on c.id = t.city_id
+       ${join}
+       where t.instant_lesson_available = true
+         and t.verification_status = 'verified'
+         and (t.instant_ready_until is null or t.instant_ready_until > now())
+       order by t.last_presence_at desc nulls last, t.rating_avg desc nulls last
+       limit 24`,
+      args,
+    );
+    return c.json({ teachers: r.rows });
+  } catch {
+    return c.json({ teachers: [], note: "Anlık ders listesi şu an kullanılamıyor." });
+  }
+});
+
+/** Öğretmen müsaitlik slotları (takvim rezervasyonu için) */
+teachersPublic.get("/:teacherId/availability-slots", async (c) => {
+  const teacherId = c.req.param("teacherId");
+  if (!uuidParam.safeParse(teacherId).success) {
+    return c.json({ error: "invalid_teacher_id" }, 400);
+  }
+  const days = Math.min(21, Math.max(3, Number(c.req.query("days") ?? 14) || 14));
+
+  const tr = await pool.query(
+    `select t.availability_jsonb
+     from teachers t
+     where t.id = $1`,
+    [teacherId],
+  );
+  if (!tr.rowCount) return c.json({ error: "not_found" }, 404);
+
+  const offers = generateSlotsFromAvailability(tr.rows[0].availability_jsonb, { daysAhead: days });
+  if (!offers.length) {
+    return c.json({ teacherId, slots: [], message: "Müsaitlik tanımlı değil; demo talebiyle netleştirin." });
+  }
+
+  const busy = await pool.query(
+    `select scheduled_start, scheduled_end
+     from direct_lesson_bookings
+     where teacher_id = $1
+       and scheduled_start is not null
+       and status in ('pending_funding', 'funded')
+       and scheduled_start >= now()
+     union all
+     select ls.scheduled_start, ls.scheduled_end
+     from lesson_sessions ls
+     join lesson_packages lp on lp.id = ls.package_id
+     where lp.teacher_id = $1
+       and ls.status = 'scheduled'
+       and ls.scheduled_start is not null
+       and ls.scheduled_start >= now()`,
+    [teacherId],
+  ).catch(() => ({ rows: [] as Array<{ scheduled_start: string; scheduled_end: string | null }> }));
+
+  const busyRanges = busy.rows.map((row) => ({
+    start: new Date(row.scheduled_start).getTime(),
+    end: row.scheduled_end
+      ? new Date(row.scheduled_end).getTime()
+      : new Date(row.scheduled_start).getTime() + 60 * 60 * 1000,
+  }));
+
+  const slots = offers.filter((slot) => {
+    const start = new Date(slot.start).getTime();
+    const end = new Date(slot.end).getTime();
+    return !busyRanges.some((b) => start < b.end && end > b.start);
+  });
+
+  return c.json({ teacherId, slots });
 });
 
 /** Genel öğretmen profili (detay) — e-posta dönmez */

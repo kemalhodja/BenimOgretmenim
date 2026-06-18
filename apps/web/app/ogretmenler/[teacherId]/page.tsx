@@ -389,6 +389,10 @@ export default function OgretmenDetayPage() {
   const [directOk, setDirectOk] = useState<string | null>(null);
   const [pendingDirectId, setPendingDirectId] = useState<string | null>(null);
   const [directFundBusy, setDirectFundBusy] = useState(false);
+  const [availabilitySlots, setAvailabilitySlots] = useState<
+    Array<{ start: string; end: string; label: string }>
+  >([]);
+  const [selectedSlotStart, setSelectedSlotStart] = useState("");
   const [shortlistBusy, setShortlistBusy] = useState(false);
   const [shortlistOk, setShortlistOk] = useState<string | null>(null);
   const [shareOk, setShareOk] = useState<string | null>(null);
@@ -449,6 +453,15 @@ export default function OgretmenDetayPage() {
     };
   }, [teacherId]);
 
+  useEffect(() => {
+    if (!teacherId) return;
+    apiFetch<{ slots: Array<{ start: string; end: string; label: string }> }>(
+      `/v1/teachers/${teacherId}/availability-slots`,
+    )
+      .then((r) => setAvailabilitySlots(r.slots ?? []))
+      .catch(() => setAvailabilitySlots([]));
+  }, [teacherId]);
+
   async function createDirectBooking() {
     if (!authToken || !teacherId) {
       setDirectError("Giriş yapın.");
@@ -460,13 +473,19 @@ export default function OgretmenDetayPage() {
     setPendingDirectId(null);
     try {
       const agreedAmountMinor = parseTlToMinorGross(directTl);
+      const selected = availabilitySlots.find((s) => s.start === selectedSlotStart);
       const r = await apiFetch<{
         booking: { id: string };
         next: { fundFromWallet: string };
       }>("/v1/student-platform/direct-bookings", {
         method: "POST",
         token: authToken,
-        body: JSON.stringify({ teacherId, agreedAmountMinor }),
+        body: JSON.stringify({
+          teacherId,
+          agreedAmountMinor,
+          scheduledStart: selected?.start,
+          scheduledEnd: selected?.end,
+        }),
       });
       setPendingDirectId(r.booking.id);
       setDirectOk(
@@ -503,7 +522,7 @@ export default function OgretmenDetayPage() {
         `/v1/student-platform/direct-bookings/${pendingDirectId}/fund-from-wallet`,
         { method: "POST", token: authToken },
       );
-      setDirectOk("Ödeme cüzdanınızdan alındı.");
+      setDirectOk("Ödeme cüzdanınızdan alındı. Mesajlar sayfasından öğretmenle iletişime geçebilirsiniz.");
       setPendingDirectId(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "fund_failed";
@@ -1617,6 +1636,23 @@ export default function OgretmenDetayPage() {
                   <div className="mt-2 text-sm text-brand-900">{directOk}</div>
                 )}
                 <div className="mt-3 flex flex-wrap items-end gap-2">
+                  {availabilitySlots.length > 0 ? (
+                    <label className="text-sm text-paper-900">
+                      Ders saati
+                      <select
+                        value={selectedSlotStart}
+                        onChange={(e) => setSelectedSlotStart(e.target.value)}
+                        className="mt-1 block w-full min-w-[220px] rounded-lg border border-paper-200 bg-white px-2 py-1.5 text-sm"
+                      >
+                        <option value="">Saat seçin (isteğe bağlı)</option>
+                        {availabilitySlots.map((slot) => (
+                          <option key={slot.start} value={slot.start}>
+                            {slot.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
                   <label className="text-sm text-paper-900">
                     Tutar (TL)
                     <input
