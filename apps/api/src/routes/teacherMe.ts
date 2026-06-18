@@ -3,6 +3,7 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { notifyUserInApp } from "../lib/accountLifecycle.js";
 
 export const teacherMe = new Hono<{ Variables: AppVariables }>();
 
@@ -371,6 +372,43 @@ teacherMe.patch("/me", requireAuth, async (c) => {
   }
 
   return c.json({ ok: true });
+});
+
+teacherMe.post("/verification-request", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
+
+  const tr = await pool.query<{ id: string; verification_status: string; exam_docs_jsonb: unknown }>(
+    `select id, verification_status::text as verification_status, exam_docs_jsonb
+     from teachers where user_id = $1`,
+    [userId],
+  );
+  const row = tr.rows[0];
+  if (!row) return c.json({ error: "teacher_profile_not_found" }, 404);
+  if (row.verification_status === "verified") {
+    return c.json({ ok: true, alreadyVerified: true });
+  }
+  if (row.verification_status === "pending") {
+    return c.json({ ok: true, alreadyPending: true });
+  }
+
+  const hasDocs =
+    Array.isArray(row.exam_docs_jsonb) && row.exam_docs_jsonb.length > 0;
+  if (!hasDocs) {
+    return c.json({ error: "exam_docs_required", hint: "En az bir belge veya sınav kanıtı ekleyin." }, 400);
+  }
+
+  await pool.query(
+    `update teachers set verification_status = 'pending', updated_at = now() where id = $1`,
+    [row.id],
+  );
+  await notifyUserInApp(
+    userId,
+    "Doğrulama başvurunuz alındı",
+    "Belgeleriniz inceleniyor. Sonuç panelinizde görünür.",
+    { kind: "teacher_verification_pending", href: "/teacher/dogrulama" },
+  );
+  return c.json({ ok: true, status: "pending" });
 });
 
 /** Öğretmen: branş listesini atomik olarak yenile (arama / analitik için ID’li veri) */

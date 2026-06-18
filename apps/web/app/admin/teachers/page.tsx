@@ -19,6 +19,9 @@ type TeacherRow = {
   has_exam_docs: boolean;
   branch_count: number;
   completed_sessions_count: number;
+  exam_docs_jsonb?: Array<{ title: string; url: string; kind?: string }>;
+  video_url?: string | null;
+  bio_preview?: string | null;
 };
 
 function verificationReadiness(t: TeacherRow): { label: string; className: string } {
@@ -249,6 +252,17 @@ export default function AdminTeachersPage() {
                       >
                         Halka açık profil
                       </Link>
+                      {Array.isArray(t.exam_docs_jsonb) && t.exam_docs_jsonb.length > 0 ? (
+                        <ul className="mt-1 space-y-0.5 text-[11px]">
+                          {t.exam_docs_jsonb.slice(0, 2).map((d) => (
+                            <li key={d.url}>
+                              <a href={d.url} target="_blank" rel="noreferrer" className="text-brand-800 underline">
+                                {d.title}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
                     </td>
                     <td className="max-w-[7rem] truncate px-3 py-2 font-mono text-[11px] text-paper-800/55">
                       {t.teacher_id.slice(0, 8)}

@@ -3,4 +3,5 @@ export type AppVariables = {
   userId: string;
   userRole: string;
   authMethod?: "bearer" | "cookie";
+  accountStatus?: "active" | "suspended" | "deletion_requested";
 };

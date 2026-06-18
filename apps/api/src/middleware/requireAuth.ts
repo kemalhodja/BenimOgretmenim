@@ -1,6 +1,12 @@
 import { createMiddleware } from "hono/factory";
 import { verifyAccessToken } from "../auth/jwt.js";
 import { hasValidCsrfHeader, isUnsafeHttpMethod, readSessionCookie } from "../auth/sessionCookie.js";
+import {
+  accountStatusBlocksAccess,
+  isAccountStatusExemptPath,
+  loadUserAccountStatus,
+  type UserAccountStatus,
+} from "../lib/accountLifecycle.js";
 
 export const requireAuth = createMiddleware(async (c, next) => {
   const header = c.req.header("authorization") ?? "";
@@ -20,6 +26,26 @@ export const requireAuth = createMiddleware(async (c, next) => {
     c.set("userId", userId);
     c.set("userRole", role);
     c.set("authMethod", authMethod);
+
+    const account = await loadUserAccountStatus(userId);
+    const accountStatus = (account?.account_status ?? "active") as UserAccountStatus;
+    c.set("accountStatus", accountStatus);
+
+    const path = new URL(c.req.url).pathname;
+    if (account && accountStatusBlocksAccess(accountStatus) && !isAccountStatusExemptPath(path)) {
+      return c.json(
+        {
+          error: accountStatus === "suspended" ? "account_suspended" : "account_deletion_pending",
+          accountStatus,
+          suspensionReason: account.suspension_reason,
+          deletionReason: account.deletion_reason,
+          appealHref: "/itiraz",
+          accountSettingsHref: "/ayarlar/hesap",
+        },
+        403,
+      );
+    }
+
     await next();
   } catch {
     return c.json({ error: "invalid_token" }, 401);

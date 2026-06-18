@@ -19,6 +19,7 @@ import {
 import { registerAdminExtendedRoutes } from "./adminExtended.js";
 import { rateLimitSnapshot } from "../middleware/rateLimit.js";
 import { holdCourseEnrollmentPayment, releaseCourseEnrollmentHold } from "../lib/courseEnrollmentWallet.js";
+import { notifyUserInApp } from "../lib/accountLifecycle.js";
 
 export const admin = new Hono<{ Variables: AppVariables }>();
 
@@ -706,6 +707,8 @@ admin.get("/users", requireAuth, async (c) => {
   const offIdx = args.length;
   const list = await pool.query(
     `select u.id, u.email, u.display_name, u.role::text as role,
+            u.account_status::text as account_status,
+            u.suspension_reason,
             u.created_at, u.last_login_at
      from users u
      where ${where}
@@ -795,7 +798,10 @@ admin.get("/teachers", requireAuth, async (c) => {
               from lesson_sessions ls
               join lesson_packages lp on lp.id = ls.package_id
               where lp.teacher_id = t.id and ls.status = 'completed'
-            ) as completed_sessions_count
+            ) as completed_sessions_count,
+            t.exam_docs_jsonb,
+            t.video_url,
+            left(trim(coalesce(t.bio_raw, '')), 240) as bio_preview
      from teachers t
      join users u on u.id = t.user_id
      left join cities ci on ci.id = t.city_id
@@ -1991,6 +1997,116 @@ admin.patch("/users/:userId/role", requireAuth, async (c) => {
 
     await client.query("commit");
     return c.json({ ok: true, userId, role: newRole });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+});
+
+const patchAccountStatusSchema = z.object({
+  status: z.enum(["active", "suspended", "deletion_requested"]),
+  reason: z.string().trim().min(3).max(2000).optional(),
+});
+
+admin.patch("/users/:userId/account-status", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+
+  const userId = c.req.param("userId")?.trim();
+  if (!userId || !z.string().uuid().safeParse(userId).success) {
+    return c.json({ error: "invalid_user_id" }, 400);
+  }
+
+  const parsed = patchAccountStatusSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  if (parsed.data.status === "suspended" && !parsed.data.reason?.trim()) {
+    return c.json({ error: "suspension_reason_required" }, 400);
+  }
+
+  const actorId = c.get("userId");
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const before = await client.query(
+      `select id, account_status::text as account_status, suspension_reason
+       from users where id = $1 for update`,
+      [userId],
+    );
+    const row = before.rows[0] as { id: string; account_status: string; suspension_reason: string | null } | undefined;
+    if (!row) {
+      await client.query("rollback");
+      return c.json({ error: "user_not_found" }, 404);
+    }
+
+    if (parsed.data.status === "active") {
+      await client.query(
+        `update users
+         set account_status = 'active',
+             suspension_reason = null,
+             suspended_at = null,
+             suspended_by_admin_id = null,
+             deletion_requested_at = null,
+             deletion_reason = null,
+             updated_at = now()
+         where id = $1`,
+        [userId],
+      );
+      await notifyUserInApp(
+        userId,
+        "Hesabınız yeniden aktif",
+        "Hesap durumunuz güncellendi. Platformu normal şekilde kullanabilirsiniz.",
+        { kind: "account_reactivated", href: "/panel" },
+        client,
+      );
+    } else if (parsed.data.status === "suspended") {
+      const reason = parsed.data.reason!.trim();
+      await client.query(
+        `update users
+         set account_status = 'suspended',
+             suspension_reason = $2,
+             suspended_at = now(),
+             suspended_by_admin_id = $3,
+             updated_at = now()
+         where id = $1`,
+        [userId, reason, actorId],
+      );
+      await notifyUserInApp(
+        userId,
+        "Hesabınız geçici olarak askıya alındı",
+        reason,
+        { kind: "account_suspended", href: "/hesap-askida", reason },
+        client,
+      );
+    } else {
+      await client.query(
+        `update users
+         set account_status = 'deletion_requested',
+             deletion_requested_at = coalesce(deletion_requested_at, now()),
+             deletion_reason = coalesce($2, deletion_reason),
+             updated_at = now()
+         where id = $1`,
+        [userId, parsed.data.reason ?? null],
+      );
+    }
+
+    await writeAdminAudit(
+      {
+        actorUserId: actorId,
+        action: "user.account_status",
+        entityType: "user",
+        entityId: userId,
+        reason: parsed.data.reason ?? `status:${parsed.data.status}`,
+        before: { account_status: row.account_status, suspension_reason: row.suspension_reason },
+        after: { account_status: parsed.data.status, suspension_reason: parsed.data.reason ?? null },
+      },
+      client,
+    );
+
+    await client.query("commit");
+    return c.json({ ok: true, userId, status: parsed.data.status });
   } catch (e) {
     await client.query("rollback").catch(() => {});
     throw e;

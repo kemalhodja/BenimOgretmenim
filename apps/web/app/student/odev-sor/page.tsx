@@ -41,6 +41,25 @@ export default function OdevSorPage() {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [serviceStats, setServiceStats] = useState<{
+    avgResponseMinutes: number | null;
+    answeredLast7Days: number;
+    openInPool: number;
+    targetMinutesNormal: number;
+    targetMinutesUrgent: number;
+  } | null>(null);
+
+  useEffect(() => {
+    apiFetch<{
+      avgResponseMinutes: number | null;
+      answeredLast7Days: number;
+      openInPool: number;
+      targetMinutesNormal: number;
+      targetMinutesUrgent: number;
+    }>("/v1/student-platform/homework-posts/service-stats")
+      .then(setServiceStats)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const t = getToken();
@@ -195,6 +214,16 @@ export default function OdevSorPage() {
             Öğretmen ara
           </Link>
         </div>
+        {serviceStats ? (
+          <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/70 px-4 py-3 text-sm text-brand-950">
+            <span className="font-semibold">Havuz şeffaflığı:</span>{" "}
+            {serviceStats.openInPool} açık soru · son 7 günde {serviceStats.answeredLast7Days} yanıt
+            {serviceStats.avgResponseMinutes != null ? (
+              <> · ort. {serviceStats.avgResponseMinutes} dk</>
+            ) : null}
+            . Hedef: normal {serviceStats.targetMinutesNormal} dk, acil {serviceStats.targetMinutesUrgent} dk.
+          </div>
+        ) : null}
         {error && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {error}

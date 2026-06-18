@@ -96,6 +96,8 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       { href: "/admin/veri?k=ledger", title: "Cüzdan hareketleri", desc: "Tüm bakiye hareketleri" },
       { href: "/admin/veri?k=wallet-topups", title: "Cüzdan PayTR yüklemeleri", desc: "Kartla cüzdan yükleme kayıtları" },
       { href: "/admin/veri?k=teacher-withdrawals", title: "Öğretmen para çekme", desc: "IBAN talepleri, ödeme ve red işlemleri" },
+      { href: "/admin/otomatik-cekim", title: "Otomatik çekim kuralları", desc: "Doğrulanmış öğretmen hızlı ödeme politikası" },
+      { href: "/admin/destek-sla", title: "Destek SLA", desc: "24s yanıt hedefi ve ihlal listesi" },
       { href: "/admin/veri?k=course-accounting", title: "Kurs muhasebesi", desc: "Tahsilat, iade, öğretmen kazancı ve platform bedeli" },
       { href: "/admin/veri?k=reconciliation", title: "Ödeme kontrolü", desc: "PayTR ödeme bildirim uyumsuzlukları" },
       { href: "/admin/veri?k=job-monitoring", title: "Zamanlanmış işler", desc: "Ödeme, ders ve alarm takibi" },
@@ -245,7 +247,7 @@ export default function AdminMerkezPage() {
           {
             title: "Destek yanıt süresi",
             value: c.supportSlaBreaches,
-            href: "/admin/support",
+            href: "/admin/destek-sla",
             action: c.supportSlaBreaches > 0 ? "24 saati aşan destek konularını kapat" : "Destek ritmi temiz",
           },
           {

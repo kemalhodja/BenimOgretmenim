@@ -140,38 +140,47 @@ export default function UygulamaPage() {
       </section>
 
       <section className="mt-10">
-        <h2 className="text-lg font-semibold text-paper-950">Mağaza uygulaması</h2>
+        <h2 className="text-lg font-semibold text-paper-950">Mağaza uygulaması (Google Play)</h2>
         <p className="mt-2 text-sm leading-relaxed text-paper-800/85">
-          Play Store veya App Store’da görünmek için mağaza kurallarına uygun ayrı bir yayın hazırlığı gerekir.
-          Ana ekrana ekleme, kullanıcıların hemen kullanabilmesi için en hızlı yoldur.
+          Android için Trusted Web Activity (TWA) paketi hazırlanmıştır. Yayın öncesi DNS,{" "}
+          <code className="text-xs">assetlinks.json</code> ve Play Console formları tamamlanmalıdır.
         </p>
-        <details className="mt-4 rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/90">
-          <summary className="cursor-pointer font-medium text-paper-900">
-            Mağaza yayını için hazırlık kontrolü
-          </summary>
-          <ul className="mt-3 list-disc space-y-2 pl-5">
-            <li>
-              <strong>Google Play:</strong> Uygulama adı, ikon, ekran görüntüleri, gizlilik beyanı
-              ve site doğrulaması hazırlanır.
-            </li>
-            <li>
-              <strong>App Store:</strong> Apple geliştirici hesabı, iPhone/iPad ekran görüntüleri,
-              gizlilik cevapları ve inceleme süreci gerekir.
-            </li>
-          </ul>
-          <p className="mt-3 text-sm text-paper-800/85">
-            Mağaza formlarında gizlilik beyanı istenir; temel metinler{" "}
+        {process.env.NEXT_PUBLIC_PLAY_STORE_URL ? (
+          <a
+            href={process.env.NEXT_PUBLIC_PLAY_STORE_URL}
+            className="mt-4 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-900"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Google Play&apos;den indir
+          </a>
+        ) : (
+          <p className="mt-3 rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/85">
+            Play Store bağlantısı yayın sonrası burada görünecek. Şimdilik{" "}
+            <strong>Android (Chrome)</strong> bölümündeki ana ekrana ekleme en hızlı yoldur.
+          </p>
+        )}
+        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-paper-800/90">
+          <li>Google Play yayını Trusted Web Activity (TWA) olarak hazırlanmıştır.</li>
+          <li>Yayın öncesi site adresi doğrulanır ve gizlilik beyanı mağazaya eklenir.</li>
+          <li>
+            Gizlilik:{" "}
             <Link href="/gizlilik" className="font-medium text-brand-800 underline-offset-4 hover:underline">
-              Gizlilik
-            </Link>{" "}
-            ve{" "}
-            <Link
-              href="/kullanim-kosullari"
-              className="font-medium text-brand-800 underline-offset-4 hover:underline"
-            >
+              Gizlilik politikası
+            </Link>
+            {" · "}
+            <Link href="/kullanim-kosullari" className="font-medium text-brand-800 underline-offset-4 hover:underline">
               Kullanım koşulları
             </Link>
-            .
+          </li>
+        </ul>
+        <details className="mt-4 rounded-xl border border-paper-200 bg-white p-4 text-sm text-paper-800/90">
+          <summary className="cursor-pointer font-medium text-paper-900">
+            App Store (iPhone) notu
+          </summary>
+          <p className="mt-3 text-sm text-paper-800/85">
+            iOS için ayrı native paket yok; Safari ile ana ekrana ekleme kullanılır. App Store yayını
+            ayrı bir Apple geliştirici süreci gerektirir.
           </p>
         </details>
       </section>

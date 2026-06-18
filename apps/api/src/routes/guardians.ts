@@ -401,3 +401,70 @@ guardians.post("/link", requireAuth, async (c) => {
     return c.json({ error: msg }, 400);
   }
 });
+
+const guardianEmailPrefsSchema = z.object({
+  homeworkEnabled: z.boolean().optional(),
+  lessonEnabled: z.boolean().optional(),
+  paymentEnabled: z.boolean().optional(),
+});
+
+guardians.get("/email-preferences", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "guardian") return c.json({ error: "forbidden_guardians_only" }, 403);
+
+  const r = await pool.query(
+    `select homework_enabled, lesson_enabled, payment_enabled, updated_at
+     from guardian_email_preferences
+     where guardian_user_id = $1`,
+    [userId],
+  ).catch(() => ({ rows: [] }));
+
+  const row = r.rows[0] as
+    | { homework_enabled: boolean; lesson_enabled: boolean; payment_enabled: boolean; updated_at: string }
+    | undefined;
+  return c.json({
+    preferences: {
+      homeworkEnabled: row?.homework_enabled ?? true,
+      lessonEnabled: row?.lesson_enabled ?? true,
+      paymentEnabled: row?.payment_enabled ?? true,
+      updatedAt: row?.updated_at ?? null,
+    },
+  });
+});
+
+guardians.patch("/email-preferences", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "guardian") return c.json({ error: "forbidden_guardians_only" }, 403);
+
+  const parsed = guardianEmailPrefsSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const current = await pool.query(
+    `select homework_enabled, lesson_enabled, payment_enabled
+     from guardian_email_preferences where guardian_user_id = $1`,
+    [userId],
+  ).catch(() => ({ rows: [] }));
+
+  const cur = current.rows[0] as
+    | { homework_enabled: boolean; lesson_enabled: boolean; payment_enabled: boolean }
+    | undefined;
+
+  const homeworkEnabled = parsed.data.homeworkEnabled ?? cur?.homework_enabled ?? true;
+  const lessonEnabled = parsed.data.lessonEnabled ?? cur?.lesson_enabled ?? true;
+  const paymentEnabled = parsed.data.paymentEnabled ?? cur?.payment_enabled ?? true;
+
+  await pool.query(
+    `insert into guardian_email_preferences (guardian_user_id, homework_enabled, lesson_enabled, payment_enabled, updated_at)
+     values ($1, $2, $3, $4, now())
+     on conflict (guardian_user_id) do update
+     set homework_enabled = excluded.homework_enabled,
+         lesson_enabled = excluded.lesson_enabled,
+         payment_enabled = excluded.payment_enabled,
+         updated_at = now()`,
+    [userId, homeworkEnabled, lessonEnabled, paymentEnabled],
+  );
+
+  return c.json({
+    preferences: { homeworkEnabled, lessonEnabled, paymentEnabled },
+  });
+});

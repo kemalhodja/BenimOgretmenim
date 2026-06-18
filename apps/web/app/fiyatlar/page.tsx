@@ -319,6 +319,9 @@ export default function FiyatlarPage() {
           <Link href="/" className="text-sm font-medium text-paper-800/65 underline-offset-4 hover:text-paper-900">
             Ana sayfa
           </Link>
+          <Link href="/iade" className="text-sm font-medium text-brand-800 underline underline-offset-4">
+            İade politikası
+          </Link>
         </div>
       </div>
     </div>

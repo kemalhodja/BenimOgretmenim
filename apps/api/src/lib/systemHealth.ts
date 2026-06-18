@@ -53,7 +53,7 @@ export function isPaytrFullyConfigured(): boolean {
 
 export function productionConfigurationErrors(): string[] {
   if (process.env.NODE_ENV !== "production") return [];
-  const required = [...PRODUCTION_CORE_REQUIRED];
+  const required: string[] = [...PRODUCTION_CORE_REQUIRED];
   if (!paytrOptionalInProduction()) {
     required.push(...PAYTR_PRODUCTION_REQUIRED);
   }

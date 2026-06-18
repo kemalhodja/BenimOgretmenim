@@ -1,0 +1,27 @@
+BenimÖğretmenim — Notes for Google Play review
+==============================================
+
+App type: Education marketplace (Trusted Web Activity wrapping https://benimogretmenim.com.tr)
+
+Category: Education only. NOT a financial services, health/medical, VPN, or government app.
+
+Financial features declaration: The app does not provide financial products. Lesson and subscription purchases are completed on the website through PayTR (licensed payment service provider). Card data is not stored on our servers. Platform balance is lesson-booking escrow, not a consumer digital wallet.
+
+Health: No medical or health features.
+
+How to test:
+1. Open the app (TWA loads the website).
+2. Log in with the test account below.
+3. As student: browse /ogretmenler, open a teacher profile, view student panel and study plan.
+4. As teacher: view teacher dashboard, profile editor, and lesson requests.
+
+Test accounts (replace before submission):
+  Student: student@example.com / [PASSWORD]
+  Teacher: teacher@example.com / [PASSWORD]
+
+No special hardware, QR code, or location permission required.
+Internet connection required.
+
+Privacy: https://benimogretmenim.com.tr/gizlilik
+Terms: https://benimogretmenim.com.tr/kullanim-kosullari
+Contact: https://benimogretmenim.com.tr/iletisim

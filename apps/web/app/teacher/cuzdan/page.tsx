@@ -67,6 +67,38 @@ type Withdrawal = {
   bank_receipt_ref: string | null;
 };
 
+type EarningsSummary = {
+  balanceMinor: number;
+  availableMinor: number;
+  currency: string;
+  pendingWithdrawalCount: number;
+  pendingWithdrawalMinor: number;
+  paidWithdrawalLast30Minor: number;
+  pendingCoursePayoutCount: number;
+  pendingCoursePayoutMinor: number;
+  lastPaidWithdrawalAt: string | null;
+  withdrawalSlaBusinessDays: number;
+  withdrawalSlaLabel: string;
+};
+
+const WITHDRAWAL_SLA_BUSINESS_DAYS = 5;
+
+function addBusinessDays(from: Date, businessDays: number): Date {
+  const d = new Date(from.getTime());
+  let added = 0;
+  while (added < businessDays) {
+    d.setDate(d.getDate() + 1);
+    const day = d.getDay();
+    if (day !== 0 && day !== 6) added += 1;
+  }
+  return d;
+}
+
+function estimatedWithdrawalBy(requestedAt: string): string {
+  const est = addBusinessDays(new Date(requestedAt), WITHDRAWAL_SLA_BUSINESS_DAYS);
+  return est.toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
+}
+
 function tl(minor: number | string): string {
   const n = typeof minor === "string" ? Number(minor) : minor;
   return (n / 100).toFixed(2);
@@ -115,6 +147,7 @@ export default function TeacherCuzdanPage() {
   const [coursePayouts, setCoursePayouts] = useState<CoursePayout[]>([]);
   const [coursePayoutSummary, setCoursePayoutSummary] = useState<CoursePayoutSummary | null>(null);
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
+  const [earnings, setEarnings] = useState<EarningsSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [topupKurus, setTopupKurus] = useState(200_000);
@@ -135,17 +168,19 @@ export default function TeacherCuzdanPage() {
   }, [router, pathname]);
 
   const load = useCallback(async (t: string) => {
-    const [w, l, p, wd] = await Promise.all([
+    const [w, l, p, wd, es] = await Promise.all([
       apiFetch<Wallet>("/v1/wallet/me", { token: t }),
       apiFetch<{ entries: LedgerEntry[] }>("/v1/wallet/ledger?limit=50", { token: t }),
       apiFetch<{ payouts: CoursePayout[]; summary: CoursePayoutSummary }>("/v1/wallet/course-payouts?limit=20", { token: t }),
       apiFetch<{ withdrawals: Withdrawal[] }>("/v1/wallet/withdrawals?limit=20", { token: t }),
+      apiFetch<EarningsSummary>("/v1/wallet/earnings-summary", { token: t }),
     ]);
     setWallet(w);
     setEntries(l.entries);
     setCoursePayouts(p.payouts);
     setCoursePayoutSummary(p.summary);
     setWithdrawals(wd.withdrawals);
+    setEarnings(es);
   }, []);
 
   useEffect(() => {
@@ -261,7 +296,47 @@ export default function TeacherCuzdanPage() {
           <Link className="text-paper-800/75 underline" href="/teacher/kurslar">
             Online kurslar
           </Link>
+          <Link className="text-paper-800/75 underline" href="/iade">
+            İade politikası
+          </Link>
         </div>
+
+        {earnings ? (
+          <div className="mt-6 rounded-xl border border-brand-100 bg-brand-50/80 p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-brand-950">Kazanç özeti</h2>
+            <p className="mt-1 text-xs text-brand-900/70">{earnings.withdrawalSlaLabel}</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-brand-100 bg-white p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-900/50">Bekleyen çekim</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-brand-950">
+                  {tl(earnings.pendingWithdrawalMinor)} {earnings.currency}
+                </div>
+                <div className="text-[11px] text-brand-900/55">{earnings.pendingWithdrawalCount} talep</div>
+              </div>
+              <div className="rounded-xl border border-brand-100 bg-white p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-900/50">Son 30 gün ödenen</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-brand-950">
+                  {tl(earnings.paidWithdrawalLast30Minor)} {earnings.currency}
+                </div>
+              </div>
+              <div className="rounded-xl border border-brand-100 bg-white p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-900/50">Bekleyen kurs hak edişi</div>
+                <div className="mt-1 font-mono text-lg font-semibold text-brand-950">
+                  {tl(earnings.pendingCoursePayoutMinor)} {earnings.currency}
+                </div>
+                <div className="text-[11px] text-brand-900/55">{earnings.pendingCoursePayoutCount} kayıt</div>
+              </div>
+              <div className="rounded-xl border border-brand-100 bg-white p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-900/50">Son ödeme</div>
+                <div className="mt-1 text-sm font-semibold text-brand-950">
+                  {earnings.lastPaidWithdrawalAt
+                    ? new Date(earnings.lastPaidWithdrawalAt).toLocaleDateString("tr-TR")
+                    : "—"}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {error && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
@@ -330,7 +405,8 @@ export default function TeacherCuzdanPage() {
             <div>
               <h2 className="text-sm font-semibold text-paper-900">Para çekme</h2>
               <p className="mt-1 text-xs text-paper-800/60">
-                Talep oluşturunca tutar cüzdanınızdan ayrılır. Yönetici banka transferini tamamlayınca durum “Ödendi” olur.
+                Talep oluşturunca tutar cüzdanınızdan ayrılır. Onaylanan çekimler {WITHDRAWAL_SLA_BUSINESS_DAYS} iş günü
+                içinde banka hesabınıza aktarılır.
               </p>
             </div>
             <div className="text-xs text-paper-800/55">Minimum 100,00 TL</div>
@@ -405,7 +481,7 @@ export default function TeacherCuzdanPage() {
                     <th className="px-3 py-2">IBAN</th>
                     <th className="px-3 py-2 text-right">Tutar</th>
                     <th className="px-3 py-2">Durum</th>
-                    <th className="px-3 py-2">Yönetici notu</th>
+                    <th className="px-3 py-2">SLA / not</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -422,8 +498,17 @@ export default function TeacherCuzdanPage() {
                         {tl(w.amount_minor)} {w.currency}
                       </td>
                       <td className="px-3 py-2 text-paper-800">{withdrawalStatusLabel(w.status)}</td>
-                      <td className="max-w-[16rem] truncate px-3 py-2 text-paper-800/70">
-                        {w.admin_note || w.bank_receipt_ref || "—"}
+                      <td className="max-w-[16rem] px-3 py-2 text-paper-800/70">
+                        {w.status === "pending" ? (
+                          <span className="text-xs text-emerald-900">
+                            Tahmini: {estimatedWithdrawalBy(w.requested_at)}
+                          </span>
+                        ) : null}
+                        {w.admin_note || w.bank_receipt_ref ? (
+                          <div className="truncate text-xs">{w.admin_note || w.bank_receipt_ref}</div>
+                        ) : w.status !== "pending" ? (
+                          "—"
+                        ) : null}
                       </td>
                     </tr>
                   ))}

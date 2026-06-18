@@ -7,6 +7,12 @@ import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { clearSessionCookie, hasValidCsrfHeader, setSessionCookie, setSessionHintCookies } from "../auth/sessionCookie.js";
+import { loadUserAccountStatus, notifyUserInApp } from "../lib/accountLifecycle.js";
+
+const deletionRequestSchema = z.object({
+  reason: z.string().trim().min(10).max(2000),
+  confirmEmail: z.string().email(),
+});
 
 const registerSchema = z.object({
   email: z.string().email().max(320),
@@ -98,7 +104,13 @@ auth.post("/login", async (c) => {
 
   const { email, password } = parsed.data;
   const r = await pool.query(
-    `select id, email, display_name, role, password_hash from users where email_normalized = lower(trim($1::text))`,
+    `select id, email, display_name, role, password_hash,
+            account_status::text as account_status,
+            suspension_reason,
+            suspended_at::text as suspended_at,
+            deletion_requested_at::text as deletion_requested_at,
+            deletion_reason
+     from users where email_normalized = lower(trim($1::text))`,
     [email],
   );
   const row = r.rows[0] as
@@ -108,6 +120,11 @@ auth.post("/login", async (c) => {
         display_name: string;
         role: string;
         password_hash: string | null;
+        account_status: string;
+        suspension_reason: string | null;
+        suspended_at: string | null;
+        deletion_requested_at: string | null;
+        deletion_reason: string | null;
       }
     | undefined;
 
@@ -120,6 +137,8 @@ auth.post("/login", async (c) => {
     return c.json({ error: "invalid_credentials" }, 401);
   }
 
+  await pool.query(`update users set last_login_at = now(), updated_at = now() where id = $1`, [row.id]);
+
   const token = await signAccessToken({ userId: row.id, role: row.role });
   setSessionCookie(c, token);
   setSessionHintCookies(c, { role: row.role, userId: row.id });
@@ -130,6 +149,13 @@ auth.post("/login", async (c) => {
       email: row.email,
       displayName: row.display_name,
       role: row.role,
+    },
+    account: {
+      status: row.account_status ?? "active",
+      suspensionReason: row.suspension_reason,
+      suspendedAt: row.suspended_at,
+      deletionRequestedAt: row.deletion_requested_at,
+      deletionReason: row.deletion_reason,
     },
   });
 });
@@ -145,12 +171,91 @@ auth.post("/logout", (c) => {
 auth.get("/me", requireAuth, async (c) => {
   const userId = c.get("userId");
   const r = await pool.query(
-    `select id, email, display_name, role, created_at from users where id = $1`,
+    `select id, email, display_name, role, created_at,
+            account_status::text as account_status,
+            suspension_reason,
+            suspended_at::text as suspended_at,
+            deletion_requested_at::text as deletion_requested_at,
+            deletion_reason
+     from users where id = $1`,
     [userId],
   );
   const row = r.rows[0];
   if (!row) {
     return c.json({ error: "not_found" }, 404);
   }
-  return c.json({ user: row });
+  return c.json({
+    user: {
+      id: row.id,
+      email: row.email,
+      display_name: row.display_name,
+      role: row.role,
+      created_at: row.created_at,
+    },
+    account: {
+      status: row.account_status ?? "active",
+      suspensionReason: row.suspension_reason,
+      suspendedAt: row.suspended_at,
+      deletionRequestedAt: row.deletion_requested_at,
+      deletionReason: row.deletion_reason,
+    },
+  });
+});
+
+auth.post("/account/deletion-request", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const parsed = deletionRequestSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const u = await pool.query<{ email: string; account_status: string }>(
+    `select email, account_status::text as account_status from users where id = $1`,
+    [userId],
+  );
+  const user = u.rows[0];
+  if (!user) return c.json({ error: "not_found" }, 404);
+  if (user.email.toLowerCase() !== parsed.data.confirmEmail.toLowerCase()) {
+    return c.json({ error: "email_confirmation_mismatch" }, 400);
+  }
+  if (user.account_status === "deletion_requested") {
+    return c.json({ ok: true, alreadyRequested: true });
+  }
+
+  await pool.query(
+    `update users
+     set account_status = 'deletion_requested',
+         deletion_requested_at = now(),
+         deletion_reason = $2,
+         updated_at = now()
+     where id = $1`,
+    [userId, parsed.data.reason],
+  );
+  await notifyUserInApp(
+    userId,
+    "Hesap silme talebiniz alındı",
+    "Talebiniz destek ekibimize iletildi. İşlem tamamlanana kadar hesabınız kısıtlı modda kalabilir.",
+    { kind: "account_deletion_requested", href: "/ayarlar/hesap" },
+  );
+  return c.json({ ok: true });
+});
+
+auth.post("/account/deletion-request/cancel", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const r = await pool.query(
+    `update users
+     set account_status = 'active',
+         deletion_requested_at = null,
+         deletion_reason = null,
+         updated_at = now()
+     where id = $1 and account_status = 'deletion_requested'
+     returning id`,
+    [userId],
+  );
+  if (!r.rowCount) return c.json({ error: "no_pending_deletion_request" }, 404);
+  await notifyUserInApp(
+    userId,
+    "Hesap silme talebi iptal edildi",
+    "Hesabınız tekrar aktif modda kullanılabilir.",
+    { kind: "account_deletion_cancelled", href: "/panel" },
+  );
+  return c.json({ ok: true });
 });

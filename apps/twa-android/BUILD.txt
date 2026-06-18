@@ -37,6 +37,10 @@ BenimÖğretmenim — Google Play (TWA) hazırlığı
    - Keystore ve secret dosyaları git'e eklenmez; .gitignore tarafından korunur.
    - Play Console açıklama, Data Safety ve ekran görüntüsü hazırlığı:
      apps/twa-android/PLAY_STORE_LISTING.md
+   - Play Console politika formları (bireysel hesap, finansal özellikler, sağlık):
+     apps/twa-android/PLAY_CONSOLE_COMPLIANCE.md
+   - İnceleme notu şablonu (İngilizce):
+     apps/twa-android/play-review-notes-en.txt
 
 0.2) Yerel APK üretimi
    Gerekenler:

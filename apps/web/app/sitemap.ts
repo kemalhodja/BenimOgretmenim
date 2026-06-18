@@ -16,6 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/courses",
     "/fiyatlar",
     "/guven",
+    "/iade",
+    "/itiraz",
     "/uygulama",
     "/yardim",
     "/iletisim",
@@ -27,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: `${base}${path}`,
     lastModified: new Date(),
     changeFrequency: "weekly" as const,
-    priority: path === "/" ? 1 : 0.7,
+    priority: path === "/" ? 1 : ["/guven", "/iade", "/itiraz"].includes(path) ? 0.75 : 0.7,
   }));
 
   const teacherEntries: MetadataRoute.Sitemap = [];

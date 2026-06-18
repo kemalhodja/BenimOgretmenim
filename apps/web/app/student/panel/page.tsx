@@ -710,6 +710,12 @@ function StudentPanelPageInner() {
                 Son detaya git
               </Link>
             ) : null}
+            <Link
+              href="/bildirimler"
+              className="w-fit rounded-xl border border-paper-200 bg-white px-3 py-2 text-xs font-semibold text-paper-900 hover:bg-paper-50"
+            >
+              Tüm bildirimler
+            </Link>
           </div>
           {latestNotification ? (
             <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm">

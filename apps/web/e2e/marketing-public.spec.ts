@@ -19,6 +19,9 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     { path: "/login", title: "Giriş yap" },
     { path: "/gizlilik", title: "Gizlilik ve kişisel veriler" },
     { path: "/kullanim-kosullari", title: "Kullanım koşulları" },
+    { path: "/guven", title: /BenimÖğretmenim'de ödeme, öğretmen seçimi ve ders süreci kayıtlı ilerler\./ },
+    { path: "/iade", title: "İade politikası" },
+    { path: "/itiraz", title: "İtiraz ve anlaşmazlık" },
   ];
 
   for (const { path, title } of cases) {
@@ -114,6 +117,13 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     expect(shortcutUrls.has("/teacher/odev-havuzu")).toBeTruthy();
   });
 
+  test("/guven — iade ve itiraz bağlantıları görünür", async ({ page }) => {
+    const res = await page.goto("/guven", { waitUntil: "domcontentloaded" });
+    expect(res?.ok() ?? false).toBeTruthy();
+    await expect(page.getByRole("link", { name: /İade politikası/i })).toBeVisible();
+    await expect(page.getByRole("link", { name: /İtiraz/i })).toBeVisible();
+  });
+
   test("/sitemap.xml — kamu URL envanteri parse edilir", async ({ page }) => {
     const res = await page.goto("/sitemap.xml", { waitUntil: "domcontentloaded" });
     expect(res?.ok() ?? false).toBeTruthy();
@@ -122,5 +132,8 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     expect(xml).toContain("/ogretmenler");
     expect(xml).toContain("/courses");
     expect(xml).toContain("/kampanyalar");
+    expect(xml).toContain("/iade");
+    expect(xml).toContain("/itiraz");
+    expect(xml).toContain("/guven");
   });
 });

@@ -195,6 +195,7 @@ function AdminVeriInner() {
   const [teacherWithdrawalQ, setTeacherWithdrawalQ] = useState("");
   const [teacherWithdrawalFrom, setTeacherWithdrawalFrom] = useState("");
   const [teacherWithdrawalTo, setTeacherWithdrawalTo] = useState("");
+  const [teacherWithdrawalAutoEligible, setTeacherWithdrawalAutoEligible] = useState(sp.get("autoEligible") === "1");
   const [disputeStatus, setDisputeStatus] = useState("open");
   const [reconciliationSummary, setReconciliationSummary] = useState<ReconciliationSummary | null>(null);
   const [funnelSummary, setFunnelSummary] = useState<FunnelSummary | null>(null);
@@ -226,6 +227,7 @@ function AdminVeriInner() {
     if (key === "teacher-withdrawals" && teacherWithdrawalQ.trim()) p.set("q", teacherWithdrawalQ.trim());
     if (key === "teacher-withdrawals" && teacherWithdrawalFrom.trim()) p.set("from", teacherWithdrawalFrom.trim());
     if (key === "teacher-withdrawals" && teacherWithdrawalTo.trim()) p.set("to", teacherWithdrawalTo.trim());
+    if (key === "teacher-withdrawals" && teacherWithdrawalAutoEligible) p.set("autoEligible", "1");
     if (key === "disputes" && disputeStatus.trim()) p.set("status", disputeStatus.trim());
     return p.toString();
   }, [
@@ -239,6 +241,7 @@ function AdminVeriInner() {
     teacherWithdrawalQ,
     teacherWithdrawalFrom,
     teacherWithdrawalTo,
+    teacherWithdrawalAutoEligible,
     disputeStatus,
   ]);
 
@@ -786,6 +789,17 @@ function AdminVeriInner() {
                   setOffset(0);
                 }}
               />
+            </label>
+            <label className="flex items-center gap-2 self-end text-sm">
+              <input
+                type="checkbox"
+                checked={teacherWithdrawalAutoEligible}
+                onChange={(e) => {
+                  setTeacherWithdrawalAutoEligible(e.target.checked);
+                  setOffset(0);
+                }}
+              />
+              Yalnızca otomatik uygun
             </label>
             <button
               type="button"

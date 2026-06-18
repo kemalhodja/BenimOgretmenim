@@ -79,6 +79,11 @@ function aiList(meta: unknown, key: string): string[] {
   return Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean).slice(0, 3) : [];
 }
 
+function aiBool(meta: unknown, key: string): boolean {
+  if (!meta || typeof meta !== "object") return false;
+  return (meta as Record<string, unknown>)[key] === true;
+}
+
 function slaRiskLabel(post: Pick<PoolPost, "urgency_level" | "resolution_sla_due_at" | "target_answer_minutes">): string {
   if (post.resolution_sla_due_at) {
     const ms = new Date(post.resolution_sla_due_at).getTime() - Date.now();
@@ -403,7 +408,37 @@ export default function OdevHavuzuPage() {
                           Zorluk: {aiValue(p.ai_metadata_jsonb, "difficulty")}
                         </span>
                       ) : null}
+                      {aiValue(p.ai_metadata_jsonb, "routing_priority") ? (
+                        <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
+                          Yönlendirme: {aiValue(p.ai_metadata_jsonb, "routing_priority")}/100
+                        </span>
+                      ) : null}
+                      {aiValue(p.ai_metadata_jsonb, "content_quality") ? (
+                        <span className="rounded-full bg-paper-100 px-2 py-0.5 font-medium text-paper-800">
+                          İçerik: {aiValue(p.ai_metadata_jsonb, "content_quality")}
+                        </span>
+                      ) : null}
                     </div>
+                    {aiBool(p.ai_metadata_jsonb, "needs_clarification") ? (
+                      <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+                        {aiValue(p.ai_metadata_jsonb, "routing_note") ??
+                          "Açıklama kısa; üstlenmeden önce öğrenciden netleştirme isteyebilirsiniz."}
+                      </p>
+                    ) : aiValue(p.ai_metadata_jsonb, "routing_note") ? (
+                      <p className="mt-2 text-xs text-paper-800/70">{aiValue(p.ai_metadata_jsonb, "routing_note")}</p>
+                    ) : null}
+                    {aiList(p.ai_metadata_jsonb, "recommended_teacher_tags").length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {aiList(p.ai_metadata_jsonb, "recommended_teacher_tags").map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full border border-brand-100 bg-white px-2 py-0.5 text-[11px] font-medium text-brand-900"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                     <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-paper-800">{p.help_text}</p>
                     {aiList(p.ai_metadata_jsonb, "similar_practice").length > 0 ? (
                       <div className="mt-2 rounded-xl border border-brand-100 bg-brand-50/50 p-3 text-xs text-brand-950">

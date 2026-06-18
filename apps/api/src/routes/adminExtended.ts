@@ -8,6 +8,15 @@ import { writeAdminAudit } from "../lib/adminAudit.js";
 import { cancelCourseEnrollmentPayment } from "../lib/courseEnrollmentWallet.js";
 import { lockCourseEnrollmentRefundWindowForCohort, payEligibleCourseTeacherPayoutsForCohort } from "../lib/courseTeacherPayout.js";
 import { applyWalletDelta } from "../lib/wallet.js";
+import {
+  autoApproveWithdrawalIfEligible,
+} from "../lib/teacherAutoWithdrawal.js";
+import {
+  loadTeacherAutoWithdrawalSettings,
+  loadSupportSlaSettings,
+  saveOpsSetting,
+} from "../lib/platformOpsSettings.js";
+import { loadSupportSlaDashboard } from "../lib/supportSla.js";
 
 function parseLimitOffset(c: { req: { query: (k: string) => string | undefined } }, defLim: number) {
   const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? String(defLim)) || defLim));
@@ -171,6 +180,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
     const from = c.req.query("from")?.trim();
     const to = c.req.query("to")?.trim();
     const exportMode = c.req.query("export")?.trim();
+    const autoEligibleOnly = c.req.query("autoEligible") === "1";
     const args: unknown[] = [];
     let where = "true";
     if (rawStatus && z.enum(["pending", "paid", "rejected"]).safeParse(rawStatus).success) {
@@ -189,6 +199,9 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
       args.push(to);
       where += ` and w.requested_at <= $${args.length}::timestamptz`;
     }
+    if (autoEligibleOnly) {
+      where += ` and coalesce((w.metadata_jsonb->'autoWithdrawal'->>'eligible')::boolean, false) = true and w.status = 'pending'`;
+    }
     const countR = await pool.query(
       `select count(*)::int as c
        from teacher_wallet_withdrawals w
@@ -205,6 +218,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
               w.iban, w.account_holder_name, w.bank_name, w.status,
               w.requested_at, w.decided_at, w.paid_at, w.admin_note, w.bank_receipt_ref,
               w.payout_provider, w.payout_provider_ref, w.exported_at, w.export_batch_id,
+              w.metadata_jsonb,
               u.display_name as teacher_display_name, u.email as teacher_email
        from teacher_wallet_withdrawals w
        join users u on u.id = w.teacher_user_id
@@ -1499,5 +1513,83 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
       [threadId],
     );
     return c.json({ ok: true, messages: msgs.rows });
+  });
+
+  admin.get("/ops-settings/teacher-auto-withdrawal", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const settings = await loadTeacherAutoWithdrawalSettings();
+    return c.json({ settings });
+  });
+
+  const autoWithdrawalSettingsSchema = z.object({
+    enabled: z.boolean().optional(),
+    autoApproveEnabled: z.boolean().optional(),
+    maxAmountMinor: z.number().int().min(10_000).max(10_000_000).optional(),
+    requireVerified: z.boolean().optional(),
+    requireSameIbanAsLastPaid: z.boolean().optional(),
+    minPriorPaidCount: z.number().int().min(0).max(20).optional(),
+    maxDailyAutoApprovals: z.number().int().min(0).max(100).optional(),
+  });
+
+  admin.patch("/ops-settings/teacher-auto-withdrawal", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const parsed = autoWithdrawalSettingsSchema.safeParse(await c.req.json());
+    if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+    const current = await loadTeacherAutoWithdrawalSettings();
+    const next = { ...current, ...parsed.data };
+    await saveOpsSetting("teacher_auto_withdrawal", next);
+    await writeAdminAudit({
+      actorUserId: c.get("userId"),
+      actorRole: c.get("userRole"),
+      requestId: c.req.header("x-request-id") ?? null,
+      action: "ops_settings.teacher_auto_withdrawal.update",
+      entityType: "platform_ops_settings",
+      entityId: "teacher_auto_withdrawal",
+      after: next,
+    });
+    return c.json({ settings: next });
+  });
+
+  admin.post("/teacher-withdrawals/apply-auto-eligible", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const settings = await loadTeacherAutoWithdrawalSettings();
+    if (!settings.enabled) return c.json({ error: "auto_withdrawal_disabled" }, 409);
+
+    const pending = await pool.query<{ id: string }>(
+      `select id
+       from teacher_wallet_withdrawals
+       where status = 'pending'
+         and coalesce((metadata_jsonb->'autoWithdrawal'->>'eligible')::boolean, false) = true
+       order by requested_at asc
+       limit 20`,
+    );
+
+    const client = await pool.connect();
+    let approved = 0;
+    try {
+      await client.query("begin");
+      for (const row of pending.rows) {
+        const ok = await autoApproveWithdrawalIfEligible(client, row.id, settings, c.get("userId"));
+        if (ok) approved += 1;
+      }
+      await client.query("commit");
+    } catch (e) {
+      await client.query("rollback").catch(() => {});
+      throw e;
+    } finally {
+      client.release();
+    }
+    return c.json({ ok: true, approved, scanned: pending.rowCount });
+  });
+
+  admin.get("/support-sla-dashboard", requireAuth, async (c) => {
+    const denied = assertAdminGate(c);
+    if (denied) return denied;
+    const dashboard = await loadSupportSlaDashboard(pool);
+    const supportSettings = await loadSupportSlaSettings();
+    return c.json({ dashboard, supportSettings });
   });
 }

@@ -7,6 +7,13 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { ensureUserWalletRow } from "../lib/studentSub.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
+import { TEACHER_WITHDRAWAL_SLA_BUSINESS_DAYS, withdrawalSlaLabelTr } from "../lib/teacherWithdrawalSla.js";
+import {
+  autoApproveWithdrawalIfEligible,
+  evaluateAutoWithdrawal,
+  loadAutoWithdrawalContext,
+} from "../lib/teacherAutoWithdrawal.js";
+import { loadTeacherAutoWithdrawalSettings } from "../lib/platformOpsSettings.js";
 
 export const userWallet = new Hono<{ Variables: AppVariables }>();
 
@@ -187,6 +194,64 @@ userWallet.get("/withdrawals", requireAuth, async (c) => {
   return c.json({ withdrawals: r.rows });
 });
 
+userWallet.get("/earnings-summary", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  if (role !== "teacher") return c.json({ error: "forbidden_teacher_only" }, 403);
+
+  const [wallet, pendingWd, paid30, pendingCourse, lastPaidWd] = await Promise.all([
+    pool.query(
+      `select balance_minor, currency from user_wallets where user_id = $1`,
+      [userId],
+    ),
+    pool.query<{ count: number; sum: string }>(
+      `select count(*)::int as count, coalesce(sum(amount_minor), 0)::bigint as sum
+       from teacher_wallet_withdrawals
+       where teacher_user_id = $1 and status = 'pending'`,
+      [userId],
+    ),
+    pool.query<{ sum: string }>(
+      `select coalesce(sum(amount_minor), 0)::bigint as sum
+       from teacher_wallet_withdrawals
+       where teacher_user_id = $1 and status = 'paid'
+         and paid_at >= now() - interval '30 days'`,
+      [userId],
+    ),
+    pool.query<{ count: number; sum: string }>(
+      `select count(*)::int as count, coalesce(sum(teacher_net_amount_minor), 0)::bigint as sum
+       from course_teacher_payouts p
+       join teachers t on t.id = p.teacher_id
+       where t.user_id = $1 and p.status <> 'wallet_paid'`,
+      [userId],
+    ),
+    pool.query<{ paid_at: string }>(
+      `select paid_at::text as paid_at
+       from teacher_wallet_withdrawals
+       where teacher_user_id = $1 and status = 'paid'
+       order by paid_at desc nulls last
+       limit 1`,
+      [userId],
+    ),
+  ]);
+
+  const w = wallet.rows[0] as { balance_minor: string; currency: string } | undefined;
+  const available = await getWalletAvailableMinor(userId);
+
+  return c.json({
+    balanceMinor: w ? Number(w.balance_minor) : 0,
+    availableMinor: Number(available),
+    currency: w?.currency ?? "TRY",
+    pendingWithdrawalCount: pendingWd.rows[0]?.count ?? 0,
+    pendingWithdrawalMinor: Number(pendingWd.rows[0]?.sum ?? 0),
+    paidWithdrawalLast30Minor: Number(paid30.rows[0]?.sum ?? 0),
+    pendingCoursePayoutCount: pendingCourse.rows[0]?.count ?? 0,
+    pendingCoursePayoutMinor: Number(pendingCourse.rows[0]?.sum ?? 0),
+    lastPaidWithdrawalAt: lastPaidWd.rows[0]?.paid_at ?? null,
+    withdrawalSlaBusinessDays: TEACHER_WITHDRAWAL_SLA_BUSINESS_DAYS,
+    withdrawalSlaLabel: withdrawalSlaLabelTr(),
+  });
+});
+
 userWallet.post("/withdrawals", requireAuth, async (c) => {
   const userId = c.get("userId");
   const role = c.get("userRole");
@@ -238,33 +303,70 @@ userWallet.post("/withdrawals", requireAuth, async (c) => {
       },
       client,
     });
+    const withdrawalId = withdrawal.rows[0].id as string;
+    const autoSettings = await loadTeacherAutoWithdrawalSettings(client);
+    const autoCtx = await loadAutoWithdrawalContext(client, userId, teacherId, parsed.data.iban);
+    const autoEval = evaluateAutoWithdrawal({
+      settings: autoSettings,
+      verificationStatus: autoCtx.verificationStatus,
+      amountMinor: parsed.data.amountMinor,
+      iban: parsed.data.iban,
+      priorPaidSameIbanCount: autoCtx.priorPaidSameIbanCount,
+      openDisputeCount: autoCtx.openDisputeCount,
+      autoApprovalsToday: autoCtx.autoApprovalsToday,
+    });
     await client.query(
-      `insert into user_notifications (
-         recipient_user_id, channel, title, body, payload_jsonb, delivery_status, sent_at
-       )
-       values ($1, 'in_app', $2, $3, $4::jsonb, 'sent', now())`,
+      `update teacher_wallet_withdrawals
+       set metadata_jsonb = metadata_jsonb || $2::jsonb
+       where id = $1`,
       [
-        userId,
-        "Para çekme talebi alındı",
-        `${(parsed.data.amountMinor / 100).toFixed(2)} TRY para çekme talebiniz alındı ve admin onayına gönderildi.`,
+        withdrawalId,
         JSON.stringify({
-          kind: "teacher_wallet_withdrawal_requested",
-          withdrawalId: withdrawal.rows[0].id,
-          amountMinor: parsed.data.amountMinor,
-          currency: "TRY",
-          href: "/teacher/cuzdan",
+          autoWithdrawal: {
+            eligible: autoEval.eligible,
+            reasons: autoEval.reasons,
+            evaluatedAt: new Date().toISOString(),
+          },
         }),
       ],
     );
+
+    let autoApproved = false;
+    if (autoSettings.autoApproveEnabled && autoEval.eligible) {
+      autoApproved = await autoApproveWithdrawalIfEligible(client, withdrawalId, autoSettings, null);
+    }
+
+    if (!autoApproved) {
+      await client.query(
+        `insert into user_notifications (
+           recipient_user_id, channel, title, body, payload_jsonb, delivery_status, sent_at
+         )
+         values ($1, 'in_app', $2, $3, $4::jsonb, 'sent', now())`,
+        [
+          userId,
+          "Para çekme talebi alındı",
+          `${(parsed.data.amountMinor / 100).toFixed(2)} TRY para çekme talebiniz alındı. ${autoEval.eligible ? "Otomatik onay için uygunsunuz; yönetici veya kural işlemi tamamlar." : "Yönetici onayına gönderildi."}`,
+          JSON.stringify({
+            kind: "teacher_wallet_withdrawal_requested",
+            withdrawalId,
+            amountMinor: parsed.data.amountMinor,
+            currency: "TRY",
+            autoEligible: autoEval.eligible,
+            href: "/teacher/cuzdan",
+          }),
+        ],
+      );
+    }
     await client.query("commit");
     const created = await pool.query(
       `select id, amount_minor, currency, iban, account_holder_name, bank_name,
-              status, requested_at, decided_at, paid_at, admin_note, bank_receipt_ref
+              status, requested_at, decided_at, paid_at, admin_note, bank_receipt_ref,
+              metadata_jsonb
        from teacher_wallet_withdrawals
        where id = $1`,
-      [withdrawal.rows[0].id],
+      [withdrawalId],
     );
-    return c.json({ withdrawal: created.rows[0] }, 201);
+    return c.json({ withdrawal: created.rows[0], autoWithdrawal: autoEval }, 201);
   } catch (e) {
     await client.query("rollback").catch(() => {});
     throw e;

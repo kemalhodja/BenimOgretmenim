@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   classifyHomeworkPost,
   homeworkResolveMinutes,
+  homeworkRoutingPriorityFromMetadata,
   homeworkSatisfactionRewardMinor,
   homeworkTargetMinutesForUrgency,
   releaseExpiredHomeworkClaims,
@@ -145,9 +146,35 @@ describe("homework AI helpers", () => {
       imageUrls: ["data:image/jpeg;base64,abcd"],
     });
     expect(r.storageBackend).toBe("inline_data_url_pending_object_storage");
-    expect(r.aiMetadata.provider).toBe("heuristic_v1");
+    expect(r.aiMetadata.provider).toBe("heuristic_v2");
     expect(r.aiMetadata.estimated_solution_minutes).toBe(10);
+    expect(r.aiMetadata.routing_priority).toBeGreaterThanOrEqual(60);
+    expect(r.aiMetadata.content_quality).toBe("medium");
+    expect(r.aiMetadata.needs_clarification).toBe(false);
+    expect(r.aiMetadata.recommended_teacher_tags).toEqual(
+      expect.arrayContaining(["LGS deneyimi", "8. sınıf seviyesi", "görsel çözüm"]),
+    );
     expect(r.aiMetadata.similar_practice).toEqual(expect.arrayContaining([expect.stringContaining("Oran orantı")]));
+  });
+
+  it("flags short text-only posts as needing clarification with lower routing priority", async () => {
+    const r = await classifyHomeworkPost({
+      branchId: 3,
+      topic: "Denklem",
+      helpText: "yardım",
+      urgencyLevel: "normal",
+      imageUrls: [],
+    });
+    expect(r.aiMetadata.needs_clarification).toBe(true);
+    expect(r.aiMetadata.content_quality).toBe("low");
+    expect(r.aiMetadata.routing_priority).toBeLessThan(50);
+    expect(r.aiMetadata.routing_note).toContain("netleştirme");
+  });
+
+  it("clamps routing priority from metadata", () => {
+    expect(homeworkRoutingPriorityFromMetadata({ routing_priority: 150 })).toBe(100);
+    expect(homeworkRoutingPriorityFromMetadata({ routing_priority: -5 })).toBe(0);
+    expect(homeworkRoutingPriorityFromMetadata(null)).toBe(50);
   });
 
   it("scores homework answers on a 0-100 heuristic scale without provider", async () => {

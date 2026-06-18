@@ -147,6 +147,12 @@ export default function GuardianPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [inviteBusy, setInviteBusy] = useState(false);
   const [readBusy, setReadBusy] = useState<string | null>(null);
+  const [emailPrefs, setEmailPrefs] = useState({
+    homeworkEnabled: true,
+    lessonEnabled: true,
+    paymentEnabled: true,
+  });
+  const [emailPrefsBusy, setEmailPrefsBusy] = useState(false);
   const [weekStart] = useState(() => Date.now() - 1000 * 60 * 60 * 24 * 7);
 
   useEffect(() => {
@@ -167,7 +173,7 @@ export default function GuardianPage() {
     (async () => {
       setError(null);
       try {
-        const [r, n] = await Promise.all([
+        const [r, n, prefs] = await Promise.all([
           apiFetch<{
             students: StudentRow[];
             progress: ProgressRow[];
@@ -182,6 +188,12 @@ export default function GuardianPage() {
           apiFetch<{ notifications: NotifRow[] }>("/v1/notifications?limit=30", {
             token,
           }),
+          apiFetch<{ preferences: { homeworkEnabled: boolean; lessonEnabled: boolean; paymentEnabled: boolean } }>(
+            "/v1/guardians/email-preferences",
+            { token },
+          ).catch(() => ({
+            preferences: { homeworkEnabled: true, lessonEnabled: true, paymentEnabled: true },
+          })),
         ]);
         setStudents(r.students);
         setProgress(r.progress);
@@ -190,6 +202,7 @@ export default function GuardianPage() {
         setAttempts(r.attempts ?? []);
         setCurriculumAttempts(r.curriculumAttempts ?? []);
         setNotifications(n.notifications);
+        setEmailPrefs(prefs.preferences);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "load_failed";
         setError(msg);
@@ -792,6 +805,53 @@ export default function GuardianPage() {
               )}
             </div>
           </div>
+        </section>
+
+        <section className="mt-10 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-paper-900">E-posta bildirimleri</h2>
+          <p className="mt-1 text-xs text-paper-800/55">
+            Uygulama içi bildirimlere ek olarak e-posta almak istediğiniz konuları seçin. RESEND_API_KEY yapılandırılmadıysa
+            e-postalar kuyruğa alınır.
+          </p>
+          <div className="mt-4 space-y-2 text-sm">
+            {(
+              [
+                ["homeworkEnabled", "Ödev / soru gönderimi"],
+                ["lessonEnabled", "Ders ve plan güncellemeleri"],
+                ["paymentEnabled", "Ödeme ve kayıt (bilgilendirme)"],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={emailPrefs[key]}
+                  onChange={(e) => setEmailPrefs((p) => ({ ...p, [key]: e.target.checked }))}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={emailPrefsBusy}
+            onClick={() => {
+              if (!token) return;
+              setEmailPrefsBusy(true);
+              setError(null);
+              setOk(null);
+              apiFetch("/v1/guardians/email-preferences", {
+                method: "PATCH",
+                token,
+                body: JSON.stringify(emailPrefs),
+              })
+                .then(() => setOk("E-posta tercihleri kaydedildi."))
+                .catch((e) => setError(e instanceof Error ? e.message : "kaydedilemedi"))
+                .finally(() => setEmailPrefsBusy(false));
+            }}
+            className="mt-4 rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          >
+            {emailPrefsBusy ? "Kaydediliyor…" : "Tercihleri kaydet"}
+          </button>
         </section>
 
         <section id="bildirimler" className="mt-10">

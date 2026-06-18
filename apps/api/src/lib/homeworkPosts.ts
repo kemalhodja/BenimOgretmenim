@@ -68,6 +68,79 @@ async function callHomeworkAiJson(prompt: string): Promise<HomeworkAiJson | null
   }
 }
 
+export function homeworkRoutingPriorityFromMetadata(meta: unknown): number {
+  if (!meta || typeof meta !== "object") return 50;
+  const n = Number((meta as HomeworkAiJson).routing_priority);
+  if (!Number.isFinite(n)) return 50;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+function buildHomeworkHeuristicMetadata(input: {
+  branchId: number;
+  topic: string;
+  helpText: string;
+  gradeLevelText?: string | null;
+  targetExam?: string | null;
+  learningObjective?: string | null;
+  urgencyLevel: HomeworkUrgencyLevel;
+  imageUrls: string[];
+}): HomeworkAiJson {
+  const topic = input.topic.trim();
+  const helpText = input.helpText.trim();
+  const helpLen = helpText.length;
+  const imageCount = input.imageUrls.length;
+  const combined = `${topic} ${helpText} ${input.learningObjective ?? ""} ${input.targetExam ?? ""}`;
+
+  const needsClarification = helpLen < 20 && imageCount === 0;
+  const contentQuality: "low" | "medium" | "high" =
+    needsClarification ? "low" : helpLen >= 80 || imageCount >= 2 ? "high" : "medium";
+
+  let routingPriority = 50;
+  if (input.urgencyLevel === "urgent") routingPriority += 25;
+  else if (input.urgencyLevel === "priority") routingPriority += 15;
+  if (contentQuality === "high") routingPriority += 10;
+  if (contentQuality === "low") routingPriority -= 15;
+  if (needsClarification) routingPriority -= 10;
+  if (imageCount >= 1) routingPriority += 5;
+  if (input.targetExam?.trim()) routingPriority += 5;
+  if (input.learningObjective?.trim()) routingPriority += 5;
+  routingPriority = Math.max(0, Math.min(100, routingPriority));
+
+  const recommendedTeacherTags: string[] = [];
+  if (input.targetExam?.trim()) recommendedTeacherTags.push(`${input.targetExam.trim()} deneyimi`);
+  if (input.gradeLevelText?.trim()) recommendedTeacherTags.push(`${input.gradeLevelText.trim()} seviyesi`);
+  if (imageCount > 0) recommendedTeacherTags.push("görsel çözüm");
+  if (/sınav|net|puan|çıkmış|deneme/i.test(combined)) recommendedTeacherTags.push("sınav odaklı");
+  if (/problem|uygulama|grafik|geometri/i.test(combined)) recommendedTeacherTags.push("adım adım çözüm");
+
+  const routingNote = needsClarification
+    ? "Öğrenci açıklaması kısa; üstlenmeden önce netleştirme gerekebilir."
+    : input.urgencyLevel === "urgent"
+      ? "Acil SLA — hızlı yanıt bekleniyor."
+      : contentQuality === "high"
+        ? "Detaylı gönderi; havuzda öncelikli yönlendirme."
+        : null;
+
+  return {
+    source: "heuristic_v2",
+    ocr_status: imageCount ? "image_attached_ocr_pending" : "no_image",
+    branch_id: input.branchId,
+    topic_hint: input.learningObjective?.trim() || topic,
+    difficulty: input.urgencyLevel === "urgent" ? "time_sensitive" : contentQuality === "high" ? "advanced" : "standard",
+    estimated_solution_minutes: homeworkTargetMinutesForUrgency(input.urgencyLevel),
+    similar_practice: [
+      `${topic} için 1 temel tekrar sorusu`,
+      `${topic} için 1 benzer uygulama`,
+      `${topic} için 1 sınav tarzı soru`,
+    ],
+    routing_priority: routingPriority,
+    needs_clarification: needsClarification,
+    content_quality: contentQuality,
+    recommended_teacher_tags: recommendedTeacherTags,
+    routing_note: routingNote,
+  };
+}
+
 export async function classifyHomeworkPost(input: {
   branchId: number;
   topic: string;
@@ -82,24 +155,12 @@ export async function classifyHomeworkPost(input: {
   const storageBackend =
     process.env.HOMEWORK_STORAGE_PROVIDER ??
     (hasInlineImages ? "inline_data_url_pending_object_storage" : input.imageUrls.length ? "external_https_url" : "text_only");
-  const fallback = {
-    source: "heuristic_v1",
-    ocr_status: input.imageUrls.length ? "image_attached_ocr_pending" : "no_image",
-    branch_id: input.branchId,
-    topic_hint: input.learningObjective?.trim() || input.topic.trim(),
-    difficulty: input.urgencyLevel === "urgent" ? "time_sensitive" : "standard",
-    estimated_solution_minutes: homeworkTargetMinutesForUrgency(input.urgencyLevel),
-    similar_practice: [
-      `${input.topic.trim()} için 1 temel tekrar sorusu`,
-      `${input.topic.trim()} için 1 benzer uygulama`,
-      `${input.topic.trim()} için 1 sınav tarzı soru`,
-    ],
-  };
+  const fallback = buildHomeworkHeuristicMetadata(input);
 
   const ai = await callHomeworkAiJson(
     [
       "Soru gönderisini sınıflandır. Yalnızca JSON dön.",
-      "Alanlar: ocr_text, subject, topic_hint, difficulty, estimated_solution_minutes, similar_practice, routing_note.",
+      "Alanlar: ocr_text, subject, topic_hint, difficulty, estimated_solution_minutes, similar_practice, routing_note, routing_priority (0-100), needs_clarification (boolean), content_quality (low|medium|high), recommended_teacher_tags (string[]).",
       `Branş id: ${input.branchId}`,
       `Konu: ${input.topic}`,
       `Açıklama: ${input.helpText}`,
@@ -111,13 +172,16 @@ export async function classifyHomeworkPost(input: {
     ].join("\n"),
   );
 
+  const merged: HomeworkAiJson = {
+    ...fallback,
+    ...(ai ?? {}),
+    storage_backend: storageBackend,
+    provider: ai ? "llm_provider_v1" : "heuristic_v2",
+  };
+  merged.routing_priority = homeworkRoutingPriorityFromMetadata(merged);
+
   return {
-    aiMetadata: {
-      ...fallback,
-      ...(ai ?? {}),
-      storage_backend: storageBackend,
-      provider: ai ? "llm_provider_v1" : "heuristic_v1",
-    },
+    aiMetadata: merged,
     storageBackend,
   };
 }

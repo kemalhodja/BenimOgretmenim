@@ -1,117 +1,141 @@
-# BenimOgretmenim Google Play Listeleme Hazirligi
+# BenimÖğretmenim — Google Play mağaza metinleri (politika uyumlu)
 
-Bu dosya Google Play Console'a girilecek metinleri ve yayin oncesi kontrol listesini toplar. Uygulama paketi `benimogretmenim.com.tr`, AAB cikti yolu `apps/twa-android/dist/app-release.aab` veya GitHub Actions artifact'i icindeki `app-release.aab` olmalidir.
+Play Console formları ve beyanlar: **`PLAY_CONSOLE_COMPLIANCE.md`**
 
-## Uygulama Adi
+Paket adı: `benimogretmenim.com.tr`  
+AAB: `apps/twa-android/app/build/outputs/bundle/release/app-release.aab` (veya CI artifact)
 
-BenimOgretmenim
+---
 
-## Kisa Aciklama
+## Uygulama adı
 
-Ogrenci, veli ve ogretmeni guvenli ders, teklif, odeme ve takip surecinde bulusturan egitim platformu.
+BenimÖğretmenim
 
-## Uzun Aciklama
+---
 
-BenimOgretmenim; ogrencilerin ve velilerin ihtiyaca uygun ogretmen bulmasini, ogretmenlerin profesyonel profil sayfasi ile kendini tanitmasini ve ders surecinin daha guvenli ilerlemesini saglayan bir egitim platformudur.
+## Kısa açıklama (max 80 karakter)
 
-Ogrenciler ve veliler ogretmen profillerini inceleyebilir, brans ve sehir bilgilerine gore arama yapabilir, demo ders talebi olusturabilir ve teklif surecini platform icinde takip edebilir. Ogretmen profillerinde uzmanlik alanlari, tanitim metni, ders yaklasimi, yorumlar, guven sinyalleri ve istege bagli telefon/WhatsApp iletisim bilgileri yer alabilir.
+Öğrenci, veli ve öğretmeni özel ders sürecinde buluşturan eğitim platformu.
 
-Ogretmenler abonelikle profilini kisisel web sayfasi gibi kullanabilir. Profil linkini sosyal medyada, WhatsApp mesajlarinda veya veli/ogrenci gorusmelerinde paylasabilir. Platform, ogretmenin kendini daha profesyonel anlatmasina ve basvurulari tek yerde toplamasina yardim eder.
+*(Alternatif, 80 karakter sınırına göre kısaltın:)*  
+Özel ders için öğretmen bulun, dersinizi takip edin.
 
-BenimOgretmenim ders surecini sadece ilan ve mesajlasma olarak gormez. Demo talebi, teklif, cuzdan/odeme kaydi, canli ders, odev, ders sonu notlari ve veli takibi gibi adimlari daha gorunur hale getirir. Amac, ogrenci icin dogru ogretmeni bulmayi kolaylastirmak ve ders sonrasi gelisimi takip edilebilir kilmaktir.
+---
 
-One cikan ozellikler:
+## Uzun açıklama (mağaza — Play politikasına uygun)
 
-- Brans, sehir ve guven sinyallerine gore ogretmen arama
-- Demo ders ve teklif talebi
-- Ogretmenler icin paylasilabilir profesyonel profil sayfasi
-- Abone ogretmenlerde istege bagli telefon ve WhatsApp iletisim alani
-- Ogrenci ve veli icin ders, odev ve ilerleme takibi
-- Guvenli odeme ve kayitli ders sureci
-- Mobilde hizli erisim icin web uygulamasi deneyimi
+BenimÖğretmenim; öğrencilerin ve velilerin ihtiyacına uygun öğretmen bulmasını, öğretmenlerin kendini profesyonel bir profil sayfasıyla tanıtmasını ve ders sürecinin düzenli ilerlemesini sağlayan bir **eğitim platformudur**.
 
-BenimOgretmenim, ogrenci, veli ve ogretmen arasindaki egitim surecini daha net, daha takip edilebilir ve daha guvenli hale getirmek icin tasarlanmistir.
+**Öğrenciler ve veliler**
 
-## Kategori ve Etiketler
+- Branş ve şehre göre öğretmen arayabilir
+- Öğretmen profillerini inceleyebilir
+- Demo ders veya teklif talebi oluşturabilir
+- Ders, ödev ve çalışma planını takip edebilir
 
-Kategori: Education / Egitim
+**Öğretmenler**
 
-Onerilen etiketler:
+- Profil sayfasını paylaşılabilir bir vitrin olarak kullanabilir
+- Talepleri ve teklifleri tek panelde yönetebilir
+- Ders, ödev havuzu ve öğrenci iletişimini organize edebilir
 
-- ozel ders
-- online ders
-- ogretmen bul
-- LGS
-- YKS
-- odev
-- veli takip
-- egitim
+**Öne çıkan özellikler**
 
-## Ekran Goruntusu Plani
+- Öğretmen arama ve filtreleme
+- Demo ders ve teklif akışı
+- Canlı ders ve ders sonrası notlar
+- Ödev / soru gönderme ve çalışma planı
+- Veli için ilerleme takibi
+- Ders ve abonelik için güvenli ödeme altyapısı (kart bilgisi uygulamada saklanmaz)
 
-Google Play icin en az 4, tercihen 6-8 ekran goruntusu hazirlanmali.
+BenimÖğretmenim, öğrenci–öğretmen–veli arasındaki **özel ders ve eğitim sürecini** daha net ve takip edilebilir kılmak için tasarlanmıştır. Uygulama bir finans, sağlık veya bankacılık hizmeti değildir.
 
-Onerilen ekranlar:
+**Yazmayın (Play reddi riski):** dijital cüzdan, para transferi, yatırım, kredi, tıbbi teşhis, klinik hizmet.
 
-1. Ana sayfa: "Ogretmen bul, ders al, gelisimini takip et" hero alani.
-2. Ogretmen arama: filtreler, secim sihirbazi ve ogretmen kartlari.
-3. Ogretmen profili: kisisel web sayfasi, demo/teklif CTA, guven sinyalleri.
-4. Ogrenci paneli: ozet, bugun ne yapmaliyim, calisma plani.
-5. Ogretmen paneli: profil kalitesi, teklifler, kazanc/gorunurluk alanlari.
-6. Veli paneli: ogrenci ilerlemesi ve takip kartlari.
-7. Soru/odev gonderme: fotograf veya aciklama ile yardim akisi.
-8. Guven/odeme: guvenli odeme ve ders takip sureci.
+---
 
-Ekran goruntulerinde gercek kisi telefon numarasi, e-posta, odeme karti, kimlik veya hassas veri gorunmemeli. Seed/demo verisi kullanilmali.
+## Kategori ve etiketler
 
-## Data Safety Taslagi
+| Alan | Değer |
+|------|--------|
+| Kategori | **Eğitim** |
+| Etiketler | özel ders, online ders, öğretmen bul, YKS, LGS, ödev, veli takip |
 
-Google Play Data Safety formu icin taslak cevaplar:
+---
 
-- Uygulama veri toplar: Evet.
-- Veri sifrelenerek aktarilir: Evet, HTTPS kullanilir.
-- Kullanici veri silme talep edebilir: Evet, iletisim kanali uzerinden talep alinabilir.
-- Uygulama cocuklara yonelik mi: Hayir, genel egitim platformu; cocuk hesaplari veli/ogrenci sorumlulugunda degerlendirilmelidir.
-- Ucuncu taraflarla veri paylasimi: Odeme saglayici, altyapi ve yasal zorunluluklar gibi hizmet gereklilikleriyle sinirli.
+## Ekran görüntüsü planı (min 4, önerilen 6–8)
 
-Toplanan veri kategorileri:
+Politika uyumlu sıra — **ödeme veya cüzdan ekranı kullanmayın**:
 
-- Hesap bilgileri: e-posta, gorunen ad, rol, oturum bilgisi.
-- Iletisim bilgileri: telefon numarasi yalnizca kullanici eklerse ve gerekli akislarda.
-- Kullanici icerigi: ogretmen profili, biyografi, ders talebi, odev/soru aciklamasi, mesaj/teklif icerikleri.
-- Finansal islem bilgileri: odeme durumu, cuzdan hareketi, islem kaydi. Kart bilgileri uygulama sunucusunda saklanmaz.
-- Uygulama etkinligi: ders, teklif, panel kullanimi, audit ve guvenlik kayitlari.
-- Fotograf/dosya: ogrencinin soru/odev gonderimi veya ogretmenin profil/dokuman kaniti icin kullanilabilir.
+1. Ana sayfa — “Öğretmen bul, ders al…”
+2. Öğretmen arama — filtreler ve kartlar
+3. Öğretmen profili — demo / teklif butonu
+4. Öğrenci paneli — özet ve çalışma planı
+5. Öğretmen paneli — teklifler ve profil kalitesi
+6. Ödev / soru gönderme akışı
+7. Güven merkezi veya ders takibi
+8. Veli paneli özeti *(isteğe bağlı)*
 
-Kullanim amaclari:
+**Görüntülerde olmamalı:** gerçek telefon, e-posta, kart numarası, IBAN, kimlik, canlı ödeme tutarı. Seed/demo veri kullanın.
 
-- Hesap yonetimi
-- Ogretmen-ogrenci eslestirme
-- Ders, teklif ve odev surecini isletme
-- Odeme ve cuzdan kayitlarini yurutme
-- Guvenlik, dolandiricilik onleme ve audit
-- Bildirim, destek ve operasyon
+---
 
-## Gizlilik ve Yasal Linkler
+## Data Safety — özet cevaplar
 
-Google Play Console'a girilecek linkler:
+Detaylı form rehberi: `PLAY_CONSOLE_COMPLIANCE.md` §6
 
-- Gizlilik politikasi: `https://benimogretmenim.com.tr/gizlilik`
-- Kullanim kosullari: `https://benimogretmenim.com.tr/kullanim-kosullari`
-- Iletisim: `https://benimogretmenim.com.tr/iletisim`
+| Soru | Cevap |
+|------|--------|
+| Veri toplar mı? | Evet |
+| Şifreli aktarım | Evet (HTTPS) |
+| Silme talebi | Evet (`/iletisim`) |
+| Çocuklara özel mi? | Hayır (genel eğitim; veli gözetimi metinlerde) |
 
-Ozel alan adi canli degilse gecici Render adresleri yerine Play yayinindan once kalici alan adi tercih edilmeli.
+**Toplanan veriler:** hesap (e-posta, ad), isteğe bağlı telefon, öğretmen profili, ders/ödev içeriği, **satın alma geçmişi** (ders/abonelik), uygulama etkinliği, fotoğraf (ödev için).
 
-## Yayin Oncesi Kontrol
+**Amaçlar:** hesap, eşleştirme, ders süreci, satın alma kaydı, güvenlik, destek.
 
-- AAB dosyasi signed release olarak uretildi.
-- Package name `benimogretmenim.com.tr`.
-- Play App Signing SHA-256 degeri `assetlinks.json` icine eklendi.
-- `https://benimogretmenim.com.tr/.well-known/assetlinks.json` canli ve dogru.
-- Uygulama ikonu ve feature graphic hazir.
-- En az 4 temiz ekran goruntusu hazir.
-- Gizlilik politikasi ve kullanim kosullari canli URL'de aciliyor.
-- Data Safety cevaplari gizlilik metniyle tutarli.
-- Demo hesap veya inceleme notlari gerekiyorsa Play Console'a eklendi.
-- Test kullanicilarinda gercek kisi verisi yok.
-- Production smoke ve temel web build basarili.
+**Paylaşım:** ödeme sağlayıcı (PayTR), barındırma — reklam ağı değil.
+
+---
+
+## Gizlilik ve yasal linkler
+
+| Alan | URL |
+|------|-----|
+| Gizlilik | `https://benimogretmenim.com.tr/gizlilik` |
+| Kullanım koşulları | `https://benimogretmenim.com.tr/kullanim-kosullari` |
+| İletişim | `https://benimogretmenim.com.tr/iletisim` |
+
+Domain canlı değilse Play yayınına geçmeyin.
+
+---
+
+## İnceleme notu şablonu (İngilizce)
+
+Play Console → **Uygulama erişimi** → Notlar:
+
+```
+Education marketplace (TWA). Test with provided student/teacher logins.
+Browse teachers, create lesson requests, view study panel.
+Lesson/subscription checkout uses PayTR on the website; no in-app financial product.
+Not a health, banking, or digital wallet app.
+```
+
+Test hesap e-posta/şifrelerini buraya ekleyin.
+
+---
+
+## Yayın öncesi kontrol listesi
+
+- [ ] `PLAY_CONSOLE_COMPLIANCE.md` formları dolduruldu
+- [ ] Finansal özellikler: **sunmuyor**
+- [ ] Sağlık: **sunmuyor**
+- [ ] Signed AAB yüklendi
+- [ ] Play App Signing SHA-256 → `assetlinks.json`
+- [ ] `assetlinks.json` canlıda doğru
+- [ ] Mağaza metni bu dosyadaki uyumlu sürüm
+- [ ] Ekran görüntüleri ödeme/cüzdan içermiyor
+- [ ] Data Safety gizlilik ile uyumlu
+- [ ] Test hesapları inceleme notunda
+- [ ] Production smoke geçti

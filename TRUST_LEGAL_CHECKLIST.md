@@ -19,6 +19,7 @@ Bu kontrol listesi hukuk danismani yerine gecmez; urun, destek ve teknik ekip ic
 
 ## İade Politikası
 
+- Canlı sayfa: `/iade` (sitemap + `/fiyatlar`, `/guven` linkleri).
 - Ders başlamadan iptal.
 - Ders başladıktan sonra iade.
 - Öğretmen gelmedi / öğrenci gelmedi.
@@ -39,6 +40,8 @@ Her madde için kullanıcıya gösterilecek karar dili hazırlanmalıdır.
 
 ## Destek ve Şikayet
 
+- İtiraz self-service: `/itiraz` (giriş gerekir).
+- Destek SLA dashboard: `/admin/destek-sla`.
 - Odeme/iade.
 - Ders gerçekleşmedi.
 - Öğretmen/öğrenci davranış şikayeti.
@@ -52,18 +55,21 @@ Her kategori için SLA belirlenmelidir: ilk yanıt, çözüm hedefi, eskalasyon.
 
 APK/Play Store en sona bırakıldı. Yayın öncesi:
 
-- Uygulama adı ve kısa açıklama.
-- Ekran görüntüleri.
-- Gizlilik formu cevapları.
-- Veri güvenliği beyanı.
+- `apps/twa-android/PLAY_CONSOLE_COMPLIANCE.md` — Play formları (finansal özellikler: sunmuyor; sağlık: yok; kategori: Eğitim).
+- `apps/twa-android/PLAY_STORE_LISTING.md` — mağaza metinleri (cüzdan/finans vurgusu yok).
+- `apps/twa-android/play-review-notes-en.txt` — inceleme notu şablonu.
+- Ekran görüntüleri (ödeme/cüzdan ekranı yok).
+- Data Safety gizlilik ile uyumlu.
 - `assetlinks.json` SHA-256 fingerprint.
-- Signed release veya AAB.
+- Signed AAB.
 - Test cihazında TWA doğrulaması.
 
 ## Yayın Öncesi Kapanış
 
 - Hukuk metinleri onaylandı.
-- İade politikası ödeme ekranlarından erişilebilir.
+- İade politikası `/iade` ve ödeme ekranlarından erişilebilir.
+- KVKK silme `/ayarlar/hesap`; askıya alma `/hesap-askida`.
+- Deploy runbook: `GAP_DEPLOY_RUNBOOK.md`.
 - Destek kategorileri admin/destek panelinde karşılanıyor.
 - Finans runbook ve security runbook ekip tarafından okundu.
 - Production smoke, ödeme callback smoke ve login smoke geçti.

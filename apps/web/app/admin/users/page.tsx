@@ -11,9 +11,18 @@ type UserRow = {
   email: string;
   display_name: string;
   role: string;
+  account_status: string;
+  suspension_reason: string | null;
   created_at: string;
   last_login_at: string | null;
 };
+
+function accountStatusLabel(status: string): string {
+  if (status === "active") return "Aktif";
+  if (status === "suspended") return "Askıda";
+  if (status === "deletion_requested") return "Silme talebi";
+  return status;
+}
 
 function roleLabel(role: string): string {
   const labels: Record<string, string> = {
@@ -108,6 +117,88 @@ function RoleEditor({
       {myId === u.id ? (
         <p className="mt-1 text-[11px] text-amber-800">Bu satır sizin hesabınız.</p>
       ) : null}
+      {localErr ? <p className="mt-1 text-[11px] text-red-700">{localErr}</p> : null}
+    </div>
+  );
+}
+
+function AccountStatusEditor({
+  u,
+  token,
+  onDone,
+}: {
+  u: UserRow;
+  token: string;
+  onDone: () => void;
+}) {
+  const [next, setNext] = useState(u.account_status);
+  const [reason, setReason] = useState(u.suspension_reason ?? "");
+  const [busy, setBusy] = useState(false);
+  const [localErr, setLocalErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNext(u.account_status);
+    setReason(u.suspension_reason ?? "");
+  }, [u.account_status, u.suspension_reason]);
+
+  const dirty = next !== u.account_status || (next === "suspended" && reason.trim() !== (u.suspension_reason ?? "").trim());
+
+  async function apply() {
+    if (!dirty) return;
+    if (next === "suspended" && reason.trim().length < 3) {
+      setLocalErr("Askıya alma için en az 3 karakterlik gerekçe girin.");
+      return;
+    }
+    const label = accountStatusLabel(next);
+    if (!window.confirm(`${u.email} hesap durumunu "${label}" yapmak istediğinize emin misiniz?`)) return;
+
+    setBusy(true);
+    setLocalErr(null);
+    try {
+      await apiFetch(`/api/admin/users/${u.id}/account-status`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({
+          status: next,
+          reason: next === "suspended" ? reason.trim() : reason.trim() || undefined,
+        }),
+      });
+      onDone();
+    } catch (e) {
+      setLocalErr(e instanceof Error ? e.message : "hata");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="min-w-[12rem]">
+      <select
+        className="w-full rounded-lg border border-paper-200 bg-white px-2 py-1 text-sm"
+        value={next}
+        onChange={(e) => setNext(e.target.value)}
+      >
+        <option value="active">Aktif</option>
+        <option value="suspended">Askıda</option>
+        <option value="deletion_requested">Silme talebi</option>
+      </select>
+      {next === "suspended" ? (
+        <textarea
+          rows={2}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Askıya alma gerekçesi (kullanıcıya gösterilir)"
+          className="mt-1 w-full rounded-lg border border-paper-200 px-2 py-1 text-xs"
+        />
+      ) : null}
+      <button
+        type="button"
+        disabled={!dirty || busy}
+        onClick={() => void apply()}
+        className="mt-1 rounded-lg bg-paper-900 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
+      >
+        {busy ? "…" : "Durumu kaydet"}
+      </button>
       {localErr ? <p className="mt-1 text-[11px] text-red-700">{localErr}</p> : null}
     </div>
   );
@@ -226,6 +317,7 @@ export default function AdminUsersPage() {
                 <th className="px-3 py-2">E-posta</th>
                 <th className="px-3 py-2">Rol</th>
                 <th className="px-3 py-2">Rol değiştir</th>
+                <th className="px-3 py-2">Hesap durumu</th>
                 <th className="px-3 py-2">Kayıt</th>
                 <th className="px-3 py-2">Son giriş</th>
                 <th className="px-3 py-2">Kayıt kodu</th>
@@ -234,13 +326,13 @@ export default function AdminUsersPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-paper-800/55">
+                  <td colSpan={8} className="px-3 py-6 text-center text-paper-800/55">
                     Yükleniyor…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-paper-800/55">
+                  <td colSpan={8} className="px-3 py-6 text-center text-paper-800/55">
                     Kayıt yok.
                   </td>
                 </tr>
@@ -252,6 +344,10 @@ export default function AdminUsersPage() {
                     <td className="px-3 py-2 text-paper-800/75">{roleLabel(u.role)}</td>
                     <td className="px-3 py-2 align-top">
                       <RoleEditor u={u} token={token} myId={myId} onDone={() => void load()} />
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      <div className="mb-1 text-xs font-medium text-paper-800/55">{accountStatusLabel(u.account_status)}</div>
+                      <AccountStatusEditor u={u} token={token} onDone={() => void load()} />
                     </td>
                     <td className="px-3 py-2 text-paper-800/75">{new Date(u.created_at).toLocaleString("tr-TR")}</td>
                     <td className="px-3 py-2 text-paper-800/75">

@@ -103,6 +103,18 @@ export default function GuvenPage() {
             >
               Kullanım koşulları
             </Link>
+            <Link
+              href="/iade"
+              className="rounded-2xl border border-paper-200 bg-paper-50 px-4 py-2.5 text-sm font-semibold text-paper-900 hover:border-brand-200 hover:bg-brand-50"
+            >
+              İade politikası
+            </Link>
+            <Link
+              href="/itiraz"
+              className="rounded-2xl border border-paper-200 bg-paper-50 px-4 py-2.5 text-sm font-semibold text-paper-900 hover:border-brand-200 hover:bg-brand-50"
+            >
+              İtiraz
+            </Link>
           </div>
         </section>
 

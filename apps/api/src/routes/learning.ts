@@ -39,14 +39,26 @@ const curriculumTestQuerySchema = z.object({
   gradeLevel: z.coerce.number().int().min(1).max(12),
   branchSlug: z.string().min(2).max(80),
   unitSlug: z.string().min(2).max(120),
+  mode: z.enum(["full", "mini"]).optional().default("full"),
 });
 
 const curriculumTestSubmitSchema = z.object({
   gradeLevel: z.number().int().min(1).max(12),
   branchSlug: z.string().min(2).max(80),
   unitSlug: z.string().min(2).max(120),
+  mode: z.enum(["full", "mini"]).optional().default("full"),
   answers: z.record(z.string(), z.enum(["A", "B", "C", "D"])),
 });
+
+function curriculumTestModeConfig(mode: "full" | "mini") {
+  if (mode === "mini") return { questionCount: 10, thresholdCorrect: 7 };
+  return { questionCount: 20, thresholdCorrect: 15 };
+}
+
+function sliceCurriculumQuestions(questions: CurriculumQuestion[], mode: "full" | "mini"): CurriculumQuestion[] {
+  const { questionCount } = curriculumTestModeConfig(mode);
+  return questions.slice(0, questionCount);
+}
 
 type TeacherRecommendation = {
   id: string;
@@ -464,7 +476,7 @@ learning.get("/overview", requireAuth, async (c) => {
 learning.get("/curriculum-tests/catalog", requireAuth, async (c) => {
   if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
   const catalog = await loadCurriculumCatalog();
-  return c.json({ catalog, thresholdCorrect: 15, questionCount: 20 });
+  return c.json({ catalog, thresholdCorrect: 15, questionCount: 20, miniThresholdCorrect: 7, miniQuestionCount: 10 });
 });
 
 learning.get("/curriculum-tests", requireAuth, async (c) => {
@@ -473,21 +485,26 @@ learning.get("/curriculum-tests", requireAuth, async (c) => {
     gradeLevel: c.req.query("gradeLevel"),
     branchSlug: c.req.query("branchSlug"),
     unitSlug: c.req.query("unitSlug"),
+    mode: c.req.query("mode") ?? "full",
   });
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-  const questions = await loadCurriculumQuestions(parsed.data);
-  if (questions.length !== 20) return c.json({ error: "curriculum_test_not_found" }, 404);
+  const mode = parsed.data.mode ?? "full";
+  const config = curriculumTestModeConfig(mode);
+  const allQuestions = await loadCurriculumQuestions(parsed.data);
+  if (allQuestions.length !== 20) return c.json({ error: "curriculum_test_not_found" }, 404);
+  const questions = sliceCurriculumQuestions(allQuestions, mode);
   const first = questions[0];
   return c.json({
     test: {
+      mode,
       gradeLevel: first.gradeLevel,
       branchSlug: first.branchSlug,
       branchName: first.branchName,
       unitSlug: first.unitSlug,
       unitTitle: first.unitTitle,
       questionCount: questions.length,
-      thresholdCorrect: 15,
+      thresholdCorrect: config.thresholdCorrect,
       questions: questions.map(publicCurriculumQuestion),
     },
   });
@@ -502,8 +519,11 @@ learning.post("/curriculum-test-attempts", requireAuth, async (c) => {
   const parsed = curriculumTestSubmitSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-  const questions = await loadCurriculumQuestions(parsed.data);
-  if (questions.length !== 20) return c.json({ error: "curriculum_test_not_found" }, 404);
+  const mode = parsed.data.mode ?? "full";
+  const config = curriculumTestModeConfig(mode);
+  const allQuestions = await loadCurriculumQuestions(parsed.data);
+  if (allQuestions.length !== 20) return c.json({ error: "curriculum_test_not_found" }, 404);
+  const questions = sliceCurriculumQuestions(allQuestions, mode);
 
   const answers = parsed.data.answers;
   const expectedQuestionIds = new Set(questions.map((question) => question.id));
@@ -516,7 +536,7 @@ learning.post("/curriculum-test-attempts", requireAuth, async (c) => {
     return c.json(
       {
         error: "incomplete_curriculum_test",
-        message: "20 sorunun tamamı cevaplanmadan sonuç kaydedilemez.",
+        message: `${questions.length} sorunun tamamı cevaplanmadan sonuç kaydedilemez.`,
         missingQuestionIds,
       },
       400,
@@ -551,7 +571,7 @@ learning.post("/curriculum-test-attempts", requireAuth, async (c) => {
   const correctCount = questionResults.filter((result) => result.isCorrect).length;
   const questionCount = questions.length;
   const scorePercent = Math.round((correctCount / questionCount) * 10000) / 100;
-  const masteryLevel = masteryLevelFor(correctCount);
+  const masteryLevel = masteryLevelFor(Math.round((correctCount / questionCount) * 20));
   const weakOutcomes = questionResults
     .filter((result) => !result.isCorrect)
     .map((result) => result.outcomeTitle)
@@ -562,7 +582,7 @@ learning.post("/curriculum-test-attempts", requireAuth, async (c) => {
     .map((result) => result.misconception)
     .filter((value, index, arr) => value && arr.indexOf(value) === index)
     .slice(0, 5);
-  const teacherSupportRecommended = correctCount < 15;
+  const teacherSupportRecommended = correctCount < config.thresholdCorrect;
   const teacherRecommendations = teacherSupportRecommended
     ? await recommendTeachersForBranch(questions[0].branchSlug, studentId)
     : [];

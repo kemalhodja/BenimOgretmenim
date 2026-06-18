@@ -27,6 +27,8 @@ import {
   listUsageCreditPacks,
   purchaseUsageCreditPackFromWallet,
 } from "../lib/usageCredits.js";
+import { linkHomeworkMediaToPost, persistHomeworkImageUrls } from "../lib/homeworkObjectStorage.js";
+import { queueGuardianEmail } from "../lib/emailDelivery.js";
 
 export const studentPlatform = new Hono<{ Variables: AppVariables }>();
 
@@ -156,6 +158,31 @@ function isAllowedHomeworkImageUrl(u: string): boolean {
   return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(u);
 }
 
+/** Ödev havuzu hizmet istatistikleri (SLA şeffaflığı). */
+studentPlatform.get("/homework-posts/service-stats", async (c) => {
+  const r = await pool.query<{
+    avg_minutes: string | null;
+    answered_7d: number;
+    open_pool: number;
+  }>(
+    `select
+       round(avg(extract(epoch from (answered_at - created_at)) / 60.0)::numeric, 0)::text as avg_minutes,
+       count(*) filter (where answered_at >= now() - interval '7 days')::int as answered_7d,
+       (select count(*)::int from homework_posts where status in ('open', 'claimed')) as open_pool
+     from homework_posts
+     where answered_at is not null
+       and created_at >= now() - interval '30 days'`,
+  );
+  const row = r.rows[0];
+  return c.json({
+    avgResponseMinutes: row?.avg_minutes ? Number(row.avg_minutes) : null,
+    answeredLast7Days: row?.answered_7d ?? 0,
+    openInPool: row?.open_pool ?? 0,
+    targetMinutesNormal: 120,
+    targetMinutesUrgent: 45,
+  });
+});
+
 /** Branş havuzuna: foto + açıklama; ücretsiz/yıllık abonelik günlük kotasına tabidir. */
 studentPlatform.post("/homework-posts", requireAuth, async (c) => {
   const userId = c.get("userId");
@@ -176,6 +203,7 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
   if (!sr.rowCount) return c.json({ error: "student_profile_missing" }, 400);
   const studentId = sr.rows[0].id as string;
   const targetMinutes = homeworkTargetMinutesForUrgency(parsed.data.urgencyLevel);
+  const persistedImages = await persistHomeworkImageUrls(parsed.data.imageUrls ?? [], userId, null);
   const homeworkAi = await classifyHomeworkPost({
     branchId: parsed.data.branchId,
     topic: parsed.data.topic.trim(),
@@ -184,7 +212,7 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
     targetExam: parsed.data.targetExam?.trim() || null,
     learningObjective: parsed.data.learningObjective?.trim() || null,
     urgencyLevel: parsed.data.urgencyLevel,
-    imageUrls: parsed.data.imageUrls ?? [],
+    imageUrls: persistedImages.urls,
   });
 
   const client = await pool.connect();
@@ -225,7 +253,7 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
         parsed.data.branchId,
         parsed.data.topic.trim(),
         parsed.data.helpText.trim(),
-        JSON.stringify(parsed.data.imageUrls ?? []),
+        JSON.stringify(persistedImages.urls),
         parsed.data.audioUrl?.trim() || null,
         parsed.data.gradeLevelText?.trim() || null,
         parsed.data.targetExam?.trim() || null,
@@ -233,7 +261,7 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
         parsed.data.urgencyLevel,
         targetMinutes,
         JSON.stringify(homeworkAi.aiMetadata),
-        homeworkAi.storageBackend,
+        persistedImages.backend,
       ],
     );
     await client.query("commit");
@@ -246,6 +274,7 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
 
   // Aynı branştaki öğretmenlere bildirim (in-app). Not: öğretmen profiline bu branş ekli olanlar.
   const created = ins.rows[0] as { id: string };
+  await linkHomeworkMediaToPost(created.id, userId);
   const topicShort =
     parsed.data.topic.trim().length > 120
       ? `${parsed.data.topic.trim().slice(0, 117)}…`
@@ -308,6 +337,13 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
         gNewPayload,
       ],
     );
+    await queueGuardianEmail({
+      guardianUserId: gid,
+      templateKey: "homework_new_post_guardian",
+      subject: "BenimÖğretmenim — yeni ödev/soru gönderildi",
+      bodyText: `Bağlı öğrenciniz "${topicShort}" konusunda yeni bir soru gönderdi. Panelden durumu takip edebilirsiniz.`,
+      payload: { homeworkPostId: created.id, urgencyLevel: parsed.data.urgencyLevel },
+    });
   }
 
   return c.json({ post: ins.rows[0] }, 201);
@@ -686,6 +722,7 @@ studentPlatform.get("/homework-posts/teacher/feed", requireAuth, async (c) => {
      where h.branch_id = $1 and h.status = 'open'
      order by
        case h.urgency_level when 'urgent' then 0 when 'priority' then 1 else 2 end,
+       coalesce((h.ai_metadata_jsonb->>'routing_priority')::int, 50) desc,
        h.resolution_sla_due_at asc nulls last,
        h.created_at desc
      limit 50`,

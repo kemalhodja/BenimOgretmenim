@@ -49,6 +49,7 @@ type CurriculumQuestion = {
 };
 
 type CurriculumTest = {
+  mode?: "full" | "mini";
   gradeLevel: number;
   branchSlug: string;
   branchName: string;
@@ -349,7 +350,7 @@ export default function StudentCalismaPage() {
     }
   }
 
-  async function loadCurriculumTest() {
+  async function loadCurriculumTest(mode: "full" | "mini" = "full") {
     if (!token || !selectedBranch || !selectedUnit) return;
     setCurriculumBusy(true);
     setError(null);
@@ -360,13 +361,14 @@ export default function StudentCalismaPage() {
         gradeLevel: String(selectedGrade),
         branchSlug: selectedBranch,
         unitSlug: selectedUnit,
+        mode,
       });
       const r = await apiFetch<{ test: CurriculumTest }>(`/v1/learning/curriculum-tests?${qs.toString()}`, {
         token,
       });
       setCurriculumTest(r.test);
       setTestAnswers({});
-      setOk("20 soruluk kazanım testi hazırlandı.");
+      setOk(mode === "mini" ? "10 soruluk mini deneme hazırlandı." : "20 soruluk kazanım testi hazırlandı.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "curriculum_test_load_failed");
     } finally {
@@ -393,6 +395,7 @@ export default function StudentCalismaPage() {
           gradeLevel: curriculumTest.gradeLevel,
           branchSlug: curriculumTest.branchSlug,
           unitSlug: curriculumTest.unitSlug,
+          mode: curriculumTest.mode ?? "full",
           answers: testAnswers,
         }),
       });
@@ -650,14 +653,22 @@ export default function StudentCalismaPage() {
             <button
               type="button"
               disabled={curriculumBusy || !selectedBranchData || !selectedUnitData}
-              onClick={() => void loadCurriculumTest()}
+              onClick={() => void loadCurriculumTest("mini")}
+              className="rounded-xl border border-brand-300 bg-white px-4 py-2 text-sm font-semibold text-brand-900 disabled:opacity-50"
+            >
+              {curriculumBusy && !curriculumTest ? "Hazırlanıyor…" : "Mini deneme (10 soru)"}
+            </button>
+            <button
+              type="button"
+              disabled={curriculumBusy || !selectedBranchData || !selectedUnitData}
+              onClick={() => void loadCurriculumTest("full")}
               className="rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {curriculumBusy && !curriculumTest ? "Hazırlanıyor…" : "20 soruluk testi başlat"}
+              {curriculumBusy && !curriculumTest ? "Hazırlanıyor…" : "Tam test (20 soru)"}
             </button>
             <div className="text-xs text-paper-800/60">
               {selectedBranchData && selectedUnitData
-                ? `${selectedGrade}. sınıf · ${selectedBranchData.branchName} · ${selectedUnitData.unitTitle} · 20 soru · eşik 15 doğru`
+                ? `${selectedGrade}. sınıf · ${selectedBranchData.branchName} · ${selectedUnitData.unitTitle} · mini eşik 7/10 · tam eşik 15/20`
                 : "Katalog yükleniyor"}
             </div>
           </div>
@@ -670,7 +681,7 @@ export default function StudentCalismaPage() {
                     {curriculumTest.branchName} · {curriculumTest.unitTitle}
                   </h3>
                   <p className="mt-1 text-xs text-paper-800/60">
-                    {answeredCount}/{curriculumTest.questionCount} soru cevaplandı · tahmini {estimatedMinutes} dk · eşik {curriculumTest.thresholdCorrect}/20.
+                    {answeredCount}/{curriculumTest.questionCount} soru cevaplandı · tahmini {estimatedMinutes} dk · eşik {curriculumTest.thresholdCorrect}/{curriculumTest.questionCount}.
                   </p>
                   {unansweredCount > 0 ? (
                     <p className="mt-1 text-xs font-medium text-amber-800">

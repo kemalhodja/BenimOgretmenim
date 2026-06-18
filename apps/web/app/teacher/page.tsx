@@ -601,6 +601,10 @@ export default function TeacherHomePage() {
                 {verificationStatusLabel(me?.teacher.verificationStatus)}
               </span>
               {" · "}
+              <Link href="/teacher/dogrulama" className="font-medium text-brand-800 underline">
+                KYC / belgeler
+              </Link>
+              {" · "}
               Tamamlanma:{" "}
               <span className="font-medium text-paper-900">
                 {me?.completionScore ?? 0}%

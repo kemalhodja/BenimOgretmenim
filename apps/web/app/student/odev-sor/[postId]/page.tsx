@@ -57,6 +57,11 @@ function aiValue(meta: unknown, key: string): string | null {
   return null;
 }
 
+function aiBool(meta: unknown, key: string): boolean {
+  if (!meta || typeof meta !== "object") return false;
+  return (meta as Record<string, unknown>)[key] === true;
+}
+
 function homeworkNextStep(post: PostDetail): string {
   if (post.status === "open") return "Öğretmen havuzunda; uygun öğretmen üstlenince süre başlar.";
   if (post.status === "claimed") return "Öğretmen çözüm üzerinde; hedef süre takip ediliyor.";
@@ -324,6 +329,12 @@ export default function OdevDetayPage() {
                 </p>
               </div>
               <p className="mt-4 whitespace-pre-wrap text-sm text-paper-800">{post.help_text}</p>
+              {aiBool(post.ai_metadata_jsonb, "needs_clarification") && post.status === "open" ? (
+                <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                  Sorunuz kısa görünüyor. Öğretmenin daha hızlı yardım edebilmesi için açıklamayı veya görseli
+                  güncellemek isterseniz yeni bir gönderi açabilirsiniz.
+                </p>
+              ) : null}
               {aiList(post.ai_metadata_jsonb, "similar_practice").length > 0 ? (
                 <div className="mt-3 rounded-xl border border-brand-100 bg-brand-50/60 p-3 text-xs text-brand-950">
                   <div className="font-semibold">Bu sorudan sonra önerilen 3 benzer alıştırma</div>
