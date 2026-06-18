@@ -8,6 +8,7 @@ import { getWalletAvailableMinor } from "../lib/walletHolds.js";
 import { assertAdminApiSecret } from "../lib/adminSecret.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
 import { createExtendedTeacherSubscription, teacherSubscriptionPromoMultiplier } from "../lib/teacherSubscriptions.js";
+import { isPaytrConfigured, paytrNotConfiguredBody } from "../lib/systemHealth.js";
 
 export const subscriptions = new Hono<{ Variables: AppVariables }>();
 
@@ -213,6 +214,8 @@ subscriptions.post("/purchase", requireAuth, async (c) => {
   }
 
   // PayTR iFrame: burada sadece ödeme kaydı açıyoruz; token üretimi ayrı endpoint (/paytr/checkout)
+  if (!isPaytrConfigured()) return c.json(paytrNotConfiguredBody(), 503);
+
   const pay = await pool.query(
     `insert into subscription_payments (
        teacher_id, plan_code, method, state, amount_minor, currency, merchant_oid

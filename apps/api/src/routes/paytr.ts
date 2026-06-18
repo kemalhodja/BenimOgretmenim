@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import { writePaymentReconciliationEvent } from "../lib/adminAudit.js";
 import { createExtendedTeacherSubscription, teacherSubscriptionPromoMultiplier } from "../lib/teacherSubscriptions.js";
+import { isPaytrConfigured, paytrNotConfiguredBody } from "../lib/systemHealth.js";
 
 export const paytr = new Hono<{ Variables: AppVariables }>();
 
@@ -127,6 +128,7 @@ const checkoutQuery = z.object({
 
 /** PayTR iFrame token üretimi (server-side) */
 paytr.get("/checkout", requireAuth, async (c) => {
+  if (!isPaytrConfigured()) return c.json(paytrNotConfiguredBody(), 503);
   const userId = c.get("userId");
   const role = c.get("userRole");
   if (role !== "teacher") return c.json({ error: "forbidden_teachers_only" }, 403);
@@ -246,6 +248,7 @@ paytr.get("/checkout", requireAuth, async (c) => {
 
 /** PayTR iFrame: kurs kayıt ücreti (öğrenci) */
 paytr.get("/course-checkout", requireAuth, async (c) => {
+  if (!isPaytrConfigured()) return c.json(paytrNotConfiguredBody(), 503);
   const userId = c.get("userId");
   const role = c.get("userRole");
   if (role !== "student") return c.json({ error: "forbidden_students_only" }, 403);
@@ -359,6 +362,7 @@ const checkoutSubQuery = z.object({ paymentId: z.string().uuid() });
 
 /** PayTR: öğrenci platform aboneliği (STU) */
 paytr.get("/student-sub-checkout", requireAuth, async (c) => {
+  if (!isPaytrConfigured()) return c.json(paytrNotConfiguredBody(), 503);
   const userId = c.get("userId");
   if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
 
@@ -459,6 +463,7 @@ const checkoutWltQuery = z.object({ paymentId: z.string().uuid() });
 
 /** PayTR: cüzdan yükleme (WLT) */
 paytr.get("/wallet-topup-checkout", requireAuth, async (c) => {
+  if (!isPaytrConfigured()) return c.json(paytrNotConfiguredBody(), 503);
   const userId = c.get("userId");
   const parsed = checkoutWltQuery.safeParse(c.req.query());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
@@ -515,6 +520,8 @@ paytr.get("/wallet-topup-checkout", requireAuth, async (c) => {
 
 /** PayTR callback (webhook) — hash doğrulama + idempotent işlem */
 paytr.post("/callback", async (c) => {
+  if (!isPaytrConfigured()) return c.text("PAYTR not configured", 503);
+
   const merchantKey = mustEnv("PAYTR_MERCHANT_KEY");
   const merchantSalt = mustEnv("PAYTR_MERCHANT_SALT");
 

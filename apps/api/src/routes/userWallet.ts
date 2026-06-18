@@ -14,6 +14,7 @@ import {
   loadAutoWithdrawalContext,
 } from "../lib/teacherAutoWithdrawal.js";
 import { loadTeacherAutoWithdrawalSettings } from "../lib/platformOpsSettings.js";
+import { isPaytrConfigured, paytrNotConfiguredBody } from "../lib/systemHealth.js";
 
 export const userWallet = new Hono<{ Variables: AppVariables }>();
 
@@ -81,6 +82,8 @@ userWallet.post("/admin/grant", requireAuth, async (c) => {
 
 /** PayTR ile cüzdan yükleme — callback WLT- */
 userWallet.post("/topup", requireAuth, async (c) => {
+  if (!isPaytrConfigured()) return c.json(paytrNotConfiguredBody(), 503);
+
   const userId = c.get("userId");
   const parsed = topupSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);

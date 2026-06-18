@@ -1,8 +1,19 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { pool } from "../db.js";
+import { isPaytrConfigured, PAYTR_NOT_CONFIGURED_MESSAGE } from "../lib/systemHealth.js";
 
 export const meta = new Hono();
+
+/** Branş ağacı (filtre / kayıt formları) */
+meta.get("/payments", (c) => {
+  const paytrAvailable = isPaytrConfigured();
+  return c.json({
+    paytrAvailable,
+    bankTransferAvailable: Boolean(process.env.BANK_IBAN?.trim()),
+    message: paytrAvailable ? null : PAYTR_NOT_CONFIGURED_MESSAGE,
+  });
+});
 
 /** Branş ağacı (filtre / kayıt formları) */
 meta.get("/branches", async (c) => {

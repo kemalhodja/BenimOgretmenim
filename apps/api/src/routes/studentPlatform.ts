@@ -28,6 +28,7 @@ import {
   purchaseUsageCreditPackFromWallet,
 } from "../lib/usageCredits.js";
 import { linkHomeworkMediaToPost, persistHomeworkImageUrls } from "../lib/homeworkObjectStorage.js";
+import { isPaytrConfigured, paytrNotConfiguredBody } from "../lib/systemHealth.js";
 import { queueGuardianEmail } from "../lib/emailDelivery.js";
 
 export const studentPlatform = new Hono<{ Variables: AppVariables }>();
@@ -99,6 +100,8 @@ studentPlatform.post("/subscription/purchase", requireAuth, async (c) => {
   if (months !== annualMonths) {
     return c.json({ error: "annual_subscription_only", annualMonths, annualPriceMinor }, 400);
   }
+  if (!isPaytrConfigured()) return c.json(paytrNotConfiguredBody(), 503);
+
   const total = annualPriceMinor;
   const merchantOid = `STU-${Date.now()}-${randomBytes(5).toString("hex")}`;
 

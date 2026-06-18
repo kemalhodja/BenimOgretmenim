@@ -58,6 +58,17 @@ export function isPaytrFullyConfigured(): boolean {
   return PAYTR_PRODUCTION_REQUIRED.every((key) => Boolean(process.env[key]?.trim()));
 }
 
+export function isPaytrConfigured(): boolean {
+  return isPaytrFullyConfigured();
+}
+
+export const PAYTR_NOT_CONFIGURED_MESSAGE =
+  "Kart ödemesi (PayTR) henüz aktif değil. Havale/EFT veya destek ile ilerleyebilirsiniz.";
+
+export function paytrNotConfiguredBody(): { error: "paytr_not_configured"; message: string } {
+  return { error: "paytr_not_configured", message: PAYTR_NOT_CONFIGURED_MESSAGE };
+}
+
 export function productionConfigurationErrors(): string[] {
   if (process.env.NODE_ENV !== "production") return [];
   const required: string[] = [...PRODUCTION_CORE_REQUIRED];
