@@ -47,6 +47,13 @@ export function paytrOptionalInProduction(): boolean {
   return process.env.PAYTR_OPTIONAL?.trim() === "1";
 }
 
+/** Merchant ID girildiyse tam PayTR env zorunlu; aksi halde boot kilitleme. */
+export function paytrRequiredInProduction(): boolean {
+  if (process.env.NODE_ENV !== "production") return false;
+  if (paytrOptionalInProduction()) return false;
+  return Boolean(process.env.PAYTR_MERCHANT_ID?.trim());
+}
+
 export function isPaytrFullyConfigured(): boolean {
   return PAYTR_PRODUCTION_REQUIRED.every((key) => Boolean(process.env[key]?.trim()));
 }
@@ -54,7 +61,7 @@ export function isPaytrFullyConfigured(): boolean {
 export function productionConfigurationErrors(): string[] {
   if (process.env.NODE_ENV !== "production") return [];
   const required: string[] = [...PRODUCTION_CORE_REQUIRED];
-  if (!paytrOptionalInProduction()) {
+  if (paytrRequiredInProduction()) {
     required.push(...PAYTR_PRODUCTION_REQUIRED);
   }
   return required.filter((key) => !process.env[key]?.trim()).map(
@@ -90,6 +97,11 @@ export function configurationHealthWarnings(): string[] {
   if (isProd && paytrOptionalInProduction() && !isPaytrFullyConfigured()) {
     warnings.push(
       "PAYTR_OPTIONAL=1: API ödeme hariç açık; PayTR merchant ve URL env'leri tamamlanınca PAYTR_OPTIONAL kaldırın.",
+    );
+  }
+  if (isProd && !paytrRequiredInProduction() && !isPaytrFullyConfigured()) {
+    warnings.push(
+      "PayTR merchant env'leri tanımlı değil; API açılır ancak kart ödemesi çalışmaz. Canlı ödeme için merchant bilgilerini girin.",
     );
   }
   if (!isProd) {
