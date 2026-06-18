@@ -93,19 +93,31 @@ jobs:
 
       - name: Wait until API health is ready
         env:
-          SMOKE_API_URL: https://api.benimogretmenim.com.tr
+          SMOKE_API_URL: https://benim-ogretmenim.onrender.com
+          SMOKE_API_URL_CUSTOM: https://api.benimogretmenim.com.tr
           SMOKE_RUN_SECRET: ${{ secrets.SMOKE_RUN_SECRET }}
           GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
           GITHUB_SHA_VALUE: ${{ github.sha }}
         run: |
           set -euo pipefail
-          for i in $(seq 1 30); do
-            if curl -fsS "${SMOKE_API_URL}/health" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s); if (j.db !== true) process.exit(2);})"; then
-              echo "API health ready after attempt ${i}."
-              exit 0
-            fi
-            echo "API health not ready yet (${i}/30); waiting 10s..."
-            sleep 10
+          check_health() {
+            curl -fsS "$1/health" | node -e "let s='';process.stdin.on('data',d=>s+=d);process.stdin.on('end',()=>{const j=JSON.parse(s); if (j.db !== true) process.exit(2);})"
+          }
+          URLS=("$SMOKE_API_URL")
+          if [ -n "${SMOKE_API_URL_CUSTOM:-}" ]; then
+            URLS=("$SMOKE_API_URL_CUSTOM" "$SMOKE_API_URL")
+          fi
+          for url in "${URLS[@]}"; do
+            for i in $(seq 1 30); do
+              if check_health "$url"; then
+                echo "API health ready at ${url} after attempt ${i}."
+                echo "SMOKE_API_URL=${url}" >> "$GITHUB_ENV"
+                exit 0
+              fi
+              echo "API health not ready at ${url} (${i}/30); waiting 10s..."
+              sleep 10
+            done
+            echo "Timed out waiting for ${url}."
           done
           if [ -n "${SMOKE_RUN_SECRET:-}" ]; then
             payload="$(node -e "console.log(JSON.stringify({status:'failed', targetUrl: process.env.SMOKE_API_URL, workflow: 'deploy-render', runId: process.env.GITHUB_RUN_ID_VALUE, commitSha: process.env.GITHUB_SHA_VALUE, details: {source:'deploy-render', suite:'health-wait', error:'api_health_not_ready'}}))")"
@@ -120,12 +132,16 @@ jobs:
       - name: Run production smoke and report result
         working-directory: apps/api
         env:
-          SMOKE_API_URL: https://api.benimogretmenim.com.tr
+          SMOKE_API_URL: ${{ env.SMOKE_API_URL }}
           SMOKE_RUN_SECRET: ${{ secrets.SMOKE_RUN_SECRET }}
           GITHUB_RUN_ID_VALUE: ${{ github.run_id }}
           GITHUB_SHA_VALUE: ${{ github.sha }}
         run: |
           set -euo pipefail
+          if [ -z "${SMOKE_API_URL:-}" ]; then
+            SMOKE_API_URL="https://benim-ogretmenim.onrender.com"
+          fi
+          export SMOKE_API_URL
           status="ok"
           details='{"source":"deploy-render","suite":"smoke:prod"}'
           if ! npm run smoke:prod; then
