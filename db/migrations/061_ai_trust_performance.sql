@@ -1,7 +1,20 @@
 BEGIN;
 
-CREATE EXTENSION IF NOT EXISTS btree_gist;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS btree_gist;
+EXCEPTION
+  WHEN insufficient_privilege THEN
+    RAISE NOTICE 'btree_gist extension skipped (insufficient privilege)';
+END $$;
+
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS pg_trgm;
+EXCEPTION
+  WHEN insufficient_privilege THEN
+    RAISE NOTICE 'pg_trgm extension skipped (insufficient privilege)';
+END $$;
 
 -- Öğretmen: anlık ders hazırlığı
 ALTER TABLE teachers
@@ -96,15 +109,18 @@ CREATE INDEX IF NOT EXISTS idx_teacher_zigo_teacher
   ON teacher_zigo_content_links (teacher_id, published_at DESC);
 
 -- Performans indeksleri
-CREATE INDEX IF NOT EXISTS idx_curriculum_outcome_title_trgm
-  ON curriculum_test_questions USING gin (outcome_title gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_curriculum_unit_title_trgm
-  ON curriculum_test_questions USING gin (unit_title gin_trgm_ops);
-
-CREATE INDEX IF NOT EXISTS idx_curriculum_branch_grade
-  ON curriculum_test_questions (branch_slug, grade_level, status)
-  WHERE status = 'published';
+DO $$
+BEGIN
+  IF to_regclass('public.curriculum_test_questions') IS NOT NULL THEN
+    CREATE INDEX IF NOT EXISTS idx_curriculum_outcome_title_trgm
+      ON curriculum_test_questions USING gin (outcome_title gin_trgm_ops);
+    CREATE INDEX IF NOT EXISTS idx_curriculum_unit_title_trgm
+      ON curriculum_test_questions USING gin (unit_title gin_trgm_ops);
+    CREATE INDEX IF NOT EXISTS idx_curriculum_branch_grade
+      ON curriculum_test_questions (branch_slug, grade_level, status)
+      WHERE status = 'published';
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_teachers_verified_city_rating
   ON teachers (verification_status, city_id, rating_avg DESC NULLS LAST)
@@ -126,21 +142,26 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'direct_booking_teacher_slot_excl'
-  ) THEN
-    ALTER TABLE direct_lesson_bookings
-      ADD CONSTRAINT direct_booking_teacher_slot_excl
-      EXCLUDE USING gist (
-        teacher_id WITH =,
-        tstzrange(
-          scheduled_start,
-          coalesce(scheduled_end, scheduled_start + interval '1 hour'),
-          '[)'
-        ) WITH &&
-      )
-      WHERE (
-        scheduled_start IS NOT NULL
-        AND status IN ('pending_funding', 'funded')
-      );
+  ) AND to_regclass('public.direct_lesson_bookings') IS NOT NULL THEN
+    BEGIN
+      ALTER TABLE direct_lesson_bookings
+        ADD CONSTRAINT direct_booking_teacher_slot_excl
+        EXCLUDE USING gist (
+          teacher_id WITH =,
+          tstzrange(
+            scheduled_start,
+            coalesce(scheduled_end, scheduled_start + interval '1 hour'),
+            '[)'
+          ) WITH &&
+        )
+        WHERE (
+          scheduled_start IS NOT NULL
+          AND status IN ('pending_funding', 'funded')
+        );
+    EXCEPTION
+      WHEN undefined_object OR invalid_parameter_value OR feature_not_supported THEN
+        RAISE NOTICE 'direct_booking_teacher_slot_excl skipped: %', SQLERRM;
+    END;
   END IF;
 END $$;
 
