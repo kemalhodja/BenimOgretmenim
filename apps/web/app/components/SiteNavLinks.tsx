@@ -11,6 +11,7 @@ const NAV_PUBLIC = [
   { href: "/ogretmenler", label: "Öğretmen ara" },
   { href: "/courses", label: "Kurslar" },
   { href: "/fiyatlar", label: "Fiyatlar" },
+  { href: "/roller", label: "Roller" },
   { href: "/guven", label: "Güven" },
 ] as const;
 
@@ -58,7 +59,7 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
   const mobCls = "shrink-0 rounded-md px-2 py-1 text-paper-800/85 hover:bg-paper-100";
 
   if (!mounted) {
-    const n = variant === "desktop" ? 5 : 5;
+    const n = NAV_PUBLIC.length;
     return (
       <>
         {Array.from({ length: n }).map((_, i) => (

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { roleFeaturesLink } from "../lib/marketingLinks";
 
 const footerLinks = [
   { href: "/guardian", label: "Özet" },
+  roleFeaturesLink,
   { href: "/yardim", label: "Yardım" },
   { href: "/iletisim", label: "İletişim" },
   { href: "/gizlilik", label: "Gizlilik" },

@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { panelSupportLinks } from "../lib/marketingLinks";
 
 const footerLinks = [
-  { href: "/yardim", label: "Yardım" },
-  { href: "/iletisim", label: "İletişim" },
+  ...panelSupportLinks,
   { href: "/gizlilik", label: "Gizlilik" },
   { href: "/kullanim-kosullari", label: "Kullanım koşulları" },
   { href: "/uygulama", label: "Uygulamayı yükle" },

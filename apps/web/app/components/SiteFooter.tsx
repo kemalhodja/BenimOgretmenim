@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AuthEntryLink } from "./AuthEntryLink";
 import { RegisterNavLink } from "./AuthNavLinks";
+import { roleFeaturesLink } from "../lib/marketingLinks";
 
 export function SiteFooter() {
   return (
@@ -58,8 +59,8 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/roller" className="hover:underline">
-                  Rol özellikleri
+                <Link href={roleFeaturesLink.href} className="hover:underline">
+                  {roleFeaturesLink.label}
                 </Link>
               </li>
               <li>

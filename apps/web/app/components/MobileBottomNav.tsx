@@ -93,8 +93,11 @@ function itemsFor(mode: PanelMode, role: UserRole | null, pathname: string): Ite
     { href: "/", label: "Ana" },
     { href: "/ogretmenler", label: "Öğretmen", shortLabel: "Öğret" },
     { href: "/courses", label: "Kurslar", primary: true },
-    { href: "/fiyatlar", label: "Fiyat" },
-    { href: pathname === "/kayit" ? loginHrefWithReturn(pathname) : registerHrefWithReturn(pathname), label: "Başla" },
+    { href: "/roller", label: "Roller" },
+    {
+      href: pathname === "/kayit" ? loginHrefWithReturn(pathname) : registerHrefWithReturn(pathname),
+      label: "Başla",
+    },
   ];
 }
 

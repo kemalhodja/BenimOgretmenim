@@ -31,6 +31,15 @@ describe("product vision API surfaces", () => {
     expect(zigoBody.integration).toBe("zigo_feed_v1");
   });
 
+  it("requires auth for zigo teacher-content publish", async () => {
+    const res = await app.request("http://localhost/v1/zigo/teacher-content", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ title: "Test ipucu" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
   it("requires auth for teacher-match, messages, and guardian credit pools", async () => {
     const match = await app.request("http://localhost/v1/learning/teacher-match?branchSlug=matematik");
     expect(match.status).toBe(401);

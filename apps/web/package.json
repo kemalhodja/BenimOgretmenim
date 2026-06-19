@@ -10,6 +10,7 @@
     "build": "node scripts/check-web-env.mjs",
     "start": "next start",
     "lint": "eslint . --cache --cache-location .eslintcache",
+    "check:role-features": "tsx scripts/check-role-features.ts",
     "test:e2e": "playwright test",
     "test:e2e:public": "playwright test --grep-invert @integration",
     "test:e2e:integration": "playwright test --grep @integration",
@@ -32,6 +33,7 @@
     "eslint-config-next": "^16.2.6",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   },
   "overrides": {

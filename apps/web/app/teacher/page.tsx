@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { TeacherZigoPublish } from "../components/teacher/TeacherZigoPublish";
 import { apiFetch } from "../lib/api";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 import { clearToken, getToken } from "../lib/auth";
@@ -647,6 +648,8 @@ export default function TeacherHomePage() {
             </button>
           </div>
         </section>
+
+        <TeacherZigoPublish token={token} branchSlug={primaryTeacherBranch?.slug ?? null} />
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>

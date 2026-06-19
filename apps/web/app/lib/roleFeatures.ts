@@ -1,5 +1,8 @@
 export type RegisterRole = "student" | "teacher" | "guardian";
 
+/** Kamu vitrin referans sayfası — tüm rol özellik listelerinin tek kaynağı */
+export const ROLE_FEATURES_PATH = "/roller" as const;
+
 export type RoleFeatureCard = {
   role: string;
   registerRole?: RegisterRole;
