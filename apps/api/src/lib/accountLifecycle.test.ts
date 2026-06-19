@@ -32,4 +32,24 @@ describe("accountLifecycle", () => {
       deletion_reason: null,
     });
   });
+
+  it("returns null for non-uuid user ids", async () => {
+    const db = {
+      query: vi.fn().mockRejectedValue(Object.assign(new Error("invalid input syntax for type uuid"), { code: "22P02" })),
+    };
+    await expect(loadUserAccountStatus("user-cookie-1", db as import("pg").Pool)).resolves.toBeNull();
+  });
+
+  it("defaults to active when database credentials fail", async () => {
+    const db = {
+      query: vi.fn().mockRejectedValue(Object.assign(new Error("password authentication failed"), { code: "28P01" })),
+    };
+    await expect(loadUserAccountStatus("00000000-0000-0000-0000-000000000001", db as import("pg").Pool)).resolves.toEqual({
+      account_status: "active",
+      suspension_reason: null,
+      suspended_at: null,
+      deletion_requested_at: null,
+      deletion_reason: null,
+    });
+  });
 });

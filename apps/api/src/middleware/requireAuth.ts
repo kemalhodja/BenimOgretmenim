@@ -27,7 +27,12 @@ export const requireAuth = createMiddleware(async (c, next) => {
     c.set("userRole", role);
     c.set("authMethod", authMethod);
 
-    const account = await loadUserAccountStatus(userId);
+    let account: Awaited<ReturnType<typeof loadUserAccountStatus>> = null;
+    try {
+      account = await loadUserAccountStatus(userId);
+    } catch {
+      account = null;
+    }
     const accountStatus = (account?.account_status ?? "active") as UserAccountStatus;
     c.set("accountStatus", accountStatus);
 

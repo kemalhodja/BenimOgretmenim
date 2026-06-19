@@ -80,6 +80,7 @@ async function withApi(fn) {
 run("API build", ["--prefix", "apps/api", "run", "build"]);
 run("API tests", ["--prefix", "apps/api", "run", "test"]);
 run("Web lint", ["--prefix", "apps/web", "run", "lint"]);
+run("Role features check", ["--prefix", "apps/web", "run", "check:role-features"]);
 await withApi(async () => {
   run("Web build", ["--prefix", "apps/web", "run", "build"]);
   run("Public E2E", ["--prefix", "apps/web", "run", "test:e2e:public"]);

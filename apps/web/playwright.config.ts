@@ -1,6 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000";
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
+const baseHost = (() => {
+  try {
+    return new URL(baseURL).hostname;
+  } catch {
+    return "localhost";
+  }
+})();
 const webServerPort = (() => {
   try {
     const url = new URL(baseURL);
@@ -35,11 +42,11 @@ export default defineConfig({
     env: {
       ...process.env,
       PORT: process.env.PORT ?? webServerPort,
-      HOSTNAME: "127.0.0.1",
+      HOSTNAME: process.env.HOSTNAME ?? baseHost,
       /** Yerel Playwright: build + start için (ci-web.mjs ile uyumlu) */
       WEB_ALLOW_HTTP: process.env.WEB_ALLOW_HTTP ?? "1",
       NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:3002",
-      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:3000",
+      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? baseURL,
     },
   },
 });

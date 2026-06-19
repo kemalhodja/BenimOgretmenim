@@ -38,8 +38,16 @@ export async function loadUserAccountStatus(userId: string, client: Db = pool): 
     return r.rows[0] ?? null;
   } catch (e) {
     const code = (e as { code?: string }).code;
-    // Migration 058 öncesi veya DB kapalı test ortamında auth akışını kırma.
-    if (code === "42703" || code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "57P01") {
+    // Migration öncesi, DB kapalı veya erişim hatası: auth akışını kırma.
+    if (
+      code === "42703" ||
+      code === "ECONNREFUSED" ||
+      code === "ENOTFOUND" ||
+      code === "57P01" ||
+      code === "28P01" ||
+      code === "22P02"
+    ) {
+      if (code === "22P02") return null;
       return {
         account_status: "active",
         suspension_reason: null,

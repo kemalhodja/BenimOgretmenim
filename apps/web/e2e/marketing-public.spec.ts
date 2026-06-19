@@ -63,6 +63,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByText(/Yıllık abonelik: günlük 5 ders ilanı ve 10 soru/)).toBeVisible();
     await expect(page.getByText(/Public profiliniz tam açılır/)).toBeVisible();
     await expect(page.getByText("Tüm özellikler (21)").first()).toBeVisible();
+    await expect(page.getByText("Tüm özellikler (19)").first()).toBeVisible();
   });
 
   test("rol özellik listesi — ana sayfa, kayıt, fiyatlar, yardim ve roller", async ({ page }) => {
