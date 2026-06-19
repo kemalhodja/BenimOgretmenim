@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RoleFeatureOverview, subscriptionWinsForRole } from "../components/marketing/RoleFeatureOverview";
 import { publicSiteUrl } from "../lib/siteUrl";
 import { RoleBasedPricing } from "./RoleBasedPricing";
 
@@ -25,11 +26,7 @@ const audiencePlans = [
     comparePrice: "12.000 TL",
     campaignNote: "Bugün ödeyeceğiniz tutar değişmez. Üstü çizili tutar sadece karşılaştırma bilgisidir.",
     body: "Abonelik, daha fazla öğretmene ulaşmak ve takıldığınız soruları bekletmeden çözmek içindir.",
-    why: [
-      "Günlük 1 ders ilanı yerine 5 ders ilanı açın; daha çok öğretmenden teklif alın.",
-      "Günlük 5 soru yerine 10 soru gönderin; ödev ve sınav hazırlığında tıkanmayın.",
-      "Demo, teklif, cüzdan, ders ve çalışma takibini tek öğrenci panelinde görün.",
-    ],
+    why: subscriptionWinsForRole("student"),
     href: "/kayit?role=student",
     cta: "Öğrenci hesabı aç",
   },
@@ -39,11 +36,7 @@ const audiencePlans = [
     comparePrice: "14.000 TL / 6 ay · 20.000 TL / 12 ay",
     campaignNote: "Erken erişim hediyesi: 6 ay aboneliğe 24 ay, 12 ay aboneliğe 48 ay ücretsiz hediye süre. 9 Eylül’e kadar veya ilk 500 öğretmen dolana kadar geçerlidir.",
     body: "Abonelik, öğretmenin görünürlük, teklif ve reklam gücünü açar; profiliniz satış sayfası gibi çalışır.",
-    why: [
-      "Sınırsız teklif verin; abonesizken günde yalnızca 1 normal teklif ücretsizdir.",
-      "Public profiliniz tam açılır: bio, video, kanıtlar, fiyat, telefon ve WhatsApp tercihi görünür.",
-      "Profil linkinizi kendi web sayfanız gibi paylaşın; ilk kampanya ilanı ücretsizdir.",
-    ],
+    why: subscriptionWinsForRole("teacher"),
     href: "/kayit?role=teacher",
     cta: "Öğretmen olarak başvur",
   },
@@ -51,11 +44,7 @@ const audiencePlans = [
     title: "Veli",
     price: "Takip hesabı",
     body: "Veli hesabı ödeme yapan ayrı bir plan değil; öğrencinin abonelik ve ders sürecini görünür kılan takip katmanıdır.",
-    why: [
-      "Çocuğunuzun ders, ödev, canlı sınıf ve çalışma planı özetini görün.",
-      "Ödeme, destek ve ders kayıtları gerektiğinde takip edilebilir kalsın.",
-      "Öğrenci aboneliğiyle açılan yoğun kullanım haklarının neye dönüştüğünü izleyin.",
-    ],
+    why: subscriptionWinsForRole("guardian"),
     href: "/kayit?role=guardian",
     cta: "Veli hesabı aç",
   },
@@ -275,6 +264,27 @@ export default function FiyatlarPage() {
             </div>
           ))}
         </div>
+
+        <section className="mt-10 rounded-2xl border border-edu-blue-100 bg-white/94 p-5 shadow-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-edu-indigo-700/70">
+                Platform özellikleri
+              </div>
+              <h2 className="mt-1 text-lg font-semibold text-paper-900">Her rolde neler var?</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-paper-800/70">
+                Fiyatın yanı sıra abonelikle açılan hakların ötesinde, panelde kullanabileceğiniz tüm araçlar
+                aşağıdadır. Detaylı referans:{" "}
+                <Link href="/roller" className="font-medium text-brand-800 underline underline-offset-4">
+                  /roller
+                </Link>
+              </p>
+            </div>
+          </div>
+          <div className="mt-5">
+            <RoleFeatureOverview showSubscription={false} />
+          </div>
+        </section>
 
         <div className="mt-8 rounded-xl border border-edu-success-100 bg-edu-success-50 p-5">
           <h2 className="text-base font-semibold text-edu-success-900">Öğrenci için demo ders süreci</h2>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { RoleFeatureOverview } from "../components/marketing/RoleFeatureOverview";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 import { publicSiteUrl } from "../lib/siteUrl";
 
@@ -51,12 +52,6 @@ const faq = [
   },
 ];
 
-const quickSteps = [
-  { title: "Öğrenci", body: "Öğretmen ara, talep aç, teklifleri karşılaştır ve derslerini panelden takip et." },
-  { title: "Öğretmen", body: "Profilini tamamla, teklif gönder, kampanya oluştur ve kazançlarını cüzdandan izle." },
-  { title: "Veli", body: "Öğrencini bağla; ders, ödev ve ilerleme bildirimlerini tek yerden gör." },
-] as const;
-
 function yardimFaqJsonLd(): Record<string, unknown> {
   return {
     "@context": "https://schema.org",
@@ -82,15 +77,18 @@ export default function YardimPage() {
         />
         <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Yardım</h1>
         <p className="mt-2 text-sm text-paper-800/75">
-          En çok merak edilen adımları kısa ve net yanıtlarla topladık.
+          En çok merak edilen adımları kısa yanıtlarla topladık. Rol bazlı tüm özellik listesi aşağıdadır.
         </p>
-        <section className="mt-8 grid gap-3 sm:grid-cols-3">
-          {quickSteps.map((step) => (
-            <div key={step.title} className="rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-paper-900">{step.title}</h2>
-              <p className="mt-2 text-xs leading-relaxed text-paper-800/70">{step.body}</p>
-            </div>
-          ))}
+        <section className="mt-8">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h2 className="text-lg font-semibold text-paper-900">Rol bazlı platform özellikleri</h2>
+            <Link href="/roller" className="text-sm font-medium text-brand-800 underline underline-offset-4">
+              Tam referans (/roller)
+            </Link>
+          </div>
+          <div className="mt-4">
+            <RoleFeatureOverview showSubscription={false} maxListHeightClass="max-h-64" />
+          </div>
         </section>
         <ul className="mt-10 space-y-8">
           {faq.map((item) => (

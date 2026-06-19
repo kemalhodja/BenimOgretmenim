@@ -11,6 +11,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     { path: "/ogretmenler", title: "Öğretmen ara" },
     { path: "/fiyatlar", title: "Üyelik ve kullanım bilgileri" },
     { path: "/yardim", title: "Yardım" },
+    { path: "/roller", title: "Kim ne yapabilir?" },
     { path: "/iletisim", title: "İletişim" },
     { path: "/kampanya", title: "İlk 500 öğretmene erken erişim hediyesi" },
     { path: "/kampanyalar", title: "Öğretmen kampanyaları" },
@@ -58,8 +59,18 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByText(/Erken erişim hediyesi/)).toBeVisible();
     await expect(page.getByText("Neden abone olmalıyım?")).toBeVisible();
     await expect(page.getByText("Abonelikle kazanılanlar").first()).toBeVisible();
-    await expect(page.getByText(/Günlük 1 ders ilanı yerine 5 ders ilanı/)).toBeVisible();
+    await expect(page.getByText(/Yıllık abonelik: günlük 5 ders ilanı ve 10 soru/)).toBeVisible();
     await expect(page.getByText(/Public profiliniz tam açılır/)).toBeVisible();
+    await expect(page.getByText("Tüm özellikler (21)").first()).toBeVisible();
+  });
+
+  test("rol özellik listesi — ana sayfa, kayıt, fiyatlar, yardim ve roller", async ({ page }) => {
+    for (const path of ["/", "/kayit", "/fiyatlar", "/yardim", "/roller"]) {
+      const res = await page.goto(path, { waitUntil: "domcontentloaded" });
+      expect(res?.ok() ?? false).toBeTruthy();
+      await expect(page.getByText(/Tüm özellikler \(\d+\)/).first()).toBeVisible();
+      await expect(page.getByText(/Ders talebinde öğretmen kısa listesi/)).toBeVisible();
+    }
   });
 
   test("/kayit — roller platformda bulacaklarını görür", async ({ page }) => {
@@ -135,5 +146,6 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     expect(xml).toContain("/iade");
     expect(xml).toContain("/itiraz");
     expect(xml).toContain("/guven");
+    expect(xml).toContain("/roller");
   });
 });
