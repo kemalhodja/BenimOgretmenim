@@ -7,6 +7,11 @@ import { apiFetch } from "../lib/api";
 import { loginHrefWithReturn, safeInternalPath } from "../lib/authRedirect";
 import { setToken } from "../lib/auth";
 import { trackEvent } from "../lib/trackEvent";
+import {
+  REGISTER_ROLE_CARDS,
+  type RegisterRole,
+  roleCardByRegisterRole,
+} from "../lib/roleFeatures";
 
 type RegResponse = {
   token: string;
@@ -67,59 +72,6 @@ const roleOnboarding = {
     ],
   },
 } as const;
-
-const roleDiscovery = {
-  student: {
-    label: "Öğrenci",
-    eyebrow: "Öğretmen, soru desteği ve çalışma planı",
-    summary: "Öğrenci hesabı ile öğretmen bulabilir, soru gönderebilir, kurslara katılabilir ve çalışmanızı takip edebilirsiniz. Abonelik, daha fazla ilan ve daha fazla soru hakkı açar.",
-    finds: [
-      "Branş, şehir, ücret, doğrulama ve yorumlarla karşılaştırılabilir öğretmen profilleri",
-      "Demo ders, teklif, canlı ders, kurs ve kampanya başvuruları",
-      "Soru gönderme, ödev takibi ve çalışma planı",
-    ],
-    subscriptionWins: [
-      "Ücretsiz: günlük 1 ders ilanı ve 5 soru",
-      "Yıllık abonelik: günlük 5 ders ilanı ve 10 soru",
-      "Daha çok öğretmenden teklif alma ve daha hızlı soru çözümü",
-    ],
-    nextStep: "Kayıttan sonra öğrenci paneliniz açılır. Ücretsiz haklarınızı kullanabilir veya yıllık abonelikle kotanızı büyütebilirsiniz.",
-  },
-  guardian: {
-    label: "Veli",
-    eyebrow: "Çocuğunuzun ders sürecini görün",
-    summary: "Veli hesabı ile öğrencinin ders, kurs, ödev, ödeme ve destek sürecini anlaşılır şekilde takip edebilirsiniz. Veli hesabı, öğrencinin abonelikten aldığı faydayı görünür kılar.",
-    finds: [
-      "Öğrenci hesabı eşleştirme, veli bildirimleri ve durum özetleri",
-      "Ders, kurs, ödev, çalışma planı ve uyarıların tek ekranda takibi",
-      "Güvenli ödeme, destek ve sorun çözümünde şeffaf kayıt",
-    ],
-    subscriptionWins: [
-      "Öğrenci aboneliğiyle artan ders ilanı ve soru haklarını takip",
-      "Ders, ödev, ödeme ve destek kayıtlarının tek yerden görünmesi",
-      "Çocuğunuzun ilerlemesini dağınık mesajlar yerine panelden izleme",
-    ],
-    nextStep: "Kayıttan sonra veli paneliniz açılır. Öğrencinizi eşleştirip bildirimleri, ödeme ve destek kayıtlarını izleyebilirsiniz.",
-  },
-  teacher: {
-    label: "Öğretmen",
-    eyebrow: "Profil, öğrenci talepleri ve kazanç takibi",
-    summary: "Öğretmen hesabı ile profilinizi kendi web siteniz gibi sunabilir, öğrenci taleplerini alabilir ve kazancınızı takip edebilirsiniz. Abonelik, görünürlüğünüzü ve teklif gücünüzü açar.",
-    finds: [
-      "Kendi web sitesi gibi çalışan öğretmen profili, uzmanlık alanları, ücret ve güven göstergeleri",
-      "Ders talepleri, öğrenci mesajları, kampanyalar ve kurs başvuruları",
-      "Cüzdan, kazanç, para çekme, abonelik ve kampanya yönetimi",
-    ],
-    subscriptionWins: [
-      "Sınırsız teklif; abonesizken günde 1 normal teklif ücretsiz",
-      "Tam public profil, telefon/WhatsApp tercihi, video, kanıt ve fiyat vitrini",
-      "Profilinizi web siteniz gibi kurup reklam kampanyasıyla öğrenci çekme",
-    ],
-    nextStep: "Kayıttan sonra öğretmen paneliniz açılır. Profilinizi tamamlayıp abonelikle tam görünürlük, sınırsız teklif ve kampanya alanını açabilirsiniz.",
-  },
-} as const;
-
-type RegisterRole = keyof typeof roleDiscovery;
 
 function KayitForm() {
   const router = useRouter();
@@ -201,7 +153,7 @@ function KayitForm() {
   }
 
   const onboarding = roleOnboarding[role];
-  const selectedRoleDiscovery = roleDiscovery[role];
+  const selectedRoleDiscovery = roleCardByRegisterRole(role);
   const activeOnboardingStep = onboarding.steps[Math.min(onboardingStep, onboarding.steps.length - 1)];
 
   function selectRegisterRole(nextRole: RegisterRole) {
@@ -225,30 +177,35 @@ function KayitForm() {
               {selectedRoleDiscovery.eyebrow}
             </div>
             <h3 className="mt-2 text-lg font-semibold text-brand-950">
-              {selectedRoleDiscovery.label} hesabında ne bulacaksınız?
+              {selectedRoleDiscovery.role} hesabında ne bulacaksınız?
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-brand-950/80">{selectedRoleDiscovery.summary}</p>
-            <ul className="mt-4 space-y-2">
-              {selectedRoleDiscovery.finds.map((item) => (
+            <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-brand-900/60">
+              Tüm özellikler ({selectedRoleDiscovery.features.length})
+            </div>
+            <ul className="mt-2 max-h-72 space-y-2 overflow-y-auto pr-1">
+              {selectedRoleDiscovery.features.map((item) => (
                 <li key={item} className="flex gap-2 text-sm leading-relaxed text-brand-950/85">
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-700" />
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
-            <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3">
-              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/65">
-                Abonelikle güçlenen taraf
+            {selectedRoleDiscovery.subscriptionWins.length > 0 ? (
+              <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3">
+                <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/65">
+                  Abonelikle güçlenen taraf
+                </div>
+                <ul className="mt-2 space-y-1.5">
+                  {selectedRoleDiscovery.subscriptionWins.map((item) => (
+                    <li key={item} className="flex gap-2 text-xs leading-relaxed text-brand-950">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="mt-2 space-y-1.5">
-                {selectedRoleDiscovery.subscriptionWins.map((item) => (
-                  <li key={item} className="flex gap-2 text-xs leading-relaxed text-brand-950">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            ) : null}
             <p className="mt-4 rounded-xl bg-brand-50 px-3 py-2 text-xs font-semibold leading-relaxed text-brand-950">
               {selectedRoleDiscovery.nextStep}
             </p>
@@ -342,17 +299,17 @@ function KayitForm() {
               Rolünüzü seçin; öğrenci, veli ve öğretmen için sunulan alanları kayıt olmadan önce görün.
             </p>
             <div className="mt-3 grid gap-2">
-              {Object.entries(roleDiscovery).map(([roleKey, info]) => {
-                const typedRole = roleKey as RegisterRole;
+              {REGISTER_ROLE_CARDS.map((info) => {
+                const typedRole = info.registerRole;
                 const selected = typedRole === role;
                 return (
                   <button
-                    key={roleKey}
+                    key={typedRole}
                     type="button"
                     onClick={() => {
                       selectRegisterRole(typedRole);
                     }}
-                    aria-label={`${info.label} hesabını incele`}
+                    aria-label={`${info.role} hesabını incele`}
                     className={`rounded-xl border px-3 py-3 text-left transition ${
                       selected
                         ? "border-brand-300 bg-white shadow-sm ring-2 ring-brand-100"
@@ -362,7 +319,7 @@ function KayitForm() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <div className="text-sm font-semibold text-paper-950">{info.label}</div>
+                        <div className="text-sm font-semibold text-paper-950">{info.role}</div>
                         <div className="mt-0.5 text-xs font-medium text-brand-800">{info.eyebrow}</div>
                       </div>
                       <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${selected ? "bg-brand-800 text-white" : "bg-paper-100 text-paper-800/65"}`}>
@@ -370,22 +327,31 @@ function KayitForm() {
                       </span>
                     </div>
                     <p className="mt-2 text-xs leading-relaxed text-paper-800/70">{info.summary}</p>
-                    <ul className="mt-2 space-y-1">
-                      {info.finds.map((item) => (
+                    <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-paper-800/55">
+                      Tüm özellikler ({info.features.length})
+                    </div>
+                    <ul className="mt-1 max-h-56 space-y-1 overflow-y-auto pr-1 sm:max-h-none sm:overflow-visible">
+                      {info.features.map((item) => (
                         <li key={item} className="flex gap-2 text-xs leading-relaxed text-paper-800/70">
                           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700/75" />
                           <span>{item}</span>
                         </li>
                       ))}
                     </ul>
-                    <div className="mt-2 rounded-lg border border-brand-100 bg-brand-50 px-2 py-1.5">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-900/60">
-                        Abonelikle açılanlar
+                    {info.subscriptionWins.length > 0 ? (
+                      <div className="mt-2 rounded-lg border border-brand-100 bg-brand-50 px-2 py-1.5">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-900/60">
+                          Abonelikle açılanlar
+                        </div>
+                        <ul className="mt-1 space-y-1">
+                          {info.subscriptionWins.map((win) => (
+                            <li key={win} className="text-xs leading-relaxed text-brand-950/80">
+                              {win}
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <p className="mt-1 text-xs leading-relaxed text-brand-950/80">
-                        {info.subscriptionWins[0]} · {info.subscriptionWins[1]}
-                      </p>
-                    </div>
+                    ) : null}
                     <p className="mt-2 rounded-lg bg-paper-50 px-2 py-1.5 text-xs font-medium leading-relaxed text-paper-800/70">
                       {info.nextStep}
                     </p>

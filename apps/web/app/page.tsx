@@ -7,6 +7,7 @@ import { HomeHeroPersonalized } from "./components/HomeHeroPersonalized";
 import { HeroArt } from "./components/HeroArt";
 import { StudentAudienceCard, TeacherAudienceCard } from "./components/marketing/AudienceCards";
 import { RoleOrderedAudience } from "./components/RoleOrderedAudience";
+import { ROLE_FEATURE_CARDS } from "./lib/roleFeatures";
 import { publicSiteUrl } from "./lib/siteUrl";
 
 /** Ana sayfa hero — Unsplash (ücretsiz kullanım; altta atıf) */
@@ -237,42 +238,6 @@ const howSteps = [
     step: "4",
     title: "Sonucu görün",
     body: "Ders, soru çözüm, çalışma planı ve veli bildirimleri tek geçmişte toplanır.",
-  },
-] as const;
-
-const plainRoleGuide = [
-  {
-    role: "Öğrenci",
-    title: "Ders almak veya soru sormak istiyorum",
-    points: [
-      "Ücretsiz günlük 1 ilan ve 5 soru ile başla",
-      "Yıllık abonelikle 5 ilan ve 10 soru hakkına çık",
-      "Demo, ödeme, ders ve çalışma takibini tek panelde gör",
-    ],
-    href: "/kayit?role=student",
-    cta: "Öğrenci olarak başla",
-  },
-  {
-    role: "Öğretmen",
-    title: "Öğrenci bulmak ve kazancımı görmek istiyorum",
-    points: [
-      "Abonelikle sınırsız teklif ver",
-      "Profilini web siten gibi tam aç ve WhatsApp/telefon tercihini göster",
-      "Kampanya, kurs, grup ders ve kazanç kayıtlarını yönet",
-    ],
-    href: "/kayit?role=teacher",
-    cta: "Öğretmen olarak başla",
-  },
-  {
-    role: "Veli",
-    title: "Çocuğumun sürecini takip etmek istiyorum",
-    points: [
-      "Öğrenci hesabını eşleştir",
-      "Ders, soru, çalışma ve abonelik hak kullanımını gör",
-      "Ödeme ve destek kayıtlarını izle",
-    ],
-    href: "/kayit?role=guardian",
-    cta: "Veli olarak başla",
   },
 ] as const;
 
@@ -517,24 +482,42 @@ export default function Home() {
               </Link>
             </div>
 
-            <div className="mt-6 grid gap-4 lg:grid-cols-3">
-              {plainRoleGuide.map((item) => (
+            <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+              {ROLE_FEATURE_CARDS.map((item) => (
                 <Link
                   key={item.role}
                   href={item.href}
-                  className="group rounded-2xl border border-edu-blue-100 bg-white/90 p-5 transition hover:-translate-y-0.5 hover:border-edu-indigo-200 hover:bg-white hover:shadow-[0_18px_50px_rgba(79,70,229,0.13)]"
+                  className="group flex flex-col rounded-2xl border border-edu-blue-100 bg-white/90 p-5 transition hover:-translate-y-0.5 hover:border-edu-indigo-200 hover:bg-white hover:shadow-[0_18px_50px_rgba(79,70,229,0.13)]"
                 >
                   <div className="text-xs font-semibold uppercase tracking-wide text-edu-indigo-700/70">{item.role}</div>
                   <h3 className="mt-2 text-base font-semibold text-paper-950">{item.title}</h3>
-                  <ul className="mt-4 space-y-2">
-                    {item.points.map((point) => (
-                      <li key={point} className="flex gap-2 text-sm leading-relaxed text-paper-800/75">
-                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-edu-success-500" />
+                  <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.eyebrow}</p>
+                  <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-paper-800/55">
+                    Tüm özellikler ({item.features.length})
+                  </div>
+                  <ul className="mt-2 max-h-64 flex-1 space-y-1.5 overflow-y-auto pr-1">
+                    {item.features.map((point) => (
+                      <li key={point} className="flex gap-2 text-xs leading-relaxed text-paper-800/75">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-edu-success-500" />
                         <span>{point}</span>
                       </li>
                     ))}
                   </ul>
-                  <span className="mt-5 inline-flex text-sm font-semibold text-edu-indigo-700 transition group-hover:translate-x-1">
+                  {item.subscriptionWins.length > 0 ? (
+                    <div className="mt-3 rounded-lg border border-edu-blue-100 bg-edu-blue-50/60 px-2 py-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-edu-indigo-700/70">
+                        Abonelik / ek kazanımlar
+                      </div>
+                      <ul className="mt-1 space-y-1">
+                        {item.subscriptionWins.map((win) => (
+                          <li key={win} className="text-[11px] leading-relaxed text-paper-800/70">
+                            {win}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  <span className="mt-4 inline-flex text-sm font-semibold text-edu-indigo-700 transition group-hover:translate-x-1">
                     {item.cta} →
                   </span>
                 </Link>
