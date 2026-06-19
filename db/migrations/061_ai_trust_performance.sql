@@ -137,32 +137,11 @@ BEGIN
   END IF;
 END $$;
 
--- Randevu çakışması: öğretmen + zaman aralığı (güvenli havuz / takvim)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'direct_booking_teacher_slot_excl'
-  ) AND to_regclass('public.direct_lesson_bookings') IS NOT NULL THEN
-    BEGIN
-      ALTER TABLE direct_lesson_bookings
-        ADD CONSTRAINT direct_booking_teacher_slot_excl
-        EXCLUDE USING gist (
-          teacher_id WITH =,
-          tstzrange(
-            scheduled_start,
-            coalesce(scheduled_end, scheduled_start + interval '1 hour'),
-            '[)'
-          ) WITH &&
-        )
-        WHERE (
-          scheduled_start IS NOT NULL
-          AND status IN ('pending_funding', 'funded')
-        );
-    EXCEPTION
-      WHEN undefined_object OR invalid_parameter_value OR feature_not_supported THEN
-        RAISE NOTICE 'direct_booking_teacher_slot_excl skipped: %', SQLERRM;
-    END;
-  END IF;
-END $$;
+-- Randevu çakışması: DB seviyesinde tstzrange+coalesce EXCLUDE, Render PG'de
+-- "functions in index expression must be marked IMMUTABLE" verdiği için uygulama
+-- katmanındaki pg_advisory_xact_lock (studentPlatform direct-booking fund) kullanılır.
+CREATE INDEX IF NOT EXISTS idx_direct_bookings_teacher_slot_window
+  ON direct_lesson_bookings (teacher_id, scheduled_start, scheduled_end)
+  WHERE scheduled_start IS NOT NULL AND status IN ('pending_funding', 'funded');
 
 COMMIT;
