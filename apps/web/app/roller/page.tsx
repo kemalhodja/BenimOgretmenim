@@ -30,7 +30,7 @@ export default function RollerPage() {
           sayfalarıyla aynı kaynaktan beslenir.
         </p>
         <div className="mt-8">
-          <RoleFeatureOverview includeAdmin maxListHeightClass="max-h-96" />
+          <RoleFeatureOverview includeAdmin showSubscription maxListHeightClass="max-h-96" />
         </div>
         <div className="mt-10 flex flex-wrap gap-3">
           <Link

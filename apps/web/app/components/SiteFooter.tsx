@@ -58,6 +58,11 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
+                <Link href="/roller" className="hover:underline">
+                  Rol özellikleri
+                </Link>
+              </li>
+              <li>
                 <Link href="/guven" className="hover:underline">
                   Güven merkezi
                 </Link>

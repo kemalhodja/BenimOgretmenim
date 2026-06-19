@@ -12,6 +12,7 @@ import {
   type RegisterRole,
   roleCardByRegisterRole,
 } from "../lib/roleFeatures";
+import { RoleFeatureList } from "../components/marketing/RoleFeatureOverview";
 
 type RegResponse = {
   token: string;
@@ -180,32 +181,14 @@ function KayitForm() {
               {selectedRoleDiscovery.role} hesabında ne bulacaksınız?
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-brand-950/80">{selectedRoleDiscovery.summary}</p>
-            <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-brand-900/60">
-              Tüm özellikler ({selectedRoleDiscovery.features.length})
-            </div>
-            <ul className="mt-2 max-h-72 space-y-2 overflow-y-auto pr-1">
-              {selectedRoleDiscovery.features.map((item) => (
-                <li key={item} className="flex gap-2 text-sm leading-relaxed text-brand-950/85">
-                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-700" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-            {selectedRoleDiscovery.subscriptionWins.length > 0 ? (
-              <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/65">
-                  Abonelikle güçlenen taraf
-                </div>
-                <ul className="mt-2 space-y-1.5">
-                  {selectedRoleDiscovery.subscriptionWins.map((item) => (
-                    <li key={item} className="flex gap-2 text-xs leading-relaxed text-brand-950">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
+            <RoleFeatureList
+              features={selectedRoleDiscovery.features}
+              subscriptionWins={selectedRoleDiscovery.subscriptionWins}
+              subscriptionLabel="Abonelikle güçlenen taraf"
+              maxListHeightClass="max-h-72"
+              size="sm"
+              variant="brand"
+            />
             <p className="mt-4 rounded-xl bg-brand-50 px-3 py-2 text-xs font-semibold leading-relaxed text-brand-950">
               {selectedRoleDiscovery.nextStep}
             </p>
@@ -327,31 +310,13 @@ function KayitForm() {
                       </span>
                     </div>
                     <p className="mt-2 text-xs leading-relaxed text-paper-800/70">{info.summary}</p>
-                    <div className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-paper-800/55">
-                      Tüm özellikler ({info.features.length})
-                    </div>
-                    <ul className="mt-1 max-h-56 space-y-1 overflow-y-auto pr-1 sm:max-h-none sm:overflow-visible">
-                      {info.features.map((item) => (
-                        <li key={item} className="flex gap-2 text-xs leading-relaxed text-paper-800/70">
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-700/75" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    {info.subscriptionWins.length > 0 ? (
-                      <div className="mt-2 rounded-lg border border-brand-100 bg-brand-50 px-2 py-1.5">
-                        <div className="text-[11px] font-semibold uppercase tracking-wide text-brand-900/60">
-                          Abonelikle açılanlar
-                        </div>
-                        <ul className="mt-1 space-y-1">
-                          {info.subscriptionWins.map((win) => (
-                            <li key={win} className="text-xs leading-relaxed text-brand-950/80">
-                              {win}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
+                    <RoleFeatureList
+                      features={info.features}
+                      subscriptionWins={info.subscriptionWins}
+                      subscriptionLabel="Abonelikle açılanlar"
+                      maxListHeightClass="max-h-56 sm:max-h-none"
+                      variant="default"
+                    />
                     <p className="mt-2 rounded-lg bg-paper-50 px-2 py-1.5 text-xs font-medium leading-relaxed text-paper-800/70">
                       {info.nextStep}
                     </p>

@@ -13,6 +13,9 @@ export type RoleFeatureCard = {
   cta: string;
 };
 
+export const SUBSCRIPTION_WINS_LABEL = "Abonelik / ek kazanımlar" as const;
+export const FEATURE_COUNT_LABEL = "Tüm özellikler" as const;
+
 export const ROLE_FEATURE_CARDS: readonly RoleFeatureCard[] = [
   {
     role: "Öğrenci",
@@ -26,13 +29,13 @@ export const ROLE_FEATURE_CARDS: readonly RoleFeatureCard[] = [
       "Öğretmen arama ve karşılaştırma (branş, şehir, ücret, doğrulama, yorum)",
       "Ders talebinde öğretmen kısa listesi (favori öğretmenlere öncelikli ilan)",
       "AI destekli öğretmen eşleşme önerisi (çalışma sayfası)",
-      "Ders talebi oluşturma, demo ders, gelen teklifleri karşılaştırma ve kabul",
+      "Ders talebi, demo ders, gelen teklifleri karşılaştırma ve kabul",
       "Ders paketleri: oturum planlama, canlı sınıfa giriş, ders geçmişi",
-      "Doğrudan ders: öğretmen profilinden slot seçerek rezervasyon ve cüzdan ile ödeme",
-      "Anlık ders: hazır öğretmenden 10–15 dk hızlı soru çözümü",
+      "Doğrudan ders: profilden slot seçerek rezervasyon ve cüzdan ile ödeme",
+      "Anlık ders: hazır öğretmenden 10–15 dk kısa oturum (cüzdan ile)",
       "Grup ders talebi oluşturma ve takip",
-      "Soru / ödev gönderme (fotoğraf, konu, aciliyet), gönderi durumu ve memnuniyet",
-      "Çalışma planı, kazanım testleri (ünite bazlı 20 soru), deneme sınavı kayıtları",
+      "Soru / ödev gönderme (fotoğraf, konu, aciliyet), durum ve memnuniyet",
+      "Çalışma planı, kazanım testleri (ünite bazlı), deneme sınavı kayıtları",
       "Online kurslara kayıt, kohort takibi, canlı oturum bağlantıları",
       "Kampanya başvuruları ve durum takibi",
       "Mesajlaşma: öğretmen, ders talebi ve rezervasyon konuşmaları",
@@ -42,7 +45,7 @@ export const ROLE_FEATURE_CARDS: readonly RoleFeatureCard[] = [
       "Platform aboneliği: günlük ders ilanı ve soru kotası yönetimi",
       "Veli davet kodu oluşturma (veli hesabını bağlama)",
       "Bildirimler ve hesap ayarları (KVKK talebi dahil)",
-      "Canlı destek ve itiraz / iade süreçlerine erişim",
+      "Canlı destek, iade ve itiraz süreçlerine erişim",
     ],
     subscriptionWins: [
       "Ücretsiz: günlük 1 ders ilanı ve 5 soru",
@@ -75,10 +78,10 @@ export const ROLE_FEATURE_CARDS: readonly RoleFeatureCard[] = [
       "Kurs oluşturma, kohort açma, oturum planlama",
       "Kampanya oluşturma, başvuruları görme, moderasyon durumu",
       "Anlık ders: çevrimiçi hazır olma ve kısa soru çözümü oturumları",
-      "Zigo içerik paylaşımı (ipucu, formül, video linki)",
+      "Zigo: ipucu, formül ve video linki paylaşımı (vitrin akışı)",
       "Öğrenci mesajları (birleşik mesajlaşma)",
       "Cüzdan: kazanç, para çekme talebi, SLA bilgisi",
-      "Öğretmen aboneliği satın alma (30 / 60 ay erken erişim paketleri)",
+      "Öğretmen aboneliği (30 / 60 ay erken erişim paketleri)",
       "Ders sonrası değerlendirme formu (öğrenci ilerlemesi)",
       "Canlı destek",
     ],
@@ -165,4 +168,12 @@ export function roleCardByRegisterRole(role: RegisterRole): RoleFeatureCard & { 
   const card = REGISTER_ROLE_CARDS.find((c) => c.registerRole === role);
   if (!card) throw new Error(`unknown register role: ${role}`);
   return card;
+}
+
+export function subscriptionWinsForRole(role: RegisterRole): readonly string[] {
+  return roleCardByRegisterRole(role).subscriptionWins;
+}
+
+export function featureCountForRole(role: RegisterRole): number {
+  return roleCardByRegisterRole(role).features.length;
 }

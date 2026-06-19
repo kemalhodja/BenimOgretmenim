@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { RoleFeatureOverview, subscriptionWinsForRole } from "../components/marketing/RoleFeatureOverview";
+import { RoleFeatureOverview } from "../components/marketing/RoleFeatureOverview";
+import { REGISTER_ROLE_CARDS, subscriptionWinsForRole } from "../lib/roleFeatures";
 import { publicSiteUrl } from "../lib/siteUrl";
 import { RoleBasedPricing } from "./RoleBasedPricing";
 
@@ -71,20 +72,15 @@ const conversionPromises = [
   "Ders sonrası çalışma, ödev ve veli takibi görünür kalır.",
 ] as const;
 
-const subscriptionDecisionCards = [
-  {
-    title: "Öğrenci neden abone olur?",
-    body: "Daha çok ilan ve soru hakkı sayesinde tek öğretmene mahkum kalmaz; daha fazla seçenek, daha hızlı çözüm ve daha düzenli takip kazanır.",
-  },
-  {
-    title: "Öğretmen neden abone olur?",
-    body: "Profilini kapalı bir karttan çıkarıp paylaşılabilir satış sayfasına çevirir; sınırsız teklif, tam görünürlük ve reklam hakkı kazanır.",
-  },
-  {
-    title: "Veli için değer nedir?",
-    body: "Ders, ödeme, ödev ve ilerleme bilgisi dağılmaz; veli öğrencinin abonelikten aldığı faydayı panelde takip eder.",
-  },
-] as const;
+const subscriptionDecisionCards = REGISTER_ROLE_CARDS.map((card) => ({
+  title:
+    card.registerRole === "student"
+      ? "Öğrenci neden abone olur?"
+      : card.registerRole === "teacher"
+        ? "Öğretmen neden abone olur?"
+        : "Veli için değer nedir?",
+  body: card.summary,
+}));
 
 const paymentTransparency = [
   {
@@ -282,7 +278,7 @@ export default function FiyatlarPage() {
             </div>
           </div>
           <div className="mt-5">
-            <RoleFeatureOverview showSubscription={false} />
+            <RoleFeatureOverview includeAdmin showSubscription maxListHeightClass="max-h-96" />
           </div>
         </section>
 

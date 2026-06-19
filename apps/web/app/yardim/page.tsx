@@ -35,6 +35,10 @@ const faq = [
     a: "Öğretmen profilinden ders başlatabilirsiniz. Tutar önce cüzdanda güvenceye alınır; ders tamamlanınca öğretmene aktarılır. Tüm hareketler öğrenci panelinde görünür.",
   },
   {
+    q: "Anlık ders",
+    a: "Hazır öğretmenler kısa oturumlar için çevrimiçi olabilir. Öğrenci panelinden anlık ders başlatılır; ücret cüzdandan güvenceye alınır.",
+  },
+  {
     q: "Kurs ödemesi ve iade hakkı",
     a: "Kursa kayıtta ücret cüzdanda güvenceye alınır. İlk ders sonrası iade talebi oluşturabilirsiniz. İkinci derse girerseniz iade hakkı kapanır.",
   },
@@ -43,12 +47,20 @@ const faq = [
     a: "Kurs listesinden programı ve ücreti inceleyin. Kayıt sonrası canlı ders bağlantıları öğrenci kurs sayfasında görünür.",
   },
   {
-    q: "Öğretmen aboneliği",
-    a: "Ücretsiz planda teklif hakkı sınırlıdır. Abonelikle daha fazla görünürlük ve sınırsız teklif hakkı açılır. Kart ödemesi güvenli ödeme altyapısıyla, havale/EFT ise yönetici onayıyla ilerler.",
+    q: "Öğrenci aboneliği ve kota",
+    a: "Ücretsiz planda günlük 1 ders ilanı ve 5 soru hakkı vardır. Yıllık abonelikle günlük 5 ilan ve 10 soruya çıkarsınız; kalan hak panelde görünür.",
   },
   {
-    q: "Veli paneli",
-    a: "Veli hesabı bağlandığı öğrencinin ders notlarını, ödev durumunu, çalışma planını ve önemli bildirimleri takip eder.",
+    q: "Öğretmen aboneliği",
+    a: "Ücretsiz planda teklif hakkı sınırlıdır. Abonelikle tam profil görünürlüğü, sınırsız teklif ve kampanya avantajları açılır.",
+  },
+  {
+    q: "Veli paneli ve kredi havuzu",
+    a: "Veli hesabı öğrencinin ders, ödev, çalışma planı ve bildirimlerini izler. Aylık ders kredisi tanımlayarak harcamayı sınırlayabilirsiniz.",
+  },
+  {
+    q: "Rol özellikleri nerede listelenir?",
+    a: "Öğrenci, öğretmen, veli ve yönetici için güncel özellik listesi /roller sayfasında tek referans olarak tutulur; fiyat ve kayıt sayfaları aynı kaynaktan beslenir.",
   },
 ];
 
@@ -70,15 +82,17 @@ function yardimFaqJsonLd(): Record<string, unknown> {
 export default function YardimPage() {
   return (
     <div className="min-h-screen bg-paper-50">
-      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+        <div className="max-w-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Yardım</h1>
+          <p className="mt-2 text-sm text-paper-800/75">
+            En çok merak edilen adımları kısa yanıtlarla topladık. Rol bazlı tüm özellik listesi aşağıdadır.
+          </p>
+        </div>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(yardimFaqJsonLd()) }}
         />
-        <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Yardım</h1>
-        <p className="mt-2 text-sm text-paper-800/75">
-          En çok merak edilen adımları kısa yanıtlarla topladık. Rol bazlı tüm özellik listesi aşağıdadır.
-        </p>
         <section className="mt-8">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-semibold text-paper-900">Rol bazlı platform özellikleri</h2>
@@ -87,10 +101,10 @@ export default function YardimPage() {
             </Link>
           </div>
           <div className="mt-4">
-            <RoleFeatureOverview showSubscription={false} maxListHeightClass="max-h-64" />
+            <RoleFeatureOverview showSubscription maxListHeightClass="max-h-64" />
           </div>
         </section>
-        <ul className="mt-10 space-y-8">
+        <ul className="mx-auto mt-10 max-w-3xl space-y-8">
           {faq.map((item) => (
             <li key={item.q} className="border-b border-paper-200 pb-8 last:border-0">
               <h2 className="text-base font-semibold text-paper-900">{item.q}</h2>
@@ -98,7 +112,7 @@ export default function YardimPage() {
             </li>
           ))}
         </ul>
-        <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="mx-auto mt-10 flex max-w-3xl flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
           <Link
             href="/ogretmenler"
             className="inline-flex w-fit rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
@@ -122,6 +136,10 @@ export default function YardimPage() {
               className="font-medium text-brand-800 underline-offset-4 hover:underline"
             >
               Doğrudan ders
+            </Link>
+            {" · "}
+            <Link href="/roller" className="font-medium text-brand-800 underline-offset-4 hover:underline">
+              Rol özellikleri
             </Link>
             {" · "}
             <Link href="/iletisim" className="font-medium text-brand-800 underline-offset-4 hover:underline">

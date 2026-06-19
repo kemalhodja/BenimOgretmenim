@@ -6,8 +6,8 @@ import { HomeLaunchAnnouncement } from "./components/HomeLaunchAnnouncement";
 import { HomeHeroPersonalized } from "./components/HomeHeroPersonalized";
 import { HeroArt } from "./components/HeroArt";
 import { StudentAudienceCard, TeacherAudienceCard } from "./components/marketing/AudienceCards";
+import { RoleFeatureOverview } from "./components/marketing/RoleFeatureOverview";
 import { RoleOrderedAudience } from "./components/RoleOrderedAudience";
-import { ROLE_FEATURE_CARDS } from "./lib/roleFeatures";
 import { publicSiteUrl } from "./lib/siteUrl";
 
 /** Ana sayfa hero — Unsplash (ücretsiz kullanım; altta atıf) */
@@ -474,54 +474,24 @@ export default function Home() {
                   ve bildirimler ilgili panelde açıkça görünür.
                 </p>
               </div>
-              <Link
-                href="/kayit"
-                className="w-fit rounded-xl bg-edu-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-edu-indigo-800"
-              >
-                Rolümü seçip kayıt ol
-              </Link>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Link
+                  href="/kayit"
+                  className="w-fit rounded-xl bg-edu-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-edu-indigo-800"
+                >
+                  Rolümü seçip kayıt ol
+                </Link>
+                <Link
+                  href="/roller"
+                  className="w-fit text-sm font-semibold text-edu-indigo-700 underline underline-offset-4"
+                >
+                  Tüm rol özellikleri
+                </Link>
+              </div>
             </div>
 
-            <div className="mt-6 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-              {ROLE_FEATURE_CARDS.map((item) => (
-                <Link
-                  key={item.role}
-                  href={item.href}
-                  className="group flex flex-col rounded-2xl border border-edu-blue-100 bg-white/90 p-5 transition hover:-translate-y-0.5 hover:border-edu-indigo-200 hover:bg-white hover:shadow-[0_18px_50px_rgba(79,70,229,0.13)]"
-                >
-                  <div className="text-xs font-semibold uppercase tracking-wide text-edu-indigo-700/70">{item.role}</div>
-                  <h3 className="mt-2 text-base font-semibold text-paper-950">{item.title}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.eyebrow}</p>
-                  <div className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-paper-800/55">
-                    Tüm özellikler ({item.features.length})
-                  </div>
-                  <ul className="mt-2 max-h-64 flex-1 space-y-1.5 overflow-y-auto pr-1">
-                    {item.features.map((point) => (
-                      <li key={point} className="flex gap-2 text-xs leading-relaxed text-paper-800/75">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-edu-success-500" />
-                        <span>{point}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {item.subscriptionWins.length > 0 ? (
-                    <div className="mt-3 rounded-lg border border-edu-blue-100 bg-edu-blue-50/60 px-2 py-2">
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-edu-indigo-700/70">
-                        Abonelik / ek kazanımlar
-                      </div>
-                      <ul className="mt-1 space-y-1">
-                        {item.subscriptionWins.map((win) => (
-                          <li key={win} className="text-[11px] leading-relaxed text-paper-800/70">
-                            {win}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  <span className="mt-4 inline-flex text-sm font-semibold text-edu-indigo-700 transition group-hover:translate-x-1">
-                    {item.cta} →
-                  </span>
-                </Link>
-              ))}
+            <div className="mt-6">
+              <RoleFeatureOverview includeAdmin variant="edu" cardAsLink maxListHeightClass="max-h-64" />
             </div>
 
             <div className="mt-6 rounded-2xl border border-edu-blue-100 bg-white/86 p-4">

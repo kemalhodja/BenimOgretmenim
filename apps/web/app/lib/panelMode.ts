@@ -67,6 +67,7 @@ export function documentTitleForPath(pathname: string): string {
     "/kampanya": "Kampanya",
     "/kampanyalar": "Öğretmen kampanyaları",
     "/fiyatlar": "Fiyatlar",
+    "/roller": "Rol özellikleri",
     "/iletisim": "İletişim",
     "/yardim": "Yardım",
     "/gizlilik": "Gizlilik",
