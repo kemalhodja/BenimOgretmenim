@@ -44,7 +44,7 @@ export function TeacherZigoPublish({ token, branchSlug }: Props) {
           branchSlug: branchSlug ?? null,
         }),
       });
-      setOk("Vitrin akışına eklendi. Öğrenciler keşif akışında görebilir.");
+      setOk("Vitrin akışına eklendi. Öğrenciler ana sayfa ve öğretmen listesinde görebilir.");
       setTitle("");
       setExternalUrl("");
     } catch (e) {

@@ -16,6 +16,9 @@ Kök dizinden: `npm run test:e2e --prefix apps/web` (veya `test:e2e:public` içi
 
 - `apps/web` için ortam: `WEB_ALLOW_HTTP=1`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SITE_URL` (Playwright `webServer` varsayılanları yerelde `127.0.0.1` kullanır).
 - Playwright `npm run start` ile üretim sunucusunu kaldırır; önce `next build` koşar.
+- **Windows:** `npx playwright install chromium` zip çıkarma veya `__dirlock` ile takılabilir. Yerelde `playwright.config.ts` yüklü **Google Chrome** kanalını kullanır (`PLAYWRIGHT_CHANNEL=chrome` ile zorlanabilir). CI (Ubuntu) etkilenmez.
+- Eski `next start` süreci port 3000’de kalırsa JS chunk’ları 500 verebilir. Taze sunucu için: `PLAYWRIGHT_FORCE_NEW_SERVER=1 npm run test:e2e:public` (Windows: `set PLAYWRIGHT_FORCE_NEW_SERVER=1&& npm run test:e2e:public`).
+- Tarayıcı kurulumu: `npm run test:e2e:install` (`playwright install chromium --no-shell`).
 
 ### @integration (oturum akışları)
 
@@ -36,6 +39,7 @@ Kök dizinden: `npm run test:e2e --prefix apps/web` (veya `test:e2e:public` içi
 | P-HOME | `/` | Hero H1 ve öğretmenler / panel linkleri |
 | P-LOGIN | `/login` | “Giriş yap” başlığı ve form kontrolleri |
 | P-VITRIN | `/courses` … `/kullanim-kosullari` | HTTP 200 + doğru H1 |
+| P-ZIGO | `/`, `/ogretmenler` | `zigo-teacher-feed` + “Öğretmen ipuçları” |
 | P-GUARD | `/student/panel`, `/teacher`, `/admin`, … | Oturum yok → `/login` |
 
 ### Oturumlu (@integration)

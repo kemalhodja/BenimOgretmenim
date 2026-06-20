@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint . --cache --cache-location .eslintcache",
     "check:role-features": "tsx scripts/check-role-features.ts",
+    "test:e2e:install": "playwright install chromium --no-shell",
     "test:e2e": "playwright test",
     "test:e2e:public": "playwright test --grep-invert @integration",
     "test:e2e:integration": "playwright test --grep @integration",

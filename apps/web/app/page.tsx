@@ -7,6 +7,7 @@ import { HomeHeroPersonalized } from "./components/HomeHeroPersonalized";
 import { HeroArt } from "./components/HeroArt";
 import { StudentAudienceCard, TeacherAudienceCard } from "./components/marketing/AudienceCards";
 import { RoleFeatureOverview } from "./components/marketing/RoleFeatureOverview";
+import { ZigoTeacherFeed } from "./components/marketing/ZigoTeacherFeed";
 import { RoleOrderedAudience } from "./components/RoleOrderedAudience";
 import { publicSiteUrl } from "./lib/siteUrl";
 
@@ -521,6 +522,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <ZigoTeacherFeed variant="home" />
 
       <section className="border-b border-edu-blue-100 bg-white py-10">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">

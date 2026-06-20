@@ -122,12 +122,12 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("[db:up] 127.0.0.1:5432 için bekleniyor (en fazla ~60 sn)…");
+  console.log("[db:up] 127.0.0.1:5434 için bekleniyor (en fazla ~60 sn)…");
   try {
-    await waitPort("127.0.0.1", 5432, 60_000);
+    await waitPort("127.0.0.1", 5434, 60_000);
   } catch (e) {
     console.error(
-      "[db:up] Port açılmadı. Kontrol: Docker Desktop çalışıyor mu? Başka bir program 5432 kullanıyor mu?",
+      "[db:up] Port açılmadı. Kontrol: Docker Desktop çalışıyor mu? 5434 başka bir program tarafından kullanılıyor mu?",
     );
     console.error(e);
     process.exit(1);

@@ -1,6 +1,6 @@
 /**
  * Yerel tam entegrasyon E2E: PostgreSQL + migrate + seed + API (3002) + web build + Playwright @integration
- * Önkoşul: Docker Desktop çalışıyor veya 127.0.0.1:5432 PostgreSQL ayakta.
+ * Önkoşul: Docker Desktop çalışıyor veya 127.0.0.1:5434 PostgreSQL ayakta.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";

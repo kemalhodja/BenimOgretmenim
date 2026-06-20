@@ -20,7 +20,7 @@ function main() {
 
   console.log(`
 Sonraki adımlar:
-1) Docker Desktop varsa: npm run db:up   (PostgreSQL 5432)
+1) Docker Desktop varsa: npm run db:up   (PostgreSQL 127.0.0.1:5434)
    Yoksa: yerel PostgreSQL veya bulut DATABASE_URL (apps/api/.env)
 2) npm run db:migrate
 3) npm run db:seed   (isteğe bağlı geliştirici verisi)

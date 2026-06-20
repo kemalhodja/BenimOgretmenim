@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ZigoTeacherFeed } from "../components/marketing/ZigoTeacherFeed";
 import { getServerApiBaseUrl } from "../lib/api";
 import { numberOrNull, readRecordArray, stringOrNull, type JsonRecord } from "../lib/publicSeo";
 import { publicSiteUrl } from "../lib/siteUrl";
@@ -150,6 +151,9 @@ export default async function OgretmenlerLayout({ children }: { children: ReactN
         </section>
       ) : null}
       {children}
+      <div className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+        <ZigoTeacherFeed variant="plain" maxItems={3} />
+      </div>
     </>
   );
 }

@@ -40,6 +40,42 @@ describe("product vision API surfaces", () => {
     expect(res.status).toBe(401);
   });
 
+  it("allows teacher to publish zigo content when syndication table exists", async () => {
+    if (!(await tableExists("teacher_zigo_content_links"))) return;
+
+    const teacherUser = await pool.query<{ id: string }>(
+      `insert into users (email, display_name, role) values ($1, 'Zigo T', 'teacher') returning id`,
+      [`zigo-t-${Date.now()}@example.test`],
+    );
+    const teacher = await pool.query<{ id: string }>(
+      `insert into teachers (user_id) values ($1) returning id`,
+      [teacherUser.rows[0].id],
+    );
+
+    const token = await signAccessToken({ userId: teacherUser.rows[0].id, role: "teacher" });
+    const res = await app.request("http://localhost/v1/zigo/teacher-content", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        title: "Test vitrin ipucu",
+        contentKind: "tip",
+        branchSlug: "matematik",
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { item?: { title: string } };
+    expect(body.item?.title).toBe("Test vitrin ipucu");
+
+    const feed = await app.request("http://localhost/v1/zigo/teacher-feed");
+    expect(feed.status).toBe(200);
+    const feedBody = (await feed.json()) as { items?: Array<{ title: string }> };
+    expect(feedBody.items?.some((row) => row.title === "Test vitrin ipucu")).toBe(true);
+  });
+
   it("requires auth for teacher-match, messages, and guardian credit pools", async () => {
     const match = await app.request("http://localhost/v1/learning/teacher-match?branchSlug=matematik");
     expect(match.status).toBe(401);

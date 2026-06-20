@@ -2,12 +2,13 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: benimogretmenim-db
+    # Yerel 5432 çoğu makinede dolu; eduai/supabase ile çakışmayı önlemek için 5434
     environment:
       POSTGRES_USER: benim
       POSTGRES_PASSWORD: benim_dev_change_me
       POSTGRES_DB: benimogretmenim
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - benim_pgdata:/var/lib/postgresql/data
     healthcheck:

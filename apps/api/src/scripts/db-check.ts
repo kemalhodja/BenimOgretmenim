@@ -1,7 +1,7 @@
 import net from "node:net";
 
 const host = process.env.PGHOST ?? "127.0.0.1";
-const port = Number(process.env.PGPORT ?? "5432");
+const port = Number(process.env.PGPORT ?? "5434");
 
 function checkOnce(): Promise<boolean> {
   return new Promise((resolve) => {

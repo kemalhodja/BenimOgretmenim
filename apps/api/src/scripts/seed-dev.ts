@@ -127,6 +127,23 @@ async function main() {
         console.log("lessonRequestId (demo):", req.rows[0].id);
       }
 
+      try {
+        const zigoCount = await client.query(
+          `select count(*)::int as n from teacher_zigo_content_links`,
+        );
+        if ((zigoCount.rows[0]?.n ?? 0) === 0) {
+          await client.query(
+            `insert into teacher_zigo_content_links (teacher_id, title, content_kind, branch_slug, target_exam)
+             values
+               ($1, 'TYT türev: zincir kuralını hatırla', 'tip', 'matematik', 'TYT'),
+               ($1, 'LGS kesirler: paydaları eşitle', 'tip', 'matematik', 'LGS')`,
+            [teacherId],
+          );
+        }
+      } catch {
+        /* migration 061 henüz uygulanmamış olabilir */
+      }
+
       await client.query("commit");
 
       console.log("Seed tamam.");

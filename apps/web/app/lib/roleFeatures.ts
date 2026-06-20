@@ -81,7 +81,7 @@ export const ROLE_FEATURE_CARDS: readonly RoleFeatureCard[] = [
       "Kurs oluşturma, kohort açma, oturum planlama",
       "Kampanya oluşturma, başvuruları görme, moderasyon durumu",
       "Anlık ders: çevrimiçi hazır olma ve kısa soru çözümü oturumları",
-      "Zigo: ipucu, formül ve video linki paylaşımı (vitrin akışı)",
+      "Zigo: ipucu, formül ve video linki paylaşımı (vitrin akışı — ana sayfa + öğretmen paneli)",
       "Öğrenci mesajları (birleşik mesajlaşma)",
       "Cüzdan: kazanç, para çekme talebi, SLA bilgisi",
       "Öğretmen aboneliği (30 / 60 ay erken erişim paketleri)",

@@ -14,7 +14,7 @@ const repoRoot = process.cwd();
 const localApi = "http://127.0.0.1:3002";
 const qaEnv = {
   ...process.env,
-  DATABASE_URL: process.env.DATABASE_URL ?? "postgres://benim:benim_dev_change_me@127.0.0.1:5432/benimogretmenim",
+  DATABASE_URL: process.env.DATABASE_URL ?? "postgres://benim:benim_dev_change_me@127.0.0.1:5434/benimogretmenim",
   JWT_SECRET: process.env.JWT_SECRET ?? "ci-jwt-secret-must-be-at-least-32-characters-long",
   CORS_ORIGINS: process.env.CORS_ORIGINS ?? "http://127.0.0.1:3000,http://localhost:3000",
   WEB_ALLOW_HTTP: "1",

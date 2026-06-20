@@ -17,6 +17,11 @@ const webServerPort = (() => {
   }
 })();
 
+/** GitHub Actions: playwright install chromium. Yerel: yüklü Google Chrome. */
+const onGitHubActions = process.env.GITHUB_ACTIONS === "true";
+const localBrowserChannel =
+  process.env.PLAYWRIGHT_CHANNEL ?? (onGitHubActions ? undefined : "chrome");
+
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
@@ -29,13 +34,26 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile-chrome", use: { ...devices["Pixel 7"] } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        ...(localBrowserChannel ? { channel: localBrowserChannel } : {}),
+      },
+    },
+    {
+      name: "mobile-chrome",
+      use: {
+        ...devices["Pixel 7"],
+        ...(localBrowserChannel ? { channel: localBrowserChannel } : {}),
+      },
+    },
   ],
   webServer: {
     command: "npm run start",
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer:
+      onGitHubActions ? false : process.env.PLAYWRIGHT_FORCE_NEW_SERVER !== "1",
     timeout: 180_000,
     stdout: "pipe",
     stderr: "pipe",

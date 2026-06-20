@@ -7,7 +7,7 @@ export function formatDbConnectError(err: unknown): string {
       "Seçenekler:",
       "- apps/api içinde: npm run db:up  (Docker Compose ile Postgres başlatır)",
       "- veya proje kökünde: docker compose up -d",
-      "- Windows: PostgreSQL yükleyip 5432'de servis başlatın",
+      "- Docker: npm run db:up (127.0.0.1:5434) veya Windows PostgreSQL / Neon DATABASE_URL",
       "- Bulut: Neon / Supabase ile DATABASE_URL tanımlayın (apps/api/.env)",
       "",
       `Teknik: ${e.message ?? ""}`,

@@ -8,7 +8,7 @@ dotenv.config({ path: path.join(cwd, ".env") });
 dotenv.config({ path: path.join(cwd, "..", ".env") });
 
 const devDefaultUrl =
-  "postgres://benim:benim_dev_change_me@127.0.0.1:5432/benimogretmenim";
+  "postgres://benim:benim_dev_change_me@127.0.0.1:5434/benimogretmenim";
 
 function resolveDatabaseUrl(): string {
   const fromEnv = process.env.DATABASE_URL?.trim();
