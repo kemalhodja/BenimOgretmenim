@@ -121,10 +121,13 @@ jobs:
           done
           if [ -n "${SMOKE_RUN_SECRET:-}" ]; then
             payload="$(node -e "console.log(JSON.stringify({status:'failed', targetUrl: process.env.SMOKE_API_URL, workflow: 'deploy-render', runId: process.env.GITHUB_RUN_ID_VALUE, commitSha: process.env.GITHUB_SHA_VALUE, details: {source:'deploy-render', suite:'health-wait', error:'api_health_not_ready'}}))")"
-            curl -fsS -X POST "${SMOKE_API_URL}/v1/admin/smoke-runs" \
+            report_http="$(curl -sS -o /tmp/smoke-run-health-wait.json -w "%{http_code}" -X POST "${SMOKE_API_URL}/v1/admin/smoke-runs" \
               -H "content-type: application/json" \
               -H "x-smoke-run-secret: ${SMOKE_RUN_SECRET}" \
-              --data "${payload}" || true
+              --data "${payload}")" || true
+            if [ "${report_http:-000}" != "201" ]; then
+              echo "::warning::Health wait failure report not recorded (HTTP ${report_http:-000})."
+            fi
           fi
           echo "::error::API health did not become ready before smoke."
           exit 1
@@ -152,12 +155,22 @@ jobs:
             export SMOKE_STATUS="${status}"
             export SMOKE_DETAILS="${details}"
             payload="$(node -e "console.log(JSON.stringify({status: process.env.SMOKE_STATUS, targetUrl: process.env.SMOKE_API_URL, workflow: 'deploy-render', runId: process.env.GITHUB_RUN_ID_VALUE, commitSha: process.env.GITHUB_SHA_VALUE, details: JSON.parse(process.env.SMOKE_DETAILS || '{}')}))")"
-            curl -fsS -X POST "${SMOKE_API_URL}/v1/admin/smoke-runs" \
+            report_http="$(curl -sS -o /tmp/smoke-run-report.json -w "%{http_code}" -X POST "${SMOKE_API_URL}/v1/admin/smoke-runs" \
               -H "content-type: application/json" \
               -H "x-smoke-run-secret: ${SMOKE_RUN_SECRET}" \
-              --data "${payload}"
+              --data "${payload}")"
+            if [ "${report_http}" = "201" ]; then
+              echo "Smoke run recorded (HTTP 201)."
+            elif [ "${report_http}" = "503" ]; then
+              echo "::warning::SMOKE_RUN_SECRET Render API ortamında tanımlı değil; operational_smoke_runs yazılmadı. Dashboard → benimogretmenim-api → Environment → GitHub secret ile aynı değeri girin."
+            elif [ "${report_http}" = "401" ]; then
+              echo "::warning::SMOKE_RUN_SECRET GitHub ile Render eşleşmiyor (HTTP 401)."
+            else
+              echo "::warning::Smoke run report failed (HTTP ${report_http})."
+              cat /tmp/smoke-run-report.json 2>/dev/null || true
+            fi
           else
-            echo "::notice::SMOKE_RUN_SECRET tanımlı değil; smoke sonucu API health'e yazılmadı."
+            echo "::notice::SMOKE_RUN_SECRET tanımlı değil; smoke sonucu operational_smoke_runs tablosuna yazılmadı."
           fi
           if [ "${status}" = "failed" ]; then
             exit 1
