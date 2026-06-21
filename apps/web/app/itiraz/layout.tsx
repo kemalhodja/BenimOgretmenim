@@ -4,9 +4,9 @@ import { publicSiteUrl } from "../lib/siteUrl";
 const itirazUrl = `${publicSiteUrl()}/itiraz`;
 
 export const metadata: Metadata = {
-  title: "İtiraz ve destek",
+  title: "İtiraz ve anlaşmazlık",
   description:
-    "BenimÖğretmenim itiraz ve anlaşmazlık talebi: ödeme, ödev, ders paketi ve hesap işlemleri için destek kaydı açın.",
+    "Ödeme, ders, ödev veya hesap durumu hakkında itiraz süreci. Kayıt numarası ile takip; şeffaf destek ve SLA.",
   alternates: { canonical: itirazUrl },
 };
 

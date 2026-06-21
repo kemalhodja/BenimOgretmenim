@@ -22,6 +22,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     { path: "/kullanim-kosullari", title: "Kullanım koşulları" },
     { path: "/guven", title: /BenimÖğretmenim'de ödeme, öğretmen seçimi ve ders süreci kayıtlı ilerler\./ },
     { path: "/iade", title: "İade politikası" },
+    { path: "/itiraz", title: "İtiraz ve anlaşmazlık" },
   ];
 
   for (const { path, title } of cases) {
@@ -32,9 +33,12 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     });
   }
 
-  test("/itiraz — oturumsuz girişe yönlendirir", async ({ page }) => {
+  test("/itiraz — oturumsuz bilgi sayfası ve giriş CTA", async ({ page }) => {
     await page.goto("/itiraz", { waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/\/login/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/\/itiraz$/);
+    const cta = page.getByTestId("itiraz-login-cta");
+    await expect(cta).toBeVisible();
+    await expect(cta.getByRole("link", { name: "Giriş yap" })).toBeVisible();
   });
 
   test("/uygulama — rol bazlı hızlı erişimler görünür", async ({ page }) => {
@@ -50,7 +54,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByRole("link", { name: "Giriş yap" }).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("link", { name: "Panel", exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /kayıt ol/i }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Roller" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Roller" }).first()).toBeVisible();
     await expect(page.getByTestId("zigo-teacher-feed")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Öğretmen ipuçları" })).toBeVisible();
   });

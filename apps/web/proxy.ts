@@ -4,6 +4,35 @@ import { PRODUCTION_SITE_ORIGIN } from "./app/lib/siteUrl";
 const LEGACY_WEB_HOSTS = new Set(["benimogretmenim.onrender.com"]);
 const WWW_HOST = "www.benimogretmenim.com.tr";
 
+const SESSION_COOKIE = "bo_session";
+const ROLE_COOKIE = "bo_session_role";
+const VALID_ROLES = new Set(["teacher", "student", "guardian", "admin"]);
+
+const PROTECTED_PREFIXES = [
+  "/student",
+  "/teacher",
+  "/guardian",
+  "/admin",
+  "/panel",
+  "/classroom",
+  "/mesajlar",
+  "/bildirimler",
+  "/ayarlar",
+  "/hesap-askida",
+] as const;
+
+function hasSession(req: NextRequest): boolean {
+  if (req.cookies.get(SESSION_COOKIE)?.value) return true;
+  const role = req.cookies.get(ROLE_COOKIE)?.value;
+  return Boolean(role && VALID_ROLES.has(role));
+}
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 function canonicalSiteOrigin(): string | null {
   const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim() || PRODUCTION_SITE_ORIGIN;
   try {
@@ -33,6 +62,14 @@ export function proxy(req: NextRequest) {
       const target = new URL(req.nextUrl.pathname + req.nextUrl.search, canonical);
       return NextResponse.redirect(target, 308);
     }
+  }
+
+  const { pathname } = req.nextUrl;
+  if (isProtectedPath(pathname) && !hasSession(req)) {
+    const loginUrl = req.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.search = `returnUrl=${encodeURIComponent(pathname)}`;
+    return NextResponse.redirect(loginUrl);
   }
 
   const res = NextResponse.next();

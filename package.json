@@ -35,6 +35,7 @@
     "ci": "npm run ci:api && npm run ci:web",
     "qa:core": "npm run test --prefix apps/api && npm run build --prefix apps/api && npm run lint --prefix apps/web && npm run check:role-features --prefix apps/web && npm run build --prefix apps/web",
     "qa:full:local": "node scripts/qa-full-local.mjs",
+    "pre-deploy:check": "node scripts/pre-deploy-platform.mjs",
     "migrate": "npm run db:migrate",
     "seed": "npm run db:seed",
     "free-port": "npm run free-port --prefix apps/api --",

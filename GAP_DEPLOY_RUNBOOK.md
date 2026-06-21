@@ -16,6 +16,10 @@ Yeni dosyalar:
 |-----------|--------|
 | `058_user_account_lifecycle.sql` | `account_status`, askıya alma, KVKK silme talebi |
 | `059_faz2_ops_settings_storage_email.sql` | `platform_ops_settings`, `email_outbox`, veli e-posta tercihleri |
+| `060_product_vision_gaps.sql` | Ürün vizyonu boşlukları (kurs/grup/ders) |
+| `061_ai_trust_performance.sql` | Zigo vitrin, veli kredileri, anlık ders, haftalık rapor tabloları |
+
+Deploy `preDeployCommand` migration sonrası `db:seed:zigo` çalıştırır (tablo boşsa demo vitrin; doluysa atlar).
 
 Doğrulama (psql veya admin health):
 
@@ -35,6 +39,18 @@ SELECT key FROM platform_ops_settings;
 | `EMAIL_FROM` | `BenimÖğretmenim <noreply@benimogretmenim.com.tr>` |
 
 Otomatik çekim varsayılanı **kapalı** (`autoApproveEnabled: false`); admin `/admin/otomatik-cekim` üzerinden açılır.
+
+Render cron (`render.yaml`):
+
+| Cron | Sıklık | Komut |
+|------|--------|--------|
+| `benimogretmenim-group-lessons-settle` | 10 dk | `group-lessons:settle` |
+| `benimogretmenim-homework-release` | 5 dk | `homework:release-expired` |
+| `benimogretmenim-courses-settle-started` | 10 dk | `courses:settle-started` |
+| `benimogretmenim-notifications-reminders` | 15 dk | `notifications:reminders` |
+| `benimogretmenim-guardian-weekly-reports` | Pazartesi 05:00 UTC | `guardian-weekly-reports:run` |
+
+Blueprint Sync sonrası yeni cron servislerinin Render’da **Active** olduğunu doğrulayın.
 
 ## 3) Render env — Web
 

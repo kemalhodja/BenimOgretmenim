@@ -61,6 +61,14 @@ async function main() {
   console.log("[smoke:prod] GET /v1/teachers?limit=1", teachers.status);
   if (!teachers.ok) process.exitCode = 1;
 
+  const zigo = await getJson("/v1/zigo/teacher-feed?limit=1");
+  console.log("[smoke:prod] GET /v1/zigo/teacher-feed", zigo.status);
+  if (!zigo.ok) process.exitCode = 1;
+  if (!Array.isArray(zigo.json.items)) {
+    console.error("[smoke:prod] zigo teacher-feed items dizisi değil.");
+    process.exitCode = 1;
+  }
+
   if (process.exitCode) {
     console.error("[smoke:prod] FAIL");
   } else {

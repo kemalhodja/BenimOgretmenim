@@ -53,7 +53,7 @@ services:
     # devDependencies her zaman gelmeyebilir).
     buildCommand: npm ci --include=dev && npm run build
     # migrate + ilk kurulumda admin@... yoksa oluştur (seed_dev admininden ayrı)
-    preDeployCommand: npm run db:migrate && npm run db:seed:bootstrap-admin-if-missing
+    preDeployCommand: npm run db:migrate && npm run db:seed:bootstrap-admin-if-missing && npm run -s db:seed:zigo
     startCommand: npm run start
     healthCheckPath: /health
     envVars:
@@ -101,6 +101,14 @@ services:
         value: https://benimogretmenim.com.tr,https://www.benimogretmenim.com.tr,https://benimogretmenim.onrender.com
       - key: SMOKE_RUN_SECRET
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: HOMEWORK_STORAGE_DIR
+        sync: false
+      - key: HOMEWORK_STORAGE_PUBLIC_BASE
+        sync: false
       # Ödev memnuniyet ödülü öğretmen bu kullanıcının cüzdanından düşer (admin grant ile yükleyin).
       # Dashboard'dan ekleyin: PLATFORM_HOMEWORK_WALLET_USER_ID = <users.id UUID>
       - fromGroup: benimogretmenim-shared
@@ -135,6 +143,46 @@ services:
     schedule: "*/5 * * * *"
     buildCommand: npm ci --include=dev
     startCommand: npm run -s homework:release-expired
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: benimogretmenim-db
+          property: connectionString
+
+  - type: cron
+    name: benimogretmenim-notifications-reminders
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    rootDir: apps/api
+    schedule: "*/15 * * * *"
+    buildCommand: npm ci --include=dev
+    startCommand: npm run -s notifications:reminders
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: benimogretmenim-db
+          property: connectionString
+
+  - type: cron
+    name: benimogretmenim-guardian-weekly-reports
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    rootDir: apps/api
+    schedule: "0 5 * * 1"
+    buildCommand: npm ci --include=dev
+    startCommand: npm run -s guardian-weekly-reports:run
     envVars:
       - key: NODE_VERSION
         value: "20"
