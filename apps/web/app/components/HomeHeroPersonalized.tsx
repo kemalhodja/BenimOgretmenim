@@ -10,12 +10,26 @@ const btnPrimary =
 const btnSecondary =
   "inline-flex items-center justify-center rounded-xl border border-paper-300 bg-white px-5 py-2.5 text-sm font-semibold text-paper-900 hover:bg-paper-50";
 
-function roleLead(role: UserRole): string {
-  if (role === "teacher") return "Panele giderek taleplere teklif verebilir ve aboneliğinizi yönetebilirsiniz.";
-  if (role === "student")
-    return "Öğretmenlerden teklif almak için talep açın veya açık taleplerinizi takip edin.";
-  if (role === "guardian") return "Bağlı öğrencinin özeti ve bildirimleri veli panelindedir.";
-  return "Yönetim işlemleri için admin panelini kullanın.";
+function roleLead(role: UserRole): { line: string; next: string } {
+  if (role === "teacher") {
+    return {
+      line: "Öğretmen panelinde sıradaki işlem üstte gösterilir.",
+      next: "Profil, teklif ve dersler tek menüde.",
+    };
+  }
+  if (role === "student") {
+    return {
+      line: "Öğrenci panelinde bugün yapmanız gereken adım üstte yazar.",
+      next: "Talep, soru ve plan aynı yerden.",
+    };
+  }
+  if (role === "guardian") {
+    return {
+      line: "Veli panelinde önce öğrenci bağlantısı, sonra bildirim takibi.",
+      next: "Ders ve plan özeti burada.",
+    };
+  }
+  return { line: "Yönetim işlemleri admin panelindedir.", next: "Kontrol merkezinden devam edin." };
 }
 
 export function HomeHeroPersonalized() {
@@ -62,38 +76,35 @@ export function HomeHeroPersonalized() {
   const role = getRoleFromToken(token) ?? sessionRole;
   if (!role) {
     return (
-      <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <Link href={registerHrefWithReturn("/student/requests")} className={btnPrimary}>
-          Talep oluştur
-        </Link>
-        <Link href="/ogretmenler" className={btnSecondary}>
-          Öğretmen ara
-        </Link>
-        <Link
-          href={loginHrefWithReturn("/student/requests")}
-          className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
-        >
-          Zaten hesabım var — giriş
-        </Link>
+      <div className="mt-6 rounded-2xl border border-paper-200 bg-white/80 p-4">
+        <p className="text-sm font-medium text-paper-900">Zaten hesabınız var mı?</p>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <Link href={loginHrefWithReturn("/panel")} className={btnPrimary}>
+            Giriş yap — panele git
+          </Link>
+          <Link href={registerHrefWithReturn("/student/panel?onboarding=1")} className={btnSecondary}>
+            Yeni hesap aç
+          </Link>
+        </div>
       </div>
     );
   }
 
   const panel = panelPathForRole(role);
   const panelLabel = panelNavLabel(role);
+  const lead = roleLead(role);
 
   return (
-    <>
-      <p className="mt-4 max-w-lg rounded-lg border border-paper-200 bg-paper-50 px-3 py-2 text-sm text-paper-800">
-        {roleLead(role)}
-      </p>
+    <div className="mt-6 rounded-2xl border border-brand-200 bg-brand-50/80 p-4">
+      <p className="text-sm font-medium text-brand-950">{lead.line}</p>
+      <p className="mt-1 text-sm text-brand-900/80">{lead.next}</p>
       <div className="mt-4 flex flex-wrap gap-3">
-        <Link href={panel} className={btnPrimary}>
-          {panelLabel}
+        <Link href={panel} className={btnPrimary} data-testid="home-hero-panel-cta">
+          {panelLabel} — devam et
         </Link>
         {role === "teacher" ? (
           <Link href="/teacher/requests" className={btnSecondary}>
-            Talepler
+            Açık talepler
           </Link>
         ) : null}
         {role === "student" ? (
@@ -102,16 +113,11 @@ export function HomeHeroPersonalized() {
           </Link>
         ) : null}
         {role === "guardian" ? (
-          <Link href="/guardian" className={btnSecondary}>
-            Veli özeti
-          </Link>
-        ) : null}
-        {role === "admin" ? (
-          <Link href="/admin" className={btnSecondary}>
-            Yönetim
+          <Link href="/guardian/requests" className={btnSecondary}>
+            İlanlar
           </Link>
         ) : null}
       </div>
-    </>
+    </div>
   );
 }

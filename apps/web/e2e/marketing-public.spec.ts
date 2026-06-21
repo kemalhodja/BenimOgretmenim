@@ -51,6 +51,7 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
 
   test("/ — oturumsuz üst menüde Panel yok, Giriş yap var", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("visitor-start-guide")).toBeVisible();
     await expect(page.getByRole("link", { name: "Giriş yap" }).first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByRole("link", { name: "Panel", exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /kayıt ol/i }).first()).toBeVisible();

@@ -23,7 +23,8 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
     await loginViaUi(page, SEED_USERS.student.email, SEED_USERS.student.password);
     await expect(page).toHaveURL(/\/student\/panel/);
     await expect(page.getByRole("heading", { name: "Özet", exact: true })).toBeVisible();
-    await expect(page.getByText("Bugün ne yapmalıyım?")).toBeVisible();
+    await expect(page.getByTestId("quick-start-banner")).toBeVisible();
+    await expect(page.getByText("Şimdi ne yapmalısınız?")).toBeVisible();
     await expect(page.getByText("Başarı paneli")).toBeVisible();
     await expect(page.getByText("Haftalık plan")).toBeVisible();
     await page.goto("/student/calisma");

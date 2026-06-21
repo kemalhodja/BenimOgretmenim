@@ -9,6 +9,7 @@ import { StudentAudienceCard, TeacherAudienceCard } from "./components/marketing
 import { RoleFeatureOverview } from "./components/marketing/RoleFeatureOverview";
 import { ZigoTeacherFeed } from "./components/marketing/ZigoTeacherFeed";
 import { RoleOrderedAudience } from "./components/RoleOrderedAudience";
+import { VisitorStartGuide } from "./components/VisitorStartGuide";
 import { publicSiteUrl } from "./lib/siteUrl";
 
 /** Ana sayfa hero — Unsplash (ücretsiz kullanım; altta atıf) */
@@ -318,9 +319,10 @@ export default function Home() {
                 Öğretmen bul, ders al, soru sor ve gelişimini takip et
               </h1>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-paper-800">
-                BenimÖğretmenim; öğrenci, öğretmen ve veli için ders sürecini tek yerde toplar. Kim ne yapacak,
-                ödeme nasıl ilerleyecek ve dersler nereden takip edilecek açıkça görünür.
+                Öğrenci, öğretmen ve veli aynı platformda buluşur. Giriş yaptığınızda panel size{" "}
+                <strong className="font-semibold text-paper-950">sıradaki tek adımı</strong> gösterir.
               </p>
+              <VisitorStartGuide />
               <div className="mt-5 flex flex-wrap gap-2">
                 {heroSignals.map((signal) => (
                   <span

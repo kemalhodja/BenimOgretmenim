@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import { clearToken, getToken } from "../lib/auth";
 import { loginHrefWithReturn } from "../lib/authRedirect";
+import { QuickStartBanner, GUARDIAN_START_STEPS } from "../components/QuickStartBanner";
 
 type StudentRow = { student_id: string; student_display_name: string };
 
@@ -430,45 +431,50 @@ export default function GuardianPage() {
     students.length === 0
       ? {
           title: "Öğrenci hesabını bağlayın",
-          body: "Öğrenci panelinden veli davet kodu alın; bağlandıktan sonra ders, plan ve bildirim özetleri burada görünür.",
+          body: "Öğrenci panelinden veli davet kodu alın ve aşağıdaki alana yapıştırın.",
           href: "#ogrenci-baglama",
-          cta: "Bağlama rehberi",
+          cta: "Bağlama alanına git",
         }
       : lowCurriculumAttempts.length > 0
         ? {
-            title: "Düşük kazanım testini birlikte kapatın",
-            body: `${lowCurriculumAttempts[0].branch_name} / ${lowCurriculumAttempts[0].unit_title} sonucunda öğretmen desteği önerildi. Önce yanlış kazanımı konuşun, sonra branş öğretmeni seçeneklerine bakın.`,
+            title: "Düşük kazanım testini inceleyin",
+            body: `${lowCurriculumAttempts[0].branch_name} testinde öğretmen desteği önerildi.`,
             href: "#kazanim-takibi",
-            cta: "Test aksiyonuna git",
+            cta: "Test sonucuna git",
           }
-      : notifications.some((n) => !n.read_at)
-        ? {
-            title: "Okunmamış bildirimleri kontrol edin",
-            body: "Ödev, ders ve çalışma güncellemelerini okuyup aile takibini güncel tutun.",
-            href: "#bildirimler",
-            cta: "Bildirimlere git",
-          }
-        : {
-            title: "Çalışma planı ve odak konuları izleyin",
-            body: "Deneme yanlışlarından çıkan odak konuları ve haftalık plan ilerlemesini düzenli kontrol edin.",
-            href: "#calisma-takibi",
-            cta: "Takibe git",
-          };
+        : notifications.some((n) => !n.read_at)
+          ? {
+              title: "Okunmamış bildirimleri açın",
+              body: "Ders ve ödev güncellemelerini kaçırmayın.",
+              href: "#bildirimler",
+              cta: "Bildirimlere git",
+            }
+          : {
+              title: "Haftalık planı kontrol edin",
+              body: "Odak konuları ve plan ilerlemesini düzenli takip edin.",
+              href: "#calisma-takibi",
+              cta: "Takibe git",
+            };
 
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-3xl px-6 py-8">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Veli paneli</h1>
-          <p className="mt-1 text-sm text-paper-800/65">Öğrenci hesabı veli olarak bağlar.</p>
-          <p className="mt-2 text-sm">
-            <Link
-              href="/"
-              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
-            >
-              Ana sayfa
-            </Link>
+          <p className="mt-1 text-sm text-paper-800/75">
+            Sıradaki işlem aşağıda. Bağlı öğrencinin ders, plan ve bildirimlerini buradan takip edersiniz.
           </p>
+        </div>
+
+        <div className="mt-5">
+          <QuickStartBanner
+            eyebrow={showOnboarding ? "Hoş geldiniz" : "Şimdi ne yapmalısınız?"}
+            title={nextBestAction.title}
+            body={nextBestAction.body}
+            href={nextBestAction.href}
+            cta={nextBestAction.cta}
+            steps={showOnboarding ? GUARDIAN_START_STEPS : undefined}
+          />
         </div>
 
         {error && (
@@ -481,24 +487,6 @@ export default function GuardianPage() {
             {ok}
           </div>
         )}
-
-        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
-                {showOnboarding ? "Veli onboarding" : "Sonraki en iyi işlem"}
-              </div>
-              <h2 className="mt-2 text-lg font-semibold text-paper-900">{nextBestAction.title}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">{nextBestAction.body}</p>
-            </div>
-            <Link
-              href={nextBestAction.href}
-              className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
-            >
-              {nextBestAction.cta}
-            </Link>
-          </div>
-        </section>
 
         <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

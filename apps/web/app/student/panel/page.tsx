@@ -7,6 +7,7 @@ import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
 import { trackEvent } from "../../lib/trackEvent";
+import { QuickStartBanner, STUDENT_START_STEPS } from "../../components/QuickStartBanner";
 
 type SubMe = {
   active: boolean;
@@ -395,28 +396,28 @@ function StudentPanelPageInner() {
   const showOnboarding = searchParams.get("onboarding") === "1";
   const nextBestAction = !sub?.active
     ? {
-        title: "Ücretsiz kotayı kullan veya yıllık abonelikle yükselt",
-        body: "Yıllık abonelik daha çok öğretmene ulaşmanızı ve takıldığınız soruları daha hızlı çözmenizi sağlar: günlük 5 ilan ve 10 soru.",
-        href: "#platform-aboneligi",
-        cta: "Kotaları gör",
+        title: "İlk talebinizi açın veya soru gönderin",
+        body: "Ücretsiz günlük haklarınızla başlayın. Yıllık abonelik daha fazla talep ve soru hakkı verir.",
+        href: "/student/requests",
+        cta: "Talep oluştur",
       }
     : wallet && wallet.balanceMinor - activeHoldMinor < 50_000
       ? {
-          title: "Cüzdanı hazırla",
-          body: "Demo, paket veya doğrudan ders ödemesinde takılmamak için kullanılabilir bakiyeyi kontrol edin.",
+          title: "Cüzdan bakiyenizi kontrol edin",
+          body: "Ders veya paket ödemesinde takılmamak için kullanılabilir bakiyeyi yükleyin.",
           href: "#bakiye",
-          cta: "Bakiye yükle",
+          cta: "Bakiyeye git",
         }
       : progressSnapshots.length === 0
         ? {
-            title: "İlk çalışma izini oluştur",
-            body: "Bir soru gönderin veya çalışma planı açın; paneliniz ilerleme önerilerini buradan üretir.",
+            title: "İlk sorunuzu gönderin",
+            body: "Fotoğraf çekin; uygun öğretmen yanıtlasın. Panel ilerlemenizi buradan özetler.",
             href: "/student/odev-sor",
             cta: "Soru gönder",
           }
         : {
-            title: "Ders ve planı takip et",
-            body: "Son ders değerlendirmelerini ve haftalık planı kontrol edip sıradaki konuyu işaretleyin.",
+            title: "Çalışma planınızı güncelleyin",
+            body: "Son ders notuna göre sıradaki konuya odaklanın.",
             href: "/student/calisma",
             cta: "Plana git",
           };
@@ -447,91 +448,69 @@ function StudentPanelPageInner() {
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
         <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Özet</h1>
-        <p className="mt-1 text-sm text-paper-800/80">
-          Abonelik, cüzdan ve bildirimler. Yıllık öğrenci aboneliği:{" "}
-          <span className="font-medium text-paper-900">
-            {sub ? `${tl(sub.annualPriceMinor)} TL / ${sub.annualMonths} ay` : "—"}
-          </span>.
+        <p className="mt-1 text-sm text-paper-800/75">
+          Sıradaki işlem aşağıda. Talep, soru ve plan alt menüden de açılır.
         </p>
-        <p className="mt-3 text-sm text-paper-800/70">
-          Dersler ve kurslar üst menüde; en sık işlem talep açmak.
-        </p>
-        <div className="mt-4">
+
+        <div className="mt-5">
+          <QuickStartBanner
+            eyebrow={showOnboarding ? "Hoş geldiniz" : "Şimdi ne yapmalısınız?"}
+            title={nextBestAction.title}
+            body={nextBestAction.body}
+            href={nextBestAction.href}
+            cta={nextBestAction.cta}
+            steps={showOnboarding ? STUDENT_START_STEPS : undefined}
+          />
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href="/student/requests"
-            className="inline-flex rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-900"
+            className="rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:border-brand-200"
           >
             Taleplerim
           </Link>
-          <p className="mt-3 text-sm text-paper-800/70">
-            <Link
-              href="/student/odev-sor"
-              className="font-medium text-brand-800 underline decoration-brand-400 underline-offset-2"
-            >
-              Ödev / soru gönder
-            </Link>
-            <span className="text-paper-800/40"> · </span>
-            <Link
-              href="/student/odev-sor/gonderiler"
-              className="text-paper-800/75 underline decoration-paper-300 underline-offset-2 hover:text-paper-900"
-            >
-              Gönderilerim
-            </Link>
-            <span className="text-paper-800/40"> · </span>
-            <Link href="/student/calisma" className="text-paper-800/75 underline decoration-paper-300 underline-offset-2 hover:text-paper-900">
-              Çalışma planı
-            </Link>
-            <span className="text-paper-800/40"> · </span>
-            <Link href="/courses" className="text-paper-800/75 underline decoration-paper-300 underline-offset-2 hover:text-paper-900">
-              Kurs kataloğu
-            </Link>
-            <span className="text-paper-800/40"> · </span>
-            <Link href="/ogretmenler" className="text-paper-800/75 underline decoration-paper-300 underline-offset-2 hover:text-paper-900">
-              Öğretmen ara
-            </Link>
-          </p>
+          <Link
+            href="/student/odev-sor"
+            className="rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:border-brand-200"
+          >
+            Soru gönder
+          </Link>
+          <Link
+            href="/student/calisma"
+            className="rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:border-brand-200"
+          >
+            Çalışma planı
+          </Link>
+          <Link
+            href="/ogretmenler"
+            className="rounded-xl border border-paper-200 bg-white px-3 py-2 text-sm font-medium text-paper-900 hover:border-brand-200"
+          >
+            Öğretmen ara
+          </Link>
         </div>
 
         <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-paper-800/55">
-                Bugün ne yapmalıyım?
+                Kısa yol
               </div>
-              <h2 className="mt-1 text-lg font-semibold text-paper-900">Öğrenci için 3 adımlı hızlı plan</h2>
-              <p className="mt-1 text-sm leading-relaxed text-paper-800/65">
-                Öğretmen seçimi, soru çözümü ve çalışma takibi arasında kaybolmadan sıradaki adımı tamamlayın.
-              </p>
+              <h2 className="mt-1 text-base font-semibold text-paper-900">3 temel işlem</h2>
             </div>
-            <Link href="/ogretmenler" className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-900">
-              Öğretmen sihirbazı
-            </Link>
           </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-3">
-            {[
-              {
-                label: "1. Hedefi netleştir",
-                body: weeklyTargetSignals > 0 ? "Haftalık planınız hazır; sıradaki zayıf konuya odaklanın." : "Çalışma planı açıp sınav/hedef bilgisiyle ilk haftayı oluşturun.",
-                href: "/student/calisma",
-                cta: "Planı aç",
-              },
-              {
-                label: "2. Takıldığın soruyu gönder",
-                body: homeworkUsageText === "—" ? "Soru hakkı bilgisi yüklenince günlük hakkınızı takip edin." : `Bugünkü soru hakkı: ${homeworkUsageText}.`,
-                href: "/student/odev-sor",
-                cta: "Soru gönder",
-              },
-              {
-                label: "3. Öğretmen adaylarını karşılaştır",
-                body: "Doğrulanmış profil, ücret, yorum ve kalite bilgilerini kısa listede karşılaştırın.",
-                href: "/ogretmenler?verifiedOnly=1&sort=recommended",
-                cta: "Öğretmen ara",
-              },
-            ].map((item) => (
-              <Link key={item.label} href={item.href} className="rounded-xl border border-paper-200 bg-paper-50 p-4 hover:border-brand-200 hover:bg-brand-50/40">
+            {STUDENT_START_STEPS.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href ?? "#"}
+                className="rounded-xl border border-paper-200 bg-paper-50 p-4 hover:border-brand-200 hover:bg-brand-50/40"
+              >
                 <div className="text-sm font-semibold text-paper-950">{item.label}</div>
                 <p className="mt-2 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
-                <span className="mt-3 inline-flex text-xs font-semibold text-brand-800 underline">{item.cta}</span>
+                {item.cta ? (
+                  <span className="mt-3 inline-flex text-xs font-semibold text-brand-800 underline">{item.cta}</span>
+                ) : null}
               </Link>
             ))}
           </div>
@@ -619,24 +598,6 @@ function StudentPanelPageInner() {
               <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
             </Link>
           ))}
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
-                {showOnboarding ? "İlk kurulum" : "Sonraki en iyi işlem"}
-              </div>
-              <h2 className="mt-2 text-lg font-semibold text-paper-900">{nextBestAction.title}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">{nextBestAction.body}</p>
-            </div>
-            <Link
-              href={nextBestAction.href}
-              className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
-            >
-              {nextBestAction.cta}
-            </Link>
-          </div>
         </section>
 
         <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">

@@ -49,28 +49,16 @@ function parseRegisterApiError(err: unknown): { message: string; emailTaken: boo
 
 const roleOnboarding = {
   student: {
-    title: "Öğrenci başlangıcı",
-    steps: [
-      "Önce ihtiyacını seç: öğretmen ara, kursa katıl veya soru gönder.",
-      "Ücretsiz haklarını ve varsa aboneliğini panelden gör.",
-      "Ders, soru ve çalışma planını aynı yerden takip et.",
-    ],
+    title: "Öğrenci — 3 adım",
+    steps: ["Talep aç veya soru gönder", "Teklifleri karşılaştır", "Panelden takip et"],
   },
   teacher: {
-    title: "Öğretmen başlangıcı",
-    steps: [
-      "Branş, şehir, ücret, tanıtım ve belgelerini ekle.",
-      "Ders taleplerini ve kampanyalarını panelden yönet.",
-      "Cüzdan, kazanç ve öğrenci mesajlarını aynı ekranda takip et.",
-    ],
+    title: "Öğretmen — 3 adım",
+    steps: ["Profili tamamla", "Taleplere teklif ver", "Dersleri yönet"],
   },
   guardian: {
-    title: "Veli başlangıcı",
-    steps: [
-      "Öğrenci hesabını kendi veli hesabına bağla.",
-      "Ders, ödev, çalışma planı ve uyarıları takip et.",
-      "Ödeme ve destek kayıtlarını gerektiğinde incele.",
-    ],
+    title: "Veli — 3 adım",
+    steps: ["Öğrenciyi bağla", "Bildirimleri oku", "Planı takip et"],
   },
 } as const;
 

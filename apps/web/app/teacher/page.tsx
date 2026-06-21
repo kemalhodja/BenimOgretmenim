@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { TeacherZigoPublish } from "../components/teacher/TeacherZigoPublish";
+import { QuickStartBanner, TEACHER_START_STEPS } from "../components/QuickStartBanner";
 import { apiFetch } from "../lib/api";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 import { clearToken, getToken } from "../lib/auth";
@@ -561,30 +562,30 @@ export default function TeacherHomePage() {
   const nextBestAction =
     profileQualityScore < 80
       ? {
-          title: "Vitrin kalite hedefini tamamla",
-          body: "Arama ve teklif ekranlarında öne çıkan kalite bilgilerini güçlendir.",
+          title: "Profilinizi tamamlayın",
+          body: "Branş, ücret ve tanıtım bilgileri olmadan öğrenciler sizi bulamaz.",
           href: "/teacher/edit",
-          cta: "Kalite eksiklerini kapat",
+          cta: "Profili düzenle",
         }
       : !sub?.active
         ? {
-            title: "Öğretmen aboneliğini etkinleştir",
-            body: "Taleplere teklif verme ve görünürlükte kesinti yaşamamak için aboneliği tamamlayın.",
+            title: "Aboneliği etkinleştirin",
+            body: "Sınırsız teklif ve tam profil görünürlüğü için abonelik gerekir.",
             href: "#ogretmen-aboneligi",
             cta: "Aboneliğe git",
           }
         : (dash?.upcomingScheduledSessions ?? 0) === 0
           ? {
-              title: "Bugün teklif verebileceğin talepleri aç",
-              body: "Branşına uygun açık taleplerden demo veya paket görüşmesi başlat.",
+              title: "Açık taleplere teklif verin",
+              body: "Branşınıza uygun öğrenci taleplerini inceleyin.",
               href: "/teacher/requests",
-              cta: "Talepleri gör",
+              cta: "Talepleri aç",
             }
           : {
-              title: "Yaklaşan canlı derslerini hazırla",
-              body: "Sınıf bağlantılarını, materyalleri ve ders sonrası değerlendirmeyi kontrol et.",
+              title: "Yaklaşan dersinizi hazırlayın",
+              body: "Sınıf bağlantısı ve materyalleri dersler ekranından kontrol edin.",
               href: "/teacher/dersler",
-              cta: "Derslere git",
+              cta: "Derslerim",
             };
   const primaryTeacherBranch =
     me?.teacher.branches.find((branch) => branch.isPrimary) ?? me?.teacher.branches[0] ?? null;
@@ -613,20 +614,48 @@ export default function TeacherHomePage() {
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-6xl px-6 py-8">
-        <section className="rounded-2xl border border-brand-200 bg-brand-50/70 p-5">
-          <h2 className="text-sm font-semibold text-brand-950">Neden BenimÖğretmenim? (Armut / komisyonlu platformlara karşı)</h2>
-          <ul className="mt-3 grid gap-2 text-sm text-brand-900 sm:grid-cols-3">
-            <li className="rounded-xl bg-white/80 p-3">
-              <strong>Komisyon yok:</strong> Öğrenci platforma öder; sizden kesinti alınmaz, hak ediş net aktarılır.
-            </li>
-            <li className="rounded-xl bg-white/80 p-3">
-              <strong>Platform içi ders:</strong> Tahta, materyal, kayıt ve mesaj tek akışta; WhatsApp dağınıklığı yok.
-            </li>
-            <li className="rounded-xl bg-white/80 p-3">
-              <strong>Doğrulama rozeti:</strong> KYC ile güven artar; kazanım etiketleriyle doğru öğrenciye görünürsünüz.
-            </li>
-          </ul>
-        </section>
+        <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Panel özeti</h1>
+        <p className="mt-1 text-sm text-paper-800/75">
+          Sıradaki işlem aşağıda. Teklif, profil ve dersler alt menüden de açılır.
+        </p>
+
+        <div className="mt-5">
+          <QuickStartBanner
+            eyebrow={showOnboarding ? "Hoş geldiniz" : "Şimdi ne yapmalısınız?"}
+            title={nextBestAction.title}
+            body={nextBestAction.body}
+            href={nextBestAction.href}
+            cta={nextBestAction.cta}
+            steps={showOnboarding ? TEACHER_START_STEPS : undefined}
+          />
+        </div>
+
+        {showOnboarding ? (
+          <section className="mt-4 rounded-2xl border border-brand-200 bg-brand-50/70 p-5">
+            <h2 className="text-sm font-semibold text-brand-950">Neden BenimÖğretmenim?</h2>
+            <ul className="mt-3 grid gap-2 text-sm text-brand-900 sm:grid-cols-3">
+              <li className="rounded-xl bg-white/80 p-3">
+                <strong>Komisyon yok:</strong> Öğrenci platforma öder; sizden kesinti alınmaz.
+              </li>
+              <li className="rounded-xl bg-white/80 p-3">
+                <strong>Platform içi ders:</strong> Tahta, materyal ve mesaj tek akışta.
+              </li>
+              <li className="rounded-xl bg-white/80 p-3">
+                <strong>Doğrulama rozeti:</strong> Güven artar; doğru öğrenciye görünürsünüz.
+              </li>
+            </ul>
+          </section>
+        ) : (
+          <details className="mt-4 rounded-2xl border border-paper-200 bg-white p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-paper-900">Platform avantajları</summary>
+            <p className="mt-2 text-sm text-paper-800/70">
+              Komisyon yok · platform içi ders · doğrulama rozeti. Detay:{" "}
+              <Link href="/guven" className="text-brand-800 underline">
+                Güven sayfası
+              </Link>
+            </p>
+          </details>
+        )}
 
         <section className="mt-4 rounded-2xl border border-paper-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -653,8 +682,7 @@ export default function TeacherHomePage() {
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Panel özeti</h1>
-            <p className="mt-1 text-lg font-medium text-paper-800">{me?.teacher.displayName ?? "—"}</p>
+            <p className="text-lg font-medium text-paper-800">{me?.teacher.displayName ?? "—"}</p>
             <div className="mt-1 text-sm text-paper-800/75">
               Doğrulama:{" "}
               <span className="font-medium text-paper-900">
@@ -723,24 +751,6 @@ export default function TeacherHomePage() {
               <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{item.body}</p>
             </Link>
           ))}
-        </section>
-
-        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-5 shadow-sm">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-800/70">
-                {showOnboarding ? "Öğretmen ilk kurulum" : "Sonraki en iyi işlem"}
-              </div>
-              <h2 className="mt-2 text-lg font-semibold text-paper-900">{nextBestAction.title}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-relaxed text-paper-800/70">{nextBestAction.body}</p>
-            </div>
-            <Link
-              href={nextBestAction.href}
-              className="shrink-0 rounded-xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
-            >
-              {nextBestAction.cta}
-            </Link>
-          </div>
         </section>
 
         <section className="mt-6 overflow-hidden rounded-[2rem] border border-paper-200 bg-white shadow-sm">
@@ -1203,38 +1213,27 @@ export default function TeacherHomePage() {
               ))}
             </div>
             <div className="mt-4 text-sm text-paper-800/75">
-              Sonraki adım:{" "}
-              <Link className="font-medium text-paper-900 underline" href="/teacher/edit">
-                Profil & branş düzenle
-              </Link>
-            {" · "}
-            <Link className="font-medium text-paper-900 underline" href="/teacher/requests">
-              Ders talepleri
-            </Link>
-            {" · "}
-            <Link className="font-medium text-paper-900 underline" href="/teacher/teklifler">
-              Verdiğim teklifler
-            </Link>
-            {" · "}
-            <Link className="font-medium text-paper-900 underline" href="/teacher/kurslar">
-              Online kurslar
-            </Link>
-            {" · "}
-            <Link className="font-medium text-paper-900 underline" href="/teacher/dersler">
-              Ders oturumları
-            </Link>
-            {" · "}
-            <Link className="font-medium text-paper-900 underline" href="/teacher/grup-dersler">
-              Grup ders ilanları
-            </Link>
-            {" · "}
-            <Link className="font-medium text-paper-900 underline" href="/teacher/cuzdan">
-              Cüzdan
-            </Link>
-            {" · "}
-            <Link className="font-medium text-paper-900 underline" href="/teacher/dogrudan-dersler">
-              Doğrudan dersler
-            </Link>
+              {(() => {
+                const next = checklistItems.find((it) => !it.done && it.fix);
+                if (!next?.fix) {
+                  return (
+                    <>
+                      Profil tamam.{" "}
+                      <Link className="font-medium text-paper-900 underline" href="/teacher/requests">
+                        Taleplere git
+                      </Link>
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    Sıradaki adım:{" "}
+                    <Link className="font-medium text-paper-900 underline" href={next.fix}>
+                      {next.key}
+                    </Link>
+                  </>
+                );
+              })()}
             </div>
           </div>
 

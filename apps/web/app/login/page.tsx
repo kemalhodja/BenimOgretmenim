@@ -131,7 +131,21 @@ function LoginForm() {
       <div className="w-full max-w-md rounded-2xl border border-paper-200 bg-white p-6 shadow-sm">
         <div className="mb-6">
           <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Giriş yap</h1>
-          <p className="mt-1 text-sm text-paper-800/75">E-posta ve parolanızla devam edin.</p>
+          <p className="mt-1 text-sm text-paper-800/75">E-posta ve parolanızla panele girin.</p>
+          <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm text-paper-800/80">
+            <p className="font-medium text-paper-900">Hesabınız yok mu?</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Link href="/kayit?role=student" className="rounded-lg border border-paper-200 bg-white px-2.5 py-1 text-xs font-semibold text-paper-900 hover:border-brand-300">
+                Öğrenci kaydı
+              </Link>
+              <Link href="/kayit?role=teacher" className="rounded-lg border border-paper-200 bg-white px-2.5 py-1 text-xs font-semibold text-paper-900 hover:border-brand-300">
+                Öğretmen kaydı
+              </Link>
+              <Link href="/kayit?role=guardian" className="rounded-lg border border-paper-200 bg-white px-2.5 py-1 text-xs font-semibold text-paper-900 hover:border-brand-300">
+                Veli kaydı
+              </Link>
+            </div>
+          </div>
           {showRolePresets ? (
             <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3">
               <p className="text-xs text-paper-800/65">Test hesaplarını doldur</p>
@@ -155,14 +169,7 @@ function LoginForm() {
             </div>
           ) : (
             <p className="mt-3 text-xs text-paper-800/55">
-              Hesabınız yok mu?{" "}
-              <Link
-                href={returnUrl ? registerHrefWithReturn(returnUrl) : "/kayit"}
-                className="font-medium text-brand-800 underline"
-              >
-                Kayıt olun
-              </Link>
-              . Yönetici hesabı için kurum yetkilisiyle iletişime geçin.
+              Yönetici hesabı için kurum yetkilisiyle iletişime geçin.
             </p>
           )}
           {returnUrl && (
