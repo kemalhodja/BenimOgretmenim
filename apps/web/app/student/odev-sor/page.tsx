@@ -8,6 +8,9 @@ import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
 import { prepareHomeworkImage, type HomeworkImageAttachment } from "../../lib/homeworkMedia";
 import { trackEvent } from "../../lib/trackEvent";
+import { QuickStartBanner } from "../../components/QuickStartBanner";
+import { studentOdevSorQuickStart } from "../../lib/pageQuickStart";
+import { userErrorMessage } from "../../lib/userFacingMessageTr";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 
@@ -139,26 +142,27 @@ export default function OdevSorPage() {
       setImageAttachments([]);
       setAudioUrl("");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "failed";
-      setError(msg);
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathname));
         return;
       }
-      if (msg.includes("subscription")) {
+      if (raw.includes("subscription")) {
         setError(
-          "Yıllık abonelikle günlük soru hakkınızı artırabilirsiniz. /student/panel sayfasından aboneliği yönetebilirsiniz.",
+          "Yıllık abonelikle günlük soru hakkınızı artırabilirsiniz. Öğrenci panelinden aboneliği yönetebilirsiniz.",
         );
         return;
       }
-      if (msg.includes("daily_homework_quota_exceeded")) {
+      if (raw.includes("daily_homework_quota_exceeded")) {
         setError("Bugünkü soru sorma hakkınız doldu. Ücretsiz öğrenciler günde 5 soru sorabilir; yıllık abonelikte bu hak günde 10 sorudur.");
         return;
       }
-      if (msg.includes("[403]")) {
+      if (raw.includes("[403]") || raw.includes("forbidden")) {
         setError("Bu işlem için öğrenci hesabı gerekir.");
+        return;
       }
+      setError(userErrorMessage(e, "failed"));
     } finally {
       setBusy(false);
     }
@@ -166,6 +170,7 @@ export default function OdevSorPage() {
 
   if (!token) return null;
   const targetMinutes = urgencyTargetMinutes(urgencyLevel);
+  const pageGuide = studentOdevSorQuickStart();
 
   async function addImageFiles(files: File[]) {
     if (files.length === 0) return;
@@ -224,6 +229,19 @@ export default function OdevSorPage() {
             . Hedef: normal {serviceStats.targetMinutesNormal} dk, acil {serviceStats.targetMinutesUrgent} dk.
           </div>
         ) : null}
+
+        <div className="mt-6">
+          <QuickStartBanner
+            eyebrow="3 adımda soru"
+            title={pageGuide.title}
+            body={pageGuide.body}
+            href={pageGuide.href}
+            cta={pageGuide.cta}
+            steps={pageGuide.steps}
+            testId="odev-sor-quick-start"
+          />
+        </div>
+
         {error && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
             {error}
@@ -235,189 +253,227 @@ export default function OdevSorPage() {
           </div>
         )}
 
-        <section className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-4 shadow-sm">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-brand-900/70">
-            Soru ön kontrolü
-          </div>
-          <h2 className="mt-2 text-base font-semibold text-paper-900">
-            Fotoğraf, konu, aciliyet ve hedef sınav aynı öğrenme verisine dönüşür.
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-paper-800/70">
-            Sistem konuyu, zorluk seviyesini, hedef cevap süresini ve çözüm sonrası benzer alıştırmaları hazırlar.
-          </p>
-          <div className="mt-3 rounded-xl border border-brand-100 bg-white/80 p-3 text-xs leading-relaxed text-brand-950">
-            Kayıtlı öğrenci ücretsiz olarak günlük 5 soru sorabilir. Yıllık abonelikte bu limit günlük 10 soruya çıkar.
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            {[
-              ["Hedef süre", `${targetMinutes} dk`, urgencyPromise(urgencyLevel)],
-              ["Kalite kontrol", "Cevap puanı", "Öğretmen cevabı açıklık, adım ve sonuç kalitesiyle değerlendirilir."],
-              ["Sonraki pratik", "3 öneri", "Çözümden sonra benzer alıştırmalar çalışma planına eklenir."],
-            ].map(([title, value, body]) => (
-              <div key={title} className="rounded-xl border border-brand-100 bg-white/80 p-3">
-                <div className="text-xs font-semibold text-brand-950">{title}</div>
-                <div className="mt-1 text-sm font-semibold text-paper-900">{value}</div>
-                <p className="mt-1 text-xs leading-relaxed text-paper-800/60">{body}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div className="mt-6 space-y-4 rounded-xl border border-paper-200 bg-white p-5 shadow-sm">
-          <label className="block text-sm">
-            <span className="font-medium text-paper-800">Branş (ders) — zorunlu</span>
-            <select
-              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
-              value={branchId}
-              onChange={(e) => setBranchId(e.target.value ? Number(e.target.value) : "")}
-            >
-              <option value="">Seçin</option>
-              {leafBranches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm">
-            <span className="font-medium text-paper-800">Konu — zorunlu</span>
-            <input
-              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="font-medium text-paper-800">Sınıf / seviye</span>
-              <input
-                className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
-                value={gradeLevelText}
-                onChange={(e) => setGradeLevelText(e.target.value)}
-                placeholder="Örn. 8. sınıf, 11. sınıf"
-                maxLength={80}
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-paper-800">Sınav hedefi</span>
-              <input
-                className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
-                value={targetExam}
-                onChange={(e) => setTargetExam(e.target.value)}
-                placeholder="Örn. LGS, TYT, AYT, okul yazılısı"
-                maxLength={80}
-              />
-            </label>
-          </div>
-          <label className="block text-sm">
-            <span className="font-medium text-paper-800">Kazanım / alt konu</span>
-            <input
-              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
-              value={learningObjective}
-              onChange={(e) => setLearningObjective(e.target.value)}
-              placeholder="Örn. Oran-orantı problemleri, paragrafta ana düşünce"
-              maxLength={180}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="font-medium text-paper-800">Çözüm önceliği</span>
-            <select
-              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
-              value={urgencyLevel}
-              onChange={(e) => setUrgencyLevel(e.target.value as "normal" | "priority" | "urgent")}
-            >
-              <option value="normal">Normal — hedef 20 dk</option>
-              <option value="priority">Öncelikli — hedef 15 dk</option>
-              <option value="urgent">Acil — hedef 10 dk</option>
-            </select>
-            <p className="mt-1 text-xs text-paper-800/55">
-              Aciliyet, öğretmen havuzunda sıralamayı ve hedef cevap süresini etkiler.
+        <details className="mt-6 rounded-2xl border border-brand-200 bg-[linear-gradient(135deg,#ecfeff_0%,#ffffff_58%,#fff7ed_100%)] p-4 shadow-sm">
+          <summary className="cursor-pointer text-sm font-semibold text-paper-900">
+            Soru ön kontrolü ve hedef süreler
+          </summary>
+          <div className="mt-3">
+            <p className="text-sm leading-relaxed text-paper-800/70">
+              Fotoğraf, konu, aciliyet ve hedef sınav aynı öğrenme verisine dönüşür; çözüm sonrası benzer alıştırmalar
+              önerilir.
             </p>
-          </label>
-          <label className="block text-sm">
-            <span className="font-medium text-paper-800">Neyi anlamadınız? — zorunlu</span>
-            <textarea
-              className="mt-1 w-full min-h-28 rounded-xl border border-paper-200 px-3 py-2"
-              value={helpText}
-              onChange={(e) => setHelpText(e.target.value)}
-            />
-          </label>
-          <label className="block text-sm">
-            <span className="font-medium text-paper-800">Görseller (en fazla 4, otomatik sıkıştırılır)</span>
-            <div className="mt-1 flex flex-col gap-2 sm:flex-row">
-              <label className="inline-flex items-center gap-2 rounded-xl border border-paper-200 bg-white px-3 py-2 text-xs font-medium text-paper-900 shadow-sm">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => {
-                    void addImageFiles(Array.from(e.target.files ?? []).slice(0, 1));
-                    e.target.value = "";
-                  }}
-                />
-                Kamerayla çek
-              </label>
-              <span className="text-xs text-paper-800/55 sm:self-center">
-                (Telefonlarda kamera açılır)
-              </span>
+            <div className="mt-3 rounded-xl border border-brand-100 bg-white/80 p-3 text-xs leading-relaxed text-brand-950">
+              Kayıtlı öğrenci ücretsiz olarak günlük 5 soru sorabilir. Yıllık abonelikte bu limit günlük 10 soruya çıkar.
             </div>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              className="mt-1 block w-full text-xs text-paper-800/75 file:mr-2 file:rounded-lg file:border file:border-paper-200 file:bg-white file:px-2 file:py-1"
-              onChange={(e) => {
-                void addImageFiles(Array.from(e.target.files ?? []));
-                e.target.value = "";
-              }}
-            />
-            {imageAttachments.length > 0 ? (
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {imageAttachments.map((item) => (
-                  <div key={item.id} className="rounded-xl border border-paper-200 bg-paper-50 p-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={item.dataUrl} alt={item.name} className="h-32 w-full rounded-lg object-contain" />
-                    <div className="mt-2 flex items-center justify-between gap-2 text-xs text-paper-800/65">
-                      <span className="truncate">{item.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => setImageAttachments((prev) => prev.filter((x) => x.id !== item.id))}
-                        className="shrink-0 rounded-lg border border-paper-300 bg-white px-2 py-1 font-medium text-paper-900"
-                      >
-                        Sil
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            <textarea
-              className="mt-2 w-full min-h-20 font-mono text-xs rounded-xl border border-paper-200 px-3 py-2"
-              placeholder="İsteğe bağlı harici görsel URL'leri: https://..."
-              value={imageUrlText}
-              onChange={(e) => setImageUrlText(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-paper-800/55">
-              Dosyalar tarayıcıda küçültülür; harici URL kullanırsanız yalnızca HTTPS bağlantıları kabul edilir.
-            </p>
-          </label>
-          <label className="block text-sm">
-            <span className="font-medium text-paper-800">Ses URL (isteğe)</span>
-            <input
-              className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm"
-              value={audioUrl}
-              onChange={(e) => setAudioUrl(e.target.value)}
-            />
-          </label>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void submit()}
-            className="w-full rounded-xl bg-brand-800 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {[
+                ["Hedef süre", `${targetMinutes} dk`, urgencyPromise(urgencyLevel)],
+                ["Kalite kontrol", "Cevap puanı", "Öğretmen cevabı açıklık, adım ve sonuç kalitesiyle değerlendirilir."],
+                ["Sonraki pratik", "3 öneri", "Çözümden sonra benzer alıştırmalar çalışma planına eklenir."],
+              ].map(([title, value, body]) => (
+                <div key={title} className="rounded-xl border border-brand-100 bg-white/80 p-3">
+                  <div className="text-xs font-semibold text-brand-950">{title}</div>
+                  <div className="mt-1 text-sm font-semibold text-paper-900">{value}</div>
+                  <p className="mt-1 text-xs leading-relaxed text-paper-800/60">{body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </details>
+
+        <div className="mt-6 space-y-6">
+          <section
+            id="step-foto"
+            className="scroll-mt-6 rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
           >
-            {busy ? "…" : "Havuza gönder"}
-          </button>
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-900">
+                1
+              </span>
+              <h2 className="text-base font-semibold text-paper-900">Fotoğraf ekle</h2>
+            </div>
+            <p className="mt-2 text-xs text-paper-800/60">Soruyu net çekin; en fazla 4 görsel.</p>
+            <label className="mt-4 block text-sm">
+              <span className="font-medium text-paper-800">Görseller (en fazla 4, otomatik sıkıştırılır)</span>
+              <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+                <label className="inline-flex items-center gap-2 rounded-xl border border-paper-200 bg-white px-3 py-2 text-xs font-medium text-paper-900 shadow-sm">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => {
+                      void addImageFiles(Array.from(e.target.files ?? []).slice(0, 1));
+                      e.target.value = "";
+                    }}
+                  />
+                  Kamerayla çek
+                </label>
+                <span className="text-xs text-paper-800/55 sm:self-center">(Telefonlarda kamera açılır)</span>
+              </div>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="mt-1 block w-full text-xs text-paper-800/75 file:mr-2 file:rounded-lg file:border file:border-paper-200 file:bg-white file:px-2 file:py-1"
+                onChange={(e) => {
+                  void addImageFiles(Array.from(e.target.files ?? []));
+                  e.target.value = "";
+                }}
+              />
+              {imageAttachments.length > 0 ? (
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {imageAttachments.map((item) => (
+                    <div key={item.id} className="rounded-xl border border-paper-200 bg-paper-50 p-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={item.dataUrl} alt={item.name} className="h-32 w-full rounded-lg object-contain" />
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-paper-800/65">
+                        <span className="truncate">{item.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setImageAttachments((prev) => prev.filter((x) => x.id !== item.id))}
+                          className="shrink-0 rounded-lg border border-paper-300 bg-white px-2 py-1 font-medium text-paper-900"
+                        >
+                          Sil
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              <textarea
+                className="mt-2 w-full min-h-20 rounded-xl border border-paper-200 px-3 py-2 font-mono text-xs"
+                placeholder="İsteğe bağlı harici görsel URL'leri: https://..."
+                value={imageUrlText}
+                onChange={(e) => setImageUrlText(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-paper-800/55">
+                Dosyalar tarayıcıda küçültülür; harici URL için yalnızca HTTPS kabul edilir.
+              </p>
+            </label>
+          </section>
+
+          <section
+            id="step-konu"
+            className="scroll-mt-6 rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-900">
+                2
+              </span>
+              <h2 className="text-base font-semibold text-paper-900">Branş ve konu</h2>
+            </div>
+            <div className="mt-4 space-y-4">
+              <label className="block text-sm">
+                <span className="font-medium text-paper-800">Branş (ders) *</span>
+                <select
+                  className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                  value={branchId}
+                  onChange={(e) => setBranchId(e.target.value ? Number(e.target.value) : "")}
+                >
+                  <option value="">Seçin</option>
+                  {leafBranches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium text-paper-800">Konu *</span>
+                <input
+                  className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                />
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="font-medium text-paper-800">Sınıf / seviye</span>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                    value={gradeLevelText}
+                    onChange={(e) => setGradeLevelText(e.target.value)}
+                    placeholder="Örn. 8. sınıf, 11. sınıf"
+                    maxLength={80}
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-paper-800">Sınav hedefi</span>
+                  <input
+                    className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                    value={targetExam}
+                    onChange={(e) => setTargetExam(e.target.value)}
+                    placeholder="Örn. LGS, TYT, AYT, okul yazılısı"
+                    maxLength={80}
+                  />
+                </label>
+              </div>
+              <label className="block text-sm">
+                <span className="font-medium text-paper-800">Kazanım / alt konu</span>
+                <input
+                  className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                  value={learningObjective}
+                  onChange={(e) => setLearningObjective(e.target.value)}
+                  placeholder="Örn. Oran-orantı problemleri, paragrafta ana düşünce"
+                  maxLength={180}
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium text-paper-800">Neyi anlamadınız? *</span>
+                <textarea
+                  className="mt-1 min-h-28 w-full rounded-xl border border-paper-200 px-3 py-2"
+                  value={helpText}
+                  onChange={(e) => setHelpText(e.target.value)}
+                />
+              </label>
+            </div>
+          </section>
+
+          <section
+            id="step-gonder"
+            className="scroll-mt-6 rounded-xl border border-paper-200 bg-white p-5 shadow-sm"
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-900">
+                3
+              </span>
+              <h2 className="text-base font-semibold text-paper-900">Gönder</h2>
+            </div>
+            <div className="mt-4 space-y-4">
+              <label className="block text-sm">
+                <span className="font-medium text-paper-800">Çözüm önceliği</span>
+                <select
+                  className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2"
+                  value={urgencyLevel}
+                  onChange={(e) => setUrgencyLevel(e.target.value as "normal" | "priority" | "urgent")}
+                >
+                  <option value="normal">Normal — hedef 20 dk</option>
+                  <option value="priority">Öncelikli — hedef 15 dk</option>
+                  <option value="urgent">Acil — hedef 10 dk</option>
+                </select>
+                <p className="mt-1 text-xs text-paper-800/55">
+                  Aciliyet, öğretmen havuzunda sıralamayı ve hedef cevap süresini etkiler.
+                </p>
+              </label>
+              <label className="block text-sm">
+                <span className="font-medium text-paper-800">Ses URL (isteğe bağlı)</span>
+                <input
+                  className="mt-1 w-full rounded-xl border border-paper-200 px-3 py-2 text-sm"
+                  value={audioUrl}
+                  onChange={(e) => setAudioUrl(e.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void submit()}
+                className="w-full rounded-xl bg-brand-800 py-2.5 text-sm font-semibold text-white hover:bg-brand-900 disabled:opacity-50"
+              >
+                {busy ? "Gönderiliyor…" : "Havuza gönder"}
+              </button>
+            </div>
+          </section>
         </div>
       </div>
     </div>

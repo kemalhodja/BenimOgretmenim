@@ -75,9 +75,9 @@ function sessionStatusLabel(status: string): string {
 
 function deliveryModeLabel(mode: string): string {
   const labels: Record<string, string> = {
-    online: "Online",
+    online: "Çevrim içi",
     in_person: "Yüz yüze",
-    hybrid: "Online veya yüz yüze",
+    hybrid: "Çevrim içi veya yüz yüze",
   };
   return labels[mode] ?? mode;
 }

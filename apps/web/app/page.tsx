@@ -595,7 +595,7 @@ export default function Home() {
                   <div className="mt-1 text-lg font-semibold text-white">Dersin adımları</div>
                 </div>
                 <div className="rounded-full border border-edu-sun-300/35 bg-edu-sun-300/15 px-3 py-1 text-xs font-semibold text-edu-sun-100">
-                  Online
+                  Çevrim içi
                 </div>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">

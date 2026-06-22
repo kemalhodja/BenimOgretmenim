@@ -65,7 +65,7 @@ function itemsFor(mode: PanelMode, role: UserRole | null, pathname: string): Ite
   }
   if (effective === "guardian") {
     return [
-      { href: "/guardian", label: "Panel" },
+      { href: "/guardian", label: "Özet" },
       { href: "/guardian/requests", label: "İlanlar", primary: true },
       { href: "/student/kurslar", label: "Kurslar" },
       { href: "/ogretmenler", label: "Öğretmen", shortLabel: "Öğret" },
@@ -83,7 +83,7 @@ function itemsFor(mode: PanelMode, role: UserRole | null, pathname: string): Ite
       },
       {
         href: "/admin/veri?k=disputes",
-        label: "Dispute",
+        label: "İtirazlar",
         match: (p, q) => starts(p, "/admin/veri") && q.get("k") === "disputes",
       },
       { href: "/admin/support", label: "Destek" },

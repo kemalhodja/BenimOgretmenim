@@ -8,6 +8,12 @@ import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
 import { trackEvent } from "../../lib/trackEvent";
 import { QuickStartBanner, STUDENT_START_STEPS } from "../../components/QuickStartBanner";
+import {
+  getPanelDetailMode,
+  setPanelDetailMode,
+  type PanelDetailMode,
+} from "../../lib/panelDetailPreference";
+import { userErrorMessage, walletLedgerKindLabelTr } from "../../lib/userFacingMessageTr";
 
 type SubMe = {
   active: boolean;
@@ -150,6 +156,11 @@ function StudentPanelPageInner() {
   const [usagePacks, setUsagePacks] = useState<UsagePack[]>([]);
   const [guardianInviteBusy, setGuardianInviteBusy] = useState(false);
   const [notifBusyId, setNotifBusyId] = useState<string | null>(null);
+  const [panelDetail, setPanelDetail] = useState<PanelDetailMode>("simple");
+
+  useEffect(() => {
+    setPanelDetail(getPanelDetailMode());
+  }, []);
 
   useEffect(() => {
     const t = getToken();
@@ -204,7 +215,7 @@ function StudentPanelPageInner() {
       setGuardianInvites((prev) => [r.invite, ...prev].slice(0, 10));
       setOk(`Veli davet kodu oluşturuldu: ${r.invite.code}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "guardian_invite_failed");
+      setError(userErrorMessage(e, "guardian_invite_failed"));
     } finally {
       setGuardianInviteBusy(false);
     }
@@ -295,8 +306,7 @@ function StudentPanelPageInner() {
   useEffect(() => {
     if (!token) return;
     load(token).catch((e) => {
-      const msg = e instanceof Error ? e.message : "load_failed";
-      setError(msg);
+      setError(userErrorMessage(e, "load_failed"));
       if (msg.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathWithQuery));
@@ -326,7 +336,7 @@ function StudentPanelPageInner() {
       setOk("Cüzdan yükleme açıldı. Sonra sayfayı yenileyin.");
       await load(token);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "topup_failed";
+      const msg = userErrorMessage(e, "topup_failed");
       setError(msg);
       if (msg.includes("[401]")) {
         clearToken();
@@ -357,7 +367,7 @@ function StudentPanelPageInner() {
       setOk("Ödeme penceresi açıldı. Bitince sayfayı yenileyin.");
       await load(token);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "purchase_failed";
+      const msg = userErrorMessage(e, "purchase_failed");
       setError(msg);
       if (msg.includes("[401]")) {
         clearToken();
@@ -384,7 +394,7 @@ function StudentPanelPageInner() {
       setOk("Ek hak paketi cüzdan bakiyenizden alındı.");
       await load(token);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "usage_pack_purchase_failed";
+      const msg = userErrorMessage(e, "usage_pack_purchase_failed");
       setError(msg.includes("insufficient_balance") ? "Bu ek paket için cüzdan bakiyeniz yeterli değil." : msg);
     } finally {
       setBusy(false);
@@ -443,14 +453,47 @@ function StudentPanelPageInner() {
   const lessonRequestUsageText = sub?.usage
     ? `${sub.usage.lessonRequestsToday}/${sub.policy.dailyLessonRequestLimit}`
     : "—";
+  const showDetail = panelDetail === "detailed";
+
+  function togglePanelDetail() {
+    const next: PanelDetailMode = showDetail ? "simple" : "detailed";
+    setPanelDetailMode(next);
+    setPanelDetail(next);
+  }
 
   return (
     <div className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-2xl px-6 py-8">
-        <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Özet</h1>
-        <p className="mt-1 text-sm text-paper-800/75">
-          Sıradaki işlem aşağıda. Talep, soru ve plan alt menüden de açılır.
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Özet</h1>
+            <p className="mt-1 text-sm text-paper-800/75">
+              Sıradaki işlem aşağıda. Talep, soru ve plan alt menüden de açılır.
+            </p>
+          </div>
+          <div className="flex shrink-0 rounded-xl border border-paper-200 bg-white p-1 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => {
+                if (showDetail) togglePanelDetail();
+              }}
+              className={`rounded-lg px-3 py-1.5 ${!showDetail ? "bg-brand-800 text-white" : "text-paper-800"}`}
+              data-testid="panel-mode-simple"
+            >
+              Basit
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!showDetail) togglePanelDetail();
+              }}
+              className={`rounded-lg px-3 py-1.5 ${showDetail ? "bg-brand-800 text-white" : "text-paper-800"}`}
+              data-testid="panel-mode-detailed"
+            >
+              Detaylı
+            </button>
+          </div>
+        </div>
 
         <div className="mt-5">
           <QuickStartBanner
@@ -490,6 +533,27 @@ function StudentPanelPageInner() {
           </Link>
         </div>
 
+        {!showDetail && unreadNotifications > 0 ? (
+          <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-950">
+            {unreadNotifications} okunmamış bildirim var.{" "}
+            <Link href="/bildirimler" className="font-semibold underline">
+              Bildirimleri aç
+            </Link>
+          </div>
+        ) : null}
+
+        {!showDetail ? (
+          <p className="mt-4 text-xs text-paper-800/55">
+            Cüzdan, abonelik ve gelişim grafikleri için{" "}
+            <button type="button" onClick={togglePanelDetail} className="font-medium text-brand-800 underline">
+              detaylı görünüm
+            </button>
+            .
+          </p>
+        ) : null}
+
+        {showDetail ? (
+        <>
         <section className="mt-6 rounded-2xl border border-paper-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -877,7 +941,7 @@ function StudentPanelPageInner() {
                       <td className="px-2 py-2 font-mono text-paper-800/75">
                         {new Date(e.created_at).toLocaleString("tr-TR")}
                       </td>
-                      <td className="px-2 py-2 text-paper-800">{e.kind}</td>
+                      <td className="px-2 py-2 text-paper-800">{walletLedgerKindLabelTr(e.kind)}</td>
                       <td className="px-2 py-2 text-right font-mono text-paper-800">
                         {Number(e.delta_minor) >= 0 ? "+" : ""}
                         {tlMinor(e.delta_minor)} TL
@@ -989,6 +1053,8 @@ function StudentPanelPageInner() {
             </button>
           </div>
         </div>
+        </>
+        ) : null}
       </div>
     </div>
   );

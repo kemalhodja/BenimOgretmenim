@@ -25,6 +25,7 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
     await expect(page.getByRole("heading", { name: "Özet", exact: true })).toBeVisible();
     await expect(page.getByTestId("quick-start-banner")).toBeVisible();
     await expect(page.getByText("Şimdi ne yapmalısınız?")).toBeVisible();
+    await page.getByTestId("panel-mode-detailed").click();
     await expect(page.getByText("Başarı paneli")).toBeVisible();
     await expect(page.getByText("Haftalık plan")).toBeVisible();
     await page.goto("/student/calisma");

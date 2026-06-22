@@ -7,6 +7,10 @@ import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getRoleFromToken, getToken } from "../../lib/auth";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { trackEvent } from "../../lib/trackEvent";
+import { EmptyStateCard } from "../../components/EmptyStateCard";
+import { QuickStartBanner } from "../../components/QuickStartBanner";
+import { studentRequestsQuickStart } from "../../lib/pageQuickStart";
+import { userErrorMessage } from "../../lib/userFacingMessageTr";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 type StudentRow = { student_id: string; student_display_name: string };
@@ -173,7 +177,7 @@ export default function StudentRequestsPage() {
   useEffect(() => {
     if (!token) return;
     refresh(token).catch((e) => {
-      const msg = e instanceof Error ? e.message : "load_failed";
+      const msg = userErrorMessage(e, "load_failed");
       setError(msg);
       if (msg.includes("[401]")) {
         clearToken();
@@ -241,18 +245,21 @@ export default function StudentRequestsPage() {
       setPreferredTimes("");
       await refresh(token);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "create_failed";
-      setError(msg);
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "create_failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathWithQuery));
+        return;
       }
-      if (msg.includes("[403]")) {
+      if (raw.includes("[403]") || raw.includes("forbidden")) {
         setError("Talep oluşturmak için öğrenci hesabı ya da bağlı öğrencisi olan veli hesabı gerekir.");
+        return;
       }
-      if (msg.includes("daily_lesson_request_quota_exceeded")) {
+      if (raw.includes("daily_lesson_request_quota_exceeded")) {
         setError("Bugünkü ders ilanı hakkınız doldu. Ücretsiz öğrenciler günde 1 ilan açabilir; yıllık abonelikte bu hak günde 5 ilandır.");
+        return;
       }
+      setError(userErrorMessage(e, "create_failed"));
     } finally {
       setSaving(false);
     }
@@ -262,6 +269,11 @@ export default function StudentRequestsPage() {
   const role = getRoleFromToken(token);
   const isGuardian = role === "guardian";
   const requestBaseHref = isGuardian ? "/guardian/requests" : "/student/requests";
+  const pageGuide = studentRequestsQuickStart();
+
+  function scrollToRequestForm() {
+    document.getElementById("request-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
     <div className="min-h-screen bg-paper-50">
@@ -277,6 +289,18 @@ export default function StudentRequestsPage() {
           </div>
         </header>
 
+        <div className="mt-6">
+          <QuickStartBanner
+            eyebrow="3 adımda ilan"
+            title={pageGuide.title}
+            body={pageGuide.body}
+            href={pageGuide.href}
+            cta={pageGuide.cta}
+            steps={pageGuide.steps}
+            testId="requests-quick-start"
+          />
+        </div>
+
         {(error || ok) && (
           <div
             className={`mt-6 rounded-xl border p-4 text-sm ${
@@ -290,7 +314,7 @@ export default function StudentRequestsPage() {
         )}
 
         <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="rounded-xl border border-paper-200 bg-white p-5">
+          <div id="request-form" className="scroll-mt-6 rounded-xl border border-paper-200 bg-white p-5">
             <h2 className="text-base font-semibold text-paper-900">
               {requestKind === "demo" ? "Demo ders talebi" : "Yeni ders ilanı"}
             </h2>
@@ -459,9 +483,16 @@ export default function StudentRequestsPage() {
             <p className="mt-1 text-xs text-paper-800/55">Detay ve teklifler için satıra tıklayın.</p>
             <div className="mt-3 space-y-2">
               {mine.length === 0 ? (
-                <div className="rounded-xl border border-paper-100 bg-paper-50 p-4 text-sm text-paper-800/70">
-                  Henüz ilan yok. Branş, konu ve uygun zaman bilgisiyle ilk ilanınızı oluşturabilirsiniz.
-                </div>
+                <EmptyStateCard
+                  title="Henüz ilanınız yok"
+                  body="Soldaki formdan branş ve konuyu doldurup ilk ilanınızı açın. Öğretmenler teklif verdikçe burada listelenir."
+                  primaryHref="#request-form"
+                  primaryLabel="İlk ilanı oluştur"
+                  secondaryHref="/ogretmenler"
+                  secondaryLabel="Öğretmen ara"
+                  testId="requests-empty-state"
+                  onPrimaryClick={scrollToRequestForm}
+                />
               ) : (
                 mine.map((r) => (
                   <Link

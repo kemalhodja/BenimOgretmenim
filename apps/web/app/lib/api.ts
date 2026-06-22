@@ -1,4 +1,5 @@
 import { makeRequestId } from "./requestId";
+import { translateUserFacingError } from "./userFacingMessageTr";
 
 export const CSRF_HEADER_NAME = "x-csrf-token";
 export const CSRF_HEADER_VALUE = "bo-csrf-v1";
@@ -135,7 +136,7 @@ export async function apiFetch<T>(
         : responseRequestId;
     const ridSuffix = rid ? ` (requestId=${rid})` : "";
     const detail = errorDetailForThrow(msg);
-    throw new Error(`[${res.status}] ${detail}${ridSuffix}`);
+    throw new Error(translateUserFacingError(`[${res.status}] ${detail}${ridSuffix}`));
   }
 
   return json as T;

@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import { registerHrefWithReturn, safeInternalPath } from "../lib/authRedirect";
-import { setToken } from "../lib/auth";
+import { translateUserFacingError } from "../lib/userFacingMessageTr";
 
 type LoginResponse = {
   token: string;
@@ -32,7 +32,7 @@ function parseLoginApiError(err: unknown): { message: string; showRegisterHint: 
   if (noRid.startsWith("[400]") && noRid.includes("validation:")) {
     return { message: "E-posta biçimi geçersiz.", showRegisterHint: false };
   }
-  return { message: noRid, showRegisterHint: false };
+  return { message: translateUserFacingError(noRid), showRegisterHint: false };
 }
 
 type SeedPreset = {

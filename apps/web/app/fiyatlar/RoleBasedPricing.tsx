@@ -50,7 +50,7 @@ function teacherCampaignLabel(plan: PlanRow): string {
 
 const teacherSubscriptionBenefits = [
   "Sınırsız teklif verme; abonesizken günde yalnızca 1 normal teklif ücretsizdir",
-  "Tam public profil: bio, video, kanıt, fiyat, telefon ve WhatsApp tercihi",
+  "Tam herkese açık profil: tanıtım metni, video, kanıt, fiyat, telefon ve WhatsApp tercihi",
   "Profil linkini kendi web sayfan gibi paylaşma ve öğrenci başvurularını tek yerde toplama",
   "Kendi kampanya/reklam ilanını oluşturma; ilk ilan ücretsiz, sonrası 1000 TL cüzdan bakiyesi",
   "Kurs, grup ders, doğrudan ders ve Akademi görünürlüğü",

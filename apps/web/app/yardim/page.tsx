@@ -43,7 +43,7 @@ const faq = [
     a: "Kursa kayıtta ücret cüzdanda güvenceye alınır. İlk ders sonrası iade talebi oluşturabilirsiniz. İkinci derse girerseniz iade hakkı kapanır.",
   },
   {
-    q: "Online kurslar",
+    q: "Çevrim içi kurslar",
     a: "Kurs listesinden programı ve ücreti inceleyin. Kayıt sonrası canlı ders bağlantıları öğrenci kurs sayfasında görünür.",
   },
   {

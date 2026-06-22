@@ -7,6 +7,8 @@ import { apiFetch } from "../../../lib/api";
 import { loginHrefWithReturn } from "../../../lib/authRedirect";
 import { clearToken, getToken } from "../../../lib/auth";
 import { homeworkPostStatusLabelTr } from "../../../lib/homeworkStatusLabel";
+import { userErrorMessage } from "../../../lib/userFacingMessageTr";
+import { EmptyStateCard } from "../../../components/EmptyStateCard";
 
 type PostRow = {
   id: string;
@@ -45,13 +47,13 @@ export default function OdevGonderilerPage() {
   useEffect(() => {
     if (!token) return;
     load(token).catch((e) => {
-      const m = e instanceof Error ? e.message : "yükle";
-      if (m.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "yüklenemedi";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathname));
         return;
       }
-      setError(m);
+      setError(userErrorMessage(e, "yüklenemedi"));
     });
   }, [token, load, router, pathname]);
 
@@ -82,7 +84,17 @@ export default function OdevGonderilerPage() {
         )}
         <ul className="mt-6 space-y-3">
           {posts.length === 0 ? (
-            <p className="text-sm text-paper-800/55">Henüz gönderi yok.</p>
+            <li>
+              <EmptyStateCard
+                title="Henüz soru göndermediniz"
+                body="Takıldığınız sorunun fotoğrafını çekin; öğretmen havuzundan çözüm gelsin."
+                primaryHref="/student/odev-sor"
+                primaryLabel="Soru gönder"
+                secondaryHref="/student/panel"
+                secondaryLabel="Öğrenci özeti"
+                testId="odev-gonderiler-empty-state"
+              />
+            </li>
           ) : (
             posts.map((p) => (
               <li key={p.id}>

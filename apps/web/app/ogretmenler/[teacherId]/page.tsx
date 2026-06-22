@@ -708,7 +708,7 @@ export default function OgretmenDetayPage() {
     [
       { label: "Profil kalitesi", value: `${teacher?.profile_quality_score ?? 0}/100` },
       { label: "Uzmanlık", value: primaryBranch?.branch_name ?? "Branş profilde" },
-      { label: "Konum", value: teacher?.city_name ?? "Online" },
+      { label: "Konum", value: teacher?.city_name ?? "Çevrim içi" },
       { label: "Ücret", value: hourlyRange ?? "Teklif sonrası" },
     ];
   const teacherInitials = teacher ? displayNameInitials(teacher.display_name) : "Ö";
@@ -764,7 +764,7 @@ export default function OgretmenDetayPage() {
       body: "Hazır tanıtım metniyle öğretmen kendini daha profesyonel anlatır.",
     },
     {
-      title: "Sosyal medya bio",
+      title: "Sosyal medya tanıtımı",
       body: "Kısa tanıtım cümlesi profil linkiyle birlikte kullanılabilir.",
     },
     {
@@ -1002,7 +1002,7 @@ export default function OgretmenDetayPage() {
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2 text-sm font-medium text-paper-800/70">
                   <span className="rounded-full bg-white/80 px-3 py-1 ring-1 ring-paper-200">
-                    {profileSite?.locationLabel ?? ([teacher.district_name, teacher.city_name].filter(Boolean).join(", ") || "Online / Türkiye")}
+                    {profileSite?.locationLabel ?? ([teacher.district_name, teacher.city_name].filter(Boolean).join(", ") || "Çevrim içi · Türkiye")}
                   </span>
                   <span className="rounded-full bg-white/80 px-3 py-1 ring-1 ring-paper-200">
                     {profileSite?.ratingLabel ?? (teacher.rating_count ? `★ ${Number(teacher.rating_avg ?? 0).toFixed(1)} (${teacher.rating_count})` : "Yeni profil")}
@@ -1231,7 +1231,7 @@ export default function OgretmenDetayPage() {
                   {teacherIntroMessage}
                 </p>
                 <div className="mt-3 rounded-xl border border-paper-200 bg-white p-3">
-                  <div className="text-xs font-semibold text-paper-900">Sosyal medya bio önerisi</div>
+                  <div className="text-xs font-semibold text-paper-900">Sosyal medya metni önerisi</div>
                   <p className="mt-1 text-xs leading-relaxed text-paper-800/65">{socialBioText}</p>
                 </div>
                 {introCopyOk ? <p className="mt-2 text-xs font-semibold text-brand-900">{introCopyOk}</p> : null}
@@ -1417,7 +1417,7 @@ export default function OgretmenDetayPage() {
             <div id="ders-yontemi" className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]">
               <div className="rounded-2xl border border-brand-200 bg-[radial-gradient(circle_at_top_left,#ecfeff_0%,#ffffff_42%,#fff7ed_100%)] p-4">
                 <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">
-                  Premium profil özeti
+                  Abonelikli profil özeti
                 </div>
                 <h2 className="mt-2 text-lg font-semibold text-paper-900">
                   {teacher.display_name} ile ders öncesi beklenti net, ders sonrası takip ölçülebilir.
@@ -2085,7 +2085,7 @@ export default function OgretmenDetayPage() {
               {teacher.display_name} ile başlamadan önce demo veya teklif alın
             </h2>
             <div className="mt-2 text-xs text-paper-800/60">
-              {profileSite?.priceLabel ?? hourlyRange ?? "Ücret teklif sonrası"} · {profileSite?.locationLabel ?? teacher.city_name ?? "Online"}
+              {profileSite?.priceLabel ?? hourlyRange ?? "Ücret teklif sonrası"} · {profileSite?.locationLabel ?? teacher.city_name ?? "Çevrim içi"}
             </div>
             <ul className="mt-3 space-y-1.5">
               {quickDecisionReasons.slice(0, 3).map((reason) => (

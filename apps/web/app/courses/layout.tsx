@@ -35,9 +35,9 @@ function toSsrCourse(row: JsonRecord): SsrCourse | null {
 
 function deliveryModeLabel(mode: string): string {
   const labels: Record<string, string> = {
-    online: "Online",
+    online: "Çevrim içi",
     in_person: "Yüz yüze",
-    hybrid: "Online veya yüz yüze",
+    hybrid: "Çevrim içi veya yüz yüze",
   };
   return labels[mode] ?? mode;
 }
@@ -64,7 +64,7 @@ function tl(minor: number): string {
 }
 
 export const metadata: Metadata = {
-  title: "Online kurslar ve grup dersleri",
+  title: "Çevrim içi kurslar ve grup dersleri",
   description:
     "Öğretmenlerin yayınladığı online kursları, grup seçeneklerini, fiyatları ve kayıt adımlarını inceleyin.",
   alternates: { canonical: coursesUrl },

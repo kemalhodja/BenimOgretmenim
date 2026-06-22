@@ -7,6 +7,8 @@ import { apiFetch } from "../../../lib/api";
 import { loginHrefWithReturn } from "../../../lib/authRedirect";
 import { clearToken, getRoleFromToken, getToken } from "../../../lib/auth";
 import { RequestChat } from "../../../components/RequestChat";
+import { EmptyStateCard } from "../../../components/EmptyStateCard";
+import { userErrorMessage } from "../../../lib/userFacingMessageTr";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 
@@ -178,16 +180,17 @@ export default function StudentRequestDetailPage() {
   useEffect(() => {
     if (!token || !requestId) return;
     load(token).catch((e) => {
-      const msg = e instanceof Error ? e.message : "load_failed";
-      setError(msg);
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "load_failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathname));
         return;
       }
-      if (msg.includes("[403]")) {
+      if (raw.includes("[403]") || raw.includes("forbidden")) {
         setError("Bu talebe erişim izniniz yok.");
+        return;
       }
+      setError(userErrorMessage(e, "load_failed"));
     });
   }, [token, requestId, load, router, pathname]);
 
@@ -217,8 +220,7 @@ export default function StudentRequestDetailPage() {
       await load(token);
       setOk("Talep iptal edildi.");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "cancel_failed";
-      setError(msg);
+      setError(userErrorMessage(e, "cancel_failed"));
       if (msg.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathname));
@@ -265,22 +267,25 @@ export default function StudentRequestDetailPage() {
           : "Teklif reddedildi.",
       );
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "decide_failed";
-      setError(msg);
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "decide_failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathname));
+        return;
       }
-      if (msg.includes("[403]")) {
+      if (raw.includes("[403]") || raw.includes("forbidden")) {
         setError("Bu teklif üzerinde işlem yapma yetkiniz yok.");
+        return;
       }
-      if (msg.includes("insufficient_wallet_available")) {
+      if (raw.includes("insufficient_wallet_available")) {
         setError(
           getRoleFromToken(token) === "guardian"
             ? "Kullanılabilir cüzdan bakiyesi paketi güvenceye almak için yetersiz."
             : "Kullanılabilir cüzdan bakiyesi paketi güvenceye almak için yetersiz. Öğrenci panelinden bakiye yükleyin.",
         );
+        return;
       }
+      setError(userErrorMessage(e, "decide_failed"));
     } finally {
       setBusyId(null);
     }
@@ -302,8 +307,7 @@ export default function StudentRequestDetailPage() {
       window.open(ck.iframeUrl, "_blank", "noopener,noreferrer");
       setOk("Cüzdan yükleme penceresi açıldı. Ödeme tamamlanınca bu sayfayı yenileyip teklifi kabul edebilirsiniz.");
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "topup_failed";
-      setError(msg);
+      setError(userErrorMessage(e, "topup_failed"));
       if (msg.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathname));
@@ -521,9 +525,15 @@ export default function StudentRequestDetailPage() {
               </div>
             )}
             {offers.length === 0 ? (
-              <div className="rounded-xl border border-paper-200 bg-white p-5 text-sm text-paper-800/75 shadow-sm">
-                Henüz teklif yok. Öğretmenler talebi gördükçe burada listelenecek.
-              </div>
+              <EmptyStateCard
+                title="Öğretmenler ilanınızı inceliyor"
+                body="Branşınıza uygun öğretmenler talebi gördükçe burada teklif listelenir. Genelde ilk yanıtlar birkaç saat içinde gelir."
+                primaryHref={requestBaseHref}
+                primaryLabel="Tüm ilanlarım"
+                secondaryHref="/ogretmenler"
+                secondaryLabel="Öğretmen ara"
+                testId="request-offers-empty-state"
+              />
             ) : (
               <>
                 {bestOffer ? (

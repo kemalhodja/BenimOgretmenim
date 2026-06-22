@@ -134,7 +134,7 @@ export default async function OgretmenlerLayout({ children }: { children: ReactN
                 >
                   <div className="font-semibold text-paper-950">{teacher.display_name}</div>
                   <div className="mt-1 text-xs text-paper-800/60">
-                    {teacher.primary_branch_name ?? "Branş"} · {teacher.city_name ?? "Online"} · {priceLabel(teacher.min_hourly_rate_minor, teacher.max_hourly_rate_minor)}
+                    {teacher.primary_branch_name ?? "Branş"} · {teacher.city_name ?? "Çevrim içi"} · {priceLabel(teacher.min_hourly_rate_minor, teacher.max_hourly_rate_minor)}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
                     <span className="rounded-full bg-brand-50 px-2 py-0.5 font-medium text-brand-900">
