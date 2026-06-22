@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AuthEntryLink } from "../components/AuthEntryLink";
 import { loginHrefWithReturn, registerHrefWithReturn } from "../lib/authRedirect";
 import { publicSiteUrl } from "../lib/siteUrl";
 
@@ -167,9 +168,9 @@ export default function KampanyaPage() {
             Ana sayfa
           </Link>
           {" · "}
-          <Link href="/fiyatlar" className="font-medium text-brand-800 underline-offset-4 hover:underline">
+          <AuthEntryLink path="/fiyatlar" className="font-medium text-brand-800 underline-offset-4 hover:underline">
             Güncel fiyat listesi
-          </Link>
+          </AuthEntryLink>
         </div>
       </div>
     </div>

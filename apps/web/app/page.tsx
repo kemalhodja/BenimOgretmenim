@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { BrandLockup } from "./components/BrandLockup";
+import { AuthEntryLink } from "./components/AuthEntryLink";
 import { HomeLaunchAnnouncement } from "./components/HomeLaunchAnnouncement";
 import { HomeHeroPersonalized } from "./components/HomeHeroPersonalized";
 import { HeroArt } from "./components/HeroArt";
@@ -703,9 +704,9 @@ export default function Home() {
                 En sık kullanılan işlemlere buradan başlayın.
               </p>
             </div>
-            <Link href="/fiyatlar" className="text-sm font-semibold text-edu-indigo-700 underline underline-offset-4">
+            <AuthEntryLink path="/fiyatlar" className="text-sm font-semibold text-edu-indigo-700 underline underline-offset-4">
               Şeffaf fiyatları incele
-            </Link>
+            </AuthEntryLink>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {homeQuickActions.map((action) => (
@@ -792,9 +793,9 @@ export default function Home() {
                 toplanır.
               </p>
             </div>
-            <Link href="/fiyatlar" className="text-sm font-semibold text-edu-indigo-700 underline underline-offset-4">
+            <AuthEntryLink path="/fiyatlar" className="text-sm font-semibold text-edu-indigo-700 underline underline-offset-4">
               Üyelikleri gör
-            </Link>
+            </AuthEntryLink>
           </div>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
             {platformTracks.map((track) => (
@@ -839,12 +840,12 @@ export default function Home() {
                 >
                   Ücretsiz kayıt ol
                 </Link>
-                <Link
-                  href="/fiyatlar"
+                <AuthEntryLink
+                  path="/fiyatlar"
                   className="rounded-2xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/15"
                 >
                   Üyelikleri gör
-                </Link>
+                </AuthEntryLink>
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ export default function robots(): MetadataRoute.Robots {
           "/teacher",
           "/guardian",
           "/panel",
+          "/fiyatlar",
         ],
       },
     ],

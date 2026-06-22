@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AuthEntryLink } from "../components/AuthEntryLink";
 import { RoleFeatureOverview } from "../components/marketing/RoleFeatureOverview";
 import { ROLE_FEATURE_CARDS } from "../lib/roleFeatures";
 import { publicSiteUrl } from "../lib/siteUrl";
@@ -58,12 +59,12 @@ export default function RollerPage() {
           >
             Kayıt ol
           </Link>
-          <Link
-            href="/fiyatlar"
+          <AuthEntryLink
+            path="/fiyatlar"
             className="rounded-xl border border-paper-300 bg-white px-4 py-2.5 text-sm font-medium text-paper-900 hover:bg-paper-50"
           >
             Fiyatlar
-          </Link>
+          </AuthEntryLink>
           <Link href="/yardim" className="text-sm font-medium text-brand-800 underline underline-offset-4">
             Yardım
           </Link>

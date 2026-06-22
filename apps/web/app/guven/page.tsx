@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AuthEntryLink } from "../components/AuthEntryLink";
 import { publicSiteUrl } from "../lib/siteUrl";
 
 const guvenUrl = `${publicSiteUrl()}/guven`;
@@ -91,12 +92,12 @@ export default function GuvenPage() {
             kullanıcıların panelinde anlaşılır şekilde görünür.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/fiyatlar"
+            <AuthEntryLink
+              path="/fiyatlar"
               className="rounded-2xl bg-brand-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-900"
             >
               Fiyatları incele
-            </Link>
+            </AuthEntryLink>
             <Link
               href="/kullanim-kosullari"
               className="rounded-2xl border border-paper-200 bg-paper-50 px-4 py-2.5 text-sm font-semibold text-paper-900 hover:border-brand-200 hover:bg-brand-50"

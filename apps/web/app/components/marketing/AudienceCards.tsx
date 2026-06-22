@@ -63,9 +63,9 @@ export function TeacherAudienceCard() {
         </AuthEntryLink>
       </div>
       <p className="mt-5 text-sm text-paper-800/70">
-        <Link href="/fiyatlar" className="font-medium text-brand-800 underline underline-offset-2">
+        <AuthEntryLink path="/fiyatlar" className="font-medium text-brand-800 underline underline-offset-2">
           Abonelik fiyatları
-        </Link>
+        </AuthEntryLink>
         {" · "}
         <AuthEntryLink path="/teacher/kurslar" className="font-medium text-brand-800 underline underline-offset-2">
           Kurslarım

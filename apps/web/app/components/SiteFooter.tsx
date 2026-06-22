@@ -54,9 +54,9 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/fiyatlar" className="hover:underline">
+                <AuthEntryLink path="/fiyatlar" className="hover:underline">
                   Fiyatlar
-                </Link>
+                </AuthEntryLink>
               </li>
               <li>
                 <Link href={roleFeaturesLink.href} className="hover:underline">

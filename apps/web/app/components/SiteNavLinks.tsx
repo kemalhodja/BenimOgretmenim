@@ -10,10 +10,11 @@ const NAV_PUBLIC = [
   { href: "/#nasil", label: "Nasıl işler?" },
   { href: "/ogretmenler", label: "Öğretmen ara" },
   { href: "/courses", label: "Kurslar" },
-  { href: "/fiyatlar", label: "Fiyatlar" },
   { href: "/roller", label: "Roller" },
   { href: "/guven", label: "Güven" },
 ] as const;
+
+const NAV_AUTH = [{ href: "/fiyatlar", label: "Fiyatlar" }] as const;
 
 type Variant = "desktop" | "mobile";
 
@@ -53,13 +54,15 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
   const role = mounted ? getRoleFromToken(token) ?? sessionRole : null;
   const panelHref = role ? panelPathForRole(role) : null;
   const panelLabel = role ? panelNavLabel(role) : null;
+  const loggedIn = Boolean(token || sessionRole);
+  const navItems = loggedIn ? [...NAV_PUBLIC, ...NAV_AUTH] : NAV_PUBLIC;
 
   const deskCls =
     "rounded-lg px-2.5 py-1.5 text-sm font-medium text-paper-800/80 transition hover:bg-paper-100 hover:text-paper-900";
   const mobCls = "shrink-0 rounded-md px-2 py-1 text-paper-800/85 hover:bg-paper-100";
 
   if (!mounted) {
-    const n = NAV_PUBLIC.length;
+    const n = NAV_PUBLIC.length + NAV_AUTH.length;
     return (
       <>
         {Array.from({ length: n }).map((_, i) => (
@@ -80,7 +83,7 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
   if (variant === "desktop") {
     return (
       <>
-        {NAV_PUBLIC.map((item) => (
+        {navItems.map((item) => (
           <Link key={item.href} href={item.href} className={deskCls}>
             {item.label}
           </Link>
@@ -96,7 +99,7 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
 
   return (
     <>
-      {NAV_PUBLIC.map((item) => (
+      {navItems.map((item) => (
         <Link key={item.href} href={item.href} className={mobCls}>
           {item.label}
         </Link>

@@ -10,6 +10,7 @@ const fiyatlarUrl = `${publicSiteUrl()}/fiyatlar`;
 export const metadata: Metadata = {
   title: "Fiyatlar ve kullanım bilgileri",
   description: "Öğrenci yıllık aboneliği, öğretmen erken erişim paketleri ve kampanya ilan ücretleri.",
+  robots: { index: false, follow: false },
   alternates: { canonical: fiyatlarUrl },
   openGraph: {
     title: "Fiyatlar ve kullanım bilgileri · BenimÖğretmenim",

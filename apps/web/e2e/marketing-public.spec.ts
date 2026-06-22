@@ -9,7 +9,6 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     { path: "/", title: "Öğretmen bul, ders al, soru sor ve gelişimini takip et" },
     { path: "/courses", title: "Kurslar" },
     { path: "/ogretmenler", title: "Öğretmen ara" },
-    { path: "/fiyatlar", title: "Üyelik ve kullanım bilgileri" },
     { path: "/yardim", title: "Yardım" },
     { path: "/roller", title: "Kim ne yapabilir?" },
     { path: "/iletisim", title: "İletişim" },
@@ -60,25 +59,14 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByRole("heading", { name: "Öğretmen ipuçları" })).toBeVisible();
   });
 
-  test("/fiyatlar — ziyaretçiye şeffaf temel ücretleri gösterir", async ({ page }) => {
-    const res = await page.goto("/fiyatlar", { waitUntil: "domcontentloaded" });
-    expect(res?.ok() ?? false).toBeTruthy();
-    await expect(page.getByRole("heading", { name: "Üyelik ve kullanım bilgileri" })).toBeVisible();
-    await expect(page.getByText(/1750 TL \/ 30 ay/)).toBeVisible();
-    await expect(page.getByText(/2500 TL \/ 60 ay/)).toBeVisible();
-    await expect(page.getByText(/yıllık abonelik 1500 TL/)).toBeVisible();
-    await expect(page.getByText(/12\.000 TL/).first()).toBeVisible();
-    await expect(page.getByText(/Erken erişim hediyesi/)).toBeVisible();
-    await expect(page.getByText("Neden abone olmalıyım?")).toBeVisible();
-    await expect(page.getByText("Abonelikle kazanılanlar").first()).toBeVisible();
-    await expect(page.getByText(/Yıllık abonelik: günlük 5 ders ilanı ve 10 soru/).first()).toBeVisible();
-    await expect(page.getByText(/Public profiliniz tam açılır/).first()).toBeVisible();
-    await expect(page.getByText("Tüm özellikler (21)").first()).toBeVisible();
-    await expect(page.getByText("Tüm özellikler (19)").first()).toBeVisible();
+  test("/fiyatlar — oturumsuz ziyaretçiyi girişe yönlendirir", async ({ page }) => {
+    await page.goto("/fiyatlar", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/login\?returnUrl=%2Ffiyatlar/);
+    await expect(page.getByRole("heading", { name: "Giriş yap" })).toBeVisible();
   });
 
-  test("rol özellik listesi — ana sayfa, kayıt, fiyatlar, yardim ve roller", async ({ page }) => {
-    for (const path of ["/", "/kayit", "/fiyatlar", "/yardim", "/roller"]) {
+  test("rol özellik listesi — ana sayfa, kayıt, yardim ve roller", async ({ page }) => {
+    for (const path of ["/", "/kayit", "/yardim", "/roller"]) {
       const res = await page.goto(path, { waitUntil: "domcontentloaded" });
       expect(res?.ok() ?? false).toBeTruthy();
       await expect(page.getByText(/Tüm özellikler \(\d+\)/).first()).toBeVisible();
