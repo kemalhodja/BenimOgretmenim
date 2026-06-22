@@ -177,15 +177,17 @@ export default function StudentRequestsPage() {
   useEffect(() => {
     if (!token) return;
     refresh(token).catch((e) => {
-      const msg = userErrorMessage(e, "load_failed");
-      setError(msg);
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "load_failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathWithQuery));
+        return;
       }
-      if (msg.includes("[403]")) {
+      if (raw.includes("[403]") || raw.includes("forbidden")) {
         setError("Bu sayfa yalnızca öğrenci hesabı içindir.");
+        return;
       }
+      setError(userErrorMessage(e, "load_failed"));
     });
   }, [token, router, pathWithQuery]);
 

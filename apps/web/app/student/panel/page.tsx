@@ -306,15 +306,17 @@ function StudentPanelPageInner() {
   useEffect(() => {
     if (!token) return;
     load(token).catch((e) => {
-      setError(userErrorMessage(e, "load_failed"));
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "load_failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathWithQuery));
         return;
       }
-      if (msg.includes("[403]")) {
+      if (raw.includes("[403]") || raw.includes("forbidden")) {
         setError("Bu sayfa yalnızca öğrenci hesabı içindir.");
+        return;
       }
+      setError(userErrorMessage(e, "load_failed"));
     });
   }, [token, load, router, pathWithQuery]);
 
@@ -336,15 +338,17 @@ function StudentPanelPageInner() {
       setOk("Cüzdan yükleme açıldı. Sonra sayfayı yenileyin.");
       await load(token);
     } catch (e) {
-      const msg = userErrorMessage(e, "topup_failed");
-      setError(msg);
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "topup_failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathWithQuery));
+        return;
       }
-      if (msg.includes("[403]")) {
+      if (raw.includes("[403]") || raw.includes("forbidden")) {
         setError("Cüzdan yüklemek için öğrenci hesabı gerekir.");
+        return;
       }
+      setError(userErrorMessage(e, "topup_failed"));
     } finally {
       setBusy(false);
     }
@@ -367,15 +371,17 @@ function StudentPanelPageInner() {
       setOk("Ödeme penceresi açıldı. Bitince sayfayı yenileyin.");
       await load(token);
     } catch (e) {
-      const msg = userErrorMessage(e, "purchase_failed");
-      setError(msg);
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "purchase_failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathWithQuery));
+        return;
       }
-      if (msg.includes("[403]")) {
+      if (raw.includes("[403]") || raw.includes("forbidden")) {
         setError("Abonelik satın almak için öğrenci hesabı gerekir.");
+        return;
       }
+      setError(userErrorMessage(e, "purchase_failed"));
     } finally {
       setBusy(false);
     }
@@ -394,8 +400,12 @@ function StudentPanelPageInner() {
       setOk("Ek hak paketi cüzdan bakiyenizden alındı.");
       await load(token);
     } catch (e) {
-      const msg = userErrorMessage(e, "usage_pack_purchase_failed");
-      setError(msg.includes("insufficient_balance") ? "Bu ek paket için cüzdan bakiyeniz yeterli değil." : msg);
+      const raw = e instanceof Error ? e.message : "usage_pack_purchase_failed";
+      if (raw.includes("insufficient_balance")) {
+        setError("Bu ek paket için cüzdan bakiyeniz yeterli değil.");
+        return;
+      }
+      setError(userErrorMessage(e, "usage_pack_purchase_failed"));
     } finally {
       setBusy(false);
     }

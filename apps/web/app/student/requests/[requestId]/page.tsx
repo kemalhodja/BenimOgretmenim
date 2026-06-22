@@ -220,14 +220,17 @@ export default function StudentRequestDetailPage() {
       await load(token);
       setOk("Talep iptal edildi.");
     } catch (e) {
-      setError(userErrorMessage(e, "cancel_failed"));
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "cancel_failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathname));
+        return;
       }
-      if (msg.includes("[403]")) {
+      if (raw.includes("[403]") || raw.includes("forbidden")) {
         setError("Bu talep üzerinde işlem yapma yetkiniz yok.");
+        return;
       }
+      setError(userErrorMessage(e, "cancel_failed"));
     } finally {
       setCancelling(false);
     }
@@ -307,11 +310,13 @@ export default function StudentRequestDetailPage() {
       window.open(ck.iframeUrl, "_blank", "noopener,noreferrer");
       setOk("Cüzdan yükleme penceresi açıldı. Ödeme tamamlanınca bu sayfayı yenileyip teklifi kabul edebilirsiniz.");
     } catch (e) {
-      setError(userErrorMessage(e, "topup_failed"));
-      if (msg.includes("[401]")) {
+      const raw = e instanceof Error ? e.message : "topup_failed";
+      if (raw.includes("[401]")) {
         clearToken();
         router.replace(loginHrefWithReturn(pathname));
+        return;
       }
+      setError(userErrorMessage(e, "topup_failed"));
     } finally {
       setTopupBusy(false);
     }
