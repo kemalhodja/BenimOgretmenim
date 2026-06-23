@@ -144,12 +144,16 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
       SEED_USERS.adminBootstrap.password,
     );
     await expect(page).toHaveURL(/\/admin\/?$/);
-    await expect(page.getByRole("heading", { name: "Özet" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Operasyon özeti" }).first()).toBeVisible();
+    await expect(page.getByText("Son 7 gün gelir özeti")).toBeVisible();
+    await page.goto("/admin/users?status=suspended");
+    await expect(page.getByText("Hesap durumu")).toBeVisible();
     await page.goto("/admin/merkez");
     await expect(page.getByRole("heading", { name: "Kontrol merkezi" })).toBeVisible();
+    await expect(page.getByText("Günlük kontrol listesi")).toBeVisible();
     await expect(page.getByText("Haftalık ürün kalite raporu").or(page.getByText("Haftalık ürün kalite raporu hazırlanamadı"))).toBeVisible();
-    await page.goto("/admin/courses");
-    await expect(page.getByText("Admin kurs kampanyası")).toBeVisible();
-    await expect(page.getByText("Öğrenci ön kayıtlı, öğretmen başvurulu kurs aç")).toBeVisible();
+    await page.goto("/admin/courses?tab=applications&pending=1");
+    await expect(page.getByText("Başvuru kuyruğu")).toBeVisible();
+    await expect(page.getByText("Bekleyen kurs başvuruları").or(page.getByText("Bekleyen başvuru yok"))).toBeVisible();
   });
 });
