@@ -1,11 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
   PRODUCTION_SITE_HOST,
-  PRODUCTION_SITE_ORIGIN,
-  PRODUCTION_WWW_HOST,
+  resolveCanonicalRedirectOrigin,
+  shouldRedirectHostToCanonical,
 } from "./app/lib/siteUrl";
-
-const LEGACY_WEB_HOSTS = new Set(["benimogretmenim.onrender.com"]);
 
 const SESSION_COOKIE = "bo_session";
 const ROLE_COOKIE = "bo_session_role";
@@ -36,15 +34,6 @@ function isProtectedPath(pathname: string): boolean {
   );
 }
 
-function canonicalSiteOrigin(): string | null {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim() || PRODUCTION_SITE_ORIGIN;
-  try {
-    return new URL(raw).origin;
-  } catch {
-    return null;
-  }
-}
-
 function makeRequestId(): string {
   const c = globalThis.crypto;
   if (c && "randomUUID" in c && typeof c.randomUUID === "function") {
@@ -55,17 +44,12 @@ function makeRequestId(): string {
 
 export function proxy(req: NextRequest) {
   const host = req.headers.get("host")?.split(":")[0] ?? "";
-  const canonical = canonicalSiteOrigin();
+  const canonical = resolveCanonicalRedirectOrigin();
+  const canonicalHost = new URL(canonical).hostname;
 
-  if (canonical) {
-    const canonicalHost = new URL(canonical).hostname;
-    const shouldRedirectLegacy = LEGACY_WEB_HOSTS.has(host);
-    const shouldRedirectWww =
-      host === PRODUCTION_WWW_HOST && canonicalHost === PRODUCTION_SITE_HOST;
-    if (shouldRedirectLegacy || shouldRedirectWww) {
-      const target = new URL(req.nextUrl.pathname + req.nextUrl.search, canonical);
-      return NextResponse.redirect(target, 308);
-    }
+  if (shouldRedirectHostToCanonical(host) && host !== canonicalHost) {
+    const target = new URL(req.nextUrl.pathname + req.nextUrl.search, canonical);
+    return NextResponse.redirect(target, 308);
   }
 
   const { pathname } = req.nextUrl;

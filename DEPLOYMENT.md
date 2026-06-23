@@ -218,7 +218,8 @@ Canlı adresler:
 
 ### Geçiş ve SEO
 
-- Eski `benimogretmenim.onrender.com` adresi web’de otomatik olarak `https://benimogretmenim.com.tr` adresine **308** yönlendirilir.
+- Eski Render web hostları (`benimogretmenim-web.onrender.com`, `benimogretmenim.onrender.com`) otomatik olarak `https://benimogretmenim.com.tr` adresine **308** yönlendirilir.
+- Render Web env: `NEXT_PUBLIC_SITE_URL` = `https://benimogretmenim.com.tr` (**onrender.com olmamalı**)
 - Google Search Console’da yeni mülk ekleyin; sitemap: `https://benimogretmenim.com.tr/sitemap.xml`
 - Güven URL’leri sitemap’te: `/guven`, `/iade`, `/itiraz` — ayrıntılı kontrol: `SEO_LAUNCH_CHECKLIST.md`
 - Android TWA: `https://benimogretmenim.com.tr/.well-known/assetlinks.json` canlı ve Play imza parmak iziyle eşleşmeli (`apps/twa-android/RELEASE_CHECKLIST.md`)

@@ -4,9 +4,9 @@
 # Canlı domain (Render Custom Domains + DNS):
 #   Web:  https://benimogretmenim.com.tr  (+ isteğe bağlı www → apex yönlendirme)
 #   API:  https://api.benimogretmenim.com.tr
-# Yedek Render hostları (geçiş süresince):
+# Yedek Render hostları (otomatik .com.tr yönlendirmesi — proxy.ts):
+#   Web:  https://benimogretmenim-web.onrender.com
 #   API:  https://benim-ogretmenim.onrender.com
-#   Web:  https://benimogretmenim.onrender.com
 #
 # PayTR (Dashboard'da sync:false — elle güncelle):
 #   PAYTR_CALLBACK_URL=https://api.benimogretmenim.com.tr/v1/paytr/callback

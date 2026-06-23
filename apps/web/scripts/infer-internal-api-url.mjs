@@ -35,5 +35,8 @@ export function inferInternalApiUrlIfNeeded(siteRaw, publicApiRaw, existingInter
   if (siteUrl.hostname === "benimogretmenim.onrender.com") {
     return "https://benim-ogretmenim.onrender.com";
   }
+  if (siteUrl.hostname === "benimogretmenim-web.onrender.com") {
+    return "https://benim-ogretmenim.onrender.com";
+  }
   return null;
 }

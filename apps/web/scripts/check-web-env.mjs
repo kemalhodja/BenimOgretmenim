@@ -45,6 +45,12 @@ if (!allowHttp) {
         `For local http builds, set WEB_ALLOW_HTTP=1.`,
     );
   }
+  if (siteUrl.hostname.endsWith(".onrender.com")) {
+    fail(
+      "NEXT_PUBLIC_SITE_URL must not be a Render default host (benimogretmenim-web.onrender.com). " +
+        "Use https://benimogretmenim.com.tr on Render Web env.",
+    );
+  }
 }
 
 let internalUrl = null;
