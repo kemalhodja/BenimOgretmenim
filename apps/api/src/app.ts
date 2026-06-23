@@ -32,6 +32,7 @@ import { requestId } from "./middleware/requestId.js";
 import { requestLog } from "./middleware/requestLog.js";
 import { rateLimit } from "./middleware/rateLimit.js";
 import { assertProductionConfiguration } from "./lib/systemHealth.js";
+import { prefersHtmlResponse, publicWebUrl } from "./lib/publicWebUrl.js";
 
 assertProductionConfiguration();
 
@@ -119,14 +120,19 @@ app.use(
   }),
 );
 
-/** Tarayıcıda kök URL — SPA yok; API uçlarını gösterir */
+/** Kök URL — tarayıcı web sitesine yönlendirilir; API istemcileri JSON alır */
 app.get("/", (c) => {
+  const webUrl = publicWebUrl();
+  if (prefersHtmlResponse(c.req.header("Accept"))) {
+    return c.redirect(webUrl, 302);
+  }
+
   return c.json({
     service: "BenimÖğretmenim API",
-    message:
-      "Bu adres yalnızca REST API sunar. Web arayüzü ayrı bir Next.js uygulaması olacak.",
+    message: "Bu adres yalnızca REST API sunar.",
+    web: webUrl,
+    health: "/health",
     endpoints: {
-      health: "/health",
       auth: "/v1/auth (POST register, login; GET me)",
       meta: "/v1/meta/branches, /v1/meta/cities, /v1/meta/districts?cityId=",
       teachersPublic:

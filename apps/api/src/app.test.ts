@@ -19,6 +19,25 @@ describe("API app", () => {
     }
   });
 
+  it("redirects browser GET / to public web site", async () => {
+    process.env.PUBLIC_WEB_URL = "https://benimogretmenim.com.tr";
+    const res = await app.request("http://localhost/", {
+      headers: { Accept: "text/html,application/xhtml+xml" },
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("location")).toBe("https://benimogretmenim.com.tr");
+  });
+
+  it("returns JSON catalog for GET / without html Accept", async () => {
+    const res = await app.request("http://localhost/", {
+      headers: { Accept: "application/json" },
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { service?: string; web?: string };
+    expect(body.service).toBe("BenimÖğretmenim API");
+    expect(body.web).toBeTruthy();
+  });
+
   it("sets x-request-id on responses", async () => {
     const res = await app.request("http://localhost/health");
     expect([200, 503]).toContain(res.status);
