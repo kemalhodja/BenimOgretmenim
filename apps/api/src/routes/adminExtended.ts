@@ -3,7 +3,7 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { assertAdminGate } from "../lib/adminGate.js";
+import { assertAdminGate, assertAdminFinanceScope, assertAdminSupportScope } from "../lib/adminGate.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
 import { cancelCourseEnrollmentPayment } from "../lib/courseEnrollmentWallet.js";
 import { lockCourseEnrollmentRefundWindowForCohort, payEligibleCourseTeacherPayoutsForCohort } from "../lib/courseTeacherPayout.js";
@@ -26,7 +26,7 @@ function parseLimitOffset(c: { req: { query: (k: string) => string | undefined }
 
 export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariables }>) {
   admin.get("/group-lesson-requests", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const rawSt = c.req.query("status")?.trim();
@@ -56,7 +56,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/lesson-packages", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const list = await pool.query(
@@ -83,7 +83,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/wallet-ledger", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 50);
     const userIdRaw = c.req.query("userId")?.trim();
@@ -126,7 +126,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/wallet-ops-overview", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const [wallets, ledger24h, topups, directBookings, studentPayments] = await Promise.all([
       pool.query(
@@ -172,7 +172,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/teacher-withdrawals", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const rawStatus = c.req.query("status")?.trim();
@@ -301,7 +301,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/disputes", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const status = c.req.query("status")?.trim();
@@ -329,7 +329,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.post("/disputes", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const parsed = disputeCreateSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
@@ -371,7 +371,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/disputes/:disputeId/status", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const disputeId = c.req.param("disputeId")?.trim();
     if (!disputeId || !z.string().uuid().safeParse(disputeId).success) {
@@ -407,7 +407,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/disputes/:disputeId/messages", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const disputeId = c.req.param("disputeId")?.trim();
     if (!disputeId || !z.string().uuid().safeParse(disputeId).success) {
@@ -424,7 +424,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.post("/disputes/:disputeId/messages", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const disputeId = c.req.param("disputeId")?.trim();
     if (!disputeId || !z.string().uuid().safeParse(disputeId).success) {
@@ -458,7 +458,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/teacher-withdrawals/:withdrawalId/status", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const withdrawalId = c.req.param("withdrawalId")?.trim();
     if (!withdrawalId || !z.string().uuid().safeParse(withdrawalId).success) {
@@ -591,7 +591,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/course-accounting", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const rows = await pool.query(
@@ -698,7 +698,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/homework-posts", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const rawSt = c.req.query("status")?.trim();
@@ -737,7 +737,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/direct-bookings", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const rawSt = c.req.query("status")?.trim();
@@ -779,7 +779,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/teacher-subscriptions", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const list = await pool.query(
@@ -804,7 +804,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/wallet-topups", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const rawState = c.req.query("state")?.trim();
@@ -843,7 +843,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/student-sub-payments", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const list = await pool.query(
@@ -866,7 +866,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/course-enrollments", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const list = await pool.query(
@@ -907,7 +907,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/course-enrollments/:enrollmentId/cancel", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const enrollmentId = c.req.param("enrollmentId")?.trim();
     if (!enrollmentId || !z.string().uuid().safeParse(enrollmentId).success) {
@@ -945,7 +945,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/course-enrollments/:enrollmentId/refund-decision", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const enrollmentId = c.req.param("enrollmentId")?.trim();
     if (!enrollmentId || !z.string().uuid().safeParse(enrollmentId).success) {
@@ -1040,7 +1040,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/parent-notifications", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 50);
     const list = await pool.query(
@@ -1063,7 +1063,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/guardian-invites", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 50);
     const list = await pool.query(
@@ -1099,7 +1099,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/users/:userId/wallet", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const userId = c.req.param("userId")?.trim();
     if (!userId || !z.string().uuid().safeParse(userId).success) {
@@ -1130,7 +1130,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/teachers/:teacherId/verification", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const teacherId = c.req.param("teacherId")?.trim();
     if (!teacherId || !z.string().uuid().safeParse(teacherId).success) {
@@ -1205,7 +1205,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/courses/:courseId/status", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const courseId = c.req.param("courseId")?.trim();
     if (!courseId || !z.string().uuid().safeParse(courseId).success) {
@@ -1237,7 +1237,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/group-lesson-requests/:id/status", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const id = c.req.param("id")?.trim();
     if (!id || !z.string().uuid().safeParse(id).success) return c.json({ error: "invalid_id" }, 400);
@@ -1265,7 +1265,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/homework-posts/:id/status", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const id = c.req.param("id")?.trim();
     if (!id || !z.string().uuid().safeParse(id).success) return c.json({ error: "invalid_id" }, 400);
@@ -1293,7 +1293,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/lesson-requests/:id/status", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const id = c.req.param("id")?.trim();
     if (!id || !z.string().uuid().safeParse(id).success) return c.json({ error: "invalid_id" }, 400);
@@ -1321,7 +1321,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/direct-bookings/:id/status", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const id = c.req.param("id")?.trim();
     if (!id || !z.string().uuid().safeParse(id).success) return c.json({ error: "invalid_id" }, 400);
@@ -1355,7 +1355,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/support-threads", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const { limit, offset } = parseLimitOffset(c, 40);
     const rawStatus = c.req.query("status")?.trim();
@@ -1398,7 +1398,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/support-threads/:threadId/messages", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const threadId = c.req.param("threadId")?.trim();
     if (!threadId || !z.string().uuid().safeParse(threadId).success) {
@@ -1428,7 +1428,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/support-threads/:threadId", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const threadId = c.req.param("threadId")?.trim();
     if (!threadId || !z.string().uuid().safeParse(threadId).success) {
@@ -1484,7 +1484,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   const staffSupportMsgSchema = z.object({ content: z.string().min(1).max(8000) });
 
   admin.post("/support-threads/:threadId/messages", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const threadId = c.req.param("threadId")?.trim();
     if (!threadId || !z.string().uuid().safeParse(threadId).success) {
@@ -1516,7 +1516,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/ops-settings/teacher-auto-withdrawal", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const settings = await loadTeacherAutoWithdrawalSettings();
     return c.json({ settings });
@@ -1533,7 +1533,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.patch("/ops-settings/teacher-auto-withdrawal", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const parsed = autoWithdrawalSettingsSchema.safeParse(await c.req.json());
     if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
@@ -1553,7 +1553,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.post("/teacher-withdrawals/apply-auto-eligible", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminFinanceScope(c);
     if (denied) return denied;
     const settings = await loadTeacherAutoWithdrawalSettings();
     if (!settings.enabled) return c.json({ error: "auto_withdrawal_disabled" }, 409);
@@ -1586,7 +1586,7 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
   });
 
   admin.get("/support-sla-dashboard", requireAuth, async (c) => {
-    const denied = assertAdminGate(c);
+    const denied = await assertAdminSupportScope(c);
     if (denied) return denied;
     const dashboard = await loadSupportSlaDashboard(pool);
     const supportSettings = await loadSupportSlaSettings();

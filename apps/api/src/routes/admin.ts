@@ -101,7 +101,7 @@ admin.get("/smoke-runs", requireAuth, async (c) => {
 });
 
 admin.get("/course-applications", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const status = (c.req.query("status")?.trim() || "pending") as string;
   const kind = c.req.query("kind")?.trim() || "all";
@@ -919,7 +919,7 @@ const teachersQuery = z.object({
 });
 
 admin.get("/teachers", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
 
   const parsed = teachersQuery.safeParse({
@@ -1014,7 +1014,7 @@ const lrListQuery = z.object({
 });
 
 admin.get("/lesson-requests", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
 
   const rawStatus = c.req.query("status")?.trim();
@@ -1225,7 +1225,7 @@ async function notifyCourseTeacherApplicationDecision(application: {
 }
 
 admin.get("/courses", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
 
   const rawSt = c.req.query("status")?.trim();
@@ -1323,7 +1323,7 @@ admin.get("/courses", requireAuth, async (c) => {
 });
 
 admin.post("/courses", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const parsed = adminCourseCampaignSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
@@ -1418,7 +1418,7 @@ admin.post("/courses", requireAuth, async (c) => {
 });
 
 admin.get("/courses/:courseId/applications", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const courseId = c.req.param("courseId");
   if (!z.string().uuid().safeParse(courseId).success) return c.json({ error: "invalid_course_id" }, 400);
@@ -1469,7 +1469,7 @@ admin.get("/courses/:courseId/applications", requireAuth, async (c) => {
 });
 
 admin.patch("/courses/:courseId/teacher-applications/:applicationId/status", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const courseId = c.req.param("courseId");
   const applicationId = c.req.param("applicationId");
@@ -1542,7 +1542,7 @@ admin.patch("/courses/:courseId/teacher-applications/:applicationId/status", req
 });
 
 admin.patch("/courses/:courseId/student-applications/:applicationId/status", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const courseId = c.req.param("courseId");
   const applicationId = c.req.param("applicationId");
@@ -2402,7 +2402,7 @@ const opsQuery = z.object({
 });
 
 admin.get("/classroom-notes", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const parsed = opsQuery.safeParse({
     limit: c.req.query("limit"),
@@ -2426,7 +2426,7 @@ admin.get("/classroom-notes", requireAuth, async (c) => {
 });
 
 admin.get("/classroom-recordings", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const parsed = opsQuery.safeParse({
     limit: c.req.query("limit"),
@@ -2459,7 +2459,7 @@ admin.get("/classroom-recordings", requireAuth, async (c) => {
 });
 
 admin.get("/classroom-messages", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const parsed = opsQuery.safeParse({
     limit: c.req.query("limit"),
@@ -2489,7 +2489,7 @@ admin.get("/classroom-messages", requireAuth, async (c) => {
 });
 
 admin.get("/learning", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const parsed = opsQuery.safeParse({
     limit: c.req.query("limit"),
@@ -2527,7 +2527,7 @@ admin.get("/learning", requireAuth, async (c) => {
 });
 
 admin.get("/homework-quality", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const parsed = opsQuery.safeParse({
     limit: c.req.query("limit"),
@@ -2570,7 +2570,7 @@ const homeworkQualityPatchSchema = z.object({
 });
 
 admin.patch("/homework-quality/:postId", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
   const postId = c.req.param("postId");
   if (!z.string().uuid().safeParse(postId).success) return c.json({ error: "invalid_post_id" }, 400);

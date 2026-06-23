@@ -6,7 +6,7 @@ import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
-import { assertAdminGate } from "../lib/adminGate.js";
+import { assertAdminSupportScope } from "../lib/adminGate.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
 import {
   availableUsageCredits,
@@ -469,7 +469,7 @@ teacherCampaigns.patch("/:campaignId/applications/:applicationId", requireAuth, 
 
 /** Admin: campaign moderation queue. */
 teacherCampaigns.get("/admin/moderation", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
 
   const statusRaw = c.req.query("status")?.trim();
@@ -521,7 +521,7 @@ teacherCampaigns.get("/admin/moderation", requireAuth, async (c) => {
 
 /** Admin: approve/reject/pause campaign. */
 teacherCampaigns.patch("/admin/:campaignId/status", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
 
   const actorUserId = c.get("userId");
