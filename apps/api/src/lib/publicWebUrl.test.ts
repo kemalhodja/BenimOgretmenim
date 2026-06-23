@@ -10,6 +10,8 @@ describe("publicWebUrl", () => {
 
   it("ignores Render PUBLIC_WEB_URL", () => {
     process.env.PUBLIC_WEB_URL = "https://benimogretmenim-web.onrender.com";
+    delete process.env.CORS_ORIGINS;
+    process.env.NODE_ENV = "production";
     expect(publicWebUrl()).toBe("https://benimogretmenim.com.tr");
   });
 
