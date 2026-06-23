@@ -8,6 +8,11 @@ describe("publicWebUrl", () => {
     process.env = { ...env };
   });
 
+  it("ignores Render PUBLIC_WEB_URL", () => {
+    process.env.PUBLIC_WEB_URL = "https://benimogretmenim-web.onrender.com";
+    expect(publicWebUrl()).toBe("https://benimogretmenim.com.tr");
+  });
+
   it("uses PUBLIC_WEB_URL when set", () => {
     process.env.PUBLIC_WEB_URL = "https://web.example.com/";
     expect(publicWebUrl()).toBe("https://web.example.com");

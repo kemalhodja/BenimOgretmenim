@@ -11,7 +11,9 @@ TWA / Play / `assetlinks.json` **apex** üzerinde kalır; `www` yalnızca ziyare
 
 1. [Render Dashboard](https://dashboard.render.com) → **benimogretmenim-web** → Settings → **Custom Domains**
 2. **Add Custom Domain** → `www.benimogretmenim.com.tr`
-3. Render’ın gösterdiği **CNAME** hedefini not alın (genelde `benimogretmenim.onrender.com`)
+3. Render’ın gösterdiği **CNAME** hedefini not alın — **web servisi** (`benimogretmenim-web`), API değil.
+
+> Yanlış DNS teşhisi: `apps/web/DNS_FIX.md`
 4. Durum **Verified** olana kadar bekleyin
 
 > Apex (`benimogretmenim.com.tr`) zaten ekliyse sadece `www` eklemeniz yeterli.
@@ -24,7 +26,7 @@ Turhost → Alan adları → **DNS Yönetimi**:
 
 | Tür | Host | Değer |
 |-----|------|--------|
-| CNAME | `www` | Render’ın verdiği hedef (ör. `benimogretmenim.onrender.com`) |
+| CNAME | `www` | Render **web** CNAME (ör. `benimogretmenim-web.onrender.com`) |
 
 Apex (`@`) kaydını değiştirmeyin; mevcut A/CNAME apex ayarı aynı kalsın.
 
