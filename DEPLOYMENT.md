@@ -172,9 +172,11 @@ Canlı adresler:
 
 ### Render Custom Domain
 
-1. **benimogretmenim-web** → Settings → Custom Domains → `benimogretmenim.com.tr` (+ isteğe bağlı `www.benimogretmenim.com.tr`)
+1. **benimogretmenim-web** → Settings → Custom Domains → `benimogretmenim.com.tr` ve `www.benimogretmenim.com.tr`
 2. **benimogretmenim-api** → Settings → Custom Domains → `api.benimogretmenim.com.tr`
 3. Render’ın verdiği DNS kayıtlarını alan adı sağlayıcınıza ekleyin (genelde `CNAME` veya apex için `A`/`ALIAS`).
+
+`www` adım adım: **`apps/web/WWW_SETUP.md`**
 
 ### Alan adı sağlayıcısı (örnek kayıtlar)
 

@@ -1,8 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { PRODUCTION_SITE_ORIGIN } from "./app/lib/siteUrl";
+import {
+  PRODUCTION_SITE_HOST,
+  PRODUCTION_SITE_ORIGIN,
+  PRODUCTION_WWW_HOST,
+} from "./app/lib/siteUrl";
 
 const LEGACY_WEB_HOSTS = new Set(["benimogretmenim.onrender.com"]);
-const WWW_HOST = "www.benimogretmenim.com.tr";
 
 const SESSION_COOKIE = "bo_session";
 const ROLE_COOKIE = "bo_session_role";
@@ -57,7 +60,8 @@ export function proxy(req: NextRequest) {
   if (canonical) {
     const canonicalHost = new URL(canonical).hostname;
     const shouldRedirectLegacy = LEGACY_WEB_HOSTS.has(host);
-    const shouldRedirectWww = host === WWW_HOST && canonicalHost === "benimogretmenim.com.tr";
+    const shouldRedirectWww =
+      host === PRODUCTION_WWW_HOST && canonicalHost === PRODUCTION_SITE_HOST;
     if (shouldRedirectLegacy || shouldRedirectWww) {
       const target = new URL(req.nextUrl.pathname + req.nextUrl.search, canonical);
       return NextResponse.redirect(target, 308);

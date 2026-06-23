@@ -5,7 +5,7 @@ BenimÖğretmenim’in arama görünürlüğü ve güven sayfalarının indeksle
 ## 1) DNS (Turhost — kullanıcı aksiyonu)
 
 - [ ] `benimogretmenim.com.tr` → Render web CNAME/A kaydı
-- [ ] `www.benimogretmenim.com.tr` → Render (isteğe bağlı)
+- [ ] `www.benimogretmenim.com.tr` → Render web CNAME (`apps/web/WWW_SETUP.md`)
 - [ ] `api.benimogretmenim.com.tr` → Render API
 - [ ] `nslookup benimogretmenim.com.tr 8.8.8.8` doğru IP/CNAME döndürüyor
 - [ ] `https://api.benimogretmenim.com.tr/health` → `db: true`
