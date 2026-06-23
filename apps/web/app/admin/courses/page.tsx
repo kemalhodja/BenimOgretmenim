@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { useRequireAdmin } from "../useRequireAdmin";
 
@@ -165,8 +166,23 @@ function walletReadinessLabel(app: CourseApplications["studentApplications"][num
     : `Bakiye yetersiz: ${minorToTl(available)} / ${minorToTl(priceMinor)} TRY`;
 }
 
+type GlobalApplication = {
+  id: string;
+  status: string;
+  course_id: string;
+  course_title: string;
+  applicant_display_name: string;
+  applicant_email: string;
+  application_kind: "teacher" | "student";
+  created_at: string;
+};
+
 export default function AdminCoursesPage() {
   const token = useRequireAdmin();
+  const searchParams = useSearchParams();
+  const [viewTab, setViewTab] = useState<"courses" | "applications">("courses");
+  const [globalQueue, setGlobalQueue] = useState<GlobalApplication[]>([]);
+  const [globalQueueLoading, setGlobalQueueLoading] = useState(false);
   const [status, setStatus] = useState("");
   const [origin, setOrigin] = useState("");
   const [teacherMissingOnly, setTeacherMissingOnly] = useState(false);
@@ -217,6 +233,36 @@ export default function AdminCoursesPage() {
       teacherPayoutAmount: adminCampaigns.reduce((sum, row) => sum + minorValue(row.teacher_payout_amount_minor), 0),
     };
   }, [rows]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    const pending = searchParams.get("pending");
+    if (tab === "applications") {
+      setViewTab("applications");
+      if (pending === "1") setOrigin("admin_campaign");
+    }
+  }, [searchParams]);
+
+  const loadGlobalQueue = useCallback(async () => {
+    if (!token) return;
+    setGlobalQueueLoading(true);
+    try {
+      const r = await apiFetch<{ applications: GlobalApplication[] }>(
+        "/api/admin/course-applications?status=pending&limit=50",
+        { token },
+      );
+      setGlobalQueue(r.applications ?? []);
+    } catch {
+      setGlobalQueue([]);
+    } finally {
+      setGlobalQueueLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (viewTab === "applications" && token) void loadGlobalQueue();
+  }, [viewTab, token, loadGlobalQueue]);
+
   const selectedStats = useMemo(() => {
     const teacherPending = applications?.teacherApplications.filter((app) => app.status === "pending").length ?? 0;
     const studentPending = applications?.studentApplications.filter((app) => app.status === "pending").length ?? 0;
@@ -400,6 +446,59 @@ export default function AdminCoursesPage() {
           </Link>
         </p>
 
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setViewTab("courses")}
+            className={`rounded-xl px-3 py-2 text-sm font-semibold ${viewTab === "courses" ? "bg-brand-800 text-white" : "border border-paper-200 bg-white text-paper-900"}`}
+          >
+            Kurs listesi
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewTab("applications")}
+            className={`rounded-xl px-3 py-2 text-sm font-semibold ${viewTab === "applications" ? "bg-brand-800 text-white" : "border border-paper-200 bg-white text-paper-900"}`}
+          >
+            Başvuru kuyruğu
+          </button>
+        </div>
+
+        {viewTab === "applications" ? (
+          <section className="mt-6 rounded-xl border border-brand-200 bg-white p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-paper-900">Bekleyen kurs başvuruları (tüm kampanyalar)</h2>
+            {globalQueueLoading ? <p className="mt-3 text-sm text-paper-800/55">Yükleniyor…</p> : null}
+            {!globalQueueLoading && globalQueue.length === 0 ? (
+              <p className="mt-3 text-sm text-paper-800/55">Bekleyen başvuru yok.</p>
+            ) : null}
+            <ul className="mt-3 space-y-2">
+              {globalQueue.map((app) => (
+                <li key={app.id} className="rounded-lg border border-paper-200 bg-paper-50 px-3 py-2 text-sm">
+                  <div className="font-medium text-paper-900">
+                    {app.application_kind === "teacher" ? "Öğretmen" : "Öğrenci"} · {app.applicant_display_name}
+                  </div>
+                  <div className="text-xs text-paper-800/55">{app.applicant_email}</div>
+                  <div className="mt-1 text-xs text-paper-800/75">
+                    Kurs: {app.course_title} ·{" "}
+                    <button
+                      type="button"
+                      className="text-brand-800 underline"
+                      onClick={() => {
+                        setViewTab("courses");
+                        const course = rows.find((r) => r.id === app.course_id);
+                        if (course) void loadApplications(course);
+                      }}
+                    >
+                      Detay
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {viewTab === "courses" ? (
+        <>
         <section className="mt-6 grid gap-3 sm:grid-cols-4">
           <div className="rounded-xl border border-paper-200 bg-white p-4 shadow-sm">
             <div className="text-xs font-semibold uppercase tracking-wide text-paper-800/55">Admin kampanyası</div>
@@ -944,6 +1043,8 @@ export default function AdminCoursesPage() {
             Sonraki →
           </button>
         </nav>
+        </>
+        ) : null}
       </div>
     </div>
   );

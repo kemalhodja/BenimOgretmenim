@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { apiFetch } from "../../lib/api";
-import { getUserIdFromToken } from "../../lib/auth";
+import {
+  adminScopeLabel,
+  getAdminScopeFromSession,
+  getUserIdFromToken,
+  setAdminScopeHintCookie,
+  type AdminScope,
+} from "../../lib/auth";
 import { useRequireAdmin } from "../useRequireAdmin";
 
 type UserRow = {
@@ -12,6 +19,7 @@ type UserRow = {
   display_name: string;
   role: string;
   account_status: string;
+  admin_scope?: string | null;
   suspension_reason: string | null;
   created_at: string;
   last_login_at: string | null;
@@ -204,18 +212,114 @@ function AccountStatusEditor({
   );
 }
 
-export default function AdminUsersPage() {
+function AdminScopeEditor({
+  u,
+  token,
+  myId,
+  canEdit,
+  onDone,
+}: {
+  u: UserRow;
+  token: string;
+  myId: string | null;
+  canEdit: boolean;
+  onDone: () => void;
+}) {
+  const [next, setNext] = useState<AdminScope>((u.admin_scope as AdminScope) ?? "full");
+  const [busy, setBusy] = useState(false);
+  const [localErr, setLocalErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    setNext((u.admin_scope as AdminScope) ?? "full");
+  }, [u.admin_scope]);
+
+  if (u.role !== "admin") return <span className="text-paper-800/45">—</span>;
+  if (!canEdit) {
+    return <span className="text-xs text-paper-800/75">{adminScopeLabel(u.admin_scope)}</span>;
+  }
+
+  const dirty = next !== ((u.admin_scope as AdminScope) ?? "full");
+
+  async function apply() {
+    if (!dirty) return;
+    if (
+      !window.confirm(
+        `${u.email} admin kapsamını "${adminScopeLabel(u.admin_scope)}" → "${adminScopeLabel(next)}" olarak değiştirmek istediğinize emin misiniz?`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setLocalErr(null);
+    try {
+      const r = await apiFetch<{ reloginRequired?: boolean; adminScope?: AdminScope }>(
+        `/api/admin/users/${u.id}/admin-scope`,
+        {
+          method: "PATCH",
+          token,
+          body: JSON.stringify({ scope: next }),
+        },
+      );
+      if (r.reloginRequired && myId === u.id && r.adminScope) {
+        setAdminScopeHintCookie(r.adminScope);
+        window.location.reload();
+        return;
+      }
+      onDone();
+    } catch (e) {
+      setLocalErr(e instanceof Error ? e.message : "hata");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="min-w-[10rem]">
+      <select
+        className="w-full rounded-lg border border-paper-200 bg-white px-2 py-1 text-sm"
+        value={next}
+        onChange={(e) => setNext(e.target.value as AdminScope)}
+      >
+        <option value="full">Tam yetki</option>
+        <option value="finance">Finans</option>
+        <option value="support">Destek</option>
+      </select>
+      <button
+        type="button"
+        disabled={!dirty || busy}
+        onClick={() => void apply()}
+        className="mt-1 rounded-lg bg-brand-800 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
+      >
+        {busy ? "…" : "Kapsamı kaydet"}
+      </button>
+      {localErr ? <p className="mt-1 text-[11px] text-red-700">{localErr}</p> : null}
+    </div>
+  );
+}
+
+function AdminUsersPageInner() {
   const token = useRequireAdmin();
+  const searchParams = useSearchParams();
   const myId = useMemo(() => getUserIdFromToken(token), [token]);
+  const canEditAdminScope = getAdminScopeFromSession() === "full";
   const [q, setQ] = useState("");
   const [appliedQ, setAppliedQ] = useState("");
   const [role, setRole] = useState("");
+  const [accountStatus, setAccountStatus] = useState("");
   const [offset, setOffset] = useState(0);
   const limit = 40;
   const [rows, setRows] = useState<UserRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const status = searchParams.get("status")?.trim() ?? "";
+    if (status === "suspended" || status === "deletion_requested" || status === "active") {
+      setAccountStatus(status);
+      setOffset(0);
+    }
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -225,6 +329,7 @@ export default function AdminUsersPage() {
       const sp = new URLSearchParams();
       if (appliedQ.trim()) sp.set("q", appliedQ.trim());
       if (role) sp.set("role", role);
+      if (accountStatus) sp.set("status", accountStatus);
       sp.set("limit", String(limit));
       sp.set("offset", String(offset));
       const r = await apiFetch<{ users: UserRow[]; total: number }>(`/api/admin/users?${sp.toString()}`, {
@@ -237,7 +342,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, appliedQ, role, offset]);
+  }, [token, appliedQ, role, accountStatus, offset]);
 
   useEffect(() => {
     void load();
@@ -289,6 +394,22 @@ export default function AdminUsersPage() {
               <option value="admin">Admin</option>
             </select>
           </label>
+          <label className="block text-sm">
+            <span className="font-medium text-paper-800">Hesap durumu</span>
+            <select
+              className="mt-1 w-full min-w-[10rem] rounded-xl border border-paper-200 px-3 py-2 text-sm"
+              value={accountStatus}
+              onChange={(e) => {
+                setAccountStatus(e.target.value);
+                setOffset(0);
+              }}
+            >
+              <option value="">Tümü</option>
+              <option value="active">Aktif</option>
+              <option value="suspended">Askıda</option>
+              <option value="deletion_requested">Silme talebi</option>
+            </select>
+          </label>
           <button
             type="button"
             onClick={() => {
@@ -317,6 +438,7 @@ export default function AdminUsersPage() {
                 <th className="px-3 py-2">E-posta</th>
                 <th className="px-3 py-2">Rol</th>
                 <th className="px-3 py-2">Rol değiştir</th>
+                <th className="px-3 py-2">Admin kapsamı</th>
                 <th className="px-3 py-2">Hesap durumu</th>
                 <th className="px-3 py-2">Kayıt</th>
                 <th className="px-3 py-2">Son giriş</th>
@@ -326,13 +448,13 @@ export default function AdminUsersPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 text-center text-paper-800/55">
+                  <td colSpan={9} className="px-3 py-6 text-center text-paper-800/55">
                     Yükleniyor…
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-6 text-center text-paper-800/55">
+                  <td colSpan={9} className="px-3 py-6 text-center text-paper-800/55">
                     Kayıt yok.
                   </td>
                 </tr>
@@ -344,6 +466,15 @@ export default function AdminUsersPage() {
                     <td className="px-3 py-2 text-paper-800/75">{roleLabel(u.role)}</td>
                     <td className="px-3 py-2 align-top">
                       <RoleEditor u={u} token={token} myId={myId} onDone={() => void load()} />
+                    </td>
+                    <td className="px-3 py-2 align-top">
+                      <AdminScopeEditor
+                        u={u}
+                        token={token}
+                        myId={myId}
+                        canEdit={canEditAdminScope}
+                        onDone={() => void load()}
+                      />
                     </td>
                     <td className="px-3 py-2 align-top">
                       <div className="mb-1 text-xs font-medium text-paper-800/55">{accountStatusLabel(u.account_status)}</div>
@@ -381,5 +512,17 @@ export default function AdminUsersPage() {
         </nav>
       </div>
     </div>
+  );
+}
+
+export default function AdminUsersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-paper-50 px-4 py-8 text-sm text-paper-800/55 sm:px-6">Yükleniyor…</div>
+      }
+    >
+      <AdminUsersPageInner />
+    </Suspense>
   );
 }

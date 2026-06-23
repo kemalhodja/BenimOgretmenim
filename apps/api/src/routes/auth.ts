@@ -48,7 +48,7 @@ auth.post("/register", async (c) => {
     const u = await client.query(
       `insert into users (email, password_hash, display_name, role)
        values ($1, $2, $3, $4::user_role)
-       returning id, email, display_name, role, created_at`,
+       returning id, email, display_name, role, admin_scope::text as admin_scope, created_at`,
       [email, hash, displayName, role],
     );
     const user = u.rows[0] as {
@@ -56,6 +56,7 @@ auth.post("/register", async (c) => {
       email: string;
       display_name: string;
       role: string;
+      admin_scope: string | null;
       created_at: Date;
     };
 
@@ -68,9 +69,17 @@ auth.post("/register", async (c) => {
 
     await client.query("commit");
 
-    const token = await signAccessToken({ userId: user.id, role: user.role });
+    const token = await signAccessToken({
+      userId: user.id,
+      role: user.role,
+      adminScope: user.role === "admin" ? (user.admin_scope ?? "full") : null,
+    });
     setSessionCookie(c, token);
-    setSessionHintCookies(c, { role: user.role, userId: user.id });
+    setSessionHintCookies(c, {
+      role: user.role,
+      userId: user.id,
+      adminScope: user.role === "admin" ? (user.admin_scope ?? "full") : null,
+    });
     return c.json(
       {
         token,
@@ -105,6 +114,7 @@ auth.post("/login", async (c) => {
   const { email, password } = parsed.data;
   const r = await pool.query(
     `select id, email, display_name, role, password_hash,
+            admin_scope::text as admin_scope,
             account_status::text as account_status,
             suspension_reason,
             suspended_at::text as suspended_at,
@@ -119,6 +129,7 @@ auth.post("/login", async (c) => {
         email: string;
         display_name: string;
         role: string;
+        admin_scope: string | null;
         password_hash: string | null;
         account_status: string;
         suspension_reason: string | null;
@@ -139,9 +150,17 @@ auth.post("/login", async (c) => {
 
   await pool.query(`update users set last_login_at = now(), updated_at = now() where id = $1`, [row.id]);
 
-  const token = await signAccessToken({ userId: row.id, role: row.role });
+  const token = await signAccessToken({
+    userId: row.id,
+    role: row.role,
+    adminScope: row.role === "admin" ? (row.admin_scope ?? "full") : null,
+  });
   setSessionCookie(c, token);
-  setSessionHintCookies(c, { role: row.role, userId: row.id });
+  setSessionHintCookies(c, {
+    role: row.role,
+    userId: row.id,
+    adminScope: row.role === "admin" ? (row.admin_scope ?? "full") : null,
+  });
   return c.json({
     token,
     user: {
@@ -149,6 +168,7 @@ auth.post("/login", async (c) => {
       email: row.email,
       displayName: row.display_name,
       role: row.role,
+      adminScope: row.role === "admin" ? (row.admin_scope ?? "full") : null,
     },
     account: {
       status: row.account_status ?? "active",
@@ -171,7 +191,7 @@ auth.post("/logout", (c) => {
 auth.get("/me", requireAuth, async (c) => {
   const userId = c.get("userId");
   const r = await pool.query(
-    `select id, email, display_name, role, created_at,
+    `select id, email, display_name, role, admin_scope::text as admin_scope, created_at,
             account_status::text as account_status,
             suspension_reason,
             suspended_at::text as suspended_at,
@@ -190,6 +210,7 @@ auth.get("/me", requireAuth, async (c) => {
       email: row.email,
       display_name: row.display_name,
       role: row.role,
+      adminScope: row.role === "admin" ? (row.admin_scope ?? "full") : null,
       created_at: row.created_at,
     },
     account: {

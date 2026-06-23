@@ -1,36 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../lib/api";
+import {
+  ADMIN_FUNNEL_CONVERSION_ALERT_PERCENT,
+  ADMIN_SLA_ESCALATION_THRESHOLD,
+  actionMetrics,
+  checklistForScope,
+  formatRevenueMinor,
+  navSectionsForScope,
+  weeklyReportNextSteps,
+  type AdminOverviewCounts,
+} from "../../lib/adminRegistry";
+import { checklistProgress, isChecklistItemDone, toggleChecklistItem } from "../../lib/adminChecklistState";
+import { getAdminScopeFromSession } from "../../lib/auth";
 import { useRequireAdmin } from "../useRequireAdmin";
 
-type Item = { href: string; title: string; desc: string };
 type Overview = {
-  counts: {
-    openDemoRequests: number;
-    unansweredDemoRequests: number;
-    pendingTeacherVerification: number;
-    weakTeacherProfiles: number;
-    pendingBankPayments: number;
-    pendingSubscriptionPayments: number;
-    parentNotificationsUnread: number;
-    homeworkPostsActive: number;
-    homeworkQualityQueue: number;
-    openSupportThreads: number;
-    classroomNoteCount: number;
-    classroomRecordingCount: number;
-    classroomMessageCount: number;
-    activeStudyPlans: number;
-    recentAssessmentAttempts: number;
-    guardianInvitesActive: number;
-    guardianInvitesAccepted: number;
-    guardianInvitesExpired: number;
-    homeworkSlaBreaches: number;
-    supportSlaBreaches: number;
-    teacherQualityAvg: number;
-    reconciliationIssues30d: number;
-    completedLessons30d: number;
+  counts: AdminOverviewCounts;
+  revenue7d?: {
+    totalMinor: number;
+    teacherSubscriptionsMinor: number;
+    studentSubscriptionsMinor: number;
+    walletTopupsMinor: number;
   };
 };
 type HealthStatus = "ok" | "degraded" | "down";
@@ -77,61 +70,7 @@ type WeeklyQualityReport = {
   };
 };
 
-const SECTIONS: { title: string; items: Item[] }[] = [
-  {
-    title: "Özet ve kimlik",
-    items: [
-      { href: "/admin", title: "Özet", desc: "Canlı metrikler" },
-      { href: "/admin/users", title: "Kullanıcılar", desc: "Arama, rol, rol güncelleme" },
-      { href: "/admin/teachers", title: "Öğretmenler", desc: "Doğrulama durumu yönetimi" },
-      { href: "/admin/support", title: "Canlı destek", desc: "Kullanıcı mesajları ve yanıt" },
-    ],
-  },
-  {
-    title: "Finans ve abonelik",
-    items: [
-      { href: "/admin/bank", title: "Havale onayı", desc: "Öğretmen aboneliği banka ödemeleri" },
-      { href: "/admin/payments", title: "Abonelik ödemeleri", desc: "Öğretmen abonelik ödeme kayıtları" },
-      { href: "/admin/wallet", title: "Manuel cüzdan işlemi", desc: "Gerekli durumda bakiye ekleme" },
-      { href: "/admin/veri?k=ledger", title: "Cüzdan hareketleri", desc: "Tüm bakiye hareketleri" },
-      { href: "/admin/veri?k=wallet-topups", title: "Cüzdan PayTR yüklemeleri", desc: "Kartla cüzdan yükleme kayıtları" },
-      { href: "/admin/veri?k=teacher-withdrawals", title: "Öğretmen para çekme", desc: "IBAN talepleri, ödeme ve red işlemleri" },
-      { href: "/admin/otomatik-cekim", title: "Otomatik çekim kuralları", desc: "Doğrulanmış öğretmen hızlı ödeme politikası" },
-      { href: "/admin/destek-sla", title: "Destek SLA", desc: "24s yanıt hedefi ve ihlal listesi" },
-      { href: "/admin/veri?k=course-accounting", title: "Kurs muhasebesi", desc: "Tahsilat, iade, öğretmen kazancı ve platform bedeli" },
-      { href: "/admin/veri?k=reconciliation", title: "Ödeme kontrolü", desc: "PayTR ödeme bildirim uyumsuzlukları" },
-      { href: "/admin/veri?k=job-monitoring", title: "Zamanlanmış işler", desc: "Ödeme, ders ve alarm takibi" },
-      { href: "/admin/veri?k=disputes", title: "Sorun merkezi", desc: "Öğrenci, veli ve öğretmen itirazları" },
-      { href: "/admin/veri?k=student-sub-payments", title: "Öğrenci platform ödemeleri", desc: "Öğrenci abonelik ödeme kayıtları" },
-    ],
-  },
-  {
-    title: "İçerik ve ders",
-    items: [
-      { href: "/admin/courses", title: "Kurslar", desc: "Durum yönetimi (taslak / yayın / arşiv)" },
-      { href: "/admin/veri?k=enrollments", title: "Kurs kayıtları", desc: "course_enrollments" },
-      { href: "/admin/requests", title: "Ders talepleri", desc: "Liste ve iptal (uygun durumlarda)" },
-      { href: "/admin/veri?k=packages", title: "Ders paketleri", desc: "lesson_packages" },
-      { href: "/admin/direct-bookings", title: "Doğrudan ders anlaşmaları", desc: "Liste ve iptal" },
-      { href: "/admin/group-lessons", title: "Grup ders talepleri", desc: "Durum ve iptal" },
-      { href: "/admin/homework", title: "Ödev / soru havuzu", desc: "Liste ve iptal" },
-      { href: "/admin/veri?k=homework", title: "Soru kalite kuyruğu", desc: "Cevap kalite / revizyon takibi" },
-      { href: "/admin/veri?k=classroom", title: "Canlı sınıf notları", desc: "Tahta ve ders içi not kayıtları" },
-      { href: "/admin/veri?k=recordings", title: "Sınıf kayıtları", desc: "Tekrar izleme linkleri ve kayıt durumu" },
-      { href: "/admin/veri?k=messages", title: "Sınıf mesajları", desc: "Sohbet, soru, cevap ve duyurular" },
-      { href: "/admin/veri?k=learning", title: "Çalışma ve deneme", desc: "Planlar ve assessment kayıtları" },
-      { href: "/admin/veri?k=funnel", title: "Dönüşüm raporu", desc: "Arama, profil, talep ve ödeme adımları" },
-    ],
-  },
-  {
-    title: "Abonelik ve bildirim",
-    items: [
-      { href: "/admin/veri?k=teacher-subs", title: "Öğretmen abonelikleri", desc: "teacher_subscriptions" },
-      { href: "/admin/veri?k=notifications", title: "Veli bildirimleri", desc: "parent_notifications" },
-      { href: "/admin/veri?k=guardian-invites", title: "Veli davet kodları", desc: "Aktif, kullanılan ve süresi dolan kodlar" },
-    ],
-  },
-];
+const SECTIONS = navSectionsForScope(getAdminScopeFromSession());
 
 function healthLabel(status: HealthStatus): string {
   if (status === "ok") return "Sağlıklı";
@@ -190,9 +129,14 @@ function readinessClass(status: "ready" | "watch" | "action"): string {
 
 export default function AdminMerkezPage() {
   const token = useRequireAdmin();
+  const adminScope = getAdminScopeFromSession();
+  const checklistItems = useMemo(() => checklistForScope(adminScope), [adminScope]);
+  const [checklistTick, setChecklistTick] = useState(0);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
   const [weeklyReport, setWeeklyReport] = useState<WeeklyQualityReport | null>(null);
+  const [smokeRuns, setSmokeRuns] = useState<Array<{ id: string; status: string; workflow: string | null; created_at: string }>>([]);
+  const [funnelAlert, setFunnelAlert] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [weeklyReportError, setWeeklyReportError] = useState<string | null>(null);
@@ -226,6 +170,36 @@ export default function AdminMerkezPage() {
       .catch((e) => {
         if (!cancelled) setWeeklyReportError(e instanceof Error ? e.message : "weekly_report_failed");
       });
+    apiFetch<{ runs: Array<{ id: string; status: string; workflow: string | null; created_at: string }> }>(
+      "/api/admin/smoke-runs?limit=5",
+      { token },
+    )
+      .then((r) => {
+        if (!cancelled) setSmokeRuns(r.runs ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setSmokeRuns([]);
+      });
+    apiFetch<{ funnel?: Array<{ eventName: string; count: number; conversionFromSearch: number | null }> }>(
+      "/api/admin/funnel-summary?days=7",
+      { token },
+    )
+      .then((r) => {
+        if (!cancelled) {
+          const lessonStep = r.funnel?.find((step) => step.eventName === "lesson_request_created");
+          const conversion = lessonStep?.conversionFromSearch;
+          if (conversion != null && conversion < ADMIN_FUNNEL_CONVERSION_ALERT_PERCENT) {
+            setFunnelAlert(
+              `Dönüşüm alarmı: arama → talep oranı %${conversion} (eşik %${ADMIN_FUNNEL_CONVERSION_ALERT_PERCENT}).`,
+            );
+          } else {
+            setFunnelAlert(null);
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFunnelAlert(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -234,35 +208,10 @@ export default function AdminMerkezPage() {
   if (!token) return null;
 
   const c = overview?.counts;
-  const opsPriority =
-    c == null
-      ? []
-      : [
-          {
-            title: "Ödev hedef süresi",
-            value: c.homeworkSlaBreaches,
-            href: "/admin/homework",
-            action: c.homeworkSlaBreaches > 0 ? "Geciken soruları öğretmen/havuz durumuna göre çöz" : "Hedef süre temiz",
-          },
-          {
-            title: "Destek yanıt süresi",
-            value: c.supportSlaBreaches,
-            href: "/admin/destek-sla",
-            action: c.supportSlaBreaches > 0 ? "24 saati aşan destek konularını kapat" : "Destek ritmi temiz",
-          },
-          {
-            title: "Ödeme kontrolü",
-            value: c.reconciliationIssues30d,
-            href: "/admin/veri?k=reconciliation",
-            action: c.reconciliationIssues30d > 0 ? "PayTR ve cüzdan kayıtlarını karşılaştır" : "Son 30 gün temiz",
-          },
-          {
-            title: "Öğretmen kalite",
-            value: Math.max(0, 70 - c.teacherQualityAvg),
-            href: "/admin/teachers",
-            action: c.teacherQualityAvg < 70 ? "Zayıf profilleri doğrulama ve içerik tamamlama kuyruğuna al" : "Kalite ortalaması iyi",
-          },
-        ];
+  const slaEscalation =
+    c != null && c.homeworkSlaBreaches + c.supportSlaBreaches >= ADMIN_SLA_ESCALATION_THRESHOLD;
+  const opsPriority = c == null ? [] : actionMetrics(c, adminScope);
+  const checklistDone = checklistProgress(checklistItems.length);
   const readinessChecks =
     c == null
       ? []
@@ -332,6 +281,74 @@ export default function AdminMerkezPage() {
           Tüm yönetim modülleri ve veri görünümleri. İşlemler API üzerinden kayıt altına alınır; üretimde{" "}
           <span className="font-mono">ADMIN_API_SECRET</span> önerilir.
         </p>
+
+        <section className="mt-6 rounded-xl border border-brand-200 bg-brand-50/60 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-paper-900">Günlük kontrol listesi</h2>
+            <span className="text-xs text-paper-800/55">
+              {checklistDone.done}/{checklistItems.length} tamamlandı (bugün)
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-paper-800/65">
+            Operasyon ekibinin her gün gözden geçirmesi gereken alanlar. İşaretler tarayıcıda saklanır.
+          </p>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+            {checklistItems.map((item) => {
+              const done = isChecklistItemDone(item.id);
+              return (
+                <li key={item.id} className="flex items-start gap-2 rounded-lg border border-white/80 bg-white/90 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={done}
+                    onChange={() => {
+                      toggleChecklistItem(item.id);
+                      setChecklistTick((v) => v + 1);
+                    }}
+                    className="mt-0.5"
+                    aria-label={item.label}
+                  />
+                  <Link
+                    href={item.href}
+                    className={`text-sm ${done ? "text-paper-800/45 line-through" : "text-paper-900 hover:text-brand-900"}`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
+        {slaEscalation ? (
+          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+            SLA eskalasyon: {c!.homeworkSlaBreaches + c!.supportSlaBreaches} açık ihlal (eşik{" "}
+            {ADMIN_SLA_ESCALATION_THRESHOLD}). Önce{" "}
+            <Link href="/admin/homework" className="font-semibold underline">
+              ödev
+            </Link>{" "}
+            ve{" "}
+            <Link href="/admin/destek-sla" className="font-semibold underline">
+              destek
+            </Link>{" "}
+            kuyruklarını kapatın.
+          </div>
+        ) : null}
+
+        {funnelAlert ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            {funnelAlert}{" "}
+            <Link href="/admin/veri?k=funnel" className="font-semibold underline">
+              Dönüşüm raporunu aç
+            </Link>
+          </div>
+        ) : null}
+
+        {overview?.revenue7d ? (
+          <section className="mt-4 rounded-xl border border-paper-200 bg-white p-4">
+            <h2 className="text-sm font-semibold text-paper-900">Son 7 gün gelir</h2>
+            <p className="mt-1 text-lg font-semibold tabular-nums">{formatRevenueMinor(overview.revenue7d.totalMinor)}</p>
+          </section>
+        ) : null}
 
         {error ? (
           <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
@@ -474,6 +491,33 @@ export default function AdminMerkezPage() {
                 {(weeklyReport.warnings.missingTables ?? []).join(", ") || "bilinmiyor"}.
               </div>
             ) : null}
+            <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/40 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wide text-brand-900/70">Sonraki adımlar</div>
+              <ul className="mt-2 space-y-1 text-sm">
+                {weeklyReportNextSteps(weeklyReport).map((step) => (
+                  <li key={step.href}>
+                    <Link href={step.href} className="font-medium text-brand-900 underline underline-offset-4">
+                      {step.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        ) : null}
+
+        {smokeRuns.length > 0 ? (
+          <section className="mt-6 rounded-xl border border-paper-200 bg-white p-4">
+            <h2 className="text-sm font-semibold text-paper-900">Deploy smoke geçmişi</h2>
+            <ul className="mt-3 space-y-2 text-sm">
+              {smokeRuns.map((run) => (
+                <li key={run.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-paper-50 px-3 py-2">
+                  <span className={run.status === "ok" ? "text-emerald-800" : "text-red-800"}>{run.status}</span>
+                  <span className="text-paper-800/75">{run.workflow ?? "smoke"}</span>
+                  <span className="text-xs text-paper-800/55">{new Date(run.created_at).toLocaleString("tr-TR")}</span>
+                </li>
+              ))}
+            </ul>
           </section>
         ) : null}
 
@@ -560,13 +604,20 @@ export default function AdminMerkezPage() {
               </div>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {opsPriority.map((item) => (
-                <Link key={item.title} href={item.href} className={`rounded-xl border p-3 ${riskTone(item.value)}`}>
-                  <div className="text-xs font-semibold uppercase tracking-wide">{item.title}</div>
-                  <div className="mt-1 text-2xl font-semibold tabular-nums">{item.value}</div>
-                  <p className="mt-1 text-xs opacity-80">{item.action}</p>
-                </Link>
-              ))}
+              {opsPriority.map((item) => {
+                const raw = c ? (typeof item.format === "function" ? item.format(c[item.key] as number, c) : c[item.key]) : 0;
+                return (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    className={`rounded-xl border p-3 ${riskTone(Number(raw) || 0)}`}
+                  >
+                    <div className="text-xs font-semibold uppercase tracking-wide">{item.label}</div>
+                    <div className="mt-1 text-2xl font-semibold tabular-nums">{raw}</div>
+                    {item.hint && c ? <p className="mt-1 text-xs opacity-80">{item.hint(c)}</p> : null}
+                  </Link>
+                );
+              })}
             </div>
           </section>
         ) : null}
@@ -612,7 +663,7 @@ export default function AdminMerkezPage() {
         ) : null}
 
         <div className="mt-8 space-y-10">
-          {SECTIONS.map((sec) => (
+          {navSectionsForScope(adminScope).map((sec) => (
             <section key={sec.title}>
               <h2 className="text-sm font-semibold uppercase tracking-wide text-paper-800/55">{sec.title}</h2>
               <ul className="mt-3 divide-y divide-paper-200 rounded-xl border border-paper-200 bg-white">

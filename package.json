@@ -15,6 +15,7 @@
     "db:seed:zigo": "npm run db:seed:zigo --prefix apps/api",
     "db:seed:admin": "npm run db:seed:admin --prefix apps/api",
     "db:seed:bootstrap-admin-if-missing": "npm run db:seed:bootstrap-admin-if-missing --prefix apps/api",
+    "ops:admin:setup": "npm run ops:admin:setup --prefix apps/api",
     "setup": "npm run setup --prefix apps/api",
     "dev": "npm run dev --prefix apps/api",
     "web:dev": "npm run dev --prefix apps/web",

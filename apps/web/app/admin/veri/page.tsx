@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../../lib/api";
+import { ADMIN_NAV_SECTIONS } from "../../lib/adminOps";
 import { useRequireAdmin } from "../useRequireAdmin";
 
 type Cfg = {
@@ -163,6 +164,11 @@ const DATASETS: Record<string, Cfg> = {
     title: "Dönüşüm ve platform takibi",
     path: "/api/admin/funnel-summary",
     arrayKey: "funnel",
+  },
+  audit: {
+    title: "Yönetici audit kayıtları",
+    path: "/api/admin/audit-events",
+    arrayKey: "events",
   },
 };
 
@@ -510,6 +516,29 @@ function AdminVeriInner() {
             </Link>
           </p>
         </div>
+
+        <details className="mt-4 rounded-xl border border-paper-200 bg-white p-3 text-sm">
+          <summary className="cursor-pointer font-medium text-paper-900">Tüm veri görünümleri</summary>
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {ADMIN_NAV_SECTIONS.flatMap((section) =>
+              section.items
+                .filter((item) => item.href.startsWith("/admin/veri?"))
+                .map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`block rounded-lg border px-3 py-2 hover:border-brand-200 hover:bg-brand-50/40 ${
+                        item.href.includes(`k=${key}`) ? "border-brand-300 bg-brand-50/60" : "border-paper-200"
+                      }`}
+                    >
+                      <div className="font-medium text-paper-900">{item.title}</div>
+                      <div className="text-xs text-paper-800/60">{item.desc}</div>
+                    </Link>
+                  </li>
+                )),
+            )}
+          </ul>
+        </details>
 
         {key === "ledger" ? (
           <div className="mt-4 flex flex-wrap items-end gap-2">

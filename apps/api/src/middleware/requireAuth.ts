@@ -22,9 +22,14 @@ export const requireAuth = createMiddleware(async (c, next) => {
     return c.json({ error: "csrf_token_required" }, 403);
   }
   try {
-    const { userId, role } = await verifyAccessToken(token);
+    const { userId, role, adminScope } = await verifyAccessToken(token);
     c.set("userId", userId);
     c.set("userRole", role);
+    if (role === "admin" && (adminScope === "full" || adminScope === "finance" || adminScope === "support")) {
+      c.set("adminScope", adminScope);
+    } else if (role === "admin") {
+      c.set("adminScope", "full");
+    }
     c.set("authMethod", authMethod);
 
     let account: Awaited<ReturnType<typeof loadUserAccountStatus>> = null;

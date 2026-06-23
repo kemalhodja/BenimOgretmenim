@@ -4,6 +4,7 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { assertAdminFinanceScope } from "../lib/adminGate.js";
 import { ensureUserWalletRow } from "../lib/studentSub.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
@@ -64,8 +65,8 @@ userWallet.get("/me", requireAuth, async (c) => {
 
 /** Admin: test/ops için cüzdana bakiye ekle (wallet-only MVP destek) */
 userWallet.post("/admin/grant", requireAuth, async (c) => {
-  const role = c.get("userRole");
-  if (role !== "admin") return c.json({ error: "forbidden_admin_only" }, 403);
+  const denied = await assertAdminFinanceScope(c);
+  if (denied) return denied;
   const parsed = adminGrantSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 

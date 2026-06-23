@@ -11,8 +11,13 @@ function getSecretKey(): Uint8Array {
 export async function signAccessToken(input: {
   userId: string;
   role: string;
+  adminScope?: string | null;
 }): Promise<string> {
-  return new jose.SignJWT({ role: input.role })
+  const claims: Record<string, string> = { role: input.role };
+  if (input.role === "admin" && input.adminScope) {
+    claims.adminScope = input.adminScope;
+  }
+  return new jose.SignJWT(claims)
     .setSubject(input.userId)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -23,6 +28,7 @@ export async function signAccessToken(input: {
 export async function verifyAccessToken(token: string): Promise<{
   userId: string;
   role: string;
+  adminScope?: string;
 }> {
   const { payload } = await jose.jwtVerify(token, getSecretKey());
   const sub = payload.sub;
@@ -30,5 +36,6 @@ export async function verifyAccessToken(token: string): Promise<{
     throw new Error("invalid_token");
   }
   const role = typeof payload.role === "string" ? payload.role : "";
-  return { userId: sub, role };
+  const adminScope = typeof payload.adminScope === "string" ? payload.adminScope : undefined;
+  return { userId: sub, role, adminScope };
 }

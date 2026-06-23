@@ -5,6 +5,7 @@ const ROLE_KEY = "bo:role";
 const USER_ID_KEY = "bo:user-id";
 const ROLE_COOKIE_NAME = "bo_session_role";
 const USER_ID_COOKIE_NAME = "bo_session_user_id";
+const ADMIN_SCOPE_COOKIE_NAME = "bo_session_admin_scope";
 const CSRF_COOKIE_NAME = "bo_csrf";
 const COOKIE_SESSION_TOKEN_PREFIX = "bo-cookie-session:";
 
@@ -108,6 +109,7 @@ export function clearToken() {
 }
 
 export type UserRole = "student" | "teacher" | "guardian" | "admin";
+export type AdminScope = "full" | "finance" | "support";
 
 function base64UrlToJson(input: string): unknown | null {
   try {
@@ -133,6 +135,25 @@ export function getRoleFromToken(token: string | null): UserRole | null {
       : null;
   if (role === "teacher" || role === "student" || role === "guardian" || role === "admin") return role;
   return null;
+}
+
+export function adminScopeLabel(scope: string | null | undefined): string {
+  if (scope === "finance") return "Finans";
+  if (scope === "support") return "Destek";
+  return "Tam yetki";
+}
+
+export function setAdminScopeHintCookie(scope: AdminScope) {
+  if (typeof document === "undefined") return;
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${ADMIN_SCOPE_COOKIE_NAME}=${encodeURIComponent(scope)}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax${secure}`;
+}
+
+export function getAdminScopeFromSession(): AdminScope {
+  if (typeof window === "undefined") return "full";
+  const raw = readCookie(ADMIN_SCOPE_COOKIE_NAME);
+  if (raw === "finance" || raw === "support") return raw;
+  return "full";
 }
 
 export function getCachedRole(): UserRole | null {
@@ -170,6 +191,7 @@ type SessionMeResponse = {
   user?: {
     id?: unknown;
     role?: unknown;
+    adminScope?: unknown;
   };
 };
 
@@ -190,12 +212,16 @@ export async function refreshSessionFromServer(): Promise<UserRole | null> {
     const json = (await res.json()) as SessionMeResponse;
     const role = json.user?.role;
     const userId = json.user?.id;
+    const adminScope = json.user?.adminScope;
     const safeRole =
       role === "teacher" || role === "student" || role === "guardian" || role === "admin"
         ? role
         : null;
     cacheRole(safeRole);
     cacheUserId(typeof userId === "string" ? userId : null);
+    if (safeRole === "admin" && (adminScope === "finance" || adminScope === "support" || adminScope === "full")) {
+      setAdminScopeHintCookie(adminScope);
+    }
     window.localStorage.removeItem(TOKEN_KEY);
     notifyAuthChanged();
     return safeRole;

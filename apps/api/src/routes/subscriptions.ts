@@ -5,7 +5,7 @@ import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
-import { assertAdminApiSecret } from "../lib/adminSecret.js";
+import { assertAdminFinanceScope } from "../lib/adminGate.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
 import { createExtendedTeacherSubscription, teacherSubscriptionPromoMultiplier } from "../lib/teacherSubscriptions.js";
 import { isPaytrConfigured, paytrNotConfiguredBody } from "../lib/systemHealth.js";
@@ -247,13 +247,8 @@ const approveSchema = z.object({
 
 /** Admin: bekleyen havale/EFT ödemeleri */
 subscriptions.get("/admin/pending-bank-transfers", requireAuth, async (c) => {
-  const role = c.get("userRole");
-  if (role !== "admin") {
-    return c.json({ error: "forbidden_admin_only" }, 403);
-  }
-
-  const secErr = assertAdminApiSecret(c);
-  if (secErr) return secErr;
+  const denied = await assertAdminFinanceScope(c);
+  if (denied) return denied;
 
   const r = await pool.query(
     `select sp.id,
@@ -278,13 +273,8 @@ subscriptions.get("/admin/pending-bank-transfers", requireAuth, async (c) => {
 /** Admin: havale ödemesini onayla → aboneliği aktif et */
 subscriptions.post("/admin/approve-bank-transfer", requireAuth, async (c) => {
   const userId = c.get("userId");
-  const role = c.get("userRole");
-  if (role !== "admin") {
-    return c.json({ error: "forbidden_admin_only" }, 403);
-  }
-
-  const secErr = assertAdminApiSecret(c);
-  if (secErr) return secErr;
+  const denied = await assertAdminFinanceScope(c);
+  if (denied) return denied;
 
   const parsed = approveSchema.safeParse(await c.req.json());
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
@@ -339,7 +329,7 @@ subscriptions.post("/admin/approve-bank-transfer", requireAuth, async (c) => {
     await writeAdminAudit(
       {
         actorUserId: userId,
-        actorRole: role,
+        actorRole: c.get("userRole"),
         requestId: c.req.header("x-request-id") ?? null,
         action: "subscription.bank_transfer.approve",
         entityType: "subscription_payment",

@@ -71,6 +71,8 @@ services:
         value: "7d"
       - key: ADMIN_BOOTSTRAP_PASSWORD
         generateValue: true
+      - key: ADMIN_BOOTSTRAP_EMAIL
+        sync: false
       - key: SUB_PROMO_MULTIPLIER
         value: "5"
       - key: STUDENT_SUB_ANNUAL_PRICE_MINOR

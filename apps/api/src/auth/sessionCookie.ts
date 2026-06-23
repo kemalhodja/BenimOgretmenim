@@ -6,6 +6,7 @@ import type { AppVariables } from "../types.js";
 export const SESSION_COOKIE_NAME = "bo_session";
 export const SESSION_ROLE_COOKIE_NAME = "bo_session_role";
 export const SESSION_USER_ID_COOKIE_NAME = "bo_session_user_id";
+export const SESSION_ADMIN_SCOPE_COOKIE_NAME = "bo_session_admin_scope";
 export const CSRF_COOKIE_NAME = "bo_csrf";
 export const CSRF_HEADER_NAME = "x-csrf-token";
 export const CSRF_HEADER_VALUE = "bo-csrf-v1";
@@ -49,7 +50,7 @@ export function setSessionCookie(c: Context<{ Variables: AppVariables }>, token:
 
 export function setSessionHintCookies(
   c: Context<{ Variables: AppVariables }>,
-  opts: { role: string; userId: string },
+  opts: { role: string; userId: string; adminScope?: string | null },
 ): void {
   const common = {
     httpOnly: false,
@@ -60,6 +61,9 @@ export function setSessionHintCookies(
   };
   setCookie(c, SESSION_ROLE_COOKIE_NAME, opts.role, common);
   setCookie(c, SESSION_USER_ID_COOKIE_NAME, opts.userId, common);
+  if (opts.role === "admin") {
+    setCookie(c, SESSION_ADMIN_SCOPE_COOKIE_NAME, opts.adminScope ?? "full", common);
+  }
 }
 
 export function clearSessionCookie(c: Context<{ Variables: AppVariables }>): void {
@@ -74,6 +78,11 @@ export function clearSessionCookie(c: Context<{ Variables: AppVariables }>): voi
     sameSite: "Lax",
   });
   deleteCookie(c, SESSION_USER_ID_COOKIE_NAME, {
+    path: "/",
+    secure: cookieSecure(),
+    sameSite: "Lax",
+  });
+  deleteCookie(c, SESSION_ADMIN_SCOPE_COOKIE_NAME, {
     path: "/",
     secure: cookieSecure(),
     sameSite: "Lax",

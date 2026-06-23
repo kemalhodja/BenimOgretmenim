@@ -92,6 +92,33 @@ Dosya yukleme veya kamera ile gorsel kabul edilen akislarda:
 - Ozel/ogrenci verisi iceren dosyalar yetkisiz erisime kapali olmalidir.
 - Virus/malware taramasi production fazinda planlanir.
 
+## Admin Operasyon ve Yetki
+
+### Admin kapsami (`admin_scope`)
+
+- `full`: tum moduller (rol degisikligi, finans, destek).
+- `finance`: odeme, havale, cuzdan, mutabakat, para cekme.
+- `support`: kullanicilar, ogretmenler, destek, kurs basvurulari (finans disi).
+
+JWT ve oturum hint cookie (`bo_session_admin_scope`) ile tasınır. API `assertAdminScope` / `assertAdminFinanceScope` / `assertAdminSupportScope` ile zorlanır.
+
+### Admin takip panosu
+
+- `/admin`: operasyon ozeti, aksiyon KPI, 7 gun gelir ozeti.
+- `/admin/merkez`: gunluk checklist (localStorage), SLA eskalasyon, funnel alarm, smoke gecmisi, haftalik rapor sonraki adimlar.
+- `/admin/courses?tab=applications&pending=1`: global kurs basvuru kuyrugu.
+
+### Audit beklentisi
+
+Asagidaki admin aksiyonlari `admin_audit_events` tablosuna yazilmali:
+
+- Rol ve hesap durumu degisikligi
+- Odeme mutabakat cozumu
+- Havale onayi ve cuzdan grant
+- Kurs basvuru kararlari
+
+Cookie oturumu ile gelen admin isteklerinde CSRF zorunludur; proxy `/api/admin/*` uzerinden gider.
+
 ## Kapatma Kriteri
 
 Guvenlik maddesi ancak su kosullarda kapanir:

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { assertAdminGate } from "../lib/adminGate.js";
+import { assertAdminGate, assertAdminFinanceScope, assertAdminSupportScope, assertAdminScope } from "../lib/adminGate.js";
 import {
   getLastAdminAuditWriteFailure,
   getLastPaymentReconciliationWriteFailure,
@@ -73,6 +73,107 @@ admin.post("/smoke-runs", async (c) => {
     ],
   );
   return c.json({ run: r.rows[0] }, 201);
+});
+
+admin.get("/smoke-runs", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? "20") || 20));
+  const offset = Math.min(10_000, Math.max(0, Number(c.req.query("offset") ?? "0") || 0));
+  const table = await pool.query(`select to_regclass('public.operational_smoke_runs') as smoke_table`);
+  if (!table.rows[0]?.smoke_table) {
+    return c.json({ runs: [], total: 0, limit, offset });
+  }
+  const countR = await pool.query(`select count(*)::int as c from operational_smoke_runs`);
+  const rows = await pool.query(
+    `select id, status, target_url, workflow, run_id, commit_sha, details_jsonb, created_at
+     from operational_smoke_runs
+     order by created_at desc
+     limit $1 offset $2`,
+    [limit, offset],
+  );
+  return c.json({
+    runs: rows.rows,
+    total: (countR.rows[0] as { c: number }).c,
+    limit,
+    offset,
+  });
+});
+
+admin.get("/course-applications", requireAuth, async (c) => {
+  const denied = assertAdminGate(c);
+  if (denied) return denied;
+  const status = (c.req.query("status")?.trim() || "pending") as string;
+  const kind = c.req.query("kind")?.trim() || "all";
+  const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? "50") || 50));
+  const offset = Math.min(10_000, Math.max(0, Number(c.req.query("offset") ?? "0") || 0));
+
+  const teacherApps =
+    kind === "student"
+      ? { rows: [] }
+      : await pool.query(
+          `select ta.id, ta.status, ta.message, ta.experience_note, ta.created_at, ta.updated_at,
+                  ta.course_id, c.title as course_title, c.status::text as course_status,
+                  t.id as teacher_id, u.display_name as applicant_display_name, u.email as applicant_email,
+                  'teacher'::text as application_kind
+           from course_teacher_applications ta
+           join courses c on c.id = ta.course_id
+           join teachers t on t.id = ta.teacher_id
+           join users u on u.id = t.user_id
+           where ta.status::text = $1
+           order by ta.created_at desc
+           limit $2 offset $3`,
+          [status, limit, offset],
+        );
+
+  const studentApps =
+    kind === "teacher"
+      ? { rows: [] }
+      : await pool.query(
+          `select sa.id, sa.status, sa.goal_note, sa.guardian_note, sa.created_at, sa.updated_at,
+                  sa.course_id, c.title as course_title, c.status::text as course_status,
+                  s.id as student_id, u.display_name as applicant_display_name, u.email as applicant_email,
+                  'student'::text as application_kind
+           from course_student_applications sa
+           join courses c on c.id = sa.course_id
+           join students s on s.id = sa.student_id
+           join users u on u.id = s.user_id
+           where sa.status::text = $1
+           order by sa.created_at desc
+           limit $2 offset $3`,
+          [status, limit, offset],
+        );
+
+  const [teacherTotal, studentTotal] = await Promise.all([
+    kind === "student"
+      ? Promise.resolve({ rows: [{ c: 0 }] })
+      : pool.query(
+          `select count(*)::int as c from course_teacher_applications where status::text = $1`,
+          [status],
+        ),
+    kind === "teacher"
+      ? Promise.resolve({ rows: [{ c: 0 }] })
+      : pool.query(
+          `select count(*)::int as c from course_student_applications where status::text = $1`,
+          [status],
+        ),
+  ]);
+
+  const applications = [...teacherApps.rows, ...studentApps.rows].sort(
+    (a, b) => new Date(String(b.created_at)).getTime() - new Date(String(a.created_at)).getTime(),
+  );
+
+  return c.json({
+    applications,
+    summary: {
+      teacherPending: (teacherTotal.rows[0] as { c: number }).c,
+      studentPending: (studentTotal.rows[0] as { c: number }).c,
+      status,
+    },
+    total: (teacherTotal.rows[0] as { c: number }).c + (studentTotal.rows[0] as { c: number }).c,
+    limit,
+    offset,
+  });
 });
 
 admin.get("/funnel/summary", requireAuth, async (c) => {
@@ -293,6 +394,17 @@ admin.get("/overview", requireAuth, async (c) => {
     teacherQualityAvg,
     reconciliationIssues30d,
     completedLessons30d,
+    pendingWithdrawals,
+    openDisputes,
+    pendingCampaignReview,
+    pendingCourseTeacherApplications,
+    pendingCourseStudentApplications,
+    openJobAlerts,
+    suspendedUsers,
+    deletionRequestedUsers,
+    revenue7dTeacher,
+    revenue7dStudent,
+    revenue7dWallet,
   ] = await Promise.all([
     pool.query(`select role::text as role, count(*)::int as c from users group by role`),
     pool.query(`select count(*)::int as c from teachers`),
@@ -429,6 +541,51 @@ admin.get("/overview", requireAuth, async (c) => {
        where status = 'completed'
          and updated_at >= now() - interval '30 days'`,
     ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c from teacher_wallet_withdrawals where status = 'pending'`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c
+       from platform_disputes
+       where status in ('open', 'waiting_admin', 'waiting_user')`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c from teacher_campaigns where status = 'pending_review'`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c from course_teacher_applications where status = 'pending'`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c from course_student_applications where status = 'pending'`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c
+       from platform_job_heartbeats
+       where status = 'failed'
+          or last_success_at is null
+          or last_success_at < now() - (expected_interval_minutes::text || ' minutes')::interval * 2`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c from users where account_status = 'suspended'`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select count(*)::int as c from users where account_status = 'deletion_requested'`,
+    ).catch(() => ({ rows: [{ c: 0 }] })),
+    pool.query(
+      `select coalesce(sum(amount_minor), 0)::bigint as amount_minor
+       from subscription_payments
+       where created_at >= now() - interval '7 days' and state = 'paid'`,
+    ).catch(() => ({ rows: [{ amount_minor: 0 }] })),
+    pool.query(
+      `select coalesce(sum(amount_minor), 0)::bigint as amount_minor
+       from student_sub_payments
+       where created_at >= now() - interval '7 days' and state = 'paid'`,
+    ).catch(() => ({ rows: [{ amount_minor: 0 }] })),
+    pool.query(
+      `select coalesce(sum(amount_minor), 0)::bigint as amount_minor
+       from wallet_topup_payments
+       where created_at >= now() - interval '7 days' and state = 'paid'`,
+    ).catch(() => ({ rows: [{ amount_minor: 0 }] })),
   ]);
 
   const usersByRole: Record<string, number> = {};
@@ -453,6 +610,10 @@ admin.get("/overview", requireAuth, async (c) => {
   const w0 = walletsAgg.rows[0] as
     | { wallets_nonzero: number; balance_sum_minor: string }
     | undefined;
+
+  const revenue7dTeacherMinor = Number(revenue7dTeacher.rows[0]?.amount_minor ?? 0);
+  const revenue7dStudentMinor = Number(revenue7dStudent.rows[0]?.amount_minor ?? 0);
+  const revenue7dWalletMinor = Number(revenue7dWallet.rows[0]?.amount_minor ?? 0);
 
   return c.json({
     usersByRole,
@@ -495,6 +656,20 @@ admin.get("/overview", requireAuth, async (c) => {
       teacherQualityAvg: (teacherQualityAvg.rows[0] as { avg_score: number | null }).avg_score ?? 0,
       reconciliationIssues30d: (reconciliationIssues30d.rows[0] as { c: number }).c,
       completedLessons30d: (completedLessons30d.rows[0] as { c: number }).c,
+      pendingWithdrawals: (pendingWithdrawals.rows[0] as { c: number }).c,
+      openDisputes: (openDisputes.rows[0] as { c: number }).c,
+      pendingCampaignReview: (pendingCampaignReview.rows[0] as { c: number }).c,
+      pendingCourseTeacherApplications: (pendingCourseTeacherApplications.rows[0] as { c: number }).c,
+      pendingCourseStudentApplications: (pendingCourseStudentApplications.rows[0] as { c: number }).c,
+      openJobAlerts: (openJobAlerts.rows[0] as { c: number }).c,
+      suspendedUsers: (suspendedUsers.rows[0] as { c: number }).c,
+      deletionRequestedUsers: (deletionRequestedUsers.rows[0] as { c: number }).c,
+    },
+    revenue7d: {
+      teacherSubscriptionsMinor: revenue7dTeacherMinor,
+      studentSubscriptionsMinor: revenue7dStudentMinor,
+      walletTopupsMinor: revenue7dWalletMinor,
+      totalMinor: revenue7dTeacherMinor + revenue7dStudentMinor + revenue7dWalletMinor,
     },
     generatedAt: new Date().toISOString(),
   });
@@ -670,27 +845,30 @@ admin.post("/weekly-reports/run", requireAuth, async (c) => {
 const usersQuery = z.object({
   q: z.string().max(120).optional(),
   role: z.enum(["student", "teacher", "admin", "guardian", ""]).optional(),
+  accountStatus: z.enum(["active", "suspended", "deletion_requested", ""]).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
   offset: z.coerce.number().int().min(0).max(10_000).optional(),
 });
 
 admin.get("/users", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
 
   const parsed = usersQuery.safeParse({
     q: c.req.query("q") ?? "",
     role: c.req.query("role") ?? "",
+    accountStatus: c.req.query("accountStatus") ?? c.req.query("status") ?? "",
     limit: c.req.query("limit") ?? "40",
     offset: c.req.query("offset") ?? "0",
   });
   if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
 
-  const { q, role, limit, offset } = parsed.data;
+  const { q, role, accountStatus, limit, offset } = parsed.data;
   const lim = limit ?? 40;
   const off = offset ?? 0;
   const qTrim = q?.trim() ?? "";
   const roleTrim = role?.trim() ?? "";
+  const statusTrim = accountStatus?.trim() ?? "";
 
   const args: unknown[] = [];
   let where = "true";
@@ -702,6 +880,10 @@ admin.get("/users", requireAuth, async (c) => {
   if (roleTrim && roleTrim !== "") {
     args.push(roleTrim);
     where += ` and u.role = $${args.length}::user_role`;
+  }
+  if (statusTrim) {
+    args.push(statusTrim);
+    where += ` and u.account_status = $${args.length}::user_account_status`;
   }
 
   const countR = await pool.query(
@@ -716,6 +898,7 @@ admin.get("/users", requireAuth, async (c) => {
   const list = await pool.query(
     `select u.id, u.email, u.display_name, u.role::text as role,
             u.account_status::text as account_status,
+            u.admin_scope::text as admin_scope,
             u.suspension_reason,
             u.created_at, u.last_login_at
      from users u
@@ -1593,7 +1776,7 @@ const subPayQuery = z.object({
 });
 
 admin.get("/subscription-payments", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminFinanceScope(c);
   if (denied) return denied;
 
   const rawState = c.req.query("state")?.trim();
@@ -1679,7 +1862,7 @@ admin.get("/audit-events", requireAuth, async (c) => {
 });
 
 admin.get("/payment-reconciliation", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminFinanceScope(c);
   if (denied) return denied;
   const limit = Math.min(100, Math.max(1, Number(c.req.query("limit") ?? "50") || 50));
   const offset = Math.min(10_000, Math.max(0, Number(c.req.query("offset") ?? "0") || 0));
@@ -1758,7 +1941,7 @@ admin.get("/payment-reconciliation", requireAuth, async (c) => {
 });
 
 admin.get("/payment-reconciliation.csv", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminFinanceScope(c);
   if (denied) return denied;
   const limit = Math.min(5000, Math.max(1, Number(c.req.query("limit") ?? "1000") || 1000));
   const status = c.req.query("status")?.trim();
@@ -1824,7 +2007,7 @@ const paymentReconciliationResolutionSchema = z.object({
 });
 
 admin.patch("/payment-reconciliation/:eventId", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminFinanceScope(c);
   if (denied) return denied;
 
   const eventId = c.req.param("eventId")?.trim();
@@ -1912,7 +2095,7 @@ const patchRoleSchema = z.object({
 });
 
 admin.patch("/users/:userId/role", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminScope(c, ["full"]);
   if (denied) return denied;
 
   const userId = c.req.param("userId")?.trim();
@@ -1987,6 +2170,12 @@ admin.patch("/users/:userId/role", requireAuth, async (c) => {
       newRole,
       userId,
     ]);
+    if (newRole === "admin") {
+      await client.query(
+        `update users set admin_scope = 'full'::admin_scope, updated_at = now() where id = $1`,
+        [userId],
+      );
+    }
 
     await writeAdminAudit(
       {
@@ -2019,7 +2208,7 @@ const patchAccountStatusSchema = z.object({
 });
 
 admin.patch("/users/:userId/account-status", requireAuth, async (c) => {
-  const denied = assertAdminGate(c);
+  const denied = await assertAdminSupportScope(c);
   if (denied) return denied;
 
   const userId = c.req.param("userId")?.trim();
@@ -2115,6 +2304,90 @@ admin.patch("/users/:userId/account-status", requireAuth, async (c) => {
 
     await client.query("commit");
     return c.json({ ok: true, userId, status: parsed.data.status });
+  } catch (e) {
+    await client.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+});
+
+const patchAdminScopeSchema = z.object({
+  scope: z.enum(["full", "finance", "support"]),
+});
+
+admin.patch("/users/:userId/admin-scope", requireAuth, async (c) => {
+  const denied = await assertAdminScope(c, ["full"]);
+  if (denied) return denied;
+
+  const userId = c.req.param("userId")?.trim();
+  if (!userId || !z.string().uuid().safeParse(userId).success) {
+    return c.json({ error: "invalid_user_id" }, 400);
+  }
+
+  const parsed = patchAdminScopeSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const actorId = c.get("userId");
+  const nextScope = parsed.data.scope;
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const before = await client.query<{ id: string; role: string; admin_scope: string }>(
+      `select id, role::text as role, admin_scope::text as admin_scope
+       from users where id = $1 for update`,
+      [userId],
+    );
+    const row = before.rows[0];
+    if (!row) {
+      await client.query("rollback");
+      return c.json({ error: "user_not_found" }, 404);
+    }
+    if (row.role !== "admin") {
+      await client.query("rollback");
+      return c.json({ error: "admin_scope_requires_admin_role" }, 409);
+    }
+
+    if (row.admin_scope === "full" && nextScope !== "full") {
+      const fullCount = await client.query<{ c: number }>(
+        `select count(*)::int as c
+         from users
+         where role = 'admin'::user_role and admin_scope = 'full'::admin_scope and id <> $1`,
+        [userId],
+      );
+      if ((fullCount.rows[0]?.c ?? 0) < 1) {
+        await client.query("rollback");
+        return c.json({ error: "cannot_remove_last_full_admin" }, 409);
+      }
+    }
+
+    await client.query(
+      `update users set admin_scope = $1::admin_scope, updated_at = now() where id = $2`,
+      [nextScope, userId],
+    );
+
+    await writeAdminAudit(
+      {
+        actorUserId: actorId,
+        actorRole: c.get("userRole"),
+        requestId: c.req.header("x-request-id") ?? null,
+        action: "user.admin_scope.update",
+        entityType: "user",
+        entityId: userId,
+        reason: `scope:${nextScope}`,
+        before: { admin_scope: row.admin_scope },
+        after: { admin_scope: nextScope },
+      },
+      client,
+    );
+
+    await client.query("commit");
+    return c.json({
+      ok: true,
+      userId,
+      adminScope: nextScope,
+      reloginRequired: actorId === userId,
+    });
   } catch (e) {
     await client.query("rollback").catch(() => {});
     throw e;

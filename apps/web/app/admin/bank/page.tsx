@@ -3,50 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { clearToken, getToken } from "../../lib/auth";
+import { apiFetch } from "../../lib/api";
+import { clearToken } from "../../lib/auth";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
-import { makeRequestId } from "../../lib/requestId";
-
-async function adminPanelFetch<T>(
-  path: "/api/admin/pending-bank-transfers" | "/api/admin/approve-bank-transfer",
-  token: string,
-  init?: RequestInit,
-): Promise<T> {
-  const headers = new Headers(init?.headers);
-  headers.set("accept", "application/json");
-  headers.set("authorization", `Bearer ${token}`);
-  if (!headers.has("x-request-id")) {
-    headers.set("x-request-id", makeRequestId());
-  }
-  if (init?.body && !headers.has("content-type")) {
-    headers.set("content-type", "application/json");
-  }
-  const res = await fetch(path, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
-  const responseRequestId = res.headers.get("x-request-id") ?? undefined;
-  const text = await res.text();
-  const json = text ? (JSON.parse(text) as unknown) : null;
-  if (!res.ok) {
-    const msg =
-      typeof json === "object" && json && json !== null && "error" in json
-        ? (json as { error?: unknown }).error
-        : json;
-    const bodyRid =
-      typeof json === "object" && json && json !== null && "requestId" in json
-        ? (json as { requestId?: unknown }).requestId
-        : undefined;
-    const rid =
-      typeof bodyRid === "string" && bodyRid ? bodyRid : responseRequestId;
-    const ridSuffix = rid ? ` (requestId=${rid})` : "";
-    throw new Error(
-      `[${res.status}] ${typeof msg === "string" ? msg : "request_failed"}${ridSuffix}`,
-    );
-  }
-  return json as T;
-}
+import { useRequireAdmin } from "../useRequireAdmin";
 
 type PendingPayment = {
   id: string;
@@ -63,22 +23,13 @@ type PendingPayment = {
 export default function AdminBankPage() {
   const router = useRouter();
   const pathname = usePathname() ?? "";
-  const [token, setToken] = useState<string | null>(null);
+  const token = useRequireAdmin();
   const [items, setItems] = useState<PendingPayment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const t = getToken();
-    if (!t) {
-      router.replace(loginHrefWithReturn(pathname));
-      return;
-    }
-    setToken(t);
-  }, [router, pathname]);
 
   function showToast(message: string) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -95,14 +46,14 @@ export default function AdminBankPage() {
     };
   }, []);
 
-  const load = useCallback(async (t: string, opts?: { showRefreshSpinner?: boolean }) => {
+  const load = useCallback(async (opts?: { showRefreshSpinner?: boolean }) => {
+    if (!token) return;
     if (opts?.showRefreshSpinner) setRefreshing(true);
     setError(null);
     try {
-      const r = await adminPanelFetch<{ payments: PendingPayment[] }>(
-        "/api/admin/pending-bank-transfers",
-        t,
-      );
+      const r = await apiFetch<{ payments: PendingPayment[] }>("/api/admin/pending-bank-transfers", {
+        token,
+      });
       setItems(r.payments);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "load_failed";
@@ -118,10 +69,10 @@ export default function AdminBankPage() {
     } finally {
       if (opts?.showRefreshSpinner) setRefreshing(false);
     }
-  }, [router, pathname]);
+  }, [router, pathname, token]);
 
   useEffect(() => {
-    if (token) void load(token);
+    if (token) void load();
   }, [token, load]);
 
   async function approve(paymentId: string) {
@@ -129,11 +80,12 @@ export default function AdminBankPage() {
     setBusy(paymentId);
     setError(null);
     try {
-      await adminPanelFetch("/api/admin/approve-bank-transfer", token, {
+      await apiFetch("/api/admin/approve-bank-transfer", {
         method: "POST",
+        token,
         body: JSON.stringify({ paymentId }),
       });
-      await load(token);
+      await load();
       showToast("Ödeme onaylandı, abonelik aktifleştirildi.");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "approve_failed";
@@ -161,23 +113,22 @@ export default function AdminBankPage() {
             Bekleyen banka ödemelerini kontrol edin; onay işlemleri kayıt altına alınır.
           </p>
           <p className="mt-2 max-w-xl text-xs text-paper-800/55">
-            Üretimde yönetici güvenlik anahtarı tanımlıysa, web sunucusunda aynı değer ve iç servis adresi
-            ayarlanmalıdır; gizli anahtar tarayıcıya verilmez.
+            Oturum cookie + CSRF ile güvenli proxy; gizli anahtar tarayıcıya verilmez.
           </p>
           <p className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
             <button
               type="button"
-              onClick={() => void load(token, { showRefreshSpinner: true })}
+              onClick={() => void load({ showRefreshSpinner: true })}
               disabled={refreshing}
               className="font-medium text-brand-800 underline decoration-brand-400 underline-offset-4 disabled:opacity-50"
             >
               {refreshing ? "Yükleniyor…" : "Yenile"}
             </button>
             <Link
-              href="/"
+              href="/admin"
               className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
             >
-              Ana sayfa
+              Operasyon özeti
             </Link>
           </p>
         </div>

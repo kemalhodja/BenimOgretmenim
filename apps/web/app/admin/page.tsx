@@ -2,67 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AdminTrackingBoard } from "../components/admin/AdminTrackingBoard";
 import { apiFetch } from "../lib/api";
+import type { AdminOverviewCounts, AdminOverviewRevenue7d } from "../lib/adminRegistry";
+import { ADMIN_MERKEZ, formatRevenueMinor } from "../lib/adminRegistry";
+import { getAdminScopeFromSession } from "../lib/auth";
 import { useRequireAdmin } from "./useRequireAdmin";
 
 type Overview = {
   usersByRole: Record<string, number>;
-  counts: {
-    usersTotal: number;
-    teachers: number;
-    students: number;
-    coursesPublished: number;
-    coursesDraft: number;
-    lessonRequestsOpen: number;
-    lessonRequestsMatched: number;
-    groupLessonRequestsOpen: number;
-    pendingBankPayments: number;
-    pendingSubscriptionPayments: number;
-    activeTeacherSubscriptions: number;
-    lessonPackagesActive: number;
-    activeStudentSubscriptions: number;
-    walletsWithBalance: number;
-    walletBalanceSumMinor: string;
-    homeworkPostsActive: number;
-    directBookingsInFlight: number;
-    parentNotificationsUnread: number;
-    openDemoRequests: number;
-    unansweredDemoRequests: number;
-    pendingTeacherVerification: number;
-    weakTeacherProfiles: number;
-    classroomNoteCount: number;
-    classroomRecordingCount: number;
-    classroomMessageCount: number;
-    homeworkQualityQueue: number;
-    openSupportThreads: number;
-    activeStudyPlans: number;
-    recentAssessmentAttempts: number;
-  };
+  counts: AdminOverviewCounts;
+  revenue7d?: AdminOverviewRevenue7d;
   generatedAt: string;
 };
-
-function StatCard({
-  href,
-  label,
-  value,
-  hint,
-}: {
-  href: string;
-  label: string;
-  value: string | number;
-  hint?: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="rounded-xl border border-paper-200 bg-white p-4 transition hover:border-brand-200 hover:bg-paper-50/60"
-    >
-      <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">{label}</div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums text-paper-900">{value}</div>
-      {hint ? <div className="mt-1 text-xs text-paper-800/55">{hint}</div> : null}
-    </Link>
-  );
-}
 
 export default function AdminDashboardPage() {
   const token = useRequireAdmin();
@@ -88,191 +40,66 @@ export default function AdminDashboardPage() {
 
   if (!token) return null;
 
-  const c = data?.counts;
-  const roles = data?.usersByRole ?? {};
-
   return (
-    <div className="min-h-screen bg-paper-50">
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Özet</h1>
-          <Link
-            href="/admin/merkez"
-            className="text-sm font-medium text-brand-800 underline decoration-brand-400 underline-offset-4"
-          >
-            Kontrol merkezi
-          </Link>
-        </div>
-        <p className="mt-2 max-w-2xl text-sm text-paper-800/75">
-          Kullanıcılar, içerik ve işlem özetleri. Tam liste ve sıradaki adımlar için kontrol merkezini açın.
-        </p>
-
-        {error ? (
-          <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
-        ) : null}
-
-        {!data && !error ? (
-          <p className="mt-6 text-sm text-paper-800/55">Özet yükleniyor…</p>
-        ) : null}
-
-        {c ? (
-          <>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard href="/admin/users" label="Kayıtlı kullanıcı" value={c.usersTotal} />
-              <StatCard href="/admin/teachers" label="Öğretmen profili" value={c.teachers} />
-              <StatCard href="/admin/users" label="Öğrenci profili" value={c.students} hint="Öğrenci kayıtları" />
-              <StatCard
-                href="/admin/requests"
-                label="Açık ders talebi"
-                value={c.lessonRequestsOpen}
-                hint={`Eşleşmiş: ${c.lessonRequestsMatched}`}
-              />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard href="/admin/bank" label="Bekleyen havale" value={c.pendingBankPayments} />
-              <StatCard
-                href="/admin/payments"
-                label="Bekleyen abonelik ödemesi"
-                value={c.pendingSubscriptionPayments ?? 0}
-                hint="Tüm yöntemler (beklemede)"
-              />
-              <StatCard
-                href="/admin/wallet"
-                label="Cüzdanı dolu kullanıcı"
-                value={c.walletsWithBalance}
-                hint={`Toplam bakiye: ${(Number(c.walletBalanceSumMinor ?? 0) / 100).toFixed(2)} TL`}
-              />
-              <StatCard
-                href="/admin/courses"
-                label="Yayında kurs"
-                value={c.coursesPublished}
-                hint={`Taslak: ${c.coursesDraft}`}
-              />
-              <StatCard
-                href="/admin/teachers"
-                label="Aktif öğretmen aboneliği"
-                value={c.activeTeacherSubscriptions}
-              />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard
-                href="/admin/requests"
-                label="Açık demo talebi"
-                value={c.openDemoRequests ?? 0}
-                hint={`Yanıtsız: ${c.unansweredDemoRequests ?? 0}`}
-              />
-              <StatCard
-                href="/admin/teachers"
-                label="Doğrulama bekleyen"
-                value={c.pendingTeacherVerification ?? 0}
-                hint="Öğretmen kalite kuyruğu"
-              />
-              <StatCard
-                href="/admin/teachers"
-                label="Zayıf öğretmen profili"
-                value={c.weakTeacherProfiles ?? 0}
-                hint="Kalite skoru 40 altı"
-              />
-              <StatCard href="/admin/merkez" label="Kalite operasyonu" value="Takip" hint="Demo + profil sağlığı" />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard href="/admin/group-lessons" label="Açık grup dersi" value={c.groupLessonRequestsOpen} />
-              <StatCard
-                href="/admin/homework"
-                label="Açık ödev gönderisi"
-                value={c.homeworkPostsActive ?? 0}
-                hint="Açık ve üstlenilmiş"
-              />
-              <StatCard
-                href="/admin/direct-bookings"
-                label="Doğrudan ders (devam eden)"
-                value={c.directBookingsInFlight ?? 0}
-                hint="Ödeme bekleyen ve ödenmiş"
-              />
-              <StatCard
-                href="/admin/veri?k=notifications"
-                label="Okunmamış veli bildirimi"
-                value={c.parentNotificationsUnread ?? 0}
-              />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard href="/admin/users" label="Aktif öğrenci platform aboneliği" value={c.activeStudentSubscriptions} />
-              <StatCard href="/admin/users" label="Aktif ders paketi" value={c.lessonPackagesActive} hint="Ders paketi kayıtları" />
-              <StatCard href="/admin/veri?k=homework" label="Soru kalite kuyruğu" value={c.homeworkQualityQueue ?? 0} hint="Bekleyen, düzeltilecek ve işaretli" />
-              <StatCard href="/admin/support" label="Açık destek" value={c.openSupportThreads ?? 0} hint="Yanıt süresi takibi" />
-            </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard href="/admin/veri?k=classroom" label="Sınıf notu/tahta" value={c.classroomNoteCount ?? 0} hint="Ders notları" />
-              <StatCard href="/admin/veri?k=recordings" label="Sınıf kaydı" value={c.classroomRecordingCount ?? 0} hint="Tekrar izleme" />
-              <StatCard href="/admin/veri?k=messages" label="Sınıf mesajı" value={c.classroomMessageCount ?? 0} hint="Sohbet ve sorular" />
-              <StatCard href="/admin/veri?k=learning" label="Aktif çalışma planı" value={c.activeStudyPlans ?? 0} />
-              <StatCard href="/admin/veri?k=learning" label="7g deneme kaydı" value={c.recentAssessmentAttempts ?? 0} />
-              <div className="rounded-xl border border-paper-200 bg-white p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-paper-800/55">Rol dağılımı</div>
-                <ul className="mt-2 space-y-1 text-sm text-paper-800">
-                  {Object.entries(roles).map(([role, n]) => (
-                    <li key={role} className="flex justify-between gap-2">
-                      <span className="capitalize">{role}</span>
-                      <span className="font-mono tabular-nums text-paper-900">{n}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-            <p className="mt-4 text-xs text-paper-800/55">
-              Veri anı: {new Date(data!.generatedAt).toLocaleString("tr-TR")}
-            </p>
-          </>
-        ) : null}
-
-        <section className="mt-10 border-t border-paper-200 pt-8">
-          <h2 className="text-sm font-semibold text-paper-900">Diğer modüller</h2>
-          <p className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm leading-relaxed">
-            <Link
-              href="/admin/users"
-              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
-            >
-              Kullanıcılar
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-paper-900">Operasyon özeti</h1>
+          <p className="mt-1 max-w-2xl text-sm text-paper-800/75">
+            Para, ders, destek, kalite ve sistem — takip edilmesi gereken tüm alanlar burada. Detaylı rehber için{" "}
+            <Link href={ADMIN_MERKEZ} className="font-medium text-brand-800 underline underline-offset-4">
+              kontrol merkezi
             </Link>
-            <Link
-              href="/admin/teachers"
-              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
-            >
-              Öğretmenler
-            </Link>
-            <Link
-              href="/admin/requests"
-              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
-            >
-              Ders talepleri
-            </Link>
-            <Link
-              href="/admin/bank"
-              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
-            >
-              Havale
-            </Link>
-            <Link
-              href="/admin/wallet"
-              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
-            >
-              Cüzdan bakiyesi ekle
-            </Link>
-            <Link
-              href="/admin/courses"
-              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
-            >
-              Kurslar
-            </Link>
-            <Link
-              href="/admin/payments"
-              className="text-paper-800/75 underline decoration-paper-300 underline-offset-4 hover:text-paper-900"
-            >
-              Abonelik ödemeleri
-            </Link>
+            .
           </p>
-        </section>
+        </div>
+        <Link
+          href={ADMIN_MERKEZ}
+          className="rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-100"
+        >
+          Kontrol merkezi
+        </Link>
       </div>
+
+      {error ? (
+        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
+      ) : null}
+
+      {!data && !error ? <p className="mt-6 text-sm text-paper-800/55">Özet yükleniyor…</p> : null}
+
+      {data ? (
+        <>
+          {data.revenue7d ? (
+            <section className="mt-6 rounded-xl border border-brand-200 bg-brand-50/50 p-4">
+              <h2 className="text-sm font-semibold text-paper-900">Son 7 gün gelir özeti</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-4">
+                <div className="rounded-lg border border-white/80 bg-white/90 px-3 py-2">
+                  <div className="text-xs text-paper-800/55">Toplam</div>
+                  <div className="text-lg font-semibold tabular-nums">{formatRevenueMinor(data.revenue7d.totalMinor)}</div>
+                </div>
+                <div className="rounded-lg border border-white/80 bg-white/90 px-3 py-2">
+                  <div className="text-xs text-paper-800/55">Öğretmen abonelik</div>
+                  <div className="text-lg font-semibold tabular-nums">{formatRevenueMinor(data.revenue7d.teacherSubscriptionsMinor)}</div>
+                </div>
+                <div className="rounded-lg border border-white/80 bg-white/90 px-3 py-2">
+                  <div className="text-xs text-paper-800/55">Öğrenci abonelik</div>
+                  <div className="text-lg font-semibold tabular-nums">{formatRevenueMinor(data.revenue7d.studentSubscriptionsMinor)}</div>
+                </div>
+                <div className="rounded-lg border border-white/80 bg-white/90 px-3 py-2">
+                  <div className="text-xs text-paper-800/55">Cüzdan yükleme</div>
+                  <div className="text-lg font-semibold tabular-nums">{formatRevenueMinor(data.revenue7d.walletTopupsMinor)}</div>
+                </div>
+              </div>
+            </section>
+          ) : null}
+          <AdminTrackingBoard
+            counts={data.counts}
+            roles={data.usersByRole}
+            generatedAt={data.generatedAt}
+            adminScope={getAdminScopeFromSession()}
+          />
+        </>
+      ) : null}
     </div>
   );
 }
