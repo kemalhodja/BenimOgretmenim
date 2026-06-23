@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { kvkkEmail, legalEntityAddress, legalEntityName, supportEmail } from "../lib/legalEntity";
 import { publicSiteUrl } from "../lib/siteUrl";
 
 const iletisimUrl = `${publicSiteUrl()}/iletisim`;
@@ -42,6 +43,11 @@ const contactTopics = [
 ] as const;
 
 export default function IletisimPage() {
+  const entity = legalEntityName();
+  const address = legalEntityAddress();
+  const support = supportEmail();
+  const kvkk = kvkkEmail();
+
   return (
     <article className="min-h-screen bg-paper-50">
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
@@ -65,9 +71,29 @@ export default function IletisimPage() {
         <div className="mt-8 rounded-xl border border-paper-200 bg-white p-6">
           <dl className="space-y-5 text-sm">
             <div>
+              <dt className="font-medium text-paper-900">Veri sorumlusu</dt>
+              <dd className="mt-1 text-paper-800/75">
+                {entity} — {address}
+              </dd>
+            </div>
+            <div>
               <dt className="font-medium text-paper-900">E-posta</dt>
               <dd className="mt-1 text-paper-800/75">
-                <span className="font-mono text-paper-800/65">destek@benimogretmenim.com.tr</span>
+                <a href={`mailto:${support}`} className="font-mono text-brand-800 hover:underline">
+                  {support}
+                </a>
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium text-paper-900">KVKK başvuruları</dt>
+              <dd className="mt-1 text-paper-800/75">
+                <a href={`mailto:${kvkk}`} className="font-mono text-brand-800 hover:underline">
+                  {kvkk}
+                </a>
+                {" · "}
+                <Link href="/ayarlar/hesap" className="text-brand-800 hover:underline">
+                  Hesap silme talebi
+                </Link>
               </dd>
             </div>
             <div>

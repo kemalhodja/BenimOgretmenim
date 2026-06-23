@@ -24,7 +24,11 @@ CI: `.github/workflows/android-apk.yml` (PR/push tetikleyicisi).
 ## 2) Digital Asset Links
 
 1. Play Console → Uygulama → **Kurulum** → **Uygulama bütünlüğü** → **App signing key certificate** SHA-256 kopyala
-2. `apps/twa-android/assetlinks.template.json` → `apps/web/public/.well-known/assetlinks.json` (REPLACE satırını doldur)
+2. PowerShell:
+   ```powershell
+   cd apps/twa-android
+   .\scripts\write-assetlinks.ps1 -Sha256 "AA:BB:CC:..."
+   ```
 3. Web deploy sonrası doğrula:
 
 ```bash
@@ -58,9 +62,12 @@ curl -s https://benimogretmenim.com.tr/.well-known/assetlinks.json
 
 ## 5) İnceleme notu (Internal testing → Production)
 
-Önerilen metin (İngilizce):
+Önerilen metin: `play-review-notes-en.txt`
 
-> Trusted Web Activity for benimogretmenim.com.tr — education marketplace for private tutoring. No in-app billing; payments via PayTR on the website. Test account: [e-posta] / [şifre veya demo talimatı].
+Production inceleme hesapları:
+```bash
+PLAY_REVIEW_PASSWORD='...' npm run db:seed:play-review --prefix apps/api
+```
 
 - [ ] Test hesabı veya demo URL inceleme notunda
 - [ ] Internal test → kapalı test → production sırası

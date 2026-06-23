@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "benimogretmenim.com.tr",
+      "sha256_cert_fingerprints": [
+        "09:02:64:56:B4:02:1C:CD:60:BD:01:B6:08:37:1E:94:E7:BE:D0:99:16:89:22:BC:78:39:59:AF:69:85:D4:F7"
+      ]
+    }
+  }
+]

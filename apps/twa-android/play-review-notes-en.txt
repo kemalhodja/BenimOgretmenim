@@ -15,9 +15,9 @@ How to test:
 3. As student: browse /ogretmenler, open a teacher profile, view student panel and study plan.
 4. As teacher: view teacher dashboard, profile editor, and lesson requests.
 
-Test accounts (replace before submission):
-  Student: student@example.com / [PASSWORD]
-  Teacher: teacher@example.com / [PASSWORD]
+Test accounts (production — set password via `PLAY_REVIEW_PASSWORD=... npm run db:seed:play-review --prefix apps/api`):
+  Student: play.review.student@benimogretmenim.com.tr / [PLAY_REVIEW_PASSWORD]
+  Teacher: play.review.teacher@benimogretmenim.com.tr / [PLAY_REVIEW_PASSWORD]
 
 No special hardware, QR code, or location permission required.
 Internet connection required.
@@ -25,3 +25,6 @@ Internet connection required.
 Privacy: https://benimogretmenim.com.tr/gizlilik
 Terms: https://benimogretmenim.com.tr/kullanim-kosullari
 Contact: https://benimogretmenim.com.tr/iletisim
+
+Signed AAB: GitHub Actions → Build Android AAB → artifact `benimogretmenim-release-aab`
+Local copy: apps/twa-android/dist/app-release.aab

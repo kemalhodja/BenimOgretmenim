@@ -92,6 +92,8 @@ Anketi doldururken uygulamanın **gerçek** davranışına göre cevaplayın; ta
 
 **Yol:** Uygulama içeriği → Veri güvenliği
 
+Detaylı form cevapları: **`PLAY_DATA_SAFETY.md`**
+
 | Soru | Cevap |
 |------|--------|
 | Veri topluyor mu? | Evet |
