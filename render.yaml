@@ -56,6 +56,8 @@ services:
     preDeployCommand: npm run db:migrate && npm run db:seed:bootstrap-admin-if-missing && npm run -s db:seed:zigo
     startCommand: npm run start
     healthCheckPath: /health
+    domains:
+      - api.benimogretmenim.com.tr
     envVars:
       - key: NODE_VERSION
         value: "20"
@@ -227,6 +229,9 @@ services:
     rootDir: apps/web
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
+    domains:
+      - benimogretmenim.com.tr
+      - www.benimogretmenim.com.tr
     envVars:
       - key: NODE_VERSION
         value: "20"

@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
-  PRODUCTION_SITE_HOST,
   resolveCanonicalRedirectOrigin,
   shouldRedirectHostToCanonical,
 } from "./app/lib/siteUrl";

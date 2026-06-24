@@ -1,82 +1,74 @@
-# DNS / www acil düzeltme (canlı teşhis: Haziran 2026)
+# DNS / www acil düzeltme
 
-## Sorun
+Son canlı kontrol: Haziran 2026
 
-Şu an:
+## Şu an ne oluyor?
 
-1. `benimogretmenim.com.tr` → Turhost **301** → `www.benimogretmenim.com.tr`
-2. `www.benimogretmenim.com.tr` → **API servisi** (JSON, “REST API sunar” mesajı)
-3. API yanıtında `"web":"https://benimogretmenim-web.onrender.com"` görünüyordu (yanlış env)
+| Adres | Sonuç |
+|-------|--------|
+| `benimogretmenim.com.tr` | Turhost **301** → `www` |
+| `www.benimogretmenim.com.tr` | **API JSON** (`Content-Type: application/json`) |
+| `benimogretmenim.onrender.com` | **Web** (Next.js — doğru servis) |
+| `benim-ogretmenim.onrender.com` | **API** |
+| `benimogretmenim-web.onrender.com` | 404 (kullanmayın) |
 
-**Web sitesi açılmıyor** — `www` yanlış Render servisine bağlı.
+DNS: `www` → `benimogretmenim.onrender.com` (CNAME zinciri doğru **hedefe** gidiyor olabilir).
 
----
-
-## Doğru yapı
-
-| Host | Render servisi | DNS |
-|------|----------------|-----|
-| `benimogretmenim.com.tr` | **benimogretmenim-web** | A → `216.24.57.1` (Render apex IP) |
-| `www.benimogretmenim.com.tr` | **benimogretmenim-web** | CNAME → Render **web** hedefi |
-| `api.benimogretmenim.com.tr` | **benimogretmenim-api** | CNAME → `benim-ogretmenim.onrender.com` |
-
-**Web** hedefi genelde: `benimogretmenim-web.onrender.com` veya Render Dashboard’da web servisi için gösterilen CNAME.
-
-**Asla** `www` → `benimogretmenim.onrender.com` (bu eski/yanlış eşleşme API’ye gidebilir).
+Asıl hata: Render’da **`www.benimogretmenim.com.tr` custom domain API servisine** bağlı; istek Host başlığına göre API’ye düşüyor.
 
 ---
 
-## Adım 1 — Render Dashboard
+## Adım 1 — Render (repo `render.yaml` + Dashboard)
 
-### benimogretmenim-api → Settings → Custom Domains
+`render.yaml` güncellendi:
 
-- `www.benimogretmenim.com.tr` varsa **SİLİN** (yanlış serviste)
-- Sadece `api.benimogretmenim.com.tr` kalsın
+- **benimogretmenim-web:** `benimogretmenim.com.tr`, `www.benimogretmenim.com.tr`
+- **benimogretmenim-api:** yalnızca `api.benimogretmenim.com.tr`
 
-### benimogretmenim-web → Settings → Custom Domains
+Push sonrası Blueprint sync veya manuel deploy ile domainler doğru servise bağlanmalı.
 
-- `benimogretmenim.com.tr` → **Verified**
-- `www.benimogretmenim.com.tr` → **ekleyin**, Verified olana kadar bekleyin
+### A) benimogretmenim-api
 
-### benimogretmenim-api → Environment
+1. [Render Dashboard](https://dashboard.render.com) → **benimogretmenim-api**
+2. **Settings** → **Custom Domains**
+3. `www.benimogretmenim.com.tr` varsa → **Delete** / kaldır
+4. Sadece şunlar kalsın: `api.benimogretmenim.com.tr` (ve isteğe bağlı `benim-ogretmenim.onrender.com`)
 
-```
-PUBLIC_WEB_URL=https://benimogretmenim.com.tr
-```
+**Environment** (Settings → Environment):
 
-(`benimogretmenim-web.onrender.com` **silin**)
+| Key | Değer |
+|-----|--------|
+| `PUBLIC_WEB_URL` | `https://benimogretmenim.com.tr` |
+| `CORS_ORIGINS` | `https://benimogretmenim.com.tr,https://www.benimogretmenim.com.tr` |
 
-### benimogretmenim-web → Environment
+(`benimogretmenim-web.onrender.com` veya `*.onrender.com` **olmasın**)
 
-```
-NEXT_PUBLIC_SITE_URL=https://benimogretmenim.com.tr
-```
-
----
-
-## Adım 2 — Turhost DNS
-
-DNS Yönetimi:
-
-| Tür | Host | Değer |
-|-----|------|--------|
-| A | `@` | `216.24.57.1` (Render web apex — Dashboard’da doğrulayın) |
-| CNAME | `www` | Render **web** servisinin CNAME’i (ör. `benimogretmenim-web.onrender.com`) |
-| CNAME | `api` | `benim-ogretmenim.onrender.com` |
-
-### Turhost “www yönlendirme”
-
-Turhost’ta **apex → www otomatik yönlendirme** açıksa:
-
-- **Kapatın** (tercih: ana adres `benimogretmenim.com.tr`)
-- veya önce `www`’yi web servisine doğru bağlayın
+Kaydet → **Manual Deploy** (gerekirse).
 
 ---
 
-## Adım 3 — Doğrulama
+### B) benimogretmenim-web
+
+1. **benimogretmenim-web** → **Settings** → **Custom Domains**
+2. **Add** → `www.benimogretmenim.com.tr`
+3. `benimogretmenim.com.tr` zaten **Verified** olmalı; değilse ekleyin
+4. İkisi de **Verified** olana kadar bekleyin (5–30 dk)
+
+**Environment:**
+
+| Key | Değer |
+|-----|--------|
+| `NEXT_PUBLIC_SITE_URL` | `https://benimogretmenim.com.tr` |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://api.benimogretmenim.com.tr` |
+| `INTERNAL_API_BASE_URL` | `https://api.benimogretmenim.com.tr` |
+
+---
+
+### C) Test (Render adımından hemen sonra)
+
+PowerShell:
 
 ```powershell
-curl.exe -sI "https://benimogretmenim.com.tr/" | findstr /i "HTTP content-type location"
 curl.exe -sI "https://www.benimogretmenim.com.tr/" | findstr /i "HTTP content-type location"
 curl.exe -s "https://www.benimogretmenim.com.tr/" | Select-Object -First 1
 ```
@@ -84,11 +76,57 @@ curl.exe -s "https://www.benimogretmenim.com.tr/" | Select-Object -First 1
 Beklenen:
 
 - `content-type: text/html` (JSON değil)
-- Ana sayfa HTML (API JSON değil)
-- `www` → `308` → `https://benimogretmenim.com.tr` (web deploy sonrası)
+- İlk satır `<!DOCTYPE html>` veya `<html`
+
+Hâlâ JSON ise: API’de `www` custom domain silinmemiş veya DNS yayılımı — 10 dk bekleyip tekrar deneyin.
 
 ---
 
-## Özet
+## Adım 2 — Turhost DNS (Render Verified olduktan sonra)
 
-Kod tek başına yetmez: **`www` DNS + Render custom domain web servisinde olmalı, API’de olmamalı.**
+[Turhost](https://www.turhost.com) → Alan adları → **DNS Yönetimi**
+
+| Tür | Host | Değer | Not |
+|-----|------|--------|-----|
+| **A** | `@` | `216.24.57.1` | Render web apex (Dashboard’da doğrulayın) |
+| **CNAME** | `www` | `benimogretmenim.onrender.com` | Render **web** servisinin gösterdiği CNAME |
+| **CNAME** | `api` | `benim-ogretmenim.onrender.com` | API |
+
+**Silin / değiştirmeyin:** `www` → API veya başka onrender host.
+
+### Turhost “www yönlendirme” / “alan adını www’ye yönlendir”
+
+**Kapatın** — apex (`benimogretmenim.com.tr`) doğrudan site açsın.
+
+Şu an apex → www **301** veriyor; bu Turhost panel ayarından gelir.
+
+---
+
+## Adım 3 — Son doğrulama
+
+```powershell
+curl.exe -sI "https://benimogretmenim.com.tr/" | findstr /i "HTTP content-type location"
+curl.exe -sI "https://www.benimogretmenim.com.tr/" | findstr /i "HTTP content-type location"
+curl.exe -sI "https://api.benimogretmenim.com.tr/health" | findstr /i "HTTP content-type"
+```
+
+| URL | Beklenen |
+|-----|----------|
+| `benimogretmenim.com.tr` | 200 veya Turhost 301 → www, sonunda `text/html` |
+| `www...` | 200, `text/html` (JSON değil) |
+| `api.../health` | 200, `application/json`, `"db":true` |
+
+**Not:** Web proxy artık `www` → apex yönlendirmesi yapmaz (Turhost apex→www ile döngü önlenir).
+
+---
+
+## Kontrol listesi
+
+- [ ] API’den `www` custom domain kaldırıldı
+- [ ] Web’e `www` custom domain eklendi (Verified)
+- [ ] `PUBLIC_WEB_URL` = `https://benimogretmenim.com.tr`
+- [ ] `NEXT_PUBLIC_SITE_URL` = `https://benimogretmenim.com.tr`
+- [ ] Turhost apex→www yönlendirme kapatıldı
+- [ ] `curl www` → HTML, JSON değil
+
+Render adımını bitirince terminalde test komutunu tekrar çalıştırın; sonucu paylaşın.

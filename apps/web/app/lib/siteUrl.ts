@@ -1,7 +1,7 @@
 /** Canlı web kökü (DNS + Render custom domain). */
 export const PRODUCTION_SITE_ORIGIN = "https://benimogretmenim.com.tr";
 
-/** www alt alanı — proxy ile apex'e yönlendirilir (TWA / assetlinks apex'te kalır). */
+/** www alt alanı — web servisinde doğrudan sunulur (Turhost apex→www ile uyumlu). */
 export const PRODUCTION_WWW_HOST = "www.benimogretmenim.com.tr";
 
 export const PRODUCTION_SITE_HOST = "benimogretmenim.com.tr";
@@ -47,7 +47,7 @@ export function resolveCanonicalRedirectOrigin(): string {
   return PRODUCTION_SITE_ORIGIN;
 }
 
+/** www — Turhost apex→www yönlendirmesi varken www→apex redirect döngü yapar; doğrudan sunulur. */
 export function shouldRedirectHostToCanonical(host: string): boolean {
-  if (RENDER_DEFAULT_WEB_HOSTS.has(host)) return true;
-  return host === PRODUCTION_WWW_HOST;
+  return RENDER_DEFAULT_WEB_HOSTS.has(host);
 }
