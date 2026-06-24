@@ -16,9 +16,9 @@ DNS: `www` → `benimogretmenim.onrender.com` (CNAME zinciri doğru **hedefe** g
 
 Asıl hata: Render’da **`www.benimogretmenim.com.tr` custom domain API servisine** bağlı; istek Host başlığına göre API’ye düşüyor.
 
----
+**Döngü uyarısı:** Turhost apex→www açıkken API veya web’den www→apex yönlendirme **yapmayın** — sonsuz redirect oluşur. Önce Render’da www’yi web servisine taşıyın; Turhost yönlendirmesini kapatın veya www’yi birincil bırakın.
 
-## Adım 1 — Render (repo `render.yaml` + Dashboard)
+---
 
 `render.yaml` güncellendi:
 

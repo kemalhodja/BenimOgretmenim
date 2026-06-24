@@ -2,7 +2,7 @@
 # https://render.com/docs/infrastructure-as-code
 #
 # Canlı domain (Render Custom Domains + DNS):
-#   Web:  https://benimogretmenim.com.tr  (+ isteğe bağlı www → apex yönlendirme)
+#   Web:  https://benimogretmenim.com.tr  (+ www ayni web servisinde)
 #   API:  https://api.benimogretmenim.com.tr
 # Yedek Render hostları (otomatik .com.tr yönlendirmesi — proxy.ts):
 #   Web:  https://benimogretmenim-web.onrender.com
