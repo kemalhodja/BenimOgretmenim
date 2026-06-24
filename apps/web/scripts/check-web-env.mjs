@@ -13,8 +13,11 @@ function fail(msg) {
 
 const allowHttp = process.env.WEB_ALLOW_HTTP === "1";
 
+/** Render Dashboard eski değer bıraktığında build'i kurtarır; runtime env yine düzeltilir. */
+const CANONICAL_PRODUCTION_SITE_URL = "https://benimogretmenim.com.tr";
+
 const api = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
-const site = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+let site = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
 if (!api) fail("NEXT_PUBLIC_API_BASE_URL is required for `next build`.");
 if (!site) fail("NEXT_PUBLIC_SITE_URL is required for `next build`.");
@@ -32,6 +35,16 @@ try {
   fail(`NEXT_PUBLIC_SITE_URL is not a valid URL: ${site}`);
 }
 
+if (!allowHttp && siteUrl.hostname.endsWith(".onrender.com")) {
+  console.warn(
+    `[web:env] NEXT_PUBLIC_SITE_URL Render host (${siteUrl.hostname}); ` +
+      `build için ${CANONICAL_PRODUCTION_SITE_URL} kullanılıyor. ` +
+      "Kalıcı: Render Web → Environment → NEXT_PUBLIC_SITE_URL = https://benimogretmenim.com.tr",
+  );
+  site = CANONICAL_PRODUCTION_SITE_URL;
+  siteUrl = new URL(site);
+}
+
 if (!allowHttp) {
   if (apiUrl.protocol !== "https:") {
     fail(
@@ -43,12 +56,6 @@ if (!allowHttp) {
     fail(
       `NEXT_PUBLIC_SITE_URL must use https in production builds (got ${siteUrl.protocol}). ` +
         `For local http builds, set WEB_ALLOW_HTTP=1.`,
-    );
-  }
-  if (siteUrl.hostname.endsWith(".onrender.com")) {
-    fail(
-      "NEXT_PUBLIC_SITE_URL must not be a Render default host (benimogretmenim-web.onrender.com). " +
-        "Use https://benimogretmenim.com.tr on Render Web env.",
     );
   }
 }
@@ -95,7 +102,7 @@ if (!allowHttp && apiUrl.origin === siteUrl.origin) {
   }
 }
 
-const buildEnv = { ...process.env };
+const buildEnv = { ...process.env, NEXT_PUBLIC_SITE_URL: site };
 if (effectiveInternal?.trim()) {
   buildEnv.INTERNAL_API_BASE_URL = effectiveInternal.trim();
 }
