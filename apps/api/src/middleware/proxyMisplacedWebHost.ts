@@ -55,14 +55,14 @@ export const proxyMisplacedWebHost: MiddlewareHandler = async (c, next) => {
   headers.set("x-forwarded-proto", "https");
 
   const method = c.req.method;
-  const body =
+  const reqBody =
     method === "GET" || method === "HEAD" || method === "OPTIONS"
       ? undefined
       : await c.req.raw.clone().arrayBuffer();
 
   let resp: Response;
   try {
-    resp = await fetch(upstream, { method, headers, body, redirect: "manual" });
+    resp = await fetch(upstream, { method, headers, body: reqBody, redirect: "manual" });
   } catch (err) {
     console.error("[api:web-proxy] upstream fetch failed", { upstream: upstream.toString(), err });
     return c.text("Web servisi geçici olarak ulaşılamıyor.", 502);
@@ -80,6 +80,6 @@ export const proxyMisplacedWebHost: MiddlewareHandler = async (c, next) => {
     outHeaders.set(key, value);
   });
 
-  const body = await resp.arrayBuffer();
-  return new Response(body, { status: resp.status, headers: outHeaders });
+  const respBody = await resp.arrayBuffer();
+  return new Response(respBody, { status: resp.status, headers: outHeaders });
 };
