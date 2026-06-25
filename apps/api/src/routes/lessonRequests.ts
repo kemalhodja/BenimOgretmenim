@@ -285,7 +285,7 @@ lessonRequests.post("/", requireAuth, async (c) => {
                     t.rating_avg,
                     t.verification_status,
                     jsonb_typeof(t.availability_jsonb) = 'object'
-                      and jsonb_object_length(t.availability_jsonb) > 0 as has_availability,
+                      and t.availability_jsonb <> '{}'::jsonb as has_availability,
                     exists (
                       select 1
                       from teacher_subscriptions s

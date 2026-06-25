@@ -31,6 +31,7 @@
     "homework:release-expired": "tsx src/scripts/release-expired-homework.ts",
     "notifications:reminders": "tsx src/scripts/run-lesson-reminders.ts",
     "guardian-weekly-reports:run": "tsx src/scripts/run-guardian-weekly-reports.ts",
+    "email:outbox": "tsx src/scripts/run-email-outbox.ts",
     "free-port": "tsx src/scripts/free-port.ts",
     "test": "vitest run"
   },

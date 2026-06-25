@@ -46,12 +46,29 @@ async function createUser(role: "student" | "guardian" | "teacher", suffix: stri
   return { userId, token };
 }
 
+async function ensureActiveStudentSubscription(userId: string): Promise<void> {
+  const r = await pool.query(
+    `select 1 from student_subscriptions
+     where user_id = $1 and lifecycle = 'active' and expires_at > now() limit 1`,
+    [userId],
+  );
+  if (r.rowCount) return;
+  await pool.query(
+    `insert into student_subscriptions (
+       user_id, months_count, price_per_month_minor, price_total_minor,
+       lifecycle, starts_at, expires_at
+     ) values ($1, 12, 12500, 150000, 'active', now(), now() + interval '400 days')`,
+    [userId],
+  );
+}
+
 async function createStudent(suffix: string) {
   const user = await createUser("student", suffix);
   const r = await pool.query<{ id: string }>(
     `insert into students (user_id) values ($1) returning id`,
     [user.userId],
   );
+  await ensureActiveStudentSubscription(user.userId);
   return { ...user, studentId: r.rows[0].id };
 }
 
@@ -115,6 +132,7 @@ async function createGuardianRequest(args: {
 
 async function cleanup(userIds: string[], studentIds: string[]) {
   await pool.query(`delete from lesson_requests where student_id = any($1::uuid[])`, [studentIds]);
+  await pool.query(`delete from lesson_packages where student_id = any($1::uuid[])`, [studentIds]).catch(() => {});
   await pool.query(`delete from users where id = any($1::uuid[])`, [userIds]);
 }
 
@@ -151,7 +169,7 @@ describe("lesson requests Armut flow", () => {
 
       const notification = await pool.query<{ count: string; action_href: string | null }>(
         `select count(*)::text as count,
-                max(payload_jsonb->>'actionHref') as action_href
+                max(coalesce(payload_jsonb->>'actionHref', payload_jsonb->>'href')) as action_href
          from parent_notifications
          where recipient_user_id = $1
            and payload_jsonb->>'kind' = 'lesson_request_created_teacher'

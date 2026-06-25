@@ -58,6 +58,10 @@ services:
     healthCheckPath: /health
     domains:
       - api.benimogretmenim.com.tr
+    disk:
+      name: homework-media
+      mountPath: /var/data/homework
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: "20"
@@ -104,7 +108,7 @@ services:
       - key: CORS_ORIGINS
         value: https://benimogretmenim.com.tr,https://www.benimogretmenim.com.tr,https://benimogretmenim.onrender.com
       - key: PUBLIC_WEB_URL
-        value: https://www.benimogretmenim.com.tr
+        value: https://benimogretmenim.com.tr
       - key: WEB_UPSTREAM_ORIGIN
         value: https://benimogretmenim.onrender.com
       - key: SMOKE_RUN_SECRET
@@ -114,8 +118,12 @@ services:
       - key: EMAIL_FROM
         sync: false
       - key: HOMEWORK_STORAGE_DIR
-        sync: false
+        value: /var/data/homework
       - key: HOMEWORK_STORAGE_PUBLIC_BASE
+        value: https://api.benimogretmenim.com.tr/v1/homework-media
+      - key: PLAY_STORE_SHA256
+        sync: false
+      - key: LAUNCH_DNS_VERIFIED
         sync: false
       # Ödev memnuniyet ödülü öğretmen bu kullanıcının cüzdanından düşer (admin grant ile yükleyin).
       # Dashboard'dan ekleyin: PLATFORM_HOMEWORK_WALLET_USER_ID = <users.id UUID>
@@ -220,6 +228,30 @@ services:
         fromDatabase:
           name: benimogretmenim-db
           property: connectionString
+
+  - type: cron
+    name: benimogretmenim-email-outbox
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    rootDir: apps/api
+    schedule: "*/10 * * * *"
+    buildCommand: npm ci --include=dev
+    startCommand: npm run -s email:outbox
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: benimogretmenim-db
+          property: connectionString
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
 
   - type: web
     name: benimogretmenim-web

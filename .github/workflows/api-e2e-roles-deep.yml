@@ -105,3 +105,16 @@ jobs:
           SMOKE_API_URL: http://127.0.0.1:3002
           SMOKE_ADMIN_PASSWORD: ci-admin-password-only-for-ephemeral-postgres
         run: npm run smoke:roles-deep
+
+      - name: Report smoke result to API (optional)
+        if: always()
+        working-directory: apps/api
+        env:
+          SMOKE_API_URL: http://127.0.0.1:3002
+          SMOKE_RUN_SECRET: ${{ secrets.SMOKE_RUN_SECRET }}
+          SMOKE_WORKFLOW: api-e2e-roles-deep
+          SMOKE_SUITE: smoke:roles-deep
+          SMOKE_STATUS: ${{ job.status == 'success' && 'ok' || 'failed' }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: npx tsx src/scripts/report-smoke-run.ts

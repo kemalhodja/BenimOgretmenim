@@ -72,3 +72,16 @@ jobs:
           fi
           echo "::notice::SMOKE_API_URL=${SMOKE_API_URL}"
           npm run smoke:suite
+
+      - name: Report smoke suite result (optional)
+        if: always()
+        working-directory: apps/api
+        env:
+          SMOKE_API_URL: ${{ env.SMOKE_API_URL || 'https://api.benimogretmenim.com.tr' }}
+          SMOKE_RUN_SECRET: ${{ secrets.SMOKE_RUN_SECRET }}
+          SMOKE_WORKFLOW: smoke-suite-prod
+          SMOKE_SUITE: smoke:suite
+          SMOKE_STATUS: ${{ job.status == 'success' && 'ok' || 'failed' }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: npx tsx src/scripts/report-smoke-run.ts

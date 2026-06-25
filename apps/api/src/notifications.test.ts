@@ -1,11 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { pool } from "./db.js";
-import { app } from "./index.js";
+import { app } from "./app.js";
 
 const hasDb = await pool
   .query<{ ok: boolean }>(
-    `select to_regclass('public.user_notifications') is not null
-       and to_regclass('public.parent_notifications') is not null as ok`,
+    `select to_regclass('public.user_notifications') is not null as ok`,
   )
   .then((r) => r.rows[0]?.ok === true)
   .catch(() => false);
@@ -15,13 +14,32 @@ describe.skipIf(!hasDb)("notifications inbox", () => {
   let studentUserId = "";
 
   beforeAll(async () => {
-    const login = await app.request("http://localhost/v1/auth/login", {
+    const email = `notif-inbox-${Date.now()}@example.test`;
+    const password = "password123";
+    const reg = await app.request("http://localhost/v1/auth/register", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "student1@example.com", password: "password123" }),
+      body: JSON.stringify({
+        email,
+        password,
+        displayName: "Notif Test",
+        role: "student",
+        gradeLevel: 8,
+      }),
     });
-    expect(login.status).toBe(200);
-    const body = (await login.json()) as { token: string; user: { id: string } };
+    if (reg.status !== 201) {
+      const login = await app.request("http://localhost/v1/auth/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      expect(login.status).toBe(200);
+      const body = (await login.json()) as { token: string; user: { id: string } };
+      studentToken = body.token;
+      studentUserId = body.user.id;
+      return;
+    }
+    const body = (await reg.json()) as { token: string; user: { id: string } };
     studentToken = body.token;
     studentUserId = body.user.id;
   });

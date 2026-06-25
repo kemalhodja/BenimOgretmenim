@@ -63,10 +63,12 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(page.getByRole("heading", { name: "Öğretmen ipuçları" })).toBeVisible();
   });
 
-  test("/fiyatlar — oturumsuz ziyaretçiyi girişe yönlendirir", async ({ page }) => {
-    await page.goto("/fiyatlar", { waitUntil: "domcontentloaded" });
-    await expect(page).toHaveURL(/\/login\?returnUrl=%2Ffiyatlar/);
-    await expect(page.getByRole("heading", { name: "Giriş yap" })).toBeVisible();
+  test("/fiyatlar — oturumsuz fiyat sayfası ve kayıt CTA", async ({ page }) => {
+    const res = await page.goto("/fiyatlar", { waitUntil: "domcontentloaded" });
+    expect(res?.ok() ?? false).toBeTruthy();
+    await expect(page.getByRole("heading", { name: "Üyelik ve kullanım bilgileri" })).toBeVisible();
+    await expect(page.getByRole("link", { name: /Öğrenci olarak başla/i }).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: /Öğretmen/i }).first()).toBeVisible();
   });
 
   test("rol özellik listesi — ana sayfa, kayıt, yardim ve roller", async ({ page }) => {

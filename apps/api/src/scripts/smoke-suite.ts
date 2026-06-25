@@ -225,6 +225,7 @@ async function main() {
         password,
         displayName: "Suite Öğrenci",
         role: "student",
+        gradeLevel: 9,
       }),
     });
     console.log("[smoke:suite] register student", r.status);
@@ -504,6 +505,26 @@ async function main() {
     if (r.status === 201) {
       assert("lesson_requests_created_shape", typeof r.json.request === "object" && r.json.request !== null, r.json);
     }
+    return r;
+  });
+
+  await step("launch_readiness", async () => {
+    const r = await reqJson("/v1/meta/launch-readiness");
+    console.log("[smoke:suite] GET /v1/meta/launch-readiness", r.status, {
+      score: r.json.score,
+      openCount: r.json.openCount,
+    });
+    assert("launch_readiness_ok", r.ok && typeof r.json.score === "number", r.json);
+    return r;
+  });
+
+  await step("session_refresh_bearer", async () => {
+    const r = await reqJson("/v1/auth/session/refresh", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${studentToken}` },
+    });
+    console.log("[smoke:suite] POST /v1/auth/session/refresh", r.status);
+    assert("session_refresh_ok", r.status === 200, r.json);
     return r;
   });
 
