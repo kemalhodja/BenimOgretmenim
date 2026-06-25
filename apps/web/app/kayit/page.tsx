@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import { loginHrefWithReturn, safeInternalPath } from "../lib/authRedirect";
-import { registerDestForRole, commitAuthSession } from "../lib/auth";
+import { registerDestForRole, commitAuthSession, getRememberMePreference, setRememberMePreference } from "../lib/auth";
+import { PasswordField } from "../components/PasswordField";
 import { resolvePostAuthDestination } from "../lib/roleAccess";
 import { trackEvent } from "../lib/trackEvent";
 import {
@@ -74,6 +75,11 @@ function KayitForm() {
   const [loading, setLoading] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [gradeLevel, setGradeLevel] = useState("8");
+  const [rememberMe, setRememberMe] = useState(true);
+
+  useEffect(() => {
+    setRememberMe(getRememberMePreference());
+  }, []);
 
   const returnUrl = useMemo(
     () =>
@@ -120,6 +126,7 @@ function KayitForm() {
     }
     setLoading(true);
     try {
+      setRememberMePreference(rememberMe);
       const r = await apiFetch<RegResponse>("/v1/auth/register", {
         method: "POST",
         body: JSON.stringify({
@@ -127,6 +134,7 @@ function KayitForm() {
           password,
           displayName: displayName.trim(),
           role,
+          rememberMe,
           ...(role === "student" ? { gradeLevel: Number(gradeLevel) } : {}),
         }),
       });
@@ -365,32 +373,44 @@ function KayitForm() {
             />
           </label>
 
-          <label className="block">
-            <div className="mb-1 text-sm font-medium text-paper-800">Parola</div>
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-            />
-            <p className="mt-1 text-xs text-paper-800/55">En az 8 karakter.</p>
-          </label>
+          <PasswordField
+            label="Parola"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+            minLength={8}
+            hint="En az 8 karakter."
+          />
 
-          <label className="block">
-            <div className="mb-1 text-sm font-medium text-paper-800">Parola tekrar</div>
+          <PasswordField
+            label="Parola tekrar"
+            value={passwordConfirm}
+            onChange={setPasswordConfirm}
+            autoComplete="new-password"
+            minLength={8}
+            hint={
+              passwordConfirm && passwordConfirm !== password
+                ? "Parola tekrarı eşleşmiyor."
+                : undefined
+            }
+          />
+          {passwordConfirm && passwordConfirm !== password ? (
+            <p className="-mt-2 text-xs text-red-700">Parola tekrarı eşleşmiyor.</p>
+          ) : null}
+
+          <label className="flex items-start gap-2 rounded-xl border border-paper-200 bg-paper-50 px-3 py-2 text-xs leading-relaxed text-paper-800/75">
             <input
-              value={passwordConfirm}
-              onChange={(e) => setPasswordConfirm(e.target.value)}
-              className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-paper-300"
             />
-            {passwordConfirm && passwordConfirm !== password ? (
-              <p className="mt-1 text-xs text-red-700">Parola tekrarı eşleşmiyor.</p>
-            ) : null}
+            <span>
+              <span className="font-semibold text-paper-900">Beni hatırla</span>
+              <span className="mt-0.5 block text-paper-800/65">
+                Kayıt sonrası çıkış yapana kadar oturumunuz açık kalır.
+              </span>
+            </span>
           </label>
 
           <label className="flex items-start gap-2 rounded-xl border border-paper-200 bg-paper-50 px-3 py-2 text-xs leading-relaxed text-paper-800/75">

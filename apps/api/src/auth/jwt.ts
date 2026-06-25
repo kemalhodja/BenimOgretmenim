@@ -12,16 +12,21 @@ export async function signAccessToken(input: {
   userId: string;
   role: string;
   adminScope?: string | null;
+  expiresIn?: string;
 }): Promise<string> {
   const claims: Record<string, string> = { role: input.role };
   if (input.role === "admin" && input.adminScope) {
     claims.adminScope = input.adminScope;
   }
+  const expires =
+    input.expiresIn?.trim() ||
+    process.env.JWT_EXPIRES?.trim() ||
+    "90d";
   return new jose.SignJWT(claims)
     .setSubject(input.userId)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime(process.env.JWT_EXPIRES ?? "7d")
+    .setExpirationTime(expires)
     .sign(getSecretKey());
 }
 

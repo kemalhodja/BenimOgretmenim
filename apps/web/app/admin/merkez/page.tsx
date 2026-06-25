@@ -48,6 +48,24 @@ type SystemHealth = {
     };
   };
   checks: SystemHealthCheck[];
+  launch?: LaunchReadiness;
+};
+type LaunchGapStatus = "ok" | "warning" | "open";
+type LaunchGap = {
+  id: string;
+  title: string;
+  status: LaunchGapStatus;
+  impact: "revenue" | "trust" | "ops" | "growth";
+  action: string;
+  docPath: string | null;
+};
+type LaunchReadiness = {
+  score: number;
+  readyForRevenue: boolean;
+  readyForPublicLaunch: boolean;
+  gaps: LaunchGap[];
+  openCount: number;
+  warningCount: number;
 };
 type WeeklyQualityReport = {
   generatedAt: string;
@@ -125,6 +143,25 @@ function readinessClass(status: "ready" | "watch" | "action"): string {
   if (status === "ready") return "border-emerald-200 bg-emerald-50 text-emerald-900";
   if (status === "watch") return "border-amber-200 bg-amber-50 text-amber-900";
   return "border-red-200 bg-red-50 text-red-900";
+}
+
+function launchGapClass(status: LaunchGapStatus): string {
+  if (status === "ok") return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  if (status === "warning") return "border-amber-200 bg-amber-50 text-amber-900";
+  return "border-red-200 bg-red-50 text-red-900";
+}
+
+function launchGapLabel(status: LaunchGapStatus): string {
+  if (status === "ok") return "Tamam";
+  if (status === "warning") return "Uyarı";
+  return "Açık";
+}
+
+function launchImpactLabel(impact: LaunchGap["impact"]): string {
+  if (impact === "revenue") return "Gelir";
+  if (impact === "trust") return "Güven";
+  if (impact === "ops") return "Operasyon";
+  return "Büyüme";
 }
 
 export default function AdminMerkezPage() {
@@ -414,6 +451,62 @@ export default function AdminMerkezPage() {
                 </div>
               ))}
             </div>
+          </section>
+        ) : null}
+
+        {systemHealth?.launch ? (
+          <section className="mt-6 rounded-xl border border-paper-200 bg-white p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-paper-900">Canlıya alma boşlukları</h2>
+                <p className="mt-1 text-xs text-paper-800/55">
+                  PayTR, DNS, Play Store ve altyapı eksikleri. Skor: {systemHealth.launch.score}/10 ·{" "}
+                  {systemHealth.launch.openCount} açık · {systemHealth.launch.warningCount} uyarı
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                    systemHealth.launch.readyForRevenue
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-red-200 bg-red-50 text-red-800"
+                  }`}
+                >
+                  Gelir: {systemHealth.launch.readyForRevenue ? "Hazır" : "Kapalı"}
+                </span>
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                    systemHealth.launch.readyForPublicLaunch
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : "border-amber-200 bg-amber-50 text-amber-900"
+                  }`}
+                >
+                  Genel: {systemHealth.launch.readyForPublicLaunch ? "Hazır" : "Eksik var"}
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {systemHealth.launch.gaps
+                .filter((gap) => gap.status !== "ok")
+                .map((gap) => (
+                  <div key={gap.id} className={`rounded-xl border p-3 ${launchGapClass(gap.status)}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-semibold">{gap.title}</div>
+                      <div className="flex gap-2 text-[11px] font-semibold uppercase tracking-wide">
+                        <span>{launchGapLabel(gap.status)}</span>
+                        <span className="opacity-70">{launchImpactLabel(gap.impact)}</span>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs leading-relaxed opacity-90">{gap.action}</p>
+                    {gap.docPath ? (
+                      <p className="mt-2 font-mono text-[11px] opacity-70">{gap.docPath}</p>
+                    ) : null}
+                  </div>
+                ))}
+            </div>
+            {systemHealth.launch.gaps.every((gap) => gap.status === "ok") ? (
+              <p className="mt-3 text-sm text-emerald-800">Tüm canlıya alma kontrolleri yeşil.</p>
+            ) : null}
           </section>
         ) : null}
 

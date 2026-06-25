@@ -1,9 +1,15 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { pool } from "../db.js";
+import { computeLaunchReadiness } from "../lib/launchReadiness.js";
 import { isPaytrConfigured, PAYTR_NOT_CONFIGURED_MESSAGE } from "../lib/systemHealth.js";
 
 export const meta = new Hono();
+
+/** Canlıya alma boşlukları — salt okunur, gizli bilgi içermez. */
+meta.get("/launch-readiness", (c) => {
+  return c.json(computeLaunchReadiness());
+});
 
 /** Branş ağacı (filtre / kayıt formları) */
 meta.get("/payments", (c) => {

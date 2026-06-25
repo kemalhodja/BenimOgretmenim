@@ -2,11 +2,11 @@ import { Hono } from "hono";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { pool } from "../db.js";
-import { signAccessToken } from "../auth/jwt.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { rateLimit } from "../middleware/rateLimit.js";
-import { clearSessionCookie, hasValidCsrfHeader, setSessionCookie, setSessionHintCookies } from "../auth/sessionCookie.js";
+import { issueUserAuthSession, readRememberMeFromSession } from "../auth/sessionIssue.js";
+import { clearSessionCookie, hasValidCsrfHeader } from "../auth/sessionCookie.js";
 import { loadUserAccountStatus, notifyUserInApp } from "../lib/accountLifecycle.js";
 
 const deletionRequestSchema = z.object({
@@ -21,6 +21,7 @@ const registerSchema = z
     displayName: z.string().min(1).max(120),
     role: z.enum(["student", "teacher", "guardian"]),
     gradeLevel: z.number().int().min(1).max(12).optional(),
+    rememberMe: z.boolean().optional().default(true),
   })
   .superRefine((data, ctx) => {
     if (data.role === "student" && data.gradeLevel == null) {
@@ -35,6 +36,7 @@ const registerSchema = z
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  rememberMe: z.boolean().optional().default(true),
 });
 
 export const auth = new Hono<{ Variables: AppVariables }>();
@@ -50,7 +52,7 @@ auth.post("/register", async (c) => {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
 
-  const { email, password, displayName, role, gradeLevel } = parsed.data;
+  const { email, password, displayName, role, gradeLevel, rememberMe } = parsed.data;
   const hash = await bcrypt.hash(password, 10);
 
   const client = await pool.connect();
@@ -83,17 +85,15 @@ auth.post("/register", async (c) => {
 
     await client.query("commit");
 
-    const token = await signAccessToken({
-      userId: user.id,
-      role: user.role,
-      adminScope: user.role === "admin" ? (user.admin_scope ?? "full") : null,
-    });
-    setSessionCookie(c, token);
-    setSessionHintCookies(c, {
-      role: user.role,
-      userId: user.id,
-      adminScope: user.role === "admin" ? (user.admin_scope ?? "full") : null,
-    });
+    const token = await issueUserAuthSession(
+      c,
+      {
+        userId: user.id,
+        role: user.role,
+        adminScope: user.role === "admin" ? (user.admin_scope ?? "full") : null,
+      },
+      rememberMe,
+    );
     return c.json(
       {
         token,
@@ -125,7 +125,7 @@ auth.post("/login", async (c) => {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
 
-  const { email, password } = parsed.data;
+  const { email, password, rememberMe } = parsed.data;
   const r = await pool.query(
     `select id, email, display_name, role, password_hash,
             admin_scope::text as admin_scope,
@@ -164,17 +164,15 @@ auth.post("/login", async (c) => {
 
   await pool.query(`update users set last_login_at = now(), updated_at = now() where id = $1`, [row.id]);
 
-  const token = await signAccessToken({
-    userId: row.id,
-    role: row.role,
-    adminScope: row.role === "admin" ? (row.admin_scope ?? "full") : null,
-  });
-  setSessionCookie(c, token);
-  setSessionHintCookies(c, {
-    role: row.role,
-    userId: row.id,
-    adminScope: row.role === "admin" ? (row.admin_scope ?? "full") : null,
-  });
+  const token = await issueUserAuthSession(
+    c,
+    {
+      userId: row.id,
+      role: row.role,
+      adminScope: row.role === "admin" ? (row.admin_scope ?? "full") : null,
+    },
+    rememberMe,
+  );
   return c.json({
     token,
     user: {
@@ -200,6 +198,40 @@ auth.post("/logout", (c) => {
   }
   clearSessionCookie(c);
   return c.json({ ok: true });
+});
+
+/** Aktif kullanıcı: JWT + çerez süresini uzatır (kaydırılabilir oturum). */
+auth.post("/session/refresh", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  const role = c.get("userRole");
+  const adminScope = c.get("adminScope");
+  const rememberMe = readRememberMeFromSession(c);
+
+  const account = await loadUserAccountStatus(userId);
+  if (!account) {
+    return c.json({ error: "not_found" }, 404);
+  }
+
+  await issueUserAuthSession(
+    c,
+    {
+      userId,
+      role,
+      adminScope: role === "admin" ? (adminScope ?? "full") : null,
+    },
+    rememberMe,
+  );
+
+  return c.json({
+    ok: true,
+    renewed: true,
+    rememberMe,
+    user: {
+      id: userId,
+      role,
+      adminScope: role === "admin" ? (adminScope ?? "full") : null,
+    },
+  });
 });
 
 auth.get("/me", requireAuth, async (c) => {

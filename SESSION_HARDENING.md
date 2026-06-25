@@ -26,6 +26,8 @@ Bu not, web token'ının `localStorage` yerine HttpOnly cookie/session modeline 
 5. Tamamlandı: Admin proxy cookie oturumunu kabul eder (`hasAdminProxySession`).
 6. Tamamlandı: Playwright oturum testleri cookie modelini doğrular.
 7. Tamamlandı: `bo:token` localStorage okuma kaldırıldı; yalnızca HttpOnly cookie + rol önbelleği.
+8. Tamamlandı: Beni hatırla (90 gün) / kısa oturum (1 gün); parola göster/gizle.
+9. Tamamlandı: `POST /v1/auth/session/refresh` kaydırılabilir oturum; `SessionKeepAlive` (PWA/arka plan dönüşü).
 
 ## Test Kapısı
 

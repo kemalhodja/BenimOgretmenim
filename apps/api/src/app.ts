@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { pool } from "./db.js";
 import { isPaytrConfigured } from "./lib/systemHealth.js";
+import { computeLaunchReadiness } from "./lib/launchReadiness.js";
 import { getLessonVideoSchemaStatus } from "./lib/lessonVideoDbReady.js";
 import type { AppVariables } from "./types.js";
 import { auth } from "./routes/auth.js";
@@ -188,11 +189,18 @@ app.get("/health", async (c) => {
   try {
     const r = await pool.query("select 1 as ok");
     const lessonVideos = await getLessonVideoSchemaStatus();
+    const launch = computeLaunchReadiness();
     return c.json({
       status: "ok",
       db: r.rows[0]?.ok === 1,
       payments: { paytrAvailable: isPaytrConfigured() },
       schema: { lessonVideos },
+      launch: {
+        score: launch.score,
+        readyForRevenue: launch.readyForRevenue,
+        openCount: launch.openCount,
+        warningCount: launch.warningCount,
+      },
     });
   } catch {
     return c.json({ status: "degraded", db: false, schema: { lessonVideos: { ready: false } } }, 503);

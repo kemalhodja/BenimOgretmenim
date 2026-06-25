@@ -5,7 +5,8 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import { registerHrefWithReturn, safeInternalPath } from "../lib/authRedirect";
-import { defaultDestForRole, getCachedRole, getToken, refreshSessionFromServer, commitAuthSession } from "../lib/auth";
+import { defaultDestForRole, getCachedRole, getRememberMePreference, getToken, refreshSessionFromServer, commitAuthSession, setRememberMePreference } from "../lib/auth";
+import { PasswordField } from "../components/PasswordField";
 import { resolvePostAuthDestination } from "../lib/roleAccess";
 import { translateUserFacingError } from "../lib/userFacingMessageTr";
 
@@ -77,10 +78,15 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showRegisterHint, setShowRegisterHint] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showRolePresets, setShowRolePresets] = useState(false);
+
+  useEffect(() => {
+    setRememberMe(getRememberMePreference());
+  }, []);
 
   useEffect(() => {
     const envOn = process.env.NEXT_PUBLIC_DEV_LOGIN_PRESETS === "1";
@@ -121,10 +127,16 @@ function LoginForm() {
     const formData = new FormData(form);
     const submittedEmail = String(formData.get("email") ?? "");
     const submittedPassword = String(formData.get("password") ?? "");
+    const submittedRemember = formData.get("rememberMe") === "on";
     try {
+      setRememberMePreference(submittedRemember);
       await apiFetch<LoginResponse>("/v1/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email: submittedEmail, password: submittedPassword }),
+        body: JSON.stringify({
+          email: submittedEmail,
+          password: submittedPassword,
+          rememberMe: submittedRemember,
+        }),
       });
       const role = await commitAuthSession();
       const dest = resolvePostAuthDestination(
@@ -219,17 +231,28 @@ function LoginForm() {
             />
           </label>
 
-          <label className="block">
-            <div className="mb-1 text-sm font-medium text-paper-800">Parola</div>
+          <PasswordField
+            name="password"
+            label="Parola"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+          />
+
+          <label className="flex items-start gap-2 rounded-xl border border-paper-200 bg-paper-50 px-3 py-2.5 text-sm text-paper-800">
             <input
-              name="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onInput={(e) => setPassword(e.currentTarget.value)}
-              className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
-              type="password"
-              autoComplete="current-password"
+              type="checkbox"
+              name="rememberMe"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-paper-300"
             />
+            <span>
+              <span className="font-medium text-paper-900">Beni hatırla</span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-paper-800/65">
+                Çıkış yapmadığınız sürece oturumunuz açık kalır; uygulamayı kapatabilirsiniz.
+              </span>
+            </span>
           </label>
 
           {error && (

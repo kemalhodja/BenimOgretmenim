@@ -70,7 +70,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES
-        value: "7d"
+        value: "90d"
       - key: ADMIN_BOOTSTRAP_PASSWORD
         generateValue: true
       - key: ADMIN_BOOTSTRAP_EMAIL

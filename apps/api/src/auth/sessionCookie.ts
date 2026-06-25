@@ -8,15 +8,36 @@ export const SESSION_ROLE_COOKIE_NAME = "bo_session_role";
 export const SESSION_USER_ID_COOKIE_NAME = "bo_session_user_id";
 export const SESSION_ADMIN_SCOPE_COOKIE_NAME = "bo_session_admin_scope";
 export const CSRF_COOKIE_NAME = "bo_csrf";
+export const SESSION_PERSISTENT_COOKIE_NAME = "bo_session_persistent";
 export const CSRF_HEADER_NAME = "x-csrf-token";
 export const CSRF_HEADER_VALUE = "bo-csrf-v1";
 
-function sessionCookieMaxAgeSeconds(): number {
-  const raw = process.env.SESSION_COOKIE_MAX_AGE_SECONDS?.trim();
-  if (!raw) return 60 * 60 * 24 * 7;
+const DEFAULT_REMEMBER_MAX_AGE = 60 * 60 * 24 * 90;
+const DEFAULT_BRIEF_MAX_AGE = 60 * 60 * 24;
+
+function parseMaxAgeEnv(raw: string | undefined, fallback: number): number {
+  if (!raw?.trim()) return fallback;
   const n = Number(raw);
-  if (!Number.isFinite(n) || n < 60) return 60 * 60 * 24 * 7;
+  if (!Number.isFinite(n) || n < 60) return fallback;
   return Math.floor(n);
+}
+
+/** "Beni hatırla" — çıkış yapana kadar uzun oturum (varsayılan 90 gün). */
+export function rememberSessionMaxAgeSeconds(): number {
+  return parseMaxAgeEnv(
+    process.env.SESSION_REMEMBER_MAX_AGE_SECONDS?.trim() ??
+      process.env.SESSION_COOKIE_MAX_AGE_SECONDS?.trim(),
+    DEFAULT_REMEMBER_MAX_AGE,
+  );
+}
+
+/** Kısa oturum — paylaşımlı cihazlar için (varsayılan 1 gün). */
+export function briefSessionMaxAgeSeconds(): number {
+  return parseMaxAgeEnv(process.env.SESSION_BRIEF_MAX_AGE_SECONDS?.trim(), DEFAULT_BRIEF_MAX_AGE);
+}
+
+function sessionCookieMaxAgeSeconds(): number {
+  return rememberSessionMaxAgeSeconds();
 }
 
 function cookieSecure(): boolean {
@@ -31,39 +52,65 @@ export function readSessionCookie(c: Context<{ Variables: AppVariables }>): stri
   return getCookie(c, SESSION_COOKIE_NAME)?.trim() || undefined;
 }
 
-export function setSessionCookie(c: Context<{ Variables: AppVariables }>, token: string): void {
+export function setSessionCookie(
+  c: Context<{ Variables: AppVariables }>,
+  token: string,
+  maxAgeSeconds: number = sessionCookieMaxAgeSeconds(),
+): void {
   setCookie(c, SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: cookieSecure(),
     sameSite: "Lax",
     path: "/",
-    maxAge: sessionCookieMaxAgeSeconds(),
+    maxAge: maxAgeSeconds,
   });
   setCookie(c, CSRF_COOKIE_NAME, newCsrfToken(), {
     httpOnly: false,
     secure: cookieSecure(),
     sameSite: "Lax",
     path: "/",
-    maxAge: sessionCookieMaxAgeSeconds(),
+    maxAge: maxAgeSeconds,
   });
 }
 
 export function setSessionHintCookies(
   c: Context<{ Variables: AppVariables }>,
   opts: { role: string; userId: string; adminScope?: string | null },
+  maxAgeSeconds: number = sessionCookieMaxAgeSeconds(),
 ): void {
   const common = {
     httpOnly: false,
     secure: cookieSecure(),
     sameSite: "Lax" as const,
     path: "/",
-    maxAge: sessionCookieMaxAgeSeconds(),
+    maxAge: maxAgeSeconds,
   };
   setCookie(c, SESSION_ROLE_COOKIE_NAME, opts.role, common);
   setCookie(c, SESSION_USER_ID_COOKIE_NAME, opts.userId, common);
   if (opts.role === "admin") {
     setCookie(c, SESSION_ADMIN_SCOPE_COOKIE_NAME, opts.adminScope ?? "full", common);
   }
+}
+
+export function setSessionPersistentFlag(
+  c: Context<{ Variables: AppVariables }>,
+  rememberMe: boolean,
+  maxAgeSeconds: number,
+): void {
+  setCookie(c, SESSION_PERSISTENT_COOKIE_NAME, rememberMe ? "1" : "0", {
+    httpOnly: false,
+    secure: cookieSecure(),
+    sameSite: "Lax",
+    path: "/",
+    maxAge: maxAgeSeconds,
+  });
+}
+
+export function readSessionPersistentFlag(c: Context<{ Variables: AppVariables }>): boolean {
+  const raw = getCookie(c, SESSION_PERSISTENT_COOKIE_NAME)?.trim();
+  if (raw === "0") return false;
+  if (raw === "1") return true;
+  return true;
 }
 
 export function clearSessionCookie(c: Context<{ Variables: AppVariables }>): void {
@@ -88,6 +135,11 @@ export function clearSessionCookie(c: Context<{ Variables: AppVariables }>): voi
     sameSite: "Lax",
   });
   deleteCookie(c, CSRF_COOKIE_NAME, {
+    path: "/",
+    secure: cookieSecure(),
+    sameSite: "Lax",
+  });
+  deleteCookie(c, SESSION_PERSISTENT_COOKIE_NAME, {
     path: "/",
     secure: cookieSecure(),
     sameSite: "Lax",

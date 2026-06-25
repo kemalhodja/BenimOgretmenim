@@ -83,6 +83,35 @@ async function main() {
     process.exitCode = 1;
   }
 
+  const launch = await getJson("/v1/meta/launch-readiness");
+  console.log("[smoke:prod] GET /v1/meta/launch-readiness", launch.status, {
+    score: launch.json.score,
+    openCount: launch.json.openCount,
+    warningCount: launch.json.warningCount,
+    readyForRevenue: launch.json.readyForRevenue,
+  });
+  if (!launch.ok) process.exitCode = 1;
+
+  const paytrGap = Array.isArray(launch.json.gaps)
+    ? (launch.json.gaps as Array<{ id?: string; status?: string }>).find((g) => g.id === "paytr")
+    : undefined;
+  if (paytrGap?.status === "open") {
+    const msg = "[smoke:prod] PayTR kapalı (launch gap: paytr). Gelir akışı canlıda yok.";
+    if (process.env.SMOKE_REQUIRE_PAYTR === "1") {
+      console.error(msg);
+      process.exitCode = 1;
+    } else {
+      console.warn(msg, "(SMOKE_REQUIRE_PAYTR=1 ile zorunlu kılın)");
+    }
+  }
+
+  const homeworkGap = Array.isArray(launch.json.gaps)
+    ? (launch.json.gaps as Array<{ id?: string; status?: string }>).find((g) => g.id === "homework_storage")
+    : undefined;
+  if (homeworkGap?.status === "warning") {
+    console.warn("[smoke:prod] Ödev görsel depolama yapılandırılmamış (launch gap: homework_storage).");
+  }
+
   if (process.exitCode) {
     console.error("[smoke:prod] FAIL");
   } else {

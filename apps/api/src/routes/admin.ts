@@ -17,6 +17,7 @@ import {
   summarizeSystemHealth,
   type SystemHealthCheck,
 } from "../lib/systemHealth.js";
+import { computeLaunchReadiness } from "../lib/launchReadiness.js";
 import { registerAdminExtendedRoutes } from "./adminExtended.js";
 import { rateLimitSnapshot } from "../middleware/rateLimit.js";
 import { holdCourseEnrollmentPayment, releaseCourseEnrollmentHold } from "../lib/courseEnrollmentWallet.js";
@@ -832,11 +833,13 @@ admin.get("/system-health", requireAuth, async (c) => {
   });
 
   const status = summarizeSystemHealth(checks);
+  const launch = computeLaunchReadiness();
   return c.json({
     status,
     generatedAt: new Date().toISOString(),
     runtime: runtimeHealthSnapshot(),
     checks,
+    launch,
   });
 });
 

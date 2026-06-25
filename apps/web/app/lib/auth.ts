@@ -3,6 +3,7 @@ import { CSRF_HEADER_NAME, CSRF_HEADER_VALUE } from "./api";
 const TOKEN_KEY = "bo:token";
 const ROLE_KEY = "bo:role";
 const USER_ID_KEY = "bo:user-id";
+const REMEMBER_ME_PREF_KEY = "bo:remember-me";
 const ROLE_COOKIE_NAME = "bo_session_role";
 const USER_ID_COOKIE_NAME = "bo_session_user_id";
 const ADMIN_SCOPE_COOKIE_NAME = "bo_session_admin_scope";
@@ -112,6 +113,18 @@ export async function commitAuthSession(): Promise<UserRole | null> {
   return refreshSessionFromServer();
 }
 
+export function getRememberMePreference(): boolean {
+  if (typeof window === "undefined") return true;
+  const raw = window.localStorage.getItem(REMEMBER_ME_PREF_KEY);
+  if (raw === "0") return false;
+  return true;
+}
+
+export function setRememberMePreference(remember: boolean): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(REMEMBER_ME_PREF_KEY, remember ? "1" : "0");
+}
+
 export function clearToken() {
   removeLocalSessionCache();
   clearServerSessionCookie();
@@ -213,10 +226,13 @@ export async function refreshSessionFromServer(): Promise<UserRole | null> {
       credentials: "include",
       cache: "no-store",
     });
-    if (res.status === 401 || res.status === 403 || res.status === 404) {
+    if (res.status === 401 || res.status === 404) {
       removeLocalSessionCache();
       notifyAuthChanged();
       return null;
+    }
+    if (res.status === 403) {
+      return getCachedRole();
     }
     if (!res.ok) return getCachedRole();
     const json = (await res.json()) as SessionMeResponse;
@@ -238,6 +254,62 @@ export async function refreshSessionFromServer(): Promise<UserRole | null> {
   } catch {
     return getCachedRole();
   }
+}
+
+const SESSION_RENEW_INTERVAL_MS = 20 * 60 * 1000;
+let lastSessionRenewAt = 0;
+let renewInFlight: Promise<boolean> | null = null;
+
+/** Kaydırılabilir oturum: aktif kullanıcıda JWT + çerez süresini uzatır. */
+export async function renewAuthSession(force = false): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (!getCachedRole() && !getToken()) return false;
+
+  const now = Date.now();
+  if (!force && now - lastSessionRenewAt < SESSION_RENEW_INTERVAL_MS) {
+    return true;
+  }
+  if (renewInFlight) return renewInFlight;
+
+  renewInFlight = (async () => {
+    try {
+      const res = await fetch("/v1/auth/session/refresh", {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          [CSRF_HEADER_NAME]: readCookie(CSRF_COOKIE_NAME) ?? CSRF_HEADER_VALUE,
+        },
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (res.status === 401 || res.status === 404) {
+        removeLocalSessionCache();
+        notifyAuthChanged();
+        return false;
+      }
+      if (res.status === 403) {
+        return Boolean(getCachedRole());
+      }
+      if (!res.ok) return false;
+      lastSessionRenewAt = Date.now();
+      await refreshSessionFromServer();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      renewInFlight = null;
+    }
+  })();
+
+  return renewInFlight;
+}
+
+export async function syncAuthSession(options?: { renew?: boolean }): Promise<UserRole | null> {
+  const role = await refreshSessionFromServer();
+  if (role && options?.renew !== false) {
+    void renewAuthSession();
+  }
+  return role;
 }
 
 export function panelPathForRole(role: UserRole): string {

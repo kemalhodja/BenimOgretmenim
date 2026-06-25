@@ -5,6 +5,7 @@ import { InstallAppBanner } from "./components/InstallAppBanner";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
 import { PwaRegister } from "./components/PwaRegister";
+import { SessionKeepAlive } from "./components/SessionKeepAlive";
 import { SiteWideJsonLd } from "./components/SiteWideJsonLd";
 import { SupportWidget } from "./components/SupportWidget";
 import { publicSiteUrl } from "./lib/siteUrl";
@@ -67,6 +68,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-paper-50 font-sans text-paper-900">
         <SiteWideJsonLd />
         <PwaRegister />
+        <SessionKeepAlive />
         <ConditionalSiteChrome
           marketingHeader={<SiteHeader />}
           marketingFooter={<SiteFooter />}

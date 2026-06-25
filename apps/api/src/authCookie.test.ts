@@ -9,8 +9,10 @@ import {
   SESSION_COOKIE_NAME,
   SESSION_ROLE_COOKIE_NAME,
   SESSION_USER_ID_COOKIE_NAME,
+  SESSION_PERSISTENT_COOKIE_NAME,
   setSessionCookie,
   setSessionHintCookies,
+  setSessionPersistentFlag,
 } from "./auth/sessionCookie.js";
 import { requireAuth } from "./middleware/requireAuth.js";
 import type { AppVariables } from "./types.js";
@@ -141,6 +143,18 @@ describe("session cookie auth", () => {
     expect(setCookie).toContain(`${SESSION_USER_ID_COOKIE_NAME}=user-hint-1`);
   });
 
+  it("sets persistent session flag cookie for remember-me", async () => {
+    const app = new Hono<{ Variables: AppVariables }>();
+    app.get("/set", (c) => {
+      setSessionPersistentFlag(c, true, 60 * 60 * 24 * 90);
+      return c.text("ok");
+    });
+
+    const res = await app.request("http://localhost/set");
+    const header = res.headers.get("set-cookie") ?? "";
+    expect(header).toContain(`${SESSION_PERSISTENT_COOKIE_NAME}=1`);
+  });
+
   it("clears session hint cookies on logout together with the session cookie", async () => {
     const app = new Hono<{ Variables: AppVariables }>();
     app.get("/clear", (c) => {
@@ -154,5 +168,6 @@ describe("session cookie auth", () => {
     expect(setCookie).toContain(`${CSRF_COOKIE_NAME}=`);
     expect(setCookie).toContain(`${SESSION_ROLE_COOKIE_NAME}=`);
     expect(setCookie).toContain(`${SESSION_USER_ID_COOKIE_NAME}=`);
+    expect(setCookie).toContain(`${SESSION_PERSISTENT_COOKIE_NAME}=`);
   });
 });
