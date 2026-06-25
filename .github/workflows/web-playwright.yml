@@ -31,6 +31,12 @@ jobs:
         working-directory: apps/web
         run: npm ci --include=dev
 
+      - name: Check role / uygulama content
+        working-directory: apps/web
+        run: |
+          npm run check:role-features
+          npm run check:uygulama-content
+
       - name: Build Next.js
         working-directory: apps/web
         env:

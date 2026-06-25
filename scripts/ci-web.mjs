@@ -46,4 +46,5 @@ function run(cmd, args) {
 run("npm", ["ci", "--include=dev"]);
 run("npm", ["run", "lint"]);
 run("npx", ["tsx", "scripts/check-role-features.ts"]);
+run("npx", ["tsx", "scripts/check-uygulama-content.ts"]);
 run("npm", ["run", "build"]);

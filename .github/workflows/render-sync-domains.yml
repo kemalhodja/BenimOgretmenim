@@ -1,0 +1,24 @@
+# Render custom domain düzeltmesi (www → web servisi).
+# GitHub repo Settings → Secrets → RENDER_API_KEY (Render Dashboard → Account → API Keys)
+#
+# Manuel: Actions → Render sync domains → Run workflow
+
+name: Render sync domains
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync-domains:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Sync www/apex domains to web service
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: node scripts/render-fix-domains.mjs

@@ -21,7 +21,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "BenimÖğretmenim",
     description:
       "Öğretmen bulun; teklifleri karşılaştırın, soru çözümü alın, canlı ders ve çalışma planınızı takip edin.",
-    start_url: "/",
+    start_url: "/panel",
     display: "standalone",
     display_override: ["standalone", "browser"],
     orientation: "any",
@@ -51,6 +51,13 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       {
+        name: "Panelim",
+        short_name: "Panel",
+        url: "/panel",
+        description: "Oturum rolünüze göre öğrenci, öğretmen, veli veya yönetim paneli",
+        icons: shortcutIcons,
+      },
+      {
         name: "Öğretmen ara",
         short_name: "Ara",
         url: "/ogretmenler",
@@ -65,13 +72,6 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: shortcutIcons,
       },
       {
-        name: "Çalışma planım",
-        short_name: "Çalışma",
-        url: "/student/calisma",
-        description: "Haftalık plan, deneme sonuçları ve odak konuları",
-        icons: shortcutIcons,
-      },
-      {
         name: "Öğretmen havuzu",
         short_name: "Havuz",
         url: "/teacher/odev-havuzu",
@@ -82,7 +82,7 @@ export default function manifest(): MetadataRoute.Manifest {
         name: "Telefona ekle",
         short_name: "Kurulum",
         url: "/uygulama",
-        description: "PWA kurulum rehberi",
+        description: "PWA kurulum rehberi ve rol bazlı kısayollar",
         icons: shortcutIcons,
       },
     ],

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { getCachedRole, getRoleFromToken, getToken, panelNavLabel, refreshSessionFromServer } from "../lib/auth";
+import { roleDisplayName } from "../lib/uygulamaContent";
 
 const STORAGE_KEY = "pwa-install-banner-dismissed";
 
@@ -38,9 +40,18 @@ export function InstallAppBanner() {
   const [ios, setIos] = useState(false);
   const [android, setAndroid] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [sessionRole, setSessionRole] = useState(() => getCachedRole());
+  const [token, setToken] = useState<string | null>(null);
+
+  const syncAuth = useCallback(() => {
+    setToken(getToken());
+    setSessionRole(getCachedRole());
+  }, []);
 
   useEffect(() => {
     setMounted(true);
+    syncAuth();
+    void refreshSessionFromServer().then(() => syncAuth());
     try {
       if (localStorage.getItem(STORAGE_KEY) === "1") setDismissed(true);
     } catch {
@@ -56,7 +67,13 @@ export function InstallAppBanner() {
     };
     window.addEventListener("beforeinstallprompt", onBip);
     return () => window.removeEventListener("beforeinstallprompt", onBip);
-  }, []);
+  }, [syncAuth]);
+
+  const role = mounted ? getRoleFromToken(token) ?? sessionRole : null;
+  const roleHint =
+    role && mounted
+      ? `${roleDisplayName(role)} paneliniz ana ekrandan açılır; alt menü size özeldir.`
+      : null;
 
   const dismiss = useCallback(() => {
     setDismissed(true);
@@ -107,9 +124,10 @@ export function InstallAppBanner() {
             </>
           ) : showAndroidInstall ? (
             <>
-              <div className="font-semibold text-paper-950">BenimÖğretmenim’i telefona ekle</div>
+              <div className="font-semibold text-paper-950">BenimÖğretmenim&apos;i telefona ekle</div>
               <div className="mt-0.5 text-paper-800/85">
                 Tek dokunuşla ana ekrana kısayol; tam ekran açılır (Chrome).
+                {roleHint ? ` ${roleHint}` : null}
               </div>
             </>
           ) : (
@@ -121,6 +139,12 @@ export function InstallAppBanner() {
                   rehber
                 </Link>
                 .
+                {role && panelNavLabel(role) ? (
+                  <>
+                    {" "}
+                    Giriş: <span className="font-medium">{panelNavLabel(role)}</span>.
+                  </>
+                ) : null}
               </div>
             </>
           )}

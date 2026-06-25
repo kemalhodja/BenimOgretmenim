@@ -19,6 +19,18 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
     );
   });
 
+  test("öğrenci: /uygulama yalnızca öğrenci kısayollarını gösterir", async ({ page }) => {
+    await loginViaUi(page, SEED_USERS.student.email, SEED_USERS.student.password);
+    await page.goto("/uygulama", { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("uygulama-role-banner")).toBeVisible();
+    await expect(page.getByTestId("uygulama-quick-access-active")).toBeVisible();
+    await expect(page.getByTestId("uygulama-post-install")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Öğrenci hızlı başlangıç" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Öğretmen hızlı başlangıç" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Veli hızlı takip" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Öğretmen paneli" })).toHaveCount(0);
+  });
+
   test("öğrenci: giriş → öğrenci özet", async ({ page }) => {
     await loginViaUi(page, SEED_USERS.student.email, SEED_USERS.student.password);
     await expect(page).toHaveURL(/\/student\/panel/);

@@ -55,7 +55,8 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
   const panelHref = role ? panelPathForRole(role) : null;
   const panelLabel = role ? panelNavLabel(role) : null;
   const loggedIn = Boolean(token || sessionRole);
-  const navItems = loggedIn ? [...NAV_PUBLIC, ...NAV_AUTH] : NAV_PUBLIC;
+  const navPublic = loggedIn ? NAV_PUBLIC.filter((item) => item.href !== "/roller") : NAV_PUBLIC;
+  const navItems = loggedIn ? [...navPublic, ...NAV_AUTH] : navPublic;
 
   const deskCls =
     "rounded-lg px-2.5 py-1.5 text-sm font-medium text-paper-800/80 transition hover:bg-paper-100 hover:text-paper-900";

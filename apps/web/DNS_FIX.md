@@ -29,6 +29,8 @@ Asıl hata: Render’da **`www.benimogretmenim.com.tr` custom domain API servisi
 
 Push sonrası Blueprint sync veya manuel deploy ile domainler doğru servise bağlanmalı.
 
+**Otomatik (GitHub):** Repo → Settings → Secrets → `RENDER_API_KEY` ekleyin → Actions → **Render sync domains** → Run workflow.
+
 ### A) benimogretmenim-api
 
 1. [Render Dashboard](https://dashboard.render.com) → **benimogretmenim-api**

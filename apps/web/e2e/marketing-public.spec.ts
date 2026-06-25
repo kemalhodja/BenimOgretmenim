@@ -40,12 +40,16 @@ test.describe("Vitrin ve bilgi sayfaları @public", () => {
     await expect(cta.getByRole("link", { name: "Giriş yap" })).toBeVisible();
   });
 
-  test("/uygulama — rol bazlı hızlı erişimler görünür", async ({ page }) => {
+  test("/uygulama — oturumsuz tüm rol önizlemeleri görünür", async ({ page }) => {
     const res = await page.goto("/uygulama", { waitUntil: "domcontentloaded" });
     expect(res?.ok() ?? false).toBeTruthy();
+    await expect(page.getByTestId("uygulama-role-sections")).toBeVisible();
+    await expect(page.getByTestId("uygulama-quick-access-student")).toBeVisible();
+    await expect(page.getByTestId("uygulama-quick-access-teacher")).toBeVisible();
+    await expect(page.getByTestId("uygulama-quick-access-guardian")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Öğrenci hızlı başlangıç" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Soru gönder" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Soru havuzu" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Giriş yap — size özel görünüm" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Yönetim hızlı erişim" })).toHaveCount(0);
   });
 
   test("/ — oturumsuz üst menüde Panel yok, Giriş yap var", async ({ page }) => {
