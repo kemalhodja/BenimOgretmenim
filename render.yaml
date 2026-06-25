@@ -272,9 +272,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://api.benimogretmenim.com.tr
+        value: https://benim-ogretmenim.onrender.com
       - key: INTERNAL_API_BASE_URL
-        value: https://api.benimogretmenim.com.tr
+        value: https://benim-ogretmenim.onrender.com
       - key: NEXT_PUBLIC_SITE_URL
         value: https://www.benimogretmenim.com.tr
       - fromGroup: benimogretmenim-shared

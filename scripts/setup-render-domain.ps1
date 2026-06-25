@@ -22,8 +22,8 @@ if (-not $ApiKey?.Trim()) {
 
 $env:RENDER_API_KEY = $ApiKey.Trim()
 
-Write-Host "[1/3] Render domain sync..." -ForegroundColor Cyan
-node (Join-Path $repoRoot "scripts\render-fix-domains.mjs")
+Write-Host "[1/3] Render prod sync (domain + env + deploy)..." -ForegroundColor Cyan
+node (Join-Path $repoRoot "scripts\render-sync-production.mjs")
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if (Get-Command gh -ErrorAction SilentlyContinue) {

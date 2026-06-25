@@ -1,0 +1,39 @@
+# Render prod: domain + env + deploy (RENDER_API_KEY zorunlu).
+# GitHub → Settings → Secrets → RENDER_API_KEY
+# SMOKE_RUN_SECRET zaten varsa Render API'ye de yazılır.
+
+name: Render sync production
+
+on:
+  workflow_dispatch:
+    inputs:
+      launch_dns_verified:
+        description: "DNS tamamlandıysa 1"
+        required: false
+        default: "0"
+        type: choice
+        options:
+          - "0"
+          - "1"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Sync Render (domains, env, deploy)
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          SMOKE_RUN_SECRET: ${{ secrets.SMOKE_RUN_SECRET }}
+          LAUNCH_DNS_VERIFIED: ${{ github.event.inputs.launch_dns_verified }}
+        run: |
+          if [ -z "${RENDER_API_KEY:-}" ]; then
+            echo "::error::GitHub secret RENDER_API_KEY tanımlı değil."
+            exit 1
+          fi
+          node scripts/render-sync-production.mjs

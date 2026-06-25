@@ -7,9 +7,10 @@ Son canlı kontrol: Haziran 2026
 | Adres | Sonuç |
 |-------|--------|
 | `benimogretmenim.com.tr` | Turhost **301** → `www` |
-| `www.benimogretmenim.com.tr` | **API JSON** (`Content-Type: application/json`) |
-| `benimogretmenim.onrender.com` | **Web** (Next.js — doğru servis) |
-| `benim-ogretmenim.onrender.com` | **API** |
+| `www.benimogretmenim.com.tr` | **Web HTML** (doğru — Next.js) |
+| `benimogretmenim.onrender.com` | **Web** (Next.js) |
+| `benim-ogretmenim.onrender.com` | **API** (JSON `/health`) |
+| `api.benimogretmenim.com.tr` | **SSL hatası** — DNS yanlışlıkla web onrender’a gidiyor |
 | `benimogretmenim-web.onrender.com` | 404 (kullanmayın) |
 
 DNS: `www` → `benimogretmenim.onrender.com` (CNAME zinciri doğru **hedefe** gidiyor olabilir).
@@ -62,9 +63,9 @@ Kaydet → **Manual Deploy** (gerekirse).
 
 | Key | Değer |
 |-----|--------|
-| `NEXT_PUBLIC_SITE_URL` | `https://benimogretmenim.com.tr` |
-| `NEXT_PUBLIC_API_BASE_URL` | `https://api.benimogretmenim.com.tr` |
-| `INTERNAL_API_BASE_URL` | `https://api.benimogretmenim.com.tr` |
+| `NEXT_PUBLIC_SITE_URL` | `https://www.benimogretmenim.com.tr` |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://benim-ogretmenim.onrender.com` (api SSL düzelene kadar) |
+| `INTERNAL_API_BASE_URL` | `https://benim-ogretmenim.onrender.com` |
 
 ---
 
