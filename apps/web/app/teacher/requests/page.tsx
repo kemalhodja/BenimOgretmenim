@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
+import { TeacherFlowExplainer } from "../../components/TeacherFlowExplainer";
 
 type Branch = { id: number; parent_id: number | null; name: string; slug: string };
 
@@ -198,6 +199,10 @@ export default function TeacherRequestsPage() {
             Aboneliğiniz aktifse teklif göndermek ücretsizdir. Aboneliğiniz yoksa her gün ilk normal teklif
             ücretsizdir; aynı gün sonraki teklifler için cüzdanınızdan iadesiz 500 TL düşülür.
           </p>
+        </div>
+
+        <div className="mt-4">
+          <TeacherFlowExplainer variant="requests" />
         </div>
 
         {(error || ok) && (

@@ -22,10 +22,10 @@ Bu not, web token'ının `localStorage` yerine HttpOnly cookie/session modeline 
 1. Tamamlandı: API auth response'larına cookie set/clear yardımcıları eklendi.
 2. Tamamlandı: `requireAuth` bearer öncelikli, cookie fallback destekli hale geldi.
 3. Tamamlandı: `apiFetch` `credentials: include` ve CSRF header gönderecek şekilde hazırlandı.
-4. Sıradaki: `apps/web/app/lib/auth.ts` ve panel guard'larını token parametresinden cookie-first modele taşı.
-5. Sıradaki: Admin proxy route'larında `authorization` header bağımlılığını cookie session doğrulamasına çevir.
-6. Sıradaki: Role guard ve Playwright role journey testlerini cookie modeline göre güncelle.
-7. Son: Migration tamamlanınca web `localStorage` token okuma/yazma kodunu kaldır.
+4. Tamamlandı: `auth.ts` cookie-first; JWT localStorage'a yazılmaz; `commitAuthSession()` login/kayıt sonrası.
+5. Tamamlandı: Admin proxy cookie oturumunu kabul eder (`hasAdminProxySession`).
+6. Tamamlandı: Playwright oturum testleri cookie modelini doğrular.
+7. Tamamlandı: `bo:token` localStorage okuma kaldırıldı; yalnızca HttpOnly cookie + rol önbelleği.
 
 ## Test Kapısı
 

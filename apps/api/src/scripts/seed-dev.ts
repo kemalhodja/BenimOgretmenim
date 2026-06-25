@@ -4,13 +4,82 @@ import { formatDbConnectError } from "../lib/dbErrors.js";
 
 const PASS = "DevParola1";
 
+async function insertSampleLessonVideos(
+  client: import("pg").PoolClient,
+  teacherId: string,
+  branchId: number,
+): Promise<boolean> {
+  const videoCount = await client.query(
+    `select count(*)::int as n from teacher_lesson_videos where teacher_id = $1`,
+    [teacherId],
+  );
+  if ((videoCount.rows[0]?.n ?? 0) > 0) return false;
+
+  await client.query(
+    `insert into teacher_lesson_videos (
+       teacher_id, grade_level, branch_id, topic_title, outcome_code, outcome_title,
+       title, description, video_url, video_kind, duration_minutes, status, moderation_status
+     ) values
+       ($1, 8, $2, 'Üslü sayılar', 'M.8.1.1', 'Üslü ifadeleri yorumlar',
+        'Seed: 8. sınıf üslü sayılar', 'Geliştirme ortamı örnek ders videosu.',
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'lesson', 12, 'published', 'approved'),
+       ($1, 8, $2, 'LGS deneme stratejisi', 'M.8.9.1', 'Sınavda zaman yönetimi',
+        'Seed: LGS matematik hazırlık', 'Geliştirme ortamı örnek sınav hazırlık videosu.',
+        'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'exam_prep', 18, 'published', 'approved')`,
+    [teacherId, branchId],
+  );
+  return true;
+}
+
+async function backfillExistingSeed(client: import("pg").PoolClient): Promise<void> {
+  const student = await client.query<{ id: string; grade_level: number | null }>(
+    `select s.id, s.grade_level
+     from students s
+     join users u on u.id = s.user_id
+     where u.email_normalized = 'student_dev@benimogretmenim.local'
+     limit 1`,
+  );
+  if (student.rowCount && student.rows[0].grade_level == null) {
+    await client.query(`update students set grade_level = 8 where id = $1`, [student.rows[0].id]);
+    console.log("seed backfill: öğrenci grade_level → 8");
+  }
+
+  const teacher = await client.query<{ id: string }>(
+    `select t.id
+     from teachers t
+     join users u on u.id = t.user_id
+     where u.email_normalized = 'teacher_dev@benimogretmenim.local'
+     limit 1`,
+  );
+  const mat = await client.query<{ id: number }>(`select id from branches where slug = 'matematik' limit 1`);
+  if (!teacher.rowCount || !mat.rowCount) return;
+
+  try {
+    const added = await insertSampleLessonVideos(client, teacher.rows[0].id, mat.rows[0].id);
+    if (added) console.log("seed backfill: 2 örnek ders videosu eklendi (8. sınıf matematik)");
+  } catch {
+    /* migration 063 henüz uygulanmamış olabilir */
+  }
+}
+
 async function main() {
   try {
     const marker = await pool.query(
       `select id from users where email_normalized = 'seed_dev@benimogretmenim.local'`,
     );
     if (marker.rowCount) {
-      console.log("seed already applied (seed_dev@benimogretmenim.local exists)");
+      const client = await pool.connect();
+      try {
+        await client.query("begin");
+        await backfillExistingSeed(client);
+        await client.query("commit");
+      } catch (e) {
+        await client.query("rollback").catch(() => {});
+        throw e;
+      } finally {
+        client.release();
+      }
+      console.log("seed already applied (seed_dev@benimogretmenim.local exists) — backfill kontrol edildi");
       console.log("İpucu: ayrı bootstrap admin için kökten `npm run db:seed:admin` çalıştırın.");
       await pool.end();
       return;
@@ -80,7 +149,7 @@ async function main() {
       }
 
       const studentRow = await client.query(
-        `insert into students (user_id) values ($1) returning id`,
+        `insert into students (user_id, grade_level) values ($1, 8) returning id`,
         [studentUserId],
       );
       const studentId = studentRow.rows[0].id as string;
@@ -142,6 +211,15 @@ async function main() {
         }
       } catch {
         /* migration 061 henüz uygulanmamış olabilir */
+      }
+
+      if (mat.rowCount) {
+        try {
+          const added = await insertSampleLessonVideos(client, teacherId, mat.rows[0].id);
+          if (added) console.log("lesson videos (seed): 2 örnek video eklendi (8. sınıf matematik)");
+        } catch {
+          /* migration 063 henüz uygulanmamış olabilir */
+        }
       }
 
       await client.query("commit");

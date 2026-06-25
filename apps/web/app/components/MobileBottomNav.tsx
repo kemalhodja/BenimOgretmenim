@@ -32,6 +32,7 @@ function itemsFor(mode: PanelMode, role: UserRole | null, pathname: string): Ite
       { href: "/student/panel", label: "Özet" },
       { href: "/student/requests", label: "Talepler" },
       { href: "/student/calisma", label: "Çalışma", shortLabel: "Çalış", ariaLabel: "Çalışma planı", primary: true },
+      { href: "/student/ders-videolari", label: "Videolar", shortLabel: "Video" },
       { href: "/student/kurslar", label: "Kurslar" },
       { href: "/student/odev-sor", label: "Ödev" },
     ];
@@ -56,6 +57,7 @@ function itemsFor(mode: PanelMode, role: UserRole | null, pathname: string): Ite
         match: (p) =>
           p === "/teacher" ||
           starts(p, "/teacher/kurslar") ||
+          starts(p, "/teacher/ders-videolari") ||
           starts(p, "/teacher/kampanyalar") ||
           starts(p, "/teacher/odev-havuzu") ||
           starts(p, "/teacher/dogrudan-dersler") ||
@@ -67,9 +69,9 @@ function itemsFor(mode: PanelMode, role: UserRole | null, pathname: string): Ite
     return [
       { href: "/guardian", label: "Özet" },
       { href: "/guardian/requests", label: "İlanlar", primary: true },
+      { href: "/guardian/ders-videolari", label: "Videolar", shortLabel: "Video" },
       { href: "/student/kurslar", label: "Kurslar" },
       { href: "/ogretmenler", label: "Öğretmen", shortLabel: "Öğret" },
-      { href: "/iletisim", label: "Destek" },
     ];
   }
   if (effective === "admin") {

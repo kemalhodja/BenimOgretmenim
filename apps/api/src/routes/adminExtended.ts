@@ -8,6 +8,7 @@ import { writeAdminAudit } from "../lib/adminAudit.js";
 import { cancelCourseEnrollmentPayment } from "../lib/courseEnrollmentWallet.js";
 import { lockCourseEnrollmentRefundWindowForCohort, payEligibleCourseTeacherPayoutsForCohort } from "../lib/courseTeacherPayout.js";
 import { applyWalletDelta } from "../lib/wallet.js";
+import { notifyParentInApp } from "../lib/inAppNotifications.js";
 import {
   autoApproveWithdrawalIfEligible,
 } from "../lib/teacherAutoWithdrawal.js";
@@ -1171,21 +1172,17 @@ export function registerAdminExtendedRoutes(admin: Hono<{ Variables: AppVariable
           : status === "pending"
             ? "Profiliniz admin inceleme kuyruğuna alındı."
             : "Doğrulama durumunuz güncellendi.";
-    await pool.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, null, null, 'in_app', $2, $3, $4::jsonb, 'sent', now())`,
-      [
-        teacher.user_id,
-        title,
-        body,
-        JSON.stringify({
-          kind: "teacher_verification_status",
-          teacherId: teacher.id,
-          verificationStatus: status,
-        }),
-      ],
+    await notifyParentInApp(
+      teacher.user_id,
+      title,
+      body,
+      {
+        kind: "teacher_verification_status",
+        teacherId: teacher.id,
+        verificationStatus: status,
+      },
+      {},
+      pool,
     );
     await writeAdminAudit({
       actorUserId: c.get("userId"),

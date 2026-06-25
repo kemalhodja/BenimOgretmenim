@@ -5,6 +5,14 @@ import { pool } from "../db.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { applyWalletDelta } from "../lib/wallet.js";
 import {
+  type InAppNotificationPayload,
+  notifyParentInAppBulk,
+} from "../lib/inAppNotifications.js";
+import {
+  notifyTeacherByTeacherId,
+  notifyTeachersInBranch,
+} from "../lib/parentNotifyRecipients.js";
+import {
   createWalletHold,
   getWalletAvailableMinor,
   reduceWalletHoldAmount,
@@ -34,25 +42,24 @@ async function notifyGroupParticipants(
     payload: Record<string, unknown>;
   },
 ) {
-  await client.query(
-    `insert into parent_notifications (
-       recipient_user_id, student_id, snapshot_id, channel,
-       title, body, payload_jsonb, delivery_status, sent_at
-     )
-     select recipient_user_id, student_id, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
-     from (
-       select st.user_id as recipient_user_id, st.id as student_id
-       from group_lesson_participants p
-       join students st on st.id = p.student_id
-       where p.request_id = $1
-       union
-       select sg.guardian_user_id as recipient_user_id, st.id as student_id
-       from group_lesson_participants p
-       join students st on st.id = p.student_id
-       join student_guardians sg on sg.student_id = st.id
-       where p.request_id = $1
-     ) recipients`,
-    [opts.requestId, opts.title, opts.body, JSON.stringify(opts.payload)],
+  const recipientsSql = `
+    select st.user_id as recipient_user_id, st.id as student_id
+    from group_lesson_participants p
+    join students st on st.id = p.student_id
+    where p.request_id = $1::uuid
+    union
+    select sg.guardian_user_id as recipient_user_id, st.id as student_id
+    from group_lesson_participants p
+    join students st on st.id = p.student_id
+    join student_guardians sg on sg.student_id = st.id
+    where p.request_id = $1::uuid`;
+  await notifyParentInAppBulk(
+    client,
+    recipientsSql,
+    [opts.requestId],
+    opts.title,
+    opts.body,
+    opts.payload as InAppNotificationPayload,
   );
 }
 
@@ -66,16 +73,13 @@ async function notifyGroupTeacher(
     payload: Record<string, unknown>;
   },
 ) {
-  await client.query(
-    `insert into parent_notifications (
-       recipient_user_id, student_id, snapshot_id, channel,
-       title, body, payload_jsonb, delivery_status, sent_at
-     )
-     select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
-     from teachers t
-     join users u on u.id = t.user_id
-     where t.id = $1`,
-    [opts.teacherId, opts.studentId, opts.title, opts.body, JSON.stringify(opts.payload)],
+  await notifyTeacherByTeacherId(
+    client,
+    opts.teacherId,
+    opts.studentId,
+    opts.title,
+    opts.body,
+    opts.payload as InAppNotificationPayload,
   );
 }
 
@@ -252,26 +256,13 @@ groupLessons.post("/", requireAuth, async (c) => {
         payload: { kind: "group_lesson_targeted", groupLessonId: requestId },
       });
     } else {
-      await client.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         )
-         select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
-         from teacher_branches tb
-         join teachers t on t.id = tb.teacher_id
-         join users u on u.id = t.user_id
-         where tb.branch_id = $1
-           and u.role = 'teacher'
-         order by tb.created_at desc nulls last
-         limit 200`,
-        [
-          parsed.data.branchId,
-          studentId,
-          "Yeni grup ders talebi",
-          `"${shortTopic(parsed.data.topic.trim())}" konusu için yeni grup ders talebi var.`,
-          JSON.stringify({ kind: "group_lesson_created", groupLessonId: requestId }),
-        ],
+      await notifyTeachersInBranch(
+        client,
+        parsed.data.branchId,
+        studentId,
+        "Yeni grup ders talebi",
+        `"${shortTopic(parsed.data.topic.trim())}" konusu için yeni grup ders talebi var.`,
+        { kind: "group_lesson_created", groupLessonId: requestId },
       );
     }
 

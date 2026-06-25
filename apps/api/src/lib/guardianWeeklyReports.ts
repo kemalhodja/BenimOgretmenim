@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from "pg";
 import { pool } from "../db.js";
 import { queueGuardianEmail } from "./emailDelivery.js";
 import { queueUserSms } from "./smsDelivery.js";
+import { notifyParentInApp } from "./inAppNotifications.js";
 
 type Db = Pool | PoolClient;
 
@@ -190,18 +191,19 @@ export async function runGuardianWeeklyReports(client: Db = pool): Promise<Weekl
         ],
       );
 
-      await client.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          pair.guardian_user_id,
-          pair.student_id,
-          "Haftalık gelişim raporu",
-          body.slice(0, 500),
-          JSON.stringify({ kind: "guardian_weekly_report", reportId: ins.rows[0]?.id, weekStart }),
-        ],
+      await notifyParentInApp(
+        pair.guardian_user_id,
+        "Haftalık gelişim raporu",
+        body.slice(0, 500),
+        {
+          kind: "guardian_weekly_report",
+          reportId: ins.rows[0]?.id,
+          weekStart,
+          href: "/guardian#haftalik-ozet",
+          dedupeKey: `guardian_weekly_report:${dedupeKey}`,
+        },
+        { studentId: pair.student_id },
+        client,
       );
 
       await queueGuardianEmail({

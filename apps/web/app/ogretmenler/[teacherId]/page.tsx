@@ -381,6 +381,9 @@ export default function OgretmenDetayPage() {
   const [teacher, setTeacher] = useState<TeacherDetail | null>(null);
   const [branches, setBranches] = useState<BranchRow[]>([]);
   const [reviews, setReviews] = useState<ReviewRow[]>([]);
+  const [teacherLessonVideos, setTeacherLessonVideos] = useState<
+    Array<{ id: string; title: string; topicTitle: string; videoKind: string }>
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [directTl, setDirectTl] = useState("500,00");
@@ -421,6 +424,26 @@ export default function OgretmenDetayPage() {
   useEffect(() => {
     setAuthToken(getToken());
   }, []);
+
+  useEffect(() => {
+    if (!teacherId || getRoleFromToken(authToken) !== "student" || !authToken) {
+      setTeacherLessonVideos([]);
+      return;
+    }
+    let cancelled = false;
+    void apiFetch<{ videos: Array<{ id: string; title: string; topicTitle: string; videoKind: string }> }>(
+      `/v1/lesson-videos/by-teacher/${teacherId}`,
+    )
+      .then((r) => {
+        if (!cancelled) setTeacherLessonVideos(r.videos ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setTeacherLessonVideos([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [teacherId, authToken]);
 
   useEffect(() => {
     if (!teacherId) return;
@@ -2012,6 +2035,29 @@ export default function OgretmenDetayPage() {
               ))}
             </div>
           </section>
+
+          {authRole === "student" && teacherLessonVideos.length > 0 && (
+            <section className="mt-8 rounded-xl border border-paper-200 bg-white p-6">
+              <h2 className="text-lg font-semibold text-paper-900">Ders videoları</h2>
+              <p className="mt-1 text-xs text-paper-800/55">
+                Sınıfınıza uygun onaylı videolar — tam listeyi video kütüphanesinden izleyin.
+              </p>
+              <ul className="mt-4 space-y-2">
+                {teacherLessonVideos.slice(0, 5).map((v) => (
+                  <li key={v.id} className="rounded-lg border border-paper-100 bg-paper-50 px-3 py-2 text-sm">
+                    <span className="font-medium text-paper-950">{v.title}</span>
+                    <span className="text-paper-800/55"> · {v.topicTitle}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/student/ders-videolari"
+                className="mt-4 inline-flex text-sm font-semibold text-brand-800 underline"
+              >
+                Tüm videoları aç
+              </Link>
+            </section>
+          )}
 
           <div id="yorumlar" className="mt-8 rounded-xl border border-paper-200 bg-white p-6">
             <h2 className="text-lg font-semibold text-paper-900">Yorumlar</h2>

@@ -7,6 +7,10 @@ import { apiFetch } from "../lib/api";
 import { clearToken, getToken } from "../lib/auth";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 import { QuickStartBanner, GUARDIAN_START_STEPS } from "../components/QuickStartBanner";
+import {
+  notificationActionLabel,
+  resolveNotificationHref,
+} from "../lib/notifications";
 
 type StudentRow = { student_id: string; student_display_name: string };
 
@@ -195,6 +199,13 @@ export default function GuardianPage() {
   const [weeklyReports, setWeeklyReports] = useState<
     Array<{ id: string; report_title: string; report_preview: string; week_start: string }>
   >([]);
+  const [weeklySummary, setWeeklySummary] = useState<{
+    curriculumTests: number;
+    homeworkSignals: number;
+    lessonSignals: number;
+    unreadNotifications: number;
+    latestReportPreview: string | null;
+  } | null>(null);
   const [creditBusy, setCreditBusy] = useState(false);
   const [weekStart] = useState(() => Date.now() - 1000 * 60 * 60 * 24 * 7);
 
@@ -216,7 +227,7 @@ export default function GuardianPage() {
     (async () => {
       setError(null);
       try {
-        const [r, n, prefs, credits, reports] = await Promise.all([
+        const [r, n, prefs, credits, reports, summary] = await Promise.all([
           apiFetch<{
             students: StudentRow[];
             progress: ProgressRow[];
@@ -239,6 +250,13 @@ export default function GuardianPage() {
           })),
           apiFetch<{ pools: typeof creditPools }>("/v1/guardians/lesson-credits", { token }).catch(() => ({ pools: [] })),
           apiFetch<{ reports: typeof weeklyReports }>("/v1/guardians/weekly-reports", { token }).catch(() => ({ reports: [] })),
+          apiFetch<{
+            curriculumTests: number;
+            homeworkSignals: number;
+            lessonSignals: number;
+            unreadNotifications: number;
+            latestReportPreview: string | null;
+          }>("/v1/guardians/weekly-summary", { token }).catch(() => null),
         ]);
         setStudents(r.students);
         setProgress(r.progress);
@@ -250,6 +268,7 @@ export default function GuardianPage() {
         setEmailPrefs(prefs.preferences);
         setCreditPools(credits.pools ?? []);
         setWeeklyReports(reports.reports ?? []);
+        setWeeklySummary(summary);
         if (r.students[0]?.student_id) {
           setCreditStudentId((prev) => prev ?? r.students[0].student_id);
         }
@@ -476,6 +495,37 @@ export default function GuardianPage() {
             steps={showOnboarding ? GUARDIAN_START_STEPS : undefined}
           />
         </div>
+
+        {weeklySummary ? (
+          <section id="haftalik-ozet" className="mt-4 rounded-2xl border border-brand-200 bg-brand-50/50 p-5">
+            <h2 className="text-sm font-semibold text-brand-950">Haftalık özet</h2>
+            <p className="mt-1 text-xs text-paper-800/65">Son 7 gün — bağlı öğrencileriniz</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-4">
+              <div className="rounded-xl bg-white/80 p-3 text-center">
+                <div className="text-lg font-semibold text-paper-900">{weeklySummary.curriculumTests}</div>
+                <div className="text-[11px] text-paper-800/55">Kazanım testi</div>
+              </div>
+              <div className="rounded-xl bg-white/80 p-3 text-center">
+                <div className="text-lg font-semibold text-paper-900">{weeklySummary.homeworkSignals}</div>
+                <div className="text-[11px] text-paper-800/55">Ödev bildirimi</div>
+              </div>
+              <div className="rounded-xl bg-white/80 p-3 text-center">
+                <div className="text-lg font-semibold text-paper-900">{weeklySummary.lessonSignals}</div>
+                <div className="text-[11px] text-paper-800/55">Ders bildirimi</div>
+              </div>
+              <div className="rounded-xl bg-white/80 p-3 text-center">
+                <div className="text-lg font-semibold text-paper-900">{weeklySummary.unreadNotifications}</div>
+                <div className="text-[11px] text-paper-800/55">Okunmamış</div>
+              </div>
+            </div>
+            {weeklySummary.latestReportPreview ? (
+              <p className="mt-3 line-clamp-3 text-sm text-paper-800/80">{weeklySummary.latestReportPreview}</p>
+            ) : null}
+            <Link href="#bildirimler" className="mt-3 inline-block text-sm font-medium text-brand-800 underline">
+              Bildirimlere git
+            </Link>
+          </section>
+        ) : null}
 
         {error && (
           <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -1042,78 +1092,16 @@ export default function GuardianPage() {
                     {n.body}
                   </p>
                   {(() => {
-                    const p = n.payload_jsonb;
-                    if (!p || typeof p !== "object") return null;
-                    const payload = p as { kind?: string; classroomHref?: string };
-                    if (typeof payload.classroomHref === "string" && payload.classroomHref.startsWith("/classroom/")) {
-                      return (
-                        <Link href={payload.classroomHref} className="mt-2 inline-block text-xs font-medium text-brand-800 underline">
-                          Canlı sınıfa git
-                        </Link>
-                      );
-                    }
-                    const k = payload.kind;
-                    if (
-                      k === "homework_new_post_guardian" ||
-                      k === "homework_claimed_guardian" ||
-                      k === "homework_answered_guardian" ||
-                      k === "homework_rewarded_guardian" ||
-                      k === "homework_answer_rejected_guardian" ||
-                      k === "homework_teacher_returned_guardian"
-                    ) {
-                      return (
-                        <p className="mt-2 text-xs text-paper-800/55">Detaylar öğrenci panelinde.</p>
-                      );
-                    }
-                    if (k === "curriculum_test_result_guardian") {
-                      return (
-                        <p className="mt-2 text-xs text-paper-800/55">
-                          Kazanım testi detayı üstteki test takibi bölümünde.
-                        </p>
-                      );
-                    }
-                    if (
-                      k === "lesson_scheduled" ||
-                      k === "lesson_completed" ||
-                      k === "lesson_reminder_24h" ||
-                      k === "lesson_reminder_2h"
-                    ) {
-                      return (
-                        <p className="mt-2 text-xs text-paper-800/55">
-                          Ders linki ve yorum adımları öğrencinin Dersler ekranında.
-                        </p>
-                      );
-                    }
-                    if (
-                      k === "course_session_scheduled" ||
-                      k === "course_session_reminder_24h" ||
-                      k === "course_session_reminder_2h"
-                    ) {
-                      return (
-                        <p className="mt-2 text-xs text-paper-800/55">
-                          Kurs sınıf linki öğrencinin Kurslar ekranında.
-                        </p>
-                      );
-                    }
-                    if (
-                      k === "group_lesson_teacher_assigned" ||
-                      k === "group_lesson_joined" ||
-                      k === "group_lesson_completed"
-                    ) {
-                      return (
-                        <p className="mt-2 text-xs text-paper-800/55">
-                          Grup ders detayları öğrencinin Grup dersler ekranında.
-                        </p>
-                      );
-                    }
-                    if (k === "direct_booking_completed") {
-                      return (
-                        <p className="mt-2 text-xs text-paper-800/55">
-                          Doğrudan ders anlaşması öğrencinin Doğrudan dersler ekranında.
-                        </p>
-                      );
-                    }
-                    return null;
+                    const href = resolveNotificationHref(n.payload_jsonb, "guardian");
+                    if (!href) return null;
+                    return (
+                      <Link
+                        href={href}
+                        className="mt-2 inline-block text-xs font-medium text-brand-800 underline"
+                      >
+                        {notificationActionLabel(n.payload_jsonb)}
+                      </Link>
+                    );
                   })()}
                   {!n.read_at && (
                     <button

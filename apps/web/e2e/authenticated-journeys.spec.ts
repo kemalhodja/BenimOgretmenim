@@ -140,6 +140,18 @@ test.describe("Uçtan uca oturum akışları @integration", () => {
     expect(graphSchemas.some((schema) => schema["@graph"]?.some((item) => item["@type"] === "Person"))).toBeTruthy();
   });
 
+  test("öğrenci: öğretmen paneline girmeye çalışınca kendi paneline döner", async ({ page }) => {
+    await loginViaUi(page, SEED_USERS.student.email, SEED_USERS.student.password);
+    await page.goto("/teacher/requests", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/student\/panel/, { timeout: 15_000 });
+  });
+
+  test("öğretmen: öğrenci paneline girmeye çalışınca kendi paneline döner", async ({ page }) => {
+    await loginViaUi(page, SEED_USERS.teacher.email, SEED_USERS.teacher.password);
+    await page.goto("/student/panel", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/teacher\/?$/, { timeout: 15_000 });
+  });
+
   test("veli: giriş → veli paneli", async ({ page }) => {
     await loginViaUi(page, SEED_USERS.guardian.email, SEED_USERS.guardian.password);
     await expect(page).toHaveURL(/\/guardian/);

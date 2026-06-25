@@ -13,6 +13,7 @@ import {
   studentUsagePolicyForSubscription,
 } from "../lib/studentSub.js";
 import { consumeUsageCredit, listUsageCreditPacks } from "../lib/usageCredits.js";
+import { notifyParentInApp } from "../lib/inAppNotifications.js";
 
 type DbExecutor = {
   query<T extends Record<string, unknown> = Record<string, unknown>>(
@@ -334,32 +335,28 @@ lessonRequests.post("/", requireAuth, async (c) => {
   for (const recipient of recipients.rows) {
     const isTargetDemo = requestKind === "demo" && recipient.teacher_id === targetTeacherId;
     const isShortlisted = !isTargetDemo && shortlistTeacherIds.includes(recipient.teacher_id);
-    await pool.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        recipient.user_id,
-        studentId,
-        isTargetDemo ? "Yeni demo ders talebi" : "Yeni ders ilanı var",
-        isTargetDemo
-          ? `"${parsed.data.topic.trim()}" için size özel demo ders talebi geldi.`
-          : isShortlisted
-            ? `"${parsed.data.topic.trim()}" ilanında öğrenci sizi kısa listesine aldı.`
-            : `"${parsed.data.topic.trim()}" için branşınıza uygun yeni ders ilanı yayınlandı.`,
-        JSON.stringify({
-          kind: isTargetDemo
-            ? "lesson_request_demo_targeted"
-            : isShortlisted
-              ? "lesson_request_shortlisted"
-              : "lesson_request_created_teacher",
-          requestId,
-          branchId: parsed.data.branchId,
-          teacherId: recipient.teacher_id,
-          actionHref: `/teacher/requests?requestId=${requestId}`,
-        }),
-      ],
+    const kind = isTargetDemo
+      ? "lesson_request_demo_targeted"
+      : isShortlisted
+        ? "lesson_request_shortlisted"
+        : "lesson_request_created_teacher";
+    await notifyParentInApp(
+      recipient.user_id,
+      isTargetDemo ? "Yeni demo ders talebi" : "Yeni ders ilanı var",
+      isTargetDemo
+        ? `"${parsed.data.topic.trim()}" için size özel demo ders talebi geldi.`
+        : isShortlisted
+          ? `"${parsed.data.topic.trim()}" ilanında öğrenci sizi kısa listesine aldı.`
+          : `"${parsed.data.topic.trim()}" için branşınıza uygun yeni ders ilanı yayınlandı.`,
+      {
+        kind,
+        requestId,
+        branchId: parsed.data.branchId,
+        teacherId: recipient.teacher_id,
+        actionHref: `/teacher/requests?requestId=${requestId}`,
+        dedupeKey: `${kind}:${requestId}:${recipient.teacher_id}`,
+      },
+      { studentId },
     );
   }
 
@@ -769,26 +766,23 @@ lessonRequests.post("/:requestId/offers", requireAuth, async (c) => {
       [requestId, offer.rows[0].id, userId, parsed.data.message],
     );
 
-    await client.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        reqRow.rows[0].student_user_id,
-        reqRow.rows[0].student_id,
-        isTargetedDemo ? "Demo ders yanıtı geldi" : "Yeni ders teklifi geldi",
-        isTargetedDemo
-          ? `${teacherDisplayName} demo ders talebinize yanıt verdi.`
-          : `${teacherDisplayName}, "${reqRow.rows[0].topic_text ?? "ders talebiniz"}" için teklif gönderdi.`,
-        JSON.stringify({
-          kind: isTargetedDemo ? "lesson_demo_offer_received" : "lesson_offer_received",
-          requestId,
-          offerId: offer.rows[0].id,
-          teacherId,
-          branchId: reqRow.rows[0].branch_id,
-        }),
-      ],
+    const offerKind = isTargetedDemo ? "lesson_demo_offer_received" : "lesson_offer_received";
+    await notifyParentInApp(
+      reqRow.rows[0].student_user_id as string,
+      isTargetedDemo ? "Demo ders yanıtı geldi" : "Yeni ders teklifi geldi",
+      isTargetedDemo
+        ? `${teacherDisplayName} demo ders talebinize yanıt verdi.`
+        : `${teacherDisplayName}, "${reqRow.rows[0].topic_text ?? "ders talebiniz"}" için teklif gönderdi.`,
+      {
+        kind: offerKind,
+        requestId,
+        offerId: offer.rows[0].id as string,
+        teacherId,
+        branchId: reqRow.rows[0].branch_id,
+        dedupeKey: `${offerKind}:${offer.rows[0].id as string}`,
+      },
+      { studentId: reqRow.rows[0].student_id as string },
+      client,
     );
 
     await client.query("commit");
@@ -1006,23 +1000,19 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
         `update lesson_offers set status = 'rejected', updated_at = now() where id = $1`,
         [offerId],
       );
-      await client.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          offerRow.rows[0].teacher_user_id,
-          own.rows[0].student_id,
-          "Teklifiniz reddedildi",
-          `${studentDisplayName}, "${requestTopic}" teklifinizi reddetti.`,
-          JSON.stringify({
-            kind: "lesson_offer_rejected",
-            requestId,
-            offerId,
-            teacherId: offerRow.rows[0].teacher_id,
-          }),
-        ],
+      await notifyParentInApp(
+        offerRow.rows[0].teacher_user_id as string,
+        "Teklifiniz reddedildi",
+        `${studentDisplayName}, "${requestTopic}" teklifinizi reddetti.`,
+        {
+          kind: "lesson_offer_rejected",
+          requestId,
+          offerId,
+          teacherId: offerRow.rows[0].teacher_id,
+          dedupeKey: `lesson_offer_rejected:${offerId}`,
+        },
+        { studentId: own.rows[0].student_id as string },
+        client,
       );
       await client.query("commit");
       return c.json({ ok: true });
@@ -1153,25 +1143,21 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
     );
     const lessonSessionId = sess.rows[0].id as string;
 
-    await client.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        offerRow.rows[0].teacher_user_id,
-        studentId,
-        isDemoRequest ? "Demo teklifiniz kabul edildi" : "Teklifiniz kabul edildi",
-        `${studentDisplayName}, "${requestTopic}" teklifinizi kabul etti. Paket ve ilk ders oturumu oluşturuldu.`,
-        JSON.stringify({
-          kind: "lesson_offer_accepted",
-          requestId,
-          offerId,
-          packageId,
-          lessonSessionId,
-          teacherId,
-        }),
-      ],
+    await notifyParentInApp(
+      offerRow.rows[0].teacher_user_id as string,
+      isDemoRequest ? "Demo teklifiniz kabul edildi" : "Teklifiniz kabul edildi",
+      `${studentDisplayName}, "${requestTopic}" teklifinizi kabul etti. Paket ve ilk ders oturumu oluşturuldu.`,
+      {
+        kind: "lesson_offer_accepted",
+        requestId,
+        offerId,
+        packageId,
+        lessonSessionId,
+        teacherId,
+        dedupeKey: `lesson_offer_accepted:${offerId}`,
+      },
+      { studentId },
+      client,
     );
 
     if ((autoRejectedOffers.rowCount ?? 0) > 0) {
@@ -1189,7 +1175,10 @@ lessonRequests.post("/:requestId/offers/:offerId/decide", requireAuth, async (c)
                 jsonb_build_object(
                   'kind', 'lesson_offer_matched_elsewhere',
                   'requestId', $1::uuid,
-                  'teacherId', o.teacher_id
+                  'teacherId', o.teacher_id,
+                  'href', '/teacher/requests',
+                  'priority', 'high',
+                  'actionLabel', 'Teklifi gör'
                 ),
                 'sent',
                 now()

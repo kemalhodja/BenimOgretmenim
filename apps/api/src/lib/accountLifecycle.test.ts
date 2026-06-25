@@ -3,6 +3,7 @@ import {
   accountStatusBlocksAccess,
   isAccountStatusExemptPath,
   loadUserAccountStatus,
+  notifyLessonVideoPublishedToGradeStudents,
 } from "./accountLifecycle.js";
 
 describe("accountLifecycle", () => {
@@ -51,5 +52,40 @@ describe("accountLifecycle", () => {
       deletion_requested_at: null,
       deletion_reason: null,
     });
+  });
+
+  it("dedupes lesson video publish notifications per video and daily cap", async () => {
+    const inserts: unknown[][] = [];
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [{ user_id: "user-a" }, { user_id: "user-b" }],
+        rowCount: 2,
+      })
+      .mockImplementationOnce(async (_sql: string, params?: unknown[]) => {
+        inserts.push(params ?? []);
+        return { rows: [], rowCount: 1 };
+      })
+      .mockImplementationOnce(async (_sql: string, params?: unknown[]) => {
+        inserts.push(params ?? []);
+        return { rows: [], rowCount: 1 };
+      })
+      .mockResolvedValueOnce({ rows: [{ c: 2 }] });
+    const db = { query };
+
+    const result = await notifyLessonVideoPublishedToGradeStudents(
+      {
+        id: "video-1",
+        title: "Test video",
+        gradeLevel: 8,
+        branchId: 1,
+        branchName: "Matematik",
+      },
+      db as import("pg").Pool,
+    );
+
+    expect(result).toEqual({ notified: 2, skipped: 0 });
+    expect(inserts).toHaveLength(2);
+    expect(String(inserts[0]?.[3])).toContain("lesson_video_published");
   });
 });

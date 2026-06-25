@@ -18,6 +18,7 @@ Yeni dosyalar:
 | `059_faz2_ops_settings_storage_email.sql` | `platform_ops_settings`, `email_outbox`, veli e-posta tercihleri |
 | `060_product_vision_gaps.sql` | Ürün vizyonu boşlukları (kurs/grup/ders) |
 | `061_ai_trust_performance.sql` | Zigo vitrin, veli kredileri, anlık ders, haftalık rapor tabloları |
+| `066_notification_inbox_indexes.sql` | Bildirim inbox okunmamış + dedupe indeksleri |
 
 Deploy `preDeployCommand` migration sonrası `db:seed:zigo` çalıştırır (tablo boşsa demo vitrin; doluysa atlar).
 
@@ -26,6 +27,7 @@ Doğrulama (psql veya admin health):
 ```sql
 SELECT column_name FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'account_status';
 SELECT key FROM platform_ops_settings;
+SELECT indexname FROM pg_indexes WHERE tablename = 'parent_notifications' AND indexname LIKE '%unread%';
 ```
 
 ## 2) Render env — API
@@ -77,6 +79,15 @@ Manuel kontrol:
 - [ ] Giriş → `/ayarlar/hesap` (KVKK talebi formu)
 - [ ] Admin → `/admin/destek-sla`, `/admin/otomatik-cekim`
 - [ ] Öğretmen → `/teacher/cuzdan` SLA metni, `/teacher/dogrulama`
+- [ ] Giriş → bildirim zili (`/v1/notifications/summary` 200)
+- [ ] Veli → `/guardian#haftalik-ozet` kartı
+- [ ] API SSE: `GET /v1/notifications/stream` (girişli, `text/event-stream`)
+
+## 5b) Bildirim / SSE notları
+
+- Tüm yeni `parent_notifications` kayıtları `notifyParentInApp` üzerinden `href`, `priority`, `actionLabel` alır.
+- Render/nginx arkasında SSE için API yanıtında `X-Accel-Buffering: no` gönderilir.
+- Web `useNotificationInbox` SSE + 60 sn polling yedek kullanır.
 
 ## 6) Play / TWA (ayrı adım)
 

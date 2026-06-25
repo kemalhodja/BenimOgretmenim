@@ -21,6 +21,9 @@ export function GuardianPanelHeader() {
           <Link href="/guardian/requests" className={panelNavLinkDesk}>
             İlanlar
           </Link>
+          <Link href="/guardian/ders-videolari" className={panelNavLinkDesk}>
+            Videolar
+          </Link>
           <Link href="/yardim" className={panelNavLinkDesk}>
             Yardım
           </Link>
@@ -33,6 +36,9 @@ export function GuardianPanelHeader() {
         <div className="flex w-full overflow-x-auto text-xs">
           <Link href="/guardian/requests" className={panelNavLinkMob}>
             İlanlar
+          </Link>
+          <Link href="/guardian/ders-videolari" className={panelNavLinkMob}>
+            Videolar
           </Link>
           <Link href="/yardim" className={panelNavLinkMob}>
             Yardım

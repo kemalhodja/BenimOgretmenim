@@ -14,6 +14,7 @@ import {
   refreshSessionFromServer,
 } from "../lib/auth";
 import { loginHrefWithReturn, registerHrefWithReturn } from "../lib/authRedirect";
+import { NotificationBell } from "./NotificationBell";
 
 export function HeaderAuthActions() {
   const pathname = usePathname() ?? "";
@@ -68,6 +69,7 @@ export function HeaderAuthActions() {
     const onPanel = role ? isOnRolePanel(role, pathname) : false;
     return (
       <div className="flex shrink-0 items-center gap-2">
+        <NotificationBell />
         {!onPanel ? (
           <Link
             href={panelHref}

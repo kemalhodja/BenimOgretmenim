@@ -20,7 +20,7 @@ Tahta şikayetleri ve rekabet analizi sonrası eksiklerin önceliklendirilmiş y
 | # | Özellik | Durum | Not |
 |---|---------|-------|-----|
 | 1.1 | Ödev havuzu SLA istatistikleri UI | ✅ | ödev-sor sayfası banner |
-| 1.2 | Bildirim merkezi iyileştirmesi | ✅ | `/bildirimler` + panel link |
+| 1.2 | Bildirim merkezi iyileştirmesi | ✅ | `/bildirimler` + zil + SSE stream + deep link |
 | 1.3 | Öğrenci “bugün” kartı (panel) | ✅ | “Bugün ne yapmalıyım?” bölümü |
 | 1.4 | Mini deneme (10 soru) | ✅ | `mode=mini` API + çalışma sayfası |
 | 1.5 | Güven rozetleri (öğretmen kartı) | ✅ | Güven puanı, doğrulama, doküman rozetleri |
@@ -39,15 +39,26 @@ Tahta şikayetleri ve rekabet analizi sonrası eksiklerin önceliklendirilmiş y
 
 | # | Özellik | Durum | Not |
 |---|---------|-------|-----|
+| 3.0 | Oturum sertleştirme (cookie-first JWT) | ✅ | `SESSION_HARDENING.md`, `commitAuthSession()` |
+| 3.0b | Bildirim payload standardı (tüm akışlar) | ✅ | `notifyParentInApp` / `parentNotifyRecipients` |
+| 3.0c | Veli haftalık özet | ✅ | `GET /v1/guardians/weekly-summary`, guardian panel |
+| 3.0d | SSE bildirim özeti | ✅ | `GET /v1/notifications/stream`, `X-Accel-Buffering: no` |
 | 3.1 | AI ödev sınıflandırma genişletme | ✅ | `routing_priority`, `needs_clarification`, `content_quality`, `recommended_teacher_tags`; havuz sıralaması |
 | 3.2 | SEO / güven sayfaları sitemap | ✅ | `/iade`, `/itiraz` + `SEO_LAUNCH_CHECKLIST.md` |
 | 3.3 | Play Store / TWA dokümantasyon | ✅ | `RELEASE_CHECKLIST.md`, `/uygulama` Play bölümü |
-| 3.4 | `.com.tr` DNS | ⏳ | Turhost — kullanıcı aksiyonu (`DEPLOYMENT.md`, `SEO_LAUNCH_CHECKLIST.md`) |
+| 3.4 | `.com.tr` DNS | ⏳ | Turhost + Render — `DNS_FIX.md` (www API'ye değil web'e) |
 | 3.5 | `assetlinks.json` canlı | ⏳ | Play App Signing SHA-256 sonrası deploy |
 
 **Backend:** `homeworkPosts.ts` heuristic_v2, öğretmen havuzu `routing_priority` sıralaması.
 
 **Dağıtım:** Play bireysel hesap rehberi `PLAY_CONSOLE_COMPLIANCE.md`; yayın adımları `apps/twa-android/RELEASE_CHECKLIST.md`.
+
+## Faz 5 — Lansman sonrası (opsiyonel)
+
+| # | Özellik | Durum | Not |
+|---|---------|-------|-----|
+| 5.1 | Web Push (PWA) | ⏳ | SSE + e-posta yeterli MVP; VAPID + service worker |
+| 5.2 | Redis rate limit | ⏳ | Prod varsayılan `postgres` rate limit aktif |
 
 ## Tahta şikayeti → BO karşılığı
 

@@ -3,6 +3,7 @@ import { pool } from "../db.js";
 import { applyWalletDelta } from "./wallet.js";
 import { chargeWalletHold, createWalletHold, getWalletAvailableMinor, releaseWalletHold } from "./walletHolds.js";
 import { settleCourseSessionTeacherPayout, voidPendingCoursePayoutsForEnrollmentRefund } from "./courseTeacherPayout.js";
+import { notifyStudentAndGuardians } from "./parentNotifyRecipients.js";
 
 export async function holdCourseEnrollmentPayment(
   opts: {
@@ -120,38 +121,22 @@ async function notifyCourseEnrollmentCancelled(
   const amountLabel = `${(opts.refundAmountMinor / 100).toFixed(2)} ${opts.currency}`;
   const refunded = opts.status === "refunded" && opts.refundAmountMinor > 0;
 
-  await client.query(
-    `insert into parent_notifications (
-       recipient_user_id, student_id, snapshot_id, channel, title, body, payload_jsonb, delivery_status, sent_at
-     )
-     select recipient_user_id, $1::uuid, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
-     from (
-       select st.user_id as recipient_user_id
-       from students st
-       where st.id = $1::uuid
-       union
-       select sg.guardian_user_id as recipient_user_id
-       from student_guardians sg
-       where sg.student_id = $1::uuid
-     ) recipients`,
-    [
-      opts.studentId,
-      refunded ? "Kurs kaydı iptal edildi ve iade yapıldı" : "Kurs kaydı iptal edildi",
-      refunded
-        ? `${courseTitle} / ${cohortTitle} kaydınız iptal edildi. ${amountLabel} öğrenci cüzdanınıza iade edildi.`
-        : `${courseTitle} / ${cohortTitle} kaydınız iptal edildi. Tahsilat yapılmadığı için iade tutarı oluşmadı.`,
-      JSON.stringify({
-        kind: "course_enrollment_cancelled",
-        enrollmentId: opts.enrollmentId,
-        courseId: opts.courseId,
-        cohortId: opts.cohortId,
-        studentId: opts.studentId,
-        refundAmountMinor: opts.refundAmountMinor,
-        currency: opts.currency,
-        status: opts.status,
-        href: "/student/kurslar",
-      }),
-    ],
+  await notifyStudentAndGuardians(
+    client,
+    opts.studentId,
+    refunded ? "Kurs kaydı iptal edildi ve iade yapıldı" : "Kurs kaydı iptal edildi",
+    refunded
+      ? `${courseTitle} / ${cohortTitle} kaydınız iptal edildi. ${amountLabel} öğrenci cüzdanınıza iade edildi.`
+      : `${courseTitle} / ${cohortTitle} kaydınız iptal edildi. Tahsilat yapılmadığı için iade tutarı oluşmadı.`,
+    {
+      kind: "course_enrollment_cancelled",
+      enrollmentId: opts.enrollmentId,
+      courseId: opts.courseId,
+      cohortId: opts.cohortId,
+      studentId: opts.studentId,
+      refundAmountMinor: opts.refundAmountMinor,
+      currency: opts.currency,
+    },
   );
 }
 
@@ -314,35 +299,21 @@ async function notifyCourseEnrollmentCharged(
   const cohortTitle = details.rows[0]?.cohort_title ?? "Grup";
   const amountLabel = `${(opts.amountMinor / 100).toFixed(2)} ${opts.currency}`;
 
-  await client.query(
-    `insert into parent_notifications (
-       recipient_user_id, student_id, snapshot_id, channel, title, body, payload_jsonb, delivery_status, sent_at
-     )
-     select recipient_user_id, $1::uuid, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
-     from (
-       select st.user_id as recipient_user_id
-       from students st
-       where st.id = $1::uuid
-       union
-       select sg.guardian_user_id as recipient_user_id
-       from student_guardians sg
-       where sg.student_id = $1::uuid
-     ) recipients`,
-    [
-      opts.studentId,
-      "Kurs ücreti tahsil edildi",
-      `${courseTitle} / ${cohortTitle} için blokede bekleyen ${amountLabel} kurs başlangıcıyla tahsil edildi.`,
-      JSON.stringify({
-        kind: "course_enrollment_charge",
-        enrollmentId: opts.enrollmentId,
-        courseId: opts.courseId,
-        cohortId: opts.cohortId,
-        studentId: opts.studentId,
-        amountMinor: opts.amountMinor,
-        currency: opts.currency,
-        href: "/student/kurslar",
-      }),
-    ],
+  await notifyStudentAndGuardians(
+    client,
+    opts.studentId,
+    "Kurs ücreti tahsil edildi",
+    `${courseTitle} / ${cohortTitle} için blokede bekleyen ${amountLabel} kurs başlangıcıyla tahsil edildi.`,
+    {
+      kind: "course_enrollment_charge",
+      enrollmentId: opts.enrollmentId,
+      courseId: opts.courseId,
+      cohortId: opts.cohortId,
+      studentId: opts.studentId,
+      amountMinor: opts.amountMinor,
+      currency: opts.currency,
+      href: "/student/kurslar",
+    },
   );
 }
 

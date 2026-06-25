@@ -93,6 +93,9 @@ async function createLessonSessionReminders(client: Queryable, w: ReminderWindow
                 'scheduledStart', r.scheduled_start,
                 'meetingUrl', r.meeting_url,
                 'classroomHref', concat('/classroom/lesson/', r.id),
+                'href', concat('/classroom/lesson/', r.id),
+                'priority', case when $1 = 'lesson_reminder_2h' then 'urgent' else 'high' end,
+                'actionLabel', 'Derse git',
                 'recipientKind', r.recipient_kind
               ),
               'sent',
@@ -189,6 +192,9 @@ async function createCourseSessionReminders(client: Queryable, w: ReminderWindow
                 'scheduledStart', r.scheduled_start,
                 'meetingUrl', r.meeting_url,
                 'classroomHref', concat('/classroom/course/', r.id),
+                'href', concat('/classroom/course/', r.id),
+                'priority', case when $1 = 'lesson_reminder_2h' then 'urgent' else 'high' end,
+                'actionLabel', 'Derse git',
                 'recipientKind', r.recipient_kind
               ),
               'sent',
@@ -254,7 +260,10 @@ async function createDirectBookingReminders(client: Queryable, w: ReminderWindow
                   'kind', 'direct_booking_reminder',
                   'directBookingId', r.id,
                   'scheduledStart', r.scheduled_start,
-                  'meetingUrl', r.meeting_url
+                  'meetingUrl', r.meeting_url,
+                  'href', '/student/dogrudan-dersler',
+                  'priority', case when $1 = 'lesson_reminder_2h' then 'urgent' else 'high' end,
+                  'actionLabel', 'Rezervasyon'
                 ),
                 'sent',
                 now(),

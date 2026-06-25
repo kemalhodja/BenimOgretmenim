@@ -5,6 +5,7 @@ import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import { allocateGuardianLessonCredits } from "../lib/guardianLessonCredits.js";
+import { notifyParentInApp } from "../lib/inAppNotifications.js";
 
 const linkSchema = z.object({
   guardianUserId: z.string().uuid(),
@@ -168,32 +169,34 @@ guardians.post("/accept-invite", requireAuth, async (c) => {
     );
     const studentUserId = studentUser.rows[0]?.user_id as string | undefined;
     const studentName = (studentUser.rows[0]?.display_name as string | undefined) ?? "Öğrenci";
-    await client.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        userId,
-        row.student_id,
-        "Öğrenci hesabı bağlandı",
-        `${studentName} hesabı veli panelinize eklendi.`,
-        JSON.stringify({ kind: "guardian_invite_accepted", studentId: row.student_id, inviteId: row.id }),
-      ],
+    await notifyParentInApp(
+      userId,
+      "Öğrenci hesabı bağlandı",
+      `${studentName} hesabı veli panelinize eklendi.`,
+      {
+        kind: "guardian_invite_accepted",
+        studentId: row.student_id,
+        inviteId: row.id,
+        href: "/guardian",
+        dedupeKey: `guardian_invite_accepted:${row.id}:${userId}`,
+      },
+      { studentId: row.student_id as string },
+      client,
     );
     if (studentUserId && studentUserId !== userId) {
-      await client.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          studentUserId,
-          row.student_id,
-          "Veli bağlantısı tamamlandı",
-          "Davet kodunuz kullanıldı ve veli hesabı öğrencinize bağlandı.",
-          JSON.stringify({ kind: "guardian_invite_accepted", studentId: row.student_id, guardianUserId: userId }),
-        ],
+      await notifyParentInApp(
+        studentUserId,
+        "Veli bağlantısı tamamlandı",
+        "Davet kodunuz kullanıldı ve veli hesabı öğrencinize bağlandı.",
+        {
+          kind: "guardian_invite_accepted_student",
+          studentId: row.student_id,
+          guardianUserId: userId,
+          href: "/student/panel",
+          dedupeKey: `guardian_invite_accepted_student:${row.id}:${studentUserId}`,
+        },
+        { studentId: row.student_id as string },
+        client,
       );
     }
     await client.query(
@@ -222,7 +225,8 @@ guardians.get("/overview", requireAuth, async (c) => {
 
   const students = await pool.query(
     `select s.id as student_id,
-            su.display_name as student_display_name
+            su.display_name as student_display_name,
+            s.grade_level
      from student_guardians sg
      join students s on s.id = sg.student_id
      join users su on su.id = s.user_id
@@ -525,6 +529,69 @@ guardians.post("/lesson-credits", requireAuth, async (c) => {
     }
     throw e;
   }
+});
+
+guardians.get("/weekly-summary", requireAuth, async (c) => {
+  const userId = c.get("userId");
+  if (c.get("userRole") !== "guardian") return c.json({ error: "forbidden_guardians_only" }, 403);
+
+  const weekStart = new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString();
+
+  const r = await pool.query<{
+    student_count: number;
+    curriculum_tests: number;
+    homework_signals: number;
+    lesson_signals: number;
+    unread_notifications: number;
+  }>(
+    `with linked as (
+       select sg.student_id
+       from student_guardians sg
+       where sg.guardian_user_id = $1
+     )
+     select
+       (select count(*)::int from linked) as student_count,
+       (select count(*)::int
+        from student_curriculum_test_attempts a
+        join linked l on l.student_id = a.student_id
+        where a.created_at >= $2::timestamptz) as curriculum_tests,
+       (select count(*)::int
+        from parent_notifications n
+        join linked l on l.student_id = n.student_id
+        where n.recipient_user_id = $1
+          and n.created_at >= $2::timestamptz
+          and coalesce(n.payload_jsonb->>'kind', '') like '%homework%') as homework_signals,
+       (select count(*)::int
+        from parent_notifications n
+        where n.recipient_user_id = $1
+          and n.created_at >= $2::timestamptz
+          and coalesce(n.payload_jsonb->>'kind', '') like '%lesson%') as lesson_signals,
+       (select count(*)::int
+        from parent_notifications n
+        where n.recipient_user_id = $1 and n.read_at is null) as unread_notifications`,
+    [userId, weekStart],
+  );
+
+  const row = r.rows[0];
+  const latestReport = await pool.query<{ report_preview: string; week_start: string }>(
+    `select left(report_body, 400) as report_preview, week_start::text
+     from guardian_weekly_reports
+     where guardian_user_id = $1
+     order by week_start desc
+     limit 1`,
+    [userId],
+  ).catch(() => ({ rows: [] as { report_preview: string; week_start: string }[] }));
+
+  return c.json({
+    weekStart,
+    students: row?.student_count ?? 0,
+    curriculumTests: row?.curriculum_tests ?? 0,
+    homeworkSignals: row?.homework_signals ?? 0,
+    lessonSignals: row?.lesson_signals ?? 0,
+    unreadNotifications: row?.unread_notifications ?? 0,
+    latestReportPreview: latestReport.rows[0]?.report_preview ?? null,
+    latestReportWeek: latestReport.rows[0]?.week_start ?? null,
+  });
 });
 
 guardians.get("/weekly-reports", requireAuth, async (c) => {

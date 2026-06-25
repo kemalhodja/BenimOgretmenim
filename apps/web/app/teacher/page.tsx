@@ -5,10 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { TeacherZigoPublish } from "../components/teacher/TeacherZigoPublish";
 import { QuickStartBanner, TEACHER_START_STEPS } from "../components/QuickStartBanner";
+import { TeacherFlowExplainer } from "../components/TeacherFlowExplainer";
 import { apiFetch } from "../lib/api";
 import { loginHrefWithReturn } from "../lib/authRedirect";
 import { clearToken, getToken } from "../lib/auth";
 import { trackEvent } from "../lib/trackEvent";
+import { notificationKindLabel, resolveNotificationHref } from "../lib/notifications";
 
 type SubMe = {
   active: boolean;
@@ -139,94 +141,6 @@ function tryYoutubeEmbed(url: string | null): string | null {
   } catch {
     return null;
   }
-}
-
-function teacherNotifHref(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") return null;
-  const o = payload as {
-    kind?: string;
-    classroomHref?: string;
-    actionHref?: string;
-    requestId?: string;
-    lessonSessionId?: string;
-    courseSessionId?: string;
-    groupLessonId?: string;
-    directBookingId?: string;
-  };
-  if (typeof o.classroomHref === "string" && o.classroomHref.startsWith("/classroom/")) {
-    return o.classroomHref;
-  }
-  if (typeof o.actionHref === "string" && o.actionHref.startsWith("/teacher/")) {
-    return o.actionHref;
-  }
-  if (
-    o.kind === "lesson_scheduled" ||
-    o.kind === "lesson_completed" ||
-    o.kind === "lesson_reminder_24h" ||
-    o.kind === "lesson_reminder_2h" ||
-    typeof o.lessonSessionId === "string"
-  ) {
-    return "/teacher/dersler";
-  }
-  if (
-    o.kind === "course_session_scheduled" ||
-    o.kind === "course_session_reminder_24h" ||
-    o.kind === "course_session_reminder_2h" ||
-    typeof o.courseSessionId === "string"
-  ) {
-    return "/teacher/kurslar";
-  }
-  if (
-    o.kind === "group_lesson_created" ||
-    o.kind === "group_lesson_targeted" ||
-    o.kind === "group_lesson_joined_teacher" ||
-    typeof o.groupLessonId === "string"
-  ) {
-    return "/teacher/grup-dersler";
-  }
-  if (
-    o.kind === "direct_booking_created" ||
-    o.kind === "direct_booking_funded" ||
-    typeof o.directBookingId === "string"
-  ) {
-    return "/teacher/dogrudan-dersler";
-  }
-  if (
-    (
-      o.kind === "lesson_request_shortlisted" ||
-      o.kind === "lesson_request_demo_targeted" ||
-      o.kind === "lesson_request_created_teacher" ||
-      o.kind === "lesson_offer_accepted" ||
-      o.kind === "lesson_offer_rejected" ||
-      o.kind === "lesson_offer_matched_elsewhere"
-    ) &&
-    typeof o.requestId === "string"
-  ) {
-    if (o.kind === "lesson_offer_accepted" || o.kind === "lesson_offer_rejected") {
-      return `/teacher/requests/${o.requestId}`;
-    }
-    return "/teacher/requests";
-  }
-  if (
-    o.kind === "homework_rewarded" ||
-    o.kind === "homework_answer_rejected" ||
-    o.kind === "homework_new_post"
-  ) {
-    return "/teacher/odev-havuzu";
-  }
-  return null;
-}
-
-function teacherNotificationKindLabel(payload: unknown): string {
-  if (!payload || typeof payload !== "object") return "Genel";
-  const kind = String((payload as { kind?: unknown }).kind ?? "");
-  if (kind.includes("homework")) return "Ödev";
-  if (kind.includes("lesson_request") || kind.includes("lesson_offer")) return "Teklif";
-  if (kind.includes("lesson")) return "Ders";
-  if (kind.includes("course")) return "Kurs";
-  if (kind.includes("group")) return "Grup ders";
-  if (kind.includes("direct")) return "Doğrudan ders";
-  return "Genel";
 }
 
 function Stat({ label, value }: { label: string; value: number }) {
@@ -547,7 +461,9 @@ export default function TeacherHomePage() {
   const qualitySignals = me?.profileQualitySignals ?? [];
   const unreadNotifications = notifications.filter((n) => n.read_at == null).length;
   const latestNotification = notifications[0] ?? null;
-  const latestNotificationHref = latestNotification ? teacherNotifHref(latestNotification.payload_jsonb) : null;
+  const latestNotificationHref = latestNotification
+    ? resolveNotificationHref(latestNotification.payload_jsonb, "teacher")
+    : null;
   const reviewScore = me?.teacher.ratingCount
     ? Math.min(20, Math.round(Number(me.teacher.ratingAvg ?? 0) * 4))
     : 0;
@@ -628,6 +544,10 @@ export default function TeacherHomePage() {
             cta={nextBestAction.cta}
             steps={showOnboarding ? TEACHER_START_STEPS : undefined}
           />
+        </div>
+
+        <div className="mt-4">
+          <TeacherFlowExplainer variant="panel" />
         </div>
 
         {showOnboarding ? (
@@ -949,7 +869,7 @@ export default function TeacherHomePage() {
             <div className="mt-4 rounded-xl border border-paper-200 bg-paper-50 p-3 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-paper-800 ring-1 ring-paper-200">
-                  {teacherNotificationKindLabel(latestNotification.payload_jsonb)}
+                  {notificationKindLabel(latestNotification.payload_jsonb)}
                 </span>
                 <span className="text-xs text-paper-800/55">
                   {latestNotification.sent_at ? new Date(latestNotification.sent_at).toLocaleString("tr-TR") : "Zaman yok"}
@@ -1033,7 +953,7 @@ export default function TeacherHomePage() {
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;
-                const actionHref = teacherNotifHref(n.payload_jsonb);
+                const actionHref = resolveNotificationHref(n.payload_jsonb, "teacher");
                 return (
                   <li
                     key={n.id}

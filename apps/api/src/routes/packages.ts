@@ -3,43 +3,12 @@ import { z } from "zod";
 import { pool } from "../db.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { notifyStudentAndGuardians } from "../lib/parentNotifyRecipients.js";
 
 export const packages = new Hono<{ Variables: AppVariables }>();
 
 function meetingBase(): string {
   return (process.env.MEETING_BASE_URL ?? "https://meet.jit.si").replace(/\/$/, "");
-}
-
-async function notifyStudentAndGuardians({
-  client,
-  studentId,
-  title,
-  body,
-  payload,
-}: {
-  client: Pick<typeof pool, "query">;
-  studentId: string;
-  title: string;
-  body: string;
-  payload: Record<string, unknown>;
-}) {
-  await client.query(
-    `insert into parent_notifications (
-       recipient_user_id, student_id, snapshot_id, channel,
-       title, body, payload_jsonb, delivery_status, sent_at
-     )
-     select recipient_user_id, $1, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
-     from (
-       select st.user_id as recipient_user_id
-       from students st
-       where st.id = $1
-       union
-       select sg.guardian_user_id as recipient_user_id
-       from student_guardians sg
-       where sg.student_id = $1
-     ) recipients`,
-    [studentId, title, body, JSON.stringify(payload)],
-  );
 }
 
 /** Öğretmen: aktif paketler + öğrenciler */
@@ -208,13 +177,13 @@ packages.post("/:packageId/sessions/:sessionId/schedule", requireAuth, async (c)
       meeting_url: string;
     };
     const label = row.request_kind === "demo" ? "Demo ders" : "Ders";
-    await notifyStudentAndGuardians({
+    await notifyStudentAndGuardians(
       client,
-      studentId: row.student_id,
-      title: `${label} planlandı`,
-      body: `${label} ${new Date(start).toLocaleString("tr-TR")} için planlandı. Meeting linki dersler ekranında hazır.`,
-      payload: { kind: "lesson_scheduled", packageId, sessionId },
-    });
+      row.student_id,
+      `${label} planlandı`,
+      `${label} ${new Date(start).toLocaleString("tr-TR")} için planlandı. Meeting linki dersler ekranında hazır.`,
+      { kind: "lesson_scheduled", packageId, sessionId },
+    );
 
     await client.query("commit");
     return c.json({ session: r.rows[0] });
@@ -301,16 +270,15 @@ packages.post("/:packageId/sessions/:sessionId/complete", requireAuth, async (c)
     );
 
     const label = current.request_kind === "demo" ? "Demo ders" : "Ders";
-    await notifyStudentAndGuardians({
+    await notifyStudentAndGuardians(
       client,
-      studentId: current.student_id,
-      title: `${label} tamamlandı`,
-      body:
-        current.request_kind === "demo"
-          ? "Demo ders tamamlandı. Öğretmene yorum bırakabilir, devam paketi için talep sohbetinden ilerleyebilirsiniz."
-          : "Ders tamamlandı. Öğretmene yorum bırakabilir ve gelişim özetinizi takip edebilirsiniz.",
-      payload: { kind: "lesson_completed", packageId, sessionId },
-    });
+      current.student_id,
+      `${label} tamamlandı`,
+      current.request_kind === "demo"
+        ? "Demo ders tamamlandı. Öğretmene yorum bırakabilir, devam paketi için talep sohbetinden ilerleyebilirsiniz."
+        : "Ders tamamlandı. Öğretmene yorum bırakabilir ve gelişim özetinizi takip edebilirsiniz.",
+      { kind: "lesson_completed", packageId, sessionId },
+    );
 
     await client.query("commit");
     return c.json({ ok: true, session: session.rows[0] });

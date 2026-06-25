@@ -14,12 +14,23 @@ const deletionRequestSchema = z.object({
   confirmEmail: z.string().email(),
 });
 
-const registerSchema = z.object({
-  email: z.string().email().max(320),
-  password: z.string().min(8).max(128),
-  displayName: z.string().min(1).max(120),
-  role: z.enum(["student", "teacher", "guardian"]),
-});
+const registerSchema = z
+  .object({
+    email: z.string().email().max(320),
+    password: z.string().min(8).max(128),
+    displayName: z.string().min(1).max(120),
+    role: z.enum(["student", "teacher", "guardian"]),
+    gradeLevel: z.number().int().min(1).max(12).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.role === "student" && data.gradeLevel == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "grade_level_required",
+        path: ["gradeLevel"],
+      });
+    }
+  });
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -39,7 +50,7 @@ auth.post("/register", async (c) => {
     return c.json({ error: parsed.error.flatten() }, 400);
   }
 
-  const { email, password, displayName, role } = parsed.data;
+  const { email, password, displayName, role, gradeLevel } = parsed.data;
   const hash = await bcrypt.hash(password, 10);
 
   const client = await pool.connect();
@@ -64,7 +75,10 @@ auth.post("/register", async (c) => {
       await client.query(`insert into teachers (user_id) values ($1)`, [user.id]);
     }
     if (role === "student") {
-      await client.query(`insert into students (user_id) values ($1)`, [user.id]);
+      await client.query(`insert into students (user_id, grade_level) values ($1, $2)`, [
+        user.id,
+        gradeLevel ?? null,
+      ]);
     }
 
     await client.query("commit");
@@ -204,6 +218,16 @@ auth.get("/me", requireAuth, async (c) => {
   if (!row) {
     return c.json({ error: "not_found" }, 404);
   }
+
+  let studentProfile: { gradeLevel: number | null } | null = null;
+  if (row.role === "student") {
+    const sr = await pool.query(`select grade_level from students where user_id = $1`, [userId]);
+    studentProfile = {
+      gradeLevel:
+        sr.rows[0]?.grade_level != null ? Number(sr.rows[0].grade_level) : null,
+    };
+  }
+
   return c.json({
     user: {
       id: row.id,
@@ -212,6 +236,7 @@ auth.get("/me", requireAuth, async (c) => {
       role: row.role,
       adminScope: row.role === "admin" ? (row.admin_scope ?? "full") : null,
       created_at: row.created_at,
+      studentProfile,
     },
     account: {
       status: row.account_status ?? "active",

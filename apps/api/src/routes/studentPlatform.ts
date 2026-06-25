@@ -12,6 +12,12 @@ import {
   releaseExpiredHomeworkClaims,
   scoreHomeworkAnswer,
 } from "../lib/homeworkPosts.js";
+import { notifyParentInApp } from "../lib/inAppNotifications.js";
+import {
+  notifyStudentAndGuardians,
+  notifyTeacherByTeacherId,
+  notifyTeachersInBranch,
+} from "../lib/parentNotifyRecipients.js";
 import { resolvePlatformHomeworkWalletUserId } from "../lib/platformHomeworkWallet.js";
 import { applyWalletDelta, teacherPayoutFromGross } from "../lib/wallet.js";
 import {
@@ -34,6 +40,42 @@ import { ensureDirectBookingThread } from "../lib/userMessaging.js";
 import { allocateGuardianLessonCredits, consumeGuardianLessonCredit } from "../lib/guardianLessonCredits.js";
 
 export const studentPlatform = new Hono<{ Variables: AppVariables }>();
+
+const studentProfilePatchSchema = z.object({
+  gradeLevel: z.number().int().min(1).max(12),
+});
+
+studentPlatform.get("/profile", requireAuth, async (c) => {
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+  const r = await pool.query(`select id, grade_level from students where user_id = $1`, [c.get("userId")]);
+  if (!r.rowCount) return c.json({ error: "student_profile_missing" }, 400);
+  return c.json({
+    student: {
+      id: r.rows[0].id,
+      gradeLevel: r.rows[0].grade_level != null ? Number(r.rows[0].grade_level) : null,
+    },
+  });
+});
+
+studentPlatform.patch("/profile", requireAuth, async (c) => {
+  if (c.get("userRole") !== "student") return c.json({ error: "forbidden_students_only" }, 403);
+  const parsed = studentProfilePatchSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const r = await pool.query(
+    `update students set grade_level = $2, updated_at = now()
+     where user_id = $1
+     returning id, grade_level`,
+    [c.get("userId"), parsed.data.gradeLevel],
+  );
+  if (!r.rowCount) return c.json({ error: "student_profile_missing" }, 400);
+  return c.json({
+    student: {
+      id: r.rows[0].id,
+      gradeLevel: Number(r.rows[0].grade_level),
+    },
+  });
+});
 
 const purchaseSubSchema = z.object({
   months: z.number().int().min(1).max(60).optional(),
@@ -288,33 +330,19 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
     parsed.data.topic.trim().length > 120
       ? `${parsed.data.topic.trim().slice(0, 117)}…`
       : parsed.data.topic.trim();
-  await pool.query(
-    `insert into parent_notifications (
-       recipient_user_id, student_id, snapshot_id, channel,
-       title, body, payload_jsonb, delivery_status, sent_at
-     )
-     select u.id, $2::uuid, null, 'in_app',
-            $3, $4, $5::jsonb, 'sent', now()
-     from teacher_branches tb
-     join teachers t on t.id = tb.teacher_id
-     join users u on u.id = t.user_id
-     where tb.branch_id = $1
-       and u.role = 'teacher'
-     order by tb.created_at desc nulls last
-     limit 200`,
-    [
-      parsed.data.branchId,
-      studentId,
-      "Yeni soru/ödev",
-      `"${topicShort}" için branş havuzunda yeni bir soru var. İlk üstlenen 20 dk boyunca çözebilir.`,
-      JSON.stringify({
-        kind: "homework_new_post",
-        homeworkPostId: created.id,
-        branchId: parsed.data.branchId,
-        urgencyLevel: parsed.data.urgencyLevel,
-        targetAnswerMinutes: targetMinutes,
-      }),
-    ],
+  await notifyTeachersInBranch(
+    pool,
+    parsed.data.branchId,
+    studentId,
+    "Yeni soru/ödev",
+    `"${topicShort}" için branş havuzunda yeni bir soru var. İlk üstlenen 20 dk boyunca çözebilir.`,
+    {
+      kind: "homework_new_post",
+      homeworkPostId: created.id,
+      branchId: parsed.data.branchId,
+      urgencyLevel: parsed.data.urgencyLevel,
+      targetAnswerMinutes: targetMinutes,
+    },
   );
 
   const stuUidRow = await pool.query(`select user_id from students where id = $1`, [studentId]);
@@ -323,28 +351,22 @@ studentPlatform.post("/homework-posts", requireAuth, async (c) => {
     `select guardian_user_id from student_guardians where student_id = $1`,
     [studentId],
   );
-  const gNewPayload = JSON.stringify({
-    kind: "homework_new_post_guardian",
-    homeworkPostId: created.id,
-    branchId: parsed.data.branchId,
-    urgencyLevel: parsed.data.urgencyLevel,
-    targetAnswerMinutes: targetMinutes,
-  });
   for (const g of gNewRows.rows) {
     const gid = g.guardian_user_id as string;
     if (studentUserIdForGuard && gid === studentUserIdForGuard) continue;
-    await pool.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        gid,
-        studentId,
-        "Öğrenci ödev gönderdi",
-        `"${topicShort}" konusunda branş havuzuna soru/ödev eklendi.`,
-        gNewPayload,
-      ],
+    await notifyParentInApp(
+      gid,
+      "Öğrenci ödev gönderdi",
+      `"${topicShort}" konusunda branş havuzuna soru/ödev eklendi.`,
+      {
+        kind: "homework_new_post_guardian",
+        homeworkPostId: created.id,
+        branchId: parsed.data.branchId,
+        urgencyLevel: parsed.data.urgencyLevel,
+        targetAnswerMinutes: targetMinutes,
+      },
+      { studentId },
+      pool,
     );
     await queueGuardianEmail({
       guardianUserId: gid,
@@ -448,25 +470,16 @@ studentPlatform.post("/direct-bookings", requireAuth, async (c) => {
       parsed.data.meetingUrl ?? null,
     ],
   );
-  await pool.query(
-    `insert into parent_notifications (
-       recipient_user_id, student_id, snapshot_id, channel,
-       title, body, payload_jsonb, delivery_status, sent_at
-     )
-     select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
-     from teachers t
-     join users u on u.id = t.user_id
-     where t.id = $1`,
-    [
-      parsed.data.teacherId,
-      studentId,
-      "Yeni doğrudan ders anlaşması",
-      `${moneyTl(parsed.data.agreedAmountMinor)} tutarında doğrudan ders anlaşması oluşturuldu. Öğrenci ödemeyi tamamlayınca aksiyon alabilirsiniz.`,
-      JSON.stringify({
-        kind: "direct_booking_created",
-        directBookingId: (ins.rows[0] as { id: string }).id,
-      }),
-    ],
+  await notifyTeacherByTeacherId(
+    pool,
+    parsed.data.teacherId,
+    studentId,
+    "Yeni doğrudan ders anlaşması",
+    `${moneyTl(parsed.data.agreedAmountMinor)} tutarında doğrudan ders anlaşması oluşturuldu. Öğrenci ödemeyi tamamlayınca aksiyon alabilirsiniz.`,
+    {
+      kind: "direct_booking_created",
+      directBookingId: (ins.rows[0] as { id: string }).id,
+    },
   );
   return c.json(
     {
@@ -616,22 +629,13 @@ studentPlatform.post("/direct-bookings/:bookingId/fund-from-wallet", requireAuth
       { bookingId: b.id, studentId: b.student_id, teacherId: b.teacher_id },
       cpool,
     );
-    await cpool.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       )
-       select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
-       from teachers t
-       join users u on u.id = t.user_id
-       where t.id = $1`,
-      [
-        b.teacher_id,
-        studentId,
-        "Doğrudan ders ödemesi tamamlandı",
-        `${moneyTl(Number(b.agreed_amount_minor))} tutarındaki doğrudan ders ödemesi alındı. Dersi verdikten sonra tamamlayarak hak edişi cüzdanınıza aktarabilirsiniz.`,
-        JSON.stringify({ kind: "direct_booking_funded", directBookingId: b.id }),
-      ],
+    await notifyTeacherByTeacherId(
+      cpool,
+      b.teacher_id,
+      studentId,
+      "Doğrudan ders ödemesi tamamlandı",
+      `${moneyTl(Number(b.agreed_amount_minor))} tutarındaki doğrudan ders ödemesi alındı. Dersi verdikten sonra tamamlayarak hak edişi cüzdanınıza aktarabilirsiniz.`,
+      { kind: "direct_booking_funded", directBookingId: b.id },
     );
     await cpool.query("commit");
     return c.json({ ok: true, status: "funded" });
@@ -709,27 +713,12 @@ studentPlatform.post("/direct-bookings/:bookingId/complete", requireAuth, async 
        where id = $1`,
       [b.id, payout],
     );
-    await cpool.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       )
-       select recipient_user_id, $1::uuid, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
-       from (
-         select st.user_id as recipient_user_id
-         from students st
-         where st.id = $1
-         union
-         select sg.guardian_user_id as recipient_user_id
-         from student_guardians sg
-         where sg.student_id = $1
-       ) recipients`,
-      [
-        b.student_id,
-        "Doğrudan ders tamamlandı",
-        "Öğretmen doğrudan dersi tamamlandı olarak işaretledi. Ders anlaşmaları ekranından süreci görebilirsiniz.",
-        JSON.stringify({ kind: "direct_booking_completed", directBookingId: b.id }),
-      ],
+    await notifyStudentAndGuardians(
+      cpool,
+      b.student_id,
+      "Doğrudan ders tamamlandı",
+      "Öğretmen doğrudan dersi tamamlandı olarak işaretledi. Ders anlaşmaları ekranından süreci görebilirsiniz.",
+      { kind: "direct_booking_completed", directBookingId: b.id },
     );
     await cpool.query("commit");
     return c.json({ ok: true, status: "completed" });
@@ -937,22 +926,13 @@ studentPlatform.post("/homework-posts/:postId/claim", requireAuth, async (c) => 
   const su = await pool.query(`select user_id from students where id = $1`, [claimed.student_id]);
   if (su.rowCount) {
     const studentUserId = su.rows[0].user_id as string;
-    await pool.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        studentUserId,
-        claimed.student_id,
-        "Ödev sorunuz üstlenildi",
-        `${teacherName} "${topicShort}" sorunuzu üstlendi; yaklaşık ${resolveMin} dakika içinde cevap beklenir.`,
-        JSON.stringify({
-          kind: "homework_claimed",
-          homeworkPostId: postId,
-          resolveMinutes: resolveMin,
-        }),
-      ],
+    await notifyParentInApp(
+      studentUserId,
+      "Ödev sorunuz üstlenildi",
+      `${teacherName} "${topicShort}" sorunuzu üstlendi; yaklaşık ${resolveMin} dakika içinde cevap beklenir.`,
+      { kind: "homework_claimed", homeworkPostId: postId, resolveMinutes: resolveMin },
+      { studentId: claimed.student_id },
+      pool,
     );
 
     const guardians = await pool.query(
@@ -962,22 +942,17 @@ studentPlatform.post("/homework-posts/:postId/claim", requireAuth, async (c) => 
     for (const g of guardians.rows) {
       const gid = g.guardian_user_id as string;
       if (gid === studentUserId) continue;
-      await pool.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          gid,
-          claimed.student_id,
-          "Öğrencinizin ödevi üstlenildi",
-          `${teacherName}, bağlı öğrencinizin "${topicShort}" sorusunu üstlendi (yaklaşık ${resolveMin} dk içinde cevap beklenir).`,
-          JSON.stringify({
-            kind: "homework_claimed_guardian",
-            homeworkPostId: postId,
-            resolveMinutes: resolveMin,
-          }),
-        ],
+      await notifyParentInApp(
+        gid,
+        "Öğrencinizin ödevi üstlenildi",
+        `${teacherName}, bağlı öğrencinizin "${topicShort}" sorusunu üstlendi (yaklaşık ${resolveMin} dk içinde cevap beklenir).`,
+        {
+          kind: "homework_claimed_guardian",
+          homeworkPostId: postId,
+          resolveMinutes: resolveMin,
+        },
+        { studentId: claimed.student_id },
+        pool,
       );
     }
   }
@@ -1023,18 +998,13 @@ studentPlatform.post("/homework-posts/:postId/teacher-return", requireAuth, asyn
   const su = await pool.query(`select user_id from students where id = $1`, [row.student_id]);
   if (su.rowCount) {
     const studentUserId = su.rows[0].user_id as string;
-    await pool.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        studentUserId,
-        row.student_id,
-        "Ödev sorusu iade edildi",
-        `"${topicShort}" için öğretmen soruyu iade etti; soru tekrar branş havuzunda.`,
-        JSON.stringify({ kind: "homework_teacher_returned", homeworkPostId: postId, branchId: row.branch_id }),
-      ],
+    await notifyParentInApp(
+      studentUserId,
+      "Ödev sorusu iade edildi",
+      `"${topicShort}" için öğretmen soruyu iade etti; soru tekrar branş havuzunda.`,
+      { kind: "homework_teacher_returned", homeworkPostId: postId, branchId: row.branch_id },
+      { studentId: row.student_id },
+      pool,
     );
 
     const guardians = await pool.query(
@@ -1044,22 +1014,17 @@ studentPlatform.post("/homework-posts/:postId/teacher-return", requireAuth, asyn
     for (const g of guardians.rows) {
       const gid = g.guardian_user_id as string;
       if (gid === studentUserId) continue;
-      await pool.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          gid,
-          row.student_id,
-          "Öğrencinizin ödevi iade edildi",
-          `Bağlı öğrencinizin "${topicShort}" sorusu öğretmen tarafından iade edildi; soru tekrar havuzda.`,
-          JSON.stringify({
-            kind: "homework_teacher_returned_guardian",
-            homeworkPostId: postId,
-            branchId: row.branch_id,
-          }),
-        ],
+      await notifyParentInApp(
+        gid,
+        "Öğrencinizin ödevi iade edildi",
+        `Bağlı öğrencinizin "${topicShort}" sorusu öğretmen tarafından iade edildi; soru tekrar havuzda.`,
+        {
+          kind: "homework_teacher_returned_guardian",
+          homeworkPostId: postId,
+          branchId: row.branch_id,
+        },
+        { studentId: row.student_id },
+        pool,
       );
     }
   }
@@ -1134,18 +1099,13 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
     const recipientUserId = su.rows[0].user_id as string;
     const topicShort =
       answered.topic.length > 120 ? `${answered.topic.slice(0, 117)}…` : answered.topic;
-    await pool.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        recipientUserId,
-        answered.student_id,
-        "Ödev sorunuza cevap geldi",
-        `"${topicShort}" konusunda öğretmen cevabını gönderdi. Gönderilerim sayfasından inceleyip onaylayabilirsiniz.`,
-        JSON.stringify({ kind: "homework_answered", homeworkPostId: postId }),
-      ],
+    await notifyParentInApp(
+      recipientUserId,
+      "Ödev sorunuza cevap geldi",
+      `"${topicShort}" konusunda öğretmen cevabını gönderdi. Gönderilerim sayfasından inceleyip onaylayabilirsiniz.`,
+      { kind: "homework_answered", homeworkPostId: postId },
+      { studentId: answered.student_id },
+      pool,
     );
 
     const guardians = await pool.query(
@@ -1155,22 +1115,17 @@ studentPlatform.post("/homework-posts/:postId/answer", requireAuth, async (c) =>
     for (const g of guardians.rows) {
       const gid = g.guardian_user_id as string;
       if (gid === recipientUserId) continue;
-      await pool.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          gid,
-          answered.student_id,
-          "Öğrencinizin ödev sorusuna cevap",
-          `Bağlı öğrencinizin "${topicShort}" sorusuna öğretmen cevap gönderdi. Öğrenci onayladığında ödeme platform havuzundan öğretmene aktarılır.`,
-          JSON.stringify({
-            kind: "homework_answered_guardian",
-            homeworkPostId: postId,
-            studentId: answered.student_id,
-          }),
-        ],
+      await notifyParentInApp(
+        gid,
+        "Öğrencinizin ödev sorusuna cevap",
+        `Bağlı öğrencinizin "${topicShort}" sorusuna öğretmen cevap gönderdi. Öğrenci onayladığında ödeme platform havuzundan öğretmene aktarılır.`,
+        {
+          kind: "homework_answered_guardian",
+          homeworkPostId: postId,
+          studentId: answered.student_id,
+        },
+        { studentId: answered.student_id },
+        pool,
       );
     }
   }
@@ -1281,18 +1236,13 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
 
     const tl = (rewardMinor / 100).toFixed(2);
     const topicShort = row.topic.length > 100 ? `${row.topic.slice(0, 97)}…` : row.topic;
-    await cpool.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        row.teacher_user_id,
-        studentRowId,
-        "Ödev cevabınız onaylandı",
-        `Öğrenci "${topicShort}" sorusunda cevabınızı yeterli buldu. ${tl} TL cüzdanınıza aktarıldı.`,
-        JSON.stringify({ kind: "homework_rewarded", homeworkPostId: postId, rewardMinor }),
-      ],
+    await notifyParentInApp(
+      row.teacher_user_id,
+      "Ödev cevabınız onaylandı",
+      `Öğrenci "${topicShort}" sorusunda cevabınızı yeterli buldu. ${tl} TL cüzdanınıza aktarıldı.`,
+      { kind: "homework_rewarded", homeworkPostId: postId, rewardMinor },
+      { studentId: studentRowId },
+      cpool,
     );
 
     const gRows = await cpool.query(
@@ -1304,38 +1254,24 @@ studentPlatform.post("/homework-posts/:postId/mark-satisfied", requireAuth, asyn
     for (const g of gRows.rows) {
       const gid = g.guardian_user_id as string;
       if (stuUid && gid === stuUid) continue;
-      await cpool.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          gid,
-          studentRowId,
-          "Öğrenci ödev ödemesini onayladı",
-          `Bağlı öğrenciniz "${topicShort}" ödev cevabını onayladı; öğretmene ${tl} TL platform havuzundan aktarıldı.`,
-          JSON.stringify({
-            kind: "homework_rewarded_guardian",
-            homeworkPostId: postId,
-            rewardMinor,
-          }),
-        ],
+      await notifyParentInApp(
+        gid,
+        "Öğrenci ödev ödemesini onayladı",
+        `Bağlı öğrenciniz "${topicShort}" ödev cevabını onayladı; öğretmene ${tl} TL platform havuzundan aktarıldı.`,
+        { kind: "homework_rewarded_guardian", homeworkPostId: postId, rewardMinor },
+        { studentId: studentRowId },
+        cpool,
       );
     }
 
     if (stuUid) {
-      await cpool.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          stuUid,
-          studentRowId,
-          "Ödev ödemesi tamamlandı",
-          `"${topicShort}" için öğretmene ${tl} TL platform havuzundan aktarıldı; işlem tamam.`,
-          JSON.stringify({ kind: "homework_rewarded_student", homeworkPostId: postId, rewardMinor }),
-        ],
+      await notifyParentInApp(
+        stuUid,
+        "Ödev ödemesi tamamlandı",
+        `"${topicShort}" için öğretmene ${tl} TL platform havuzundan aktarıldı; işlem tamam.`,
+        { kind: "homework_rewarded_student", homeworkPostId: postId, rewardMinor },
+        { studentId: studentRowId },
+        cpool,
       );
     }
 
@@ -1434,18 +1370,13 @@ studentPlatform.post("/homework-posts/:postId/reject-answer", requireAuth, async
         ? `Öğrenci "${topicShort}" için cevabınızı yeterli bulmadı; soru tekrar havuza düştü. Öğrenci notu: ${noteForNotif}`
         : `Öğrenci "${topicShort}" için cevabınızı yeterli bulmadı; soru tekrar havuza düştü.`;
 
-      await cpool.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          row.teacher_user_id,
-          studentRowId,
-          "Ödev cevabı iade edildi",
-          teacherBody,
-          JSON.stringify({ kind: "homework_answer_rejected", homeworkPostId: postId }),
-        ],
+      await notifyParentInApp(
+        row.teacher_user_id,
+        "Ödev cevabı iade edildi",
+        teacherBody,
+        { kind: "homework_answer_rejected", homeworkPostId: postId },
+        { studentId: studentRowId },
+        cpool,
       );
     }
 
@@ -1462,18 +1393,13 @@ studentPlatform.post("/homework-posts/:postId/reject-answer", requireAuth, async
     for (const g of gRows.rows) {
       const gid = g.guardian_user_id as string;
       if (stuUid && gid === stuUid) continue;
-      await cpool.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          gid,
-          studentRowId,
-          "Öğrenci ödev cevabını iade etti",
-          guardianBody,
-          JSON.stringify({ kind: "homework_answer_rejected_guardian", homeworkPostId: postId }),
-        ],
+      await notifyParentInApp(
+        gid,
+        "Öğrenci ödev cevabını iade etti",
+        guardianBody,
+        { kind: "homework_answer_rejected_guardian", homeworkPostId: postId },
+        { studentId: studentRowId },
+        cpool,
       );
     }
 
@@ -1656,19 +1582,13 @@ studentPlatform.post("/instant-lessons/:sessionId/fund", requireAuth, async (c) 
        where id = $1`,
       [row.id],
     );
-    await client.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel, title, body, payload_jsonb, delivery_status, sent_at
-       )
-       select u.id, $2::uuid, null, 'in_app', $3, $4, $5::jsonb, 'sent', now()
-       from teachers t join users u on u.id = t.user_id where t.id = $1`,
-      [
-        row.teacher_id,
-        studentId,
-        "Anlık ders talebi",
-        "Öğrenci anlık soru çözümü için ödeme tamamladı. Derse başlayabilirsiniz.",
-        JSON.stringify({ kind: "instant_lesson_funded", sessionId: row.id, fundedBy }),
-      ],
+    await notifyTeacherByTeacherId(
+      client,
+      row.teacher_id,
+      studentId,
+      "Anlık ders talebi",
+      "Öğrenci anlık soru çözümü için ödeme tamamladı. Derse başlayabilirsiniz.",
+      { kind: "instant_lesson_funded", sessionId: row.id, fundedBy },
     );
     await client.query("commit");
     return c.json({ ok: true, status: "funded", fundedBy });

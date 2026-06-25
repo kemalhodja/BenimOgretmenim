@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { secureHeaders } from "hono/secure-headers";
 import { pool } from "./db.js";
+import { isPaytrConfigured } from "./lib/systemHealth.js";
+import { getLessonVideoSchemaStatus } from "./lib/lessonVideoDbReady.js";
 import type { AppVariables } from "./types.js";
 import { auth } from "./routes/auth.js";
 import { onboarding } from "./routes/onboarding.js";
@@ -28,6 +30,7 @@ import { support } from "./routes/support.js";
 import { analytics } from "./routes/analytics.js";
 import { userMessages } from "./routes/userMessages.js";
 import { zigo } from "./routes/zigo.js";
+import { lessonVideos } from "./routes/lessonVideos.js";
 import { proxyMisplacedWebHost } from "./middleware/proxyMisplacedWebHost.js";
 import { requestId } from "./middleware/requestId.js";
 import { requestLog } from "./middleware/requestLog.js";
@@ -184,9 +187,15 @@ app.get("/", (c) => {
 app.get("/health", async (c) => {
   try {
     const r = await pool.query("select 1 as ok");
-    return c.json({ status: "ok", db: r.rows[0]?.ok === 1 });
+    const lessonVideos = await getLessonVideoSchemaStatus();
+    return c.json({
+      status: "ok",
+      db: r.rows[0]?.ok === 1,
+      payments: { paytrAvailable: isPaytrConfigured() },
+      schema: { lessonVideos },
+    });
   } catch {
-    return c.json({ status: "degraded", db: false }, 503);
+    return c.json({ status: "degraded", db: false, schema: { lessonVideos: { ready: false } } }, 503);
   }
 });
 
@@ -205,6 +214,7 @@ app.route("/v1/courses", courses);
 app.route("/v1/teacher-campaigns", teacherCampaigns);
 app.route("/v1/classroom", classroom);
 app.route("/v1/learning", learning);
+app.route("/v1/lesson-videos", lessonVideos);
 app.route("/v1/student-platform", studentPlatform);
 app.route("/v1/wallet", userWallet);
 app.route("/v1/group-lessons", groupLessons);

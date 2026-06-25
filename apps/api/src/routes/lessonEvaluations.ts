@@ -5,6 +5,7 @@ import { pool } from "../db.js";
 import { buildLessonProgress } from "../lib/lessonAiStub.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
+import { notifyParentInApp } from "../lib/inAppNotifications.js";
 
 const answersSchema = z.object({
   masteryLikert: z.number().int().min(1).max(5),
@@ -247,24 +248,19 @@ lessonEvaluations.post("/:lessonSessionId/review", requireAuth, async (c) => {
 
     const reviewId = ins.rows[0].id as string | number;
     const notifBody = `Ders #${sr.session_index} için öğrenci ${parsed.data.rating}/5 yıldız verdi.`;
-    const notifPayload = JSON.stringify({
-      type: "student_review",
-      reviewId: String(reviewId),
-      lessonSessionId,
-      rating: parsed.data.rating,
-    });
-    await client.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        sr.teacher_user_id,
-        sr.student_id,
-        "Yeni ders yorumu",
-        notifBody,
-        notifPayload,
-      ],
+    await notifyParentInApp(
+      sr.teacher_user_id,
+      "Yeni ders yorumu",
+      notifBody,
+      {
+        kind: "student_review",
+        type: "student_review",
+        reviewId: String(reviewId),
+        lessonSessionId,
+        rating: parsed.data.rating,
+      },
+      { studentId: sr.student_id },
+      client,
     );
 
     await client.query("commit");
@@ -389,28 +385,25 @@ lessonEvaluations.post(
       const notifications: { id: string; recipient_user_id: string }[] = [];
       for (const g of guardians.rows) {
         const uid = g.guardian_user_id as string;
-        const n = await client.query(
-          `insert into parent_notifications (
-             recipient_user_id, student_id, snapshot_id, channel,
-             title, body, payload_jsonb, delivery_status, sent_at
-           ) values ($1, $2, $3, 'in_app', $4, $5, $6::jsonb, 'sent', now())
-           returning id, recipient_user_id`,
-          [
-            uid,
-            row.student_id,
-            snapshotId,
-            "Ders sonu gelişim özeti",
-            standardizedNarrative,
-            JSON.stringify({
-              evaluationId,
-              lessonSessionId,
-              topicTag: answers.focusTopic,
-              homeworkNote: answers.homeworkNote,
-              nextStepNote: answers.nextStepNote,
-            }),
-          ],
+        const result = await notifyParentInApp(
+          uid,
+          "Ders sonu gelişim özeti",
+          standardizedNarrative,
+          {
+            kind: "lesson_evaluation_guardian",
+            evaluationId,
+            lessonSessionId,
+            topicTag: answers.focusTopic,
+            homeworkNote: answers.homeworkNote,
+            nextStepNote: answers.nextStepNote,
+            dedupeKey: `lesson_evaluation:${evaluationId}:${uid}`,
+          },
+          { studentId: row.student_id, dedupeKey: `lesson_evaluation:${evaluationId}:${uid}` },
+          client,
         );
-        notifications.push(n.rows[0] as { id: string; recipient_user_id: string });
+        if (result.sent && result.id) {
+          notifications.push({ id: result.id, recipient_user_id: uid });
+        }
       }
 
       await client.query("commit");

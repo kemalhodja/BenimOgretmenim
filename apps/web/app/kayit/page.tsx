@@ -5,7 +5,8 @@ import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import { loginHrefWithReturn, safeInternalPath } from "../lib/authRedirect";
-import { setToken } from "../lib/auth";
+import { registerDestForRole, commitAuthSession } from "../lib/auth";
+import { resolvePostAuthDestination } from "../lib/roleAccess";
 import { trackEvent } from "../lib/trackEvent";
 import {
   REGISTER_ROLE_CARDS,
@@ -13,18 +14,12 @@ import {
   roleCardByRegisterRole,
 } from "../lib/roleFeatures";
 import { RoleFeatureList } from "../components/marketing/RoleFeatureOverview";
+import { GRADE_LEVEL_OPTIONS } from "../lib/gradeLevels";
 
 type RegResponse = {
   token: string;
   user: { id: string; email: string; displayName: string; role: string };
 };
-
-function defaultDestForRole(role: string): string {
-  if (role === "teacher") return "/teacher?onboarding=1";
-  if (role === "student") return "/student/panel?onboarding=1";
-  if (role === "guardian") return "/guardian?onboarding=1";
-  return "/";
-}
 
 function parseRegisterApiError(err: unknown): { message: string; emailTaken: boolean } {
   const raw = err instanceof Error ? err.message : "register_failed";
@@ -78,6 +73,7 @@ function KayitForm() {
   const [emailTaken, setEmailTaken] = useState(false);
   const [loading, setLoading] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
+  const [gradeLevel, setGradeLevel] = useState("8");
 
   const returnUrl = useMemo(
     () =>
@@ -101,8 +97,9 @@ function KayitForm() {
       password === passwordConfirm &&
       displayName.trim().length >= 1 &&
       acceptedTerms &&
+      (role !== "student" || Number(gradeLevel) >= 1) &&
       !loading,
-    [email, password, passwordConfirm, displayName, acceptedTerms, loading],
+    [email, password, passwordConfirm, displayName, acceptedTerms, loading, role, gradeLevel],
   );
 
   async function onSubmit(e: React.FormEvent) {
@@ -117,6 +114,10 @@ function KayitForm() {
       setError("Devam etmek için kullanım koşulları ve KVKK bilgilendirmesini kabul etmelisiniz.");
       return;
     }
+    if (role === "student" && !gradeLevel) {
+      setError("Öğrenci kaydı için sınıf seviyenizi seçin.");
+      return;
+    }
     setLoading(true);
     try {
       const r = await apiFetch<RegResponse>("/v1/auth/register", {
@@ -126,11 +127,16 @@ function KayitForm() {
           password,
           displayName: displayName.trim(),
           role,
+          ...(role === "student" ? { gradeLevel: Number(gradeLevel) } : {}),
         }),
       });
-      setToken(r.token);
+      const sessionRole = await commitAuthSession();
       trackEvent("registration_completed", { entityType: "user", entityId: r.user.id, metadata: { role: r.user.role } });
-      const dest = returnUrl ?? defaultDestForRole(r.user.role);
+      const dest = resolvePostAuthDestination(
+        sessionRole ?? (r.user.role as "student" | "teacher" | "guardian" | "admin"),
+        returnUrl,
+        registerDestForRole(r.user.role),
+      );
       router.push(dest);
     } catch (err) {
       const parsed = parseRegisterApiError(err);
@@ -261,6 +267,27 @@ function KayitForm() {
               <option value="guardian">Veli</option>
             </select>
           </label>
+
+          {role === "student" && (
+            <label className="block">
+              <div className="mb-1 text-sm font-medium text-paper-800">Sınıf</div>
+              <select
+                value={gradeLevel}
+                onChange={(e) => setGradeLevel(e.target.value)}
+                className="w-full rounded-xl border border-paper-200 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                required
+              >
+                {GRADE_LEVEL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-paper-800/55">
+                Size uygun ders ve sınav hazırlık videolarını göstermek için kullanılır.
+              </p>
+            </label>
+          )}
 
           <section className="rounded-2xl border border-paper-200 bg-paper-50 p-3" aria-labelledby="role-discovery-title">
             <div id="role-discovery-title" className="text-sm font-semibold text-paper-900">

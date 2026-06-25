@@ -54,7 +54,7 @@ export function SiteNavLinks({ variant }: { variant: Variant }) {
   const role = mounted ? getRoleFromToken(token) ?? sessionRole : null;
   const panelHref = role ? panelPathForRole(role) : null;
   const panelLabel = role ? panelNavLabel(role) : null;
-  const loggedIn = Boolean(token || sessionRole);
+  const loggedIn = Boolean(role);
   const navPublic = loggedIn ? NAV_PUBLIC.filter((item) => item.href !== "/roller") : NAV_PUBLIC;
   const navItems = loggedIn ? [...navPublic, ...NAV_AUTH] : navPublic;
 

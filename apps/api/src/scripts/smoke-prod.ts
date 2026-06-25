@@ -49,6 +49,20 @@ async function main() {
     process.exitCode = 1;
   }
 
+  const lessonVideos = (health.json.schema as { lessonVideos?: { ready?: boolean } } | undefined)?.lessonVideos;
+  if (lessonVideos?.ready !== true) {
+    const msg =
+      "[smoke:prod] schema.lessonVideos.ready !== true; 063–065 migration uygulanmamış olabilir.";
+    if (process.env.SMOKE_REQUIRE_LESSON_VIDEOS === "1") {
+      console.error(msg);
+      process.exitCode = 1;
+    } else {
+      console.warn(msg, "(SMOKE_REQUIRE_LESSON_VIDEOS=1 ile deploy’da zorunlu kılın)");
+    }
+  } else {
+    console.log("[smoke:prod] lesson video schema ready");
+  }
+
   const branches = await getJson("/v1/meta/branches");
   console.log("[smoke:prod] GET /v1/meta/branches", branches.status);
   if (!branches.ok) process.exitCode = 1;

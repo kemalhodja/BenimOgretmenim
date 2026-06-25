@@ -5,21 +5,14 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiFetch } from "../lib/api";
 import { registerHrefWithReturn, safeInternalPath } from "../lib/authRedirect";
-import { setToken } from "../lib/auth";
+import { defaultDestForRole, getCachedRole, getToken, refreshSessionFromServer, commitAuthSession } from "../lib/auth";
+import { resolvePostAuthDestination } from "../lib/roleAccess";
 import { translateUserFacingError } from "../lib/userFacingMessageTr";
 
 type LoginResponse = {
   token: string;
   user: { id: string; email: string; displayName: string; role: string };
 };
-
-function defaultDestForRole(role: string): string {
-  if (role === "teacher") return "/teacher";
-  if (role === "student") return "/student/panel";
-  if (role === "guardian") return "/guardian";
-  if (role === "admin") return "/admin";
-  return "/";
-}
 
 function parseLoginApiError(err: unknown): { message: string; showRegisterHint: boolean } {
   const raw = err instanceof Error ? err.message : "login_failed";
@@ -101,6 +94,24 @@ function LoginForm() {
     [searchParams],
   );
 
+  useEffect(() => {
+    let alive = true;
+    const redirectIfLoggedIn = async () => {
+      if (!getToken() && !getCachedRole()) {
+        const role = await refreshSessionFromServer();
+        if (!alive || !role) return;
+      }
+      const role = getCachedRole();
+      if (!role) return;
+      const dest = resolvePostAuthDestination(role, returnUrl, defaultDestForRole(role));
+      router.replace(dest);
+    };
+    void redirectIfLoggedIn();
+    return () => {
+      alive = false;
+    };
+  }, [router, returnUrl]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -111,12 +122,16 @@ function LoginForm() {
     const submittedEmail = String(formData.get("email") ?? "");
     const submittedPassword = String(formData.get("password") ?? "");
     try {
-      const r = await apiFetch<LoginResponse>("/v1/auth/login", {
+      await apiFetch<LoginResponse>("/v1/auth/login", {
         method: "POST",
         body: JSON.stringify({ email: submittedEmail, password: submittedPassword }),
       });
-      setToken(r.token);
-      const dest = returnUrl ?? defaultDestForRole(r.user.role);
+      const role = await commitAuthSession();
+      const dest = resolvePostAuthDestination(
+        role ?? "student",
+        returnUrl,
+        defaultDestForRole(role ?? "student"),
+      );
       router.push(dest);
     } catch (err) {
       const parsed = parseLoginApiError(err);

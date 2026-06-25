@@ -20,7 +20,9 @@ import {
 import { registerAdminExtendedRoutes } from "./adminExtended.js";
 import { rateLimitSnapshot } from "../middleware/rateLimit.js";
 import { holdCourseEnrollmentPayment, releaseCourseEnrollmentHold } from "../lib/courseEnrollmentWallet.js";
-import { notifyUserInApp } from "../lib/accountLifecycle.js";
+import { notifyUserInApp, notifyLessonVideoPublishedToGradeStudents } from "../lib/accountLifecycle.js";
+import { notifyParentInApp } from "../lib/inAppNotifications.js";
+import { notifyStudentAndGuardians } from "../lib/parentNotifyRecipients.js";
 
 export const admin = new Hono<{ Variables: AppVariables }>();
 
@@ -385,6 +387,7 @@ admin.get("/overview", requireAuth, async (c) => {
     classroomRecordingCount,
     classroomMessageCount,
     homeworkQualityQueue,
+    lessonVideoModerationQueue,
     openSupportThreads,
     activeStudyPlans,
     recentAssessmentAttempts,
@@ -484,6 +487,14 @@ admin.get("/overview", requireAuth, async (c) => {
        from student_homework_posts
        where quality_status in ('pending_review', 'revision_requested', 'flagged')`,
     ),
+    pool
+      .query(
+        `select count(*)::int as c
+         from teacher_lesson_videos
+         where moderation_status in ('pending_review', 'flagged')
+           and status <> 'archived'`,
+      )
+      .catch(() => ({ rows: [{ c: 0 }] })),
     pool.query(`select count(*)::int as c from support_threads where status = 'open'`),
     pool.query(`select count(*)::int as c from student_study_plans where status = 'active'`),
     pool.query(
@@ -645,6 +656,7 @@ admin.get("/overview", requireAuth, async (c) => {
       classroomRecordingCount: (classroomRecordingCount.rows[0] as { c: number }).c,
       classroomMessageCount: (classroomMessageCount.rows[0] as { c: number }).c,
       homeworkQualityQueue: (homeworkQualityQueue.rows[0] as { c: number }).c,
+      lessonVideoModerationQueue: (lessonVideoModerationQueue.rows[0] as { c: number }).c,
       openSupportThreads: (openSupportThreads.rows[0] as { c: number }).c,
       activeStudyPlans: (activeStudyPlans.rows[0] as { c: number }).c,
       recentAssessmentAttempts: (recentAssessmentAttempts.rows[0] as { c: number }).c,
@@ -1144,33 +1156,19 @@ async function notifyCourseStudentApplicationDecision(application: {
         ? `${title} ön kaydı şu an uygun bulunmadı. Kontenjan, seviye veya takvim nedeniyle farklı bir kampanya önerilebilir.`
         : `${title} ön kaydı tekrar değerlendirmeye alındı.`;
 
-  await pool.query(
-    `insert into parent_notifications (
-       recipient_user_id, student_id, snapshot_id, channel, title, body, payload_jsonb, delivery_status, sent_at
-     )
-     select recipient_user_id, $1::uuid, null, 'in_app', $2, $3, $4::jsonb, 'sent', now()
-     from (
-       select st.user_id as recipient_user_id
-       from students st
-       where st.id = $1::uuid
-       union
-       select sg.guardian_user_id as recipient_user_id
-       from student_guardians sg
-       where sg.student_id = $1::uuid
-     ) recipients`,
-    [
-      application.student_id,
-      `Kurs ön kaydı ${statusLabel}`,
-      body,
-      JSON.stringify({
-        kind: "course_campaign_application_decision",
-        courseId: application.course_id,
-        cohortId: application.cohort_id,
-        status: application.status,
-        courseTitle: title,
-        href: application.status === "approved" ? "/student/kurslar" : `/courses/${application.course_id}`,
-      }),
-    ],
+  await notifyStudentAndGuardians(
+    pool,
+    application.student_id,
+    `Kurs ön kaydı ${statusLabel}`,
+    body,
+    {
+      kind: "course_campaign_application_decision",
+      courseId: application.course_id,
+      cohortId: application.cohort_id,
+      status: application.status,
+      courseTitle: title,
+      href: application.status === "approved" ? "/student/kurslar" : `/courses/${application.course_id}`,
+    },
   );
 }
 
@@ -2625,44 +2623,34 @@ admin.patch("/homework-quality/:postId", requireAuth, async (c) => {
       teacher_user_id: string | null;
     };
     const shortTopic = qualityRow.topic.length > 100 ? `${qualityRow.topic.slice(0, 97)}…` : qualityRow.topic;
-    const payload = JSON.stringify({
+    const payload = {
       kind: "homework_quality_review",
       homeworkPostId: postId,
       qualityStatus: status,
       qualityScore: score,
-    });
+    };
     const studentTitle =
       status === "accepted"
         ? "Soru çözümü kalite kontrolünden geçti"
         : status === "revision_requested"
           ? "Soru çözümü için revizyon istendi"
           : "Soru çözümü kalite incelemede";
-    await client.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        qualityRow.student_user_id,
-        qualityRow.student_id,
-        studentTitle,
-        note ? `"${shortTopic}" için kalite notu: ${note}` : `"${shortTopic}" için kalite durumu güncellendi.`,
-        payload,
-      ],
+    await notifyParentInApp(
+      qualityRow.student_user_id,
+      studentTitle,
+      note ? `"${shortTopic}" için kalite notu: ${note}` : `"${shortTopic}" için kalite durumu güncellendi.`,
+      payload,
+      { studentId: qualityRow.student_id },
+      client,
     );
     if (qualityRow.teacher_user_id) {
-      await client.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          qualityRow.teacher_user_id,
-          qualityRow.student_id,
-          status === "accepted" ? "Çözümünüz onaylandı" : "Çözümünüz kalite incelemesinden geçti",
-          note ? `"${shortTopic}" için moderasyon notu: ${note}` : `"${shortTopic}" için kalite durumu güncellendi.`,
-          payload,
-        ],
+      await notifyParentInApp(
+        qualityRow.teacher_user_id,
+        status === "accepted" ? "Çözümünüz onaylandı" : "Çözümünüz kalite incelemesinden geçti",
+        note ? `"${shortTopic}" için moderasyon notu: ${note}` : `"${shortTopic}" için kalite durumu güncellendi.`,
+        payload,
+        { studentId: qualityRow.student_id },
+        client,
       );
     }
     await client.query("commit");
@@ -2672,6 +2660,108 @@ admin.patch("/homework-quality/:postId", requireAuth, async (c) => {
     throw e;
   } finally {
     client.release();
+  }
+});
+
+const lessonVideoModerationPatchSchema = z.object({
+  moderationStatus: z.enum(["approved", "rejected", "flagged"]),
+  moderationNote: z.string().max(1000).optional().nullable(),
+});
+
+admin.get("/lesson-videos", requireAuth, async (c) => {
+  const denied = await assertAdminSupportScope(c);
+  if (denied) return denied;
+
+  const status = c.req.query("status")?.trim() || "pending_review";
+  const allowed = ["pending_review", "approved", "rejected", "flagged", "all"];
+  if (!allowed.includes(status)) return c.json({ error: "invalid_status" }, 400);
+
+  const args: unknown[] = [];
+  const where = ["v.status <> 'archived'"];
+  if (status !== "all") {
+    args.push(status);
+    where.push(`v.moderation_status = $${args.length}`);
+  }
+
+  try {
+    const r = await pool.query(
+      `select v.id, v.title, v.grade_level, v.topic_title, v.outcome_code, v.video_url, v.video_kind,
+              v.moderation_status, v.moderation_note, v.created_at,
+              u.display_name as teacher_display_name, b.name as branch_name
+       from teacher_lesson_videos v
+       join teachers t on t.id = v.teacher_id
+       join users u on u.id = t.user_id
+       join branches b on b.id = v.branch_id
+       where ${where.join(" and ")}
+       order by v.created_at desc
+       limit 80`,
+      args,
+    );
+    return c.json({ videos: r.rows, status });
+  } catch {
+    return c.json({ videos: [], status, note: "lesson_video_moderation_not_available" });
+  }
+});
+
+admin.patch("/lesson-videos/:videoId/moderation", requireAuth, async (c) => {
+  const denied = await assertAdminSupportScope(c);
+  if (denied) return denied;
+
+  const videoId = c.req.param("videoId");
+  if (!z.string().uuid().safeParse(videoId).success) return c.json({ error: "invalid_video_id" }, 400);
+
+  const parsed = lessonVideoModerationPatchSchema.safeParse(await c.req.json());
+  if (!parsed.success) return c.json({ error: parsed.error.flatten() }, 400);
+
+  const actorUserId = c.get("userId");
+  const note =
+    parsed.data.moderationStatus === "rejected" && !parsed.data.moderationNote?.trim()
+      ? null
+      : parsed.data.moderationNote?.trim() ?? null;
+
+  if (parsed.data.moderationStatus === "rejected" && !note) {
+    return c.json({ error: "moderation_note_required_for_reject" }, 400);
+  }
+
+  try {
+    const r = await pool.query(
+      `update teacher_lesson_videos
+       set moderation_status = $2,
+           moderation_note = $3,
+           moderated_at = now(),
+           moderated_by_user_id = $4,
+           updated_at = now()
+       where id = $1 and status <> 'archived'
+       returning id, title, grade_level, branch_id, moderation_status`,
+      [videoId, parsed.data.moderationStatus, note, actorUserId],
+    );
+    if (!r.rowCount) return c.json({ error: "not_found" }, 404);
+
+    const video = r.rows[0] as {
+      id: string;
+      title: string;
+      grade_level: number;
+      branch_id: number;
+      moderation_status: string;
+    };
+
+    if (parsed.data.moderationStatus === "approved") {
+      const branch = await pool.query<{ name: string }>(`select name from branches where id = $1`, [
+        video.branch_id,
+      ]);
+      const branchName = branch.rows[0]?.name ?? "Ders";
+      await notifyLessonVideoPublishedToGradeStudents({
+        id: video.id,
+        title: video.title,
+        gradeLevel: video.grade_level,
+        branchId: video.branch_id,
+        branchName,
+      });
+    }
+
+    return c.json({ video: r.rows[0] });
+  } catch {
+    return c.json({ error: "lesson_video_moderation_not_available" }, 503);
   }
 });
 

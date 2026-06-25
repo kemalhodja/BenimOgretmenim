@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { pool } from "../db.js";
+import { notifyParentInApp } from "../lib/inAppNotifications.js";
 import type { AppVariables } from "../types.js";
 import { requireAuth } from "../middleware/requireAuth.js";
 import {
@@ -718,35 +719,31 @@ learning.post("/curriculum-test-attempts", requireAuth, async (c) => {
       ? `${title} sonucu ${correctCount}/20 (${masteryLabel(masteryLevel)}). ${weakOutcomes.slice(0, 2).join(", ") || first.unitTitle} için tekrar ve branş öğretmeni desteği önerilir. Bugünkü adım: ${actions[0]?.body ?? "Yanlış analizi yapın."}`
       : `${title} sonucu ${correctCount}/20 (${masteryLabel(masteryLevel)}). Öğrenci bu ünite için pekiştirme/sonraki kazanım adımına geçebilir.`;
     for (const row of guardians.rows) {
-      await client.query(
-        `insert into parent_notifications (
-           recipient_user_id, student_id, snapshot_id, channel,
-           title, body, payload_jsonb, delivery_status, sent_at
-         ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-        [
-          row.guardian_user_id,
-          studentId,
-          notificationTitle,
-          notificationBody,
-          JSON.stringify({
-            kind: "curriculum_test_result_guardian",
-            attemptId: attempt.rows[0].id,
-            gradeLevel: first.gradeLevel,
-            branchSlug: first.branchSlug,
-            branchName: first.branchName,
-            unitSlug: first.unitSlug,
-            unitTitle: first.unitTitle,
-            correctCount,
-            questionCount,
-            scorePercent,
-            weakOutcomes,
-            misconceptions,
-            masteryLevel,
-            recommendedActions: actions,
-            teacherSupportRecommended,
-            teacherRecommendations,
-          }),
-        ],
+      await notifyParentInApp(
+        row.guardian_user_id as string,
+        notificationTitle,
+        notificationBody,
+        {
+          kind: "curriculum_test_result_guardian",
+          attemptId: attempt.rows[0].id as string,
+          gradeLevel: first.gradeLevel,
+          branchSlug: first.branchSlug,
+          branchName: first.branchName,
+          unitSlug: first.unitSlug,
+          unitTitle: first.unitTitle,
+          correctCount,
+          questionCount,
+          scorePercent,
+          weakOutcomes,
+          misconceptions,
+          masteryLevel,
+          recommendedActions: actions,
+          teacherSupportRecommended,
+          teacherRecommendations,
+          dedupeKey: `curriculum_test_guardian:${attempt.rows[0].id as string}:${row.guardian_user_id as string}`,
+        },
+        { studentId },
+        client,
       );
     }
 

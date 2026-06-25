@@ -92,6 +92,39 @@ Not: `/health` içindeki `db: true` sadece Postgres’e bağlanabildiğini göst
 **500 + `internal_error`** ise çoğunlukla **migration uygulanmamış** (tablolar yok) demektir; Render’da API deploy
 loglarında `preDeployCommand` (`npm run db:migrate`) çıktısını kontrol edin.
 
+### Ders videoları (063 + 064 + 065)
+
+Canlıda öğretmen/öğrenci video özelliği için şu migration’ların uygulandığını doğrulayın:
+
+| Migration | Tablo / kolon | Açıklama |
+|-----------|----------------|----------|
+| `063_teacher_lesson_videos.sql` | `teacher_lesson_videos` | Öğretmen ders / sınav hazırlık videoları |
+| `064_lesson_video_views.sql` | `lesson_video_views` | Öğrenci izlenme sayacı |
+| `065_lesson_video_moderation.sql` | `moderation_*` kolonları | Admin onayı zorunlu |
+
+**Hızlı doğrulama (API dizininde):**
+
+```bash
+cd apps/api
+npm run db:verify:lesson-videos
+```
+
+`GET /health` yanıtında `schema.lessonVideos.ready: true` beklenir.
+
+**Deploy sonrası kontrol listesi**
+
+1. Render API deploy log → `Applying 063_...` … `065_...` satırları
+2. `npm run db:verify:lesson-videos` veya `GET /health` → `schema.lessonVideos.ready`
+3. `SMOKE_REQUIRE_LESSON_VIDEOS=1 SMOKE_API_URL=https://api... npm run smoke:prod` → OK
+4. CI `API E2E (roles deep)` → vitest + smoke içinde video / suggested / veli adımları yeşil
+5. CI `Web Playwright (integration E2E)` → `@integration` ders videoları senaryoları yeşil
+6. Öğretmen: `POST /v1/lesson-videos` → `pending_review`; admin onayı sonrası öğrenci listesinde
+7. Öğrenci: `GET /v1/lesson-videos` → yalnızca kendi `grade_level` + `approved` videoları
+8. Öğrenci: `GET /v1/lesson-videos/suggested?topics=...` → çalışma sayfası önerileri
+9. Veli: `GET /v1/lesson-videos/for-guardian?studentId=...` → bağlı öğrenci videoları
+
+**Seed (kapalı beta):** `npm run db:seed` öğrenciye `grade_level=8` ve örnek videolar ekler. Eski seed DB’lerde marker varken `db:seed` tekrar çalıştırılırsa eksik `grade_level` / videolar **backfill** edilir.
+
 ---
 
 ## 4) Önerilen dağıtım modeli (VPS + reverse proxy)

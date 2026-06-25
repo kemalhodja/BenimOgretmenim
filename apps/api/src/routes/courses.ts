@@ -7,8 +7,21 @@ import { requireAuth } from "../middleware/requireAuth.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
 import { holdCourseEnrollmentPayment } from "../lib/courseEnrollmentWallet.js";
 import { lockCourseEnrollmentRefundWindowForCohort, payEligibleCourseTeacherPayoutsForCohort } from "../lib/courseTeacherPayout.js";
+import { notifyParentInAppBulk } from "../lib/inAppNotifications.js";
 
 export const courses = new Hono<{ Variables: AppVariables }>();
+
+const COURSE_COHORT_RECIPIENTS_SQL = `
+  select st.user_id as recipient_user_id, st.id as student_id
+  from course_enrollments ce
+  join students st on st.id = ce.student_id
+  where ce.cohort_id = $1::uuid
+  union
+  select sg.guardian_user_id as recipient_user_id, st.id as student_id
+  from course_enrollments ce
+  join students st on st.id = ce.student_id
+  join student_guardians sg on sg.student_id = st.id
+  where ce.cohort_id = $1::uuid`;
 
 function meetingBase(): string {
   return (process.env.MEETING_BASE_URL ?? "https://meet.jit.si").replace(/\/$/, "");
@@ -31,44 +44,21 @@ async function notifyCourseSessionRecipients({
   sessionIndex: number;
   scheduledStart: Date;
 }) {
-  await pool.query(
-    `insert into parent_notifications (
-       recipient_user_id, student_id, snapshot_id, channel,
-       title, body, payload_jsonb, delivery_status, sent_at
-     )
-     select recipient_user_id,
-            student_id,
-            null,
-            'in_app',
-            'Kurs dersi planlandı',
-            concat($4::text, ' / ', $5::text, ' dersi #', $6::int, ' ',
-                   to_char($7::timestamptz, 'DD.MM.YYYY HH24:MI'),
-                   ' için planlandı. Sınıf linki kurs panelinizde hazır.'),
-            jsonb_build_object(
-              'kind', 'course_session_scheduled',
-              'courseId', $1::uuid,
-              'cohortId', $2::uuid,
-              'courseSessionId', $3::uuid,
-              'scheduledStart', $7::timestamptz,
-              'classroomHref', concat('/classroom/course/', $3::uuid)
-            ),
-            'sent',
-            now()
-     from (
-       select st.user_id as recipient_user_id,
-              st.id as student_id
-       from course_enrollments ce
-       join students st on st.id = ce.student_id
-       where ce.cohort_id = $2::uuid
-       union
-       select sg.guardian_user_id as recipient_user_id,
-              st.id as student_id
-       from course_enrollments ce
-       join students st on st.id = ce.student_id
-       join student_guardians sg on sg.student_id = st.id
-       where ce.cohort_id = $2::uuid
-     ) recipients`,
-    [courseId, cohortId, sessionId, courseTitle, cohortTitle, sessionIndex, scheduledStart],
+  const body = `${courseTitle} / ${cohortTitle} dersi #${sessionIndex} ${scheduledStart.toLocaleString("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })} için planlandı. Sınıf linki kurs panelinizde hazır.`;
+  await notifyParentInAppBulk(
+    pool,
+    COURSE_COHORT_RECIPIENTS_SQL,
+    [cohortId],
+    "Kurs dersi planlandı",
+    body,
+    {
+      kind: "course_session_scheduled",
+      courseId,
+      cohortId,
+      courseSessionId: sessionId,
+      scheduledStart: scheduledStart.toISOString(),
+      classroomHref: `/classroom/course/${sessionId}`,
+    },
   );
 }
 

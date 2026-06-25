@@ -63,6 +63,10 @@ jobs:
         working-directory: apps/api
         run: npm run db:migrate
 
+      - name: Verify lesson video migrations (063–065)
+        working-directory: apps/api
+        run: npm run db:verify:lesson-videos
+
       - name: DB seed
         working-directory: apps/api
         run: npm run db:seed
@@ -74,6 +78,10 @@ jobs:
       - name: Build API
         working-directory: apps/api
         run: npm run build
+
+      - name: Run API tests (vitest)
+        working-directory: apps/api
+        run: npm test
 
       - name: Start API and wait for health
         working-directory: apps/api

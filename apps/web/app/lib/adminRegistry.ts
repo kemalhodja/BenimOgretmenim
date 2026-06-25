@@ -70,6 +70,7 @@ export const ADMIN_NAV_SECTIONS: AdminNavSection[] = [
       { href: "/admin/direct-bookings", title: "Doğrudan ders", desc: "Anlaşma ve iptal" },
       { href: "/admin/group-lessons", title: "Grup dersleri", desc: "Grup talep kuyruğu" },
       { href: "/admin/homework", title: "Ödev havuzu", desc: "Açık soru gönderileri" },
+      { href: "/admin/lesson-videos", title: "Ders videoları", desc: "İçerik moderasyon kuyruğu" },
       { href: "/admin/veri?k=homework", title: "Soru kalitesi", desc: "Revizyon ve işaretleme" },
       { href: "/admin/veri?k=classroom", title: "Sınıf notları", desc: "Tahta kayıtları" },
       { href: "/admin/veri?k=recordings", title: "Sınıf kayıtları", desc: "Tekrar izleme" },
@@ -111,6 +112,7 @@ export const ADMIN_DAILY_CHECKLIST = [
   { id: "homework-sla", label: "Ödev SLA ihlalleri", href: "/admin/homework", scopes: ["full", "support"] as AdminScope[] },
   { id: "support-sla", label: "Destek SLA ihlalleri", href: "/admin/destek-sla", scopes: ["full", "support"] as AdminScope[] },
   { id: "homework-quality", label: "Soru kalite kuyruğu", href: "/admin/veri?k=homework", scopes: ["full", "support"] as AdminScope[] },
+  { id: "lesson-video-moderation", label: "Ders video moderasyonu", href: "/admin/lesson-videos", scopes: ["full", "support"] as AdminScope[] },
   { id: "jobs", label: "Zamanlanmış iş alarmları", href: "/admin/veri?k=job-monitoring", scopes: ["full", "finance", "support"] as AdminScope[] },
   { id: "guardian-invites", label: "Veli davet kodları", href: "/admin/veri?k=guardian-invites", scopes: ["full", "support"] as AdminScope[] },
   { id: "suspended", label: "Askıda hesaplar", href: "/admin/users?status=suspended", scopes: ["full", "support"] as AdminScope[] },
@@ -147,6 +149,7 @@ export type AdminOverviewCounts = {
   classroomRecordingCount: number;
   classroomMessageCount: number;
   homeworkQualityQueue: number;
+  lessonVideoModerationQueue?: number;
   openSupportThreads: number;
   activeStudyPlans: number;
   recentAssessmentAttempts: number;
@@ -205,6 +208,7 @@ export const ADMIN_TRACKING_SECTIONS: {
       { key: "homeworkSlaBreaches", label: "Geciken soru (SLA)", href: "/admin/homework", actionWhenPositive: true, scopes: ["full", "support"] },
       { key: "supportSlaBreaches", label: "Geciken destek (SLA)", href: "/admin/destek-sla", actionWhenPositive: true, scopes: ["full", "support"] },
       { key: "homeworkQualityQueue", label: "Soru kalite kuyruğu", href: "/admin/veri?k=homework", actionWhenPositive: true, scopes: ["full", "support"] },
+      { key: "lessonVideoModerationQueue", label: "Ders video moderasyonu", href: "/admin/lesson-videos", actionWhenPositive: true, scopes: ["full", "support"] },
       { key: "openSupportThreads", label: "Açık destek", href: "/admin/support", actionWhenPositive: true, scopes: ["full", "support"] },
       { key: "openJobAlerts", label: "Zamanlanmış iş alarmı", href: "/admin/veri?k=job-monitoring", actionWhenPositive: true },
       { key: "suspendedUsers", label: "Askıda hesap", href: "/admin/users?status=suspended", actionWhenPositive: true, scopes: ["full", "support"] },

@@ -7,6 +7,7 @@ import { apiFetch } from "../../lib/api";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
 import { CampaignApplicationChat } from "../../components/CampaignApplicationChat";
+import { TeacherFlowExplainer } from "../../components/TeacherFlowExplainer";
 
 type CampaignRow = {
   id: string;
@@ -247,6 +248,10 @@ export default function TeacherCampaignsPage() {
           >
             Yeni kampanya
           </Link>
+        </div>
+
+        <div className="mt-4">
+          <TeacherFlowExplainer variant="campaigns" />
         </div>
 
         {error ? (

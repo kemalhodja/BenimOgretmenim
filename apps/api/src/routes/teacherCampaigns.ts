@@ -8,6 +8,7 @@ import { applyWalletDelta } from "../lib/wallet.js";
 import { getWalletAvailableMinor } from "../lib/walletHolds.js";
 import { assertAdminSupportScope } from "../lib/adminGate.js";
 import { writeAdminAudit } from "../lib/adminAudit.js";
+import { notifyParentInApp } from "../lib/inAppNotifications.js";
 import {
   availableUsageCredits,
   consumeUsageCredit,
@@ -667,22 +668,17 @@ teacherCampaigns.post("/:campaignId/applications", requireAuth, async (c) => {
       );
     }
 
-    await client.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        campaignRow.teacher_user_id,
-        studentId,
-        "Yeni kampanya başvurusu",
-        `"${campaignRow.title}" kampanyanıza yeni bir öğrenci ilgi kaydı bıraktı.`,
-        JSON.stringify({
-          kind: "teacher_campaign_application",
-          campaignId,
-          applicationId: ins.rows[0].id,
-        }),
-      ],
+    await notifyParentInApp(
+      campaignRow.teacher_user_id,
+      "Yeni kampanya başvurusu",
+      `"${campaignRow.title}" kampanyanıza yeni bir öğrenci ilgi kaydı bıraktı.`,
+      {
+        kind: "teacher_campaign_application",
+        campaignId,
+        applicationId: ins.rows[0].id,
+      },
+      { studentId },
+      client,
     );
 
     await client.query("commit");
@@ -794,23 +790,18 @@ teacherCampaigns.post("/:campaignId/applications/:applicationId/messages", requi
     );
 
     const recipientUserId = role === "teacher" ? row.student_user_id : row.teacher_user_id;
-    await client.query(
-      `insert into parent_notifications (
-         recipient_user_id, student_id, snapshot_id, channel,
-         title, body, payload_jsonb, delivery_status, sent_at
-       ) values ($1, $2, null, 'in_app', $3, $4, $5::jsonb, 'sent', now())`,
-      [
-        recipientUserId,
-        row.student_id,
-        "Kampanya sohbetinde yeni mesaj",
-        `"${row.title}" kampanya sohbetinde yeni mesajınız var.`,
-        JSON.stringify({
-          kind: "teacher_campaign_application_message",
-          campaignId,
-          applicationId,
-          messageId: inserted.rows[0].id,
-        }),
-      ],
+    await notifyParentInApp(
+      recipientUserId,
+      "Kampanya sohbetinde yeni mesaj",
+      `"${row.title}" kampanya sohbetinde yeni mesajınız var.`,
+      {
+        kind: "teacher_campaign_application_message",
+        campaignId,
+        applicationId,
+        messageId: inserted.rows[0].id,
+      },
+      { studentId: row.student_id },
+      client,
     );
     await client.query("commit");
     return c.json({ message: inserted.rows[0] }, 201);

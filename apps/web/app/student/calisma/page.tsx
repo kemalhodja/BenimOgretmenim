@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiFetch } from "../../lib/api";
 import { clearToken, getToken } from "../../lib/auth";
 import { loginHrefWithReturn } from "../../lib/authRedirect";
+import { videoKindLabel } from "../../lib/lessonVideos";
 
 type LearningModule = {
   id: string;
@@ -236,6 +237,18 @@ export default function StudentCalismaPage() {
   const [curriculumBusy, setCurriculumBusy] = useState(false);
   const [teacherMatch, setTeacherMatch] = useState<TeacherRecommendation[]>([]);
   const [teacherMatchBranch, setTeacherMatchBranch] = useState("matematik");
+  const [suggestedVideos, setSuggestedVideos] = useState<
+    Array<{
+      id: string;
+      title: string;
+      branchName: string;
+      topicTitle: string;
+      outcomeTitle: string;
+      videoKind: "lesson" | "exam_prep";
+      matchScore: number;
+      teacherDisplayName: string;
+    }>
+  >([]);
 
   useEffect(() => {
     const t = getToken();
@@ -444,6 +457,32 @@ export default function StudentCalismaPage() {
       .catch(() => setTeacherMatch([]));
   }, [token, data]);
 
+  useEffect(() => {
+    if (!token || !data) return;
+    const attempts = data.attempts ?? [];
+    const weakTopicCounts = new Map<string, number>();
+    for (const attempt of attempts) {
+      for (const topic of topicsFrom(attempt.weak_topics_jsonb)) {
+        weakTopicCounts.set(topic, (weakTopicCounts.get(topic) ?? 0) + 1);
+      }
+    }
+    const focus = [...weakTopicCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([topic]) => topic);
+    const weak = [...focus, ...topicsFrom(data.curriculumAttempts?.[0]?.weak_outcomes_jsonb)]
+      .filter(Boolean)
+      .slice(0, 8);
+    if (!weak.length) {
+      setSuggestedVideos([]);
+      return;
+    }
+    const qs = new URLSearchParams({ topics: weak.join(",") });
+    apiFetch<{ videos: typeof suggestedVideos }>(`/v1/lesson-videos/suggested?${qs}`, { token })
+      .then((r) => setSuggestedVideos(r.videos ?? []))
+      .catch(() => setSuggestedVideos([]));
+  }, [token, data]);
+
   if (!token) return null;
 
   const latestPlan = data?.plans[0] ?? null;
@@ -635,6 +674,52 @@ export default function StudentCalismaPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-paper-200 bg-brand-50/40 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-paper-900">Konu anlatım videoları</h2>
+              <p className="mt-1 text-sm text-paper-800/70">
+                Zayıf konularınıza ve kazanım testi sonuçlarına göre önerilen videolar; tüm katalog için alttaki bağlantıyı kullanın.
+              </p>
+            </div>
+            <Link
+              href="/student/ders-videolari"
+              className="shrink-0 rounded-xl border border-brand-300 bg-white px-4 py-2 text-sm font-semibold text-brand-900 hover:bg-brand-50"
+              data-testid="calisma-lesson-videos-link"
+            >
+              Tüm videolar
+            </Link>
+          </div>
+          {suggestedVideos.length > 0 ? (
+            <ul className="mt-4 space-y-2" data-testid="calisma-suggested-videos">
+              {suggestedVideos.map((video) => (
+                <li
+                  key={video.id}
+                  className="flex flex-col gap-2 rounded-xl border border-paper-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-paper-950">{video.title}</div>
+                    <p className="mt-0.5 text-xs text-paper-800/65">
+                      {video.branchName} · {video.topicTitle} · {videoKindLabel(video.videoKind)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-paper-800/55">{video.teacherDisplayName}</p>
+                  </div>
+                  <Link
+                    href={`/student/ders-videolari?topic=${encodeURIComponent(video.topicTitle)}`}
+                    className="shrink-0 rounded-lg bg-brand-800 px-3 py-1.5 text-xs font-semibold text-white"
+                  >
+                    İzle
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-paper-800/65">
+              Deneme veya kazanım testi sonuçlarından zayıf konu çıktığında burada kişisel öneriler listelenir.
+            </p>
+          )}
         </section>
 
         <section className="mt-6 rounded-2xl border border-brand-200 bg-white p-5 shadow-sm">

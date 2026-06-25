@@ -145,6 +145,7 @@ jobs:
             SMOKE_API_URL="https://benim-ogretmenim.onrender.com"
           fi
           export SMOKE_API_URL
+          export SMOKE_REQUIRE_LESSON_VIDEOS=1
           status="ok"
           details='{"source":"deploy-render","suite":"smoke:prod"}'
           if ! npm run smoke:prod; then

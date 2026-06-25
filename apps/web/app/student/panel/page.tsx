@@ -8,12 +8,17 @@ import { loginHrefWithReturn } from "../../lib/authRedirect";
 import { clearToken, getToken } from "../../lib/auth";
 import { trackEvent } from "../../lib/trackEvent";
 import { QuickStartBanner, STUDENT_START_STEPS } from "../../components/QuickStartBanner";
+import { PaymentMethodsBanner } from "../../components/PaymentMethodsBanner";
 import {
   getPanelDetailMode,
   setPanelDetailMode,
   type PanelDetailMode,
 } from "../../lib/panelDetailPreference";
 import { userErrorMessage, walletLedgerKindLabelTr } from "../../lib/userFacingMessageTr";
+import {
+  notificationKindLabel,
+  resolveNotificationHref,
+} from "../../lib/notifications";
 
 type SubMe = {
   active: boolean;
@@ -157,6 +162,7 @@ function StudentPanelPageInner() {
   const [guardianInviteBusy, setGuardianInviteBusy] = useState(false);
   const [notifBusyId, setNotifBusyId] = useState<string | null>(null);
   const [panelDetail, setPanelDetail] = useState<PanelDetailMode>("simple");
+  const [studentGradeLevel, setStudentGradeLevel] = useState<number | null | undefined>(undefined);
 
   useEffect(() => {
     setPanelDetail(getPanelDetailMode());
@@ -172,7 +178,7 @@ function StudentPanelPageInner() {
   }, [router, pathWithQuery]);
 
   const load = useCallback(async (t: string) => {
-    const [s, w, l, h, n, p, g, packs] = await Promise.all([
+    const [s, w, l, h, n, p, g, packs, profile] = await Promise.all([
       apiFetch<SubMe>("/v1/student-platform/subscription/me", { token: t }),
       apiFetch<Wallet>("/v1/wallet/me", { token: t }),
       apiFetch<{ entries: LedgerEntry[] }>("/v1/wallet/ledger?limit=25", { token: t }),
@@ -189,6 +195,9 @@ function StudentPanelPageInner() {
       apiFetch<{ packs: UsagePack[] }>("/v1/student-platform/usage-packs", { token: t }).catch(
         () => ({ packs: [] as UsagePack[] }),
       ),
+      apiFetch<{ student: { gradeLevel: number | null } }>("/v1/student-platform/profile", { token: t }).catch(
+        () => ({ student: { gradeLevel: null } }),
+      ),
     ]);
     setSub(s);
     setWallet(w);
@@ -199,6 +208,7 @@ function StudentPanelPageInner() {
     setProgressSnapshots(p.snapshots);
     setGuardianInvites(g.invites);
     setUsagePacks(packs.packs);
+    setStudentGradeLevel(profile.student.gradeLevel);
   }, []);
 
   async function createGuardianInvite() {
@@ -236,71 +246,6 @@ function StudentPanelPageInner() {
     } finally {
       setNotifBusyId(null);
     }
-  }
-
-  function notificationHref(payload: unknown): string | null {
-    if (!payload || typeof payload !== "object") return null;
-    const o = payload as {
-      kind?: string;
-      homeworkPostId?: string;
-      lessonSessionId?: string;
-      courseSessionId?: string;
-      classroomHref?: string;
-      requestId?: string;
-      groupLessonId?: string;
-      directBookingId?: string;
-    };
-    if (typeof o.classroomHref === "string" && o.classroomHref.startsWith("/classroom/")) {
-      return o.classroomHref;
-    }
-    const isHomeworkKind =
-      o.kind === "homework_claimed" ||
-      o.kind === "homework_answered" ||
-      o.kind === "homework_rewarded_student" ||
-      o.kind === "homework_teacher_returned";
-    if (o.homeworkPostId && isHomeworkKind) {
-      return `/student/odev-sor/${o.homeworkPostId}`;
-    }
-    if (o.kind === "lesson_scheduled" || o.kind === "lesson_completed" || o.lessonSessionId) {
-      return "/student/dersler";
-    }
-    if (
-      o.kind === "course_session_scheduled" ||
-      o.kind === "course_session_reminder_24h" ||
-      o.kind === "course_session_reminder_2h" ||
-      o.courseSessionId
-    ) {
-      return "/student/kurslar";
-    }
-    if (
-      (o.kind === "lesson_offer_received" || o.kind === "lesson_demo_offer_received") &&
-      typeof o.requestId === "string"
-    ) {
-      return `/student/requests/${o.requestId}`;
-    }
-    if (
-      o.kind === "group_lesson_teacher_assigned" ||
-      o.kind === "group_lesson_joined" ||
-      o.kind === "group_lesson_completed" ||
-      o.groupLessonId
-    ) {
-      return "/student/grup-dersler";
-    }
-    if (o.kind === "direct_booking_completed" || o.directBookingId) {
-      return "/student/dogrudan-dersler";
-    }
-    return null;
-  }
-
-  function notificationKindLabel(payload: unknown): string {
-    if (!payload || typeof payload !== "object") return "Genel";
-    const kind = String((payload as { kind?: unknown }).kind ?? "");
-    if (kind.includes("homework")) return "Ödev";
-    if (kind.includes("lesson")) return "Ders";
-    if (kind.includes("course")) return "Kurs";
-    if (kind.includes("group")) return "Grup ders";
-    if (kind.includes("direct")) return "Doğrudan ders";
-    return "Genel";
   }
 
   useEffect(() => {
@@ -443,7 +388,9 @@ function StudentPanelPageInner() {
           };
   const unreadNotifications = notifications.filter((n) => n.read_at == null).length;
   const latestNotification = notifications[0] ?? null;
-  const latestNotificationHref = latestNotification ? notificationHref(latestNotification.payload_jsonb) : null;
+  const latestNotificationHref = latestNotification
+    ? resolveNotificationHref(latestNotification.payload_jsonb, "student")
+    : null;
   const completedLessonSignals = new Set(progressSnapshots.map((snapshot) => snapshot.lesson_session_id)).size;
   const weeklyTargetSignals = progressSnapshots.length;
   const latestProgressSnapshot = progressSnapshots[0] ?? null;
@@ -505,6 +452,10 @@ function StudentPanelPageInner() {
           </div>
         </div>
 
+        <div className="mt-4">
+          <PaymentMethodsBanner />
+        </div>
+
         <div className="mt-5">
           <QuickStartBanner
             eyebrow={showOnboarding ? "Hoş geldiniz" : "Şimdi ne yapmalısınız?"}
@@ -515,6 +466,24 @@ function StudentPanelPageInner() {
             steps={showOnboarding ? STUDENT_START_STEPS : undefined}
           />
         </div>
+
+        {studentGradeLevel === null && (
+          <section
+            className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+            data-testid="student-grade-missing-banner"
+          >
+            <h2 className="text-sm font-semibold text-amber-950">Sınıfınızı belirtin</h2>
+            <p className="mt-1 text-sm text-amber-900/80">
+              Size uygun ders ve sınav hazırlık videolarını gösterebilmemiz için sınıf seviyenizi seçin.
+            </p>
+            <Link
+              href="/student/ders-videolari"
+              className="mt-3 inline-flex rounded-xl bg-brand-800 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Sınıf seç ve videoları aç
+            </Link>
+          </section>
+        )}
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
@@ -660,6 +629,7 @@ function StudentPanelPageInner() {
           {[
             { href: "/student/odev-sor", title: "Soru gönder", body: "Fotoğraf çek, aciliyet seç, çözümü takip et." },
             { href: "/student/calisma", title: "Planı işaretle", body: "Haftalık görevleri tamamlandı/atlandı yap." },
+            { href: "/student/ders-videolari", title: "Ders videoları", body: "Sınıfınıza uygun ders ve sınav hazırlık videolarını izleyin." },
             { href: "/student/dersler", title: "Canlı dersler", body: "Yaklaşan derslerin sınıf bağlantılarına hızlı gir." },
             { href: "/ogretmenler?verifiedOnly=1&sort=recommended", title: "Öğretmen bul", body: "Doğrulanmış profilleri karşılaştır." },
           ].map((item) => (
@@ -804,7 +774,7 @@ function StudentPanelPageInner() {
             <ul className="mt-4 space-y-3">
               {notifications.map((n) => {
                 const unread = n.read_at == null;
-                const href = notificationHref(n.payload_jsonb);
+                const href = resolveNotificationHref(n.payload_jsonb, "student");
                 return (
                   <li
                     key={n.id}

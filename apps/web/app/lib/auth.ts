@@ -38,14 +38,12 @@ export function getToken(): string | null {
   if (typeof window === "undefined") return null;
   const cookieRole = readCookie(ROLE_COOKIE_NAME);
   if (cookieRole === "teacher" || cookieRole === "student" || cookieRole === "guardian" || cookieRole === "admin") {
-    const userId = readCookie(USER_ID_COOKIE_NAME) ?? window.localStorage.getItem(USER_ID_KEY) ?? "";
+    const userId = readCookie(USER_ID_COOKIE_NAME) ?? "";
     return `${COOKIE_SESSION_TOKEN_PREFIX}${cookieRole}:${encodeURIComponent(userId)}`;
   }
-  const bearer = window.localStorage.getItem(TOKEN_KEY);
-  if (bearer) return bearer;
-  const role = window.localStorage.getItem(ROLE_KEY);
+  const role = window.localStorage.getItem(ROLE_KEY) ?? readCookie(ROLE_COOKIE_NAME);
   if (role === "teacher" || role === "student" || role === "guardian" || role === "admin") {
-    const userId = window.localStorage.getItem(USER_ID_KEY) ?? "";
+    const userId = window.localStorage.getItem(USER_ID_KEY) ?? readCookie(USER_ID_COOKIE_NAME) ?? "";
     return `${COOKIE_SESSION_TOKEN_PREFIX}${role}:${encodeURIComponent(userId)}`;
   }
   return null;
@@ -96,10 +94,22 @@ export function setToken(token: string | null) {
     notifyAuthChanged();
     return;
   }
-  cacheRole(getRoleFromToken(token));
-  cacheUserId(getUserIdFromToken(token));
+  if (isCookieSessionToken(token)) {
+    const parsed = parseCookieSessionToken(token);
+    cacheRole(parsed?.role ?? null);
+    cacheUserId(parsed?.userId ?? null);
+  } else {
+    cacheRole(getRoleFromToken(token));
+    cacheUserId(getUserIdFromToken(token));
+  }
   window.localStorage.removeItem(TOKEN_KEY);
   notifyAuthChanged();
+}
+
+/** Giriş/kayıt sonrası: JWT client'ta tutulmaz, HttpOnly cookie + /me ile oturum senkronu. */
+export async function commitAuthSession(): Promise<UserRole | null> {
+  window.localStorage.removeItem(TOKEN_KEY);
+  return refreshSessionFromServer();
 }
 
 export function clearToken() {
@@ -236,6 +246,24 @@ export function panelPathForRole(role: UserRole): string {
   if (role === "teacher") return "/teacher";
   if (role === "guardian") return "/guardian";
   return "/student/panel";
+}
+
+/** Giriş / kayıt sonrası varsayılan panel yolu */
+export function defaultDestForRole(role: string): string {
+  if (role === "teacher") return "/teacher";
+  if (role === "student") return "/student/panel";
+  if (role === "guardian") return "/guardian";
+  if (role === "admin") return "/admin";
+  return "/";
+}
+
+/** Kayıt sonrası onboarding parametreli hedefler */
+export function registerDestForRole(role: string): string {
+  if (role === "teacher") return "/teacher?onboarding=1";
+  if (role === "student") return "/student/panel?onboarding=1";
+  if (role === "guardian") return "/guardian?onboarding=1";
+  if (role === "admin") return "/admin";
+  return "/";
 }
 
 /** Oturumdaki rol, kendi panel alanında mı? (Üst çeredeki çift “panele git” önlenir.) */

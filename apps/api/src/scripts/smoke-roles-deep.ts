@@ -148,7 +148,7 @@ async function main() {
     const r = await fetch(`${base}/v1/auth/register`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password, displayName, role }),
+      body: JSON.stringify({ email, password, displayName, role, ...(role === "student" ? { gradeLevel: 8 } : {}) }),
     });
     const j = (await r.json()) as { token?: string; user?: { id?: string }; error?: unknown };
     console.log(`[smoke:roles-deep] register ${role}`, r.status);
@@ -422,13 +422,16 @@ async function main() {
   }
 
   const overview = await fetch(`${base}/v1/guardians/overview`, { headers: guardianAuth });
-  const ovJson = (await overview.json()) as { students?: unknown[] };
+  const ovJson = (await overview.json()) as {
+    students?: Array<{ student_id?: string }>;
+  };
   console.log("[smoke:roles-deep] guardians/overview", overview.status, (ovJson.students?.length ?? 0), "öğrenci");
   if (!overview.ok || !Array.isArray(ovJson.students) || ovJson.students.length < 1) {
     console.error(ovJson);
     process.exitCode = 1;
     return;
   }
+  const linkedStudentId = ovJson.students[0]?.student_id;
 
   const guestSmoke = await runGuestSupportSmokeSteps({
     base,
@@ -441,7 +444,107 @@ async function main() {
     return;
   }
 
-  console.log("[smoke:roles-deep] OK — öğretmen/öğrenci/veli ödev + cüzdan + bildirim + misafir destek geçti.");
+  const videoCreate = await fetch(`${base}/v1/lesson-videos`, {
+    method: "POST",
+    headers: { ...teacherAuth, "content-type": "application/json" },
+    body: JSON.stringify({
+      gradeLevel: 8,
+      branchId: matematik.id,
+      topicTitle: "Smoke üslü sayılar",
+      outcomeCode: "M.8.1.9",
+      outcomeTitle: "Smoke kazanım testi",
+      title: "Smoke ders videosu",
+      videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      videoKind: "lesson",
+    }),
+  });
+  const videoCreateJson = (await videoCreate.json()) as { video?: { id?: string }; error?: unknown };
+  console.log("[smoke:roles-deep] POST lesson-videos", videoCreate.status);
+  if (!videoCreate.ok || !videoCreateJson.video?.id) {
+    console.error(videoCreateJson);
+    process.exitCode = 1;
+    return;
+  }
+
+  const videoApprove = await fetch(
+    `${base}/v1/admin/lesson-videos/${videoCreateJson.video.id}/moderation`,
+    {
+      method: "PATCH",
+      headers: { ...adminAuth, "content-type": "application/json" },
+      body: JSON.stringify({ moderationStatus: "approved", moderationNote: "smoke onay" }),
+    },
+  );
+  console.log("[smoke:roles-deep] PATCH admin lesson-videos moderation", videoApprove.status);
+  if (!videoApprove.ok) {
+    console.error(await videoApprove.json().catch(() => ({})));
+    process.exitCode = 1;
+    return;
+  }
+
+  const videoList = await fetch(`${base}/v1/lesson-videos`, { headers: studentAuth });
+  const videoListJson = (await videoList.json()) as {
+    videos?: Array<{ id: string; gradeLevel: number; title: string }>;
+    facets?: { total: number };
+  };
+  console.log("[smoke:roles-deep] GET lesson-videos", videoList.status, videoListJson.videos?.length ?? 0, "video");
+  if (!videoList.ok || !videoListJson.videos?.some((v) => v.title.includes("Smoke ders"))) {
+    console.error(videoListJson);
+    process.exitCode = 1;
+    return;
+  }
+  if (!videoListJson.videos.every((v) => v.gradeLevel === 8)) {
+    console.error("[smoke:roles-deep] öğrenci farklı sınıf videosu gördü");
+    process.exitCode = 1;
+    return;
+  }
+
+  const videoView = await fetch(`${base}/v1/lesson-videos/${videoCreateJson.video.id}/view`, {
+    method: "POST",
+    headers: studentAuth,
+  });
+  console.log("[smoke:roles-deep] POST lesson-videos/view", videoView.status);
+  if (!videoView.ok) {
+    console.error(await videoView.json().catch(() => ({})));
+    process.exitCode = 1;
+    return;
+  }
+
+  const suggested = await fetch(`${base}/v1/lesson-videos/suggested?topics=üslü,smoke`, {
+    headers: studentAuth,
+  });
+  const suggestedJson = (await suggested.json()) as { videos?: Array<{ title: string }> };
+  console.log(
+    "[smoke:roles-deep] GET lesson-videos/suggested",
+    suggested.status,
+    suggestedJson.videos?.length ?? 0,
+    "öneri",
+  );
+  if (!suggested.ok || !suggestedJson.videos?.some((v) => v.title.toLowerCase().includes("smoke"))) {
+    console.error(suggestedJson);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (linkedStudentId) {
+    const guardianVideos = await fetch(
+      `${base}/v1/lesson-videos/for-guardian?studentId=${encodeURIComponent(linkedStudentId)}`,
+      { headers: guardianAuth },
+    );
+    const guardianVideosJson = (await guardianVideos.json()) as { videos?: Array<{ title: string }> };
+    console.log(
+      "[smoke:roles-deep] GET lesson-videos/for-guardian",
+      guardianVideos.status,
+      guardianVideosJson.videos?.length ?? 0,
+      "video",
+    );
+    if (!guardianVideos.ok || !guardianVideosJson.videos?.some((v) => v.title.includes("Smoke ders"))) {
+      console.error(guardianVideosJson);
+      process.exitCode = 1;
+      return;
+    }
+  }
+
+  console.log("[smoke:roles-deep] OK — öğretmen/öğrenci/veli ödev + cüzdan + bildirim + misafir destek + ders videoları geçti.");
 }
 
 main()

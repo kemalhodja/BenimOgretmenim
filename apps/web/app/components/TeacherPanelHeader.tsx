@@ -17,6 +17,7 @@ const nav = [
   { href: "/teacher/teklifler", label: "Teklifler" },
   { href: "/teacher/dersler", label: "Dersler" },
   { href: "/teacher/kurslar", label: "Kurslar" },
+  { href: "/teacher/ders-videolari", label: "Videolar" },
   { href: "/teacher/kampanyalar", label: "Kampanyalar" },
   { href: "/teacher/odev-havuzu", label: "Ödev" },
   { href: "/teacher/cuzdan", label: "Cüzdan" },

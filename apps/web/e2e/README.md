@@ -50,6 +50,9 @@ Kök dizinden: `npm run test:e2e --prefix apps/web` (veya `test:e2e:public` içi
 | I-TCH | Öğretmen | Login | `/teacher`, “Panel özeti” |
 | I-GUA | Veli | Login | `/guardian`, “Veli paneli” |
 | I-ADM | Admin | Bootstrap hesap | `/admin`, “Özet” |
+| I-VID-STU | Öğrenci | Login → `/student/ders-videolari` | Seed videoları, oynatıcı |
+| I-VID-TCH | Öğretmen | Login → video formu | Yayınla, listede gör |
+| I-VID-GUA | Veli | Login → `/guardian/ders-videolari` | Bağlı öğrenci videoları |
 
 ## API doğrulama (Playwright dışı)
 
@@ -60,7 +63,7 @@ Sunucu tarafı regresyon için monorepo kökünde:
 
 ## CI (GitHub Actions)
 
-`.github/workflows/web-playwright.yml` PR’larda **`npm run test:e2e:public`** çalıştırır (PostgreSQL veya yerel API gerektirmez). Tam oturum paketi için pipeline’a servis konteynerleri eklenene kadar **`test:e2e:integration`** yalnızca yerelde veya özel bir job’da koşturulmalıdır.
+`.github/workflows/web-playwright.yml` PR’larda **`npm run test:e2e:public`** çalıştırır (PostgreSQL veya yerel API gerektirmez). Oturumlu senaryolar için **`web-playwright-integration.yml`** (PostgreSQL servisi + seed + API + `@integration` Playwright) kullanılır.
 
 ## Ortam değişkenleri
 
