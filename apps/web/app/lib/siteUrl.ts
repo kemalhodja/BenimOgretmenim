@@ -1,16 +1,14 @@
 /** Canlı web kökü (DNS + Render custom domain). */
 export const PRODUCTION_SITE_ORIGIN = "https://benimogretmenim.com.tr";
 
-/** www alt alanı — web servisinde doğrudan sunulur (Turhost apex→www ile uyumlu). */
-export const PRODUCTION_WWW_HOST = "www.benimogretmenim.com.tr";
-
-export const PRODUCTION_SITE_HOST = "benimogretmenim.com.tr";
-
-/** Render varsayılan web hostları — proxy bunları .com.tr'ye yönlendirir. */
+/** Render varsayılan web hostları — artık yönlendirilmez (www proxy köprüsü için doğrudan sunulur). */
 export const RENDER_DEFAULT_WEB_HOSTS = new Set([
   "benimogretmenim.onrender.com",
   "benimogretmenim-web.onrender.com",
 ]);
+
+/** www — Turhost apex→www ile uyumlu birincil host. */
+export const PRODUCTION_WWW_HOST = "www.benimogretmenim.com.tr";
 
 /** Canlı API kökü (api alt alanı). */
 export const PRODUCTION_API_ORIGIN = "https://api.benimogretmenim.com.tr";
@@ -47,7 +45,7 @@ export function resolveCanonicalRedirectOrigin(): string {
   return PRODUCTION_SITE_ORIGIN;
 }
 
-/** www — Turhost apex→www yönlendirmesi varken www→apex redirect döngü yapar; doğrudan sunulur. */
-export function shouldRedirectHostToCanonical(host: string): boolean {
-  return RENDER_DEFAULT_WEB_HOSTS.has(host);
+/** Render *.onrender.com hostlarında yönlendirme yok — API www proxy upstream'i 200 HTML alır. */
+export function shouldRedirectHostToCanonical(_host: string): boolean {
+  return false;
 }

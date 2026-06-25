@@ -104,7 +104,9 @@ services:
       - key: CORS_ORIGINS
         value: https://benimogretmenim.com.tr,https://www.benimogretmenim.com.tr,https://benimogretmenim.onrender.com
       - key: PUBLIC_WEB_URL
-        value: https://benimogretmenim.com.tr
+        value: https://www.benimogretmenim.com.tr
+      - key: WEB_UPSTREAM_ORIGIN
+        value: https://benimogretmenim.onrender.com
       - key: SMOKE_RUN_SECRET
         sync: false
       - key: RESEND_API_KEY
@@ -242,5 +244,5 @@ services:
       - key: INTERNAL_API_BASE_URL
         value: https://api.benimogretmenim.com.tr
       - key: NEXT_PUBLIC_SITE_URL
-        value: https://benimogretmenim.com.tr
+        value: https://www.benimogretmenim.com.tr
       - fromGroup: benimogretmenim-shared

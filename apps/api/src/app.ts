@@ -28,6 +28,7 @@ import { support } from "./routes/support.js";
 import { analytics } from "./routes/analytics.js";
 import { userMessages } from "./routes/userMessages.js";
 import { zigo } from "./routes/zigo.js";
+import { proxyMisplacedWebHost } from "./middleware/proxyMisplacedWebHost.js";
 import { requestId } from "./middleware/requestId.js";
 import { requestLog } from "./middleware/requestLog.js";
 import { rateLimit } from "./middleware/rateLimit.js";
@@ -73,6 +74,7 @@ function corsAllowedOrigins(): string[] {
 
 app.use("/*", requestId);
 app.use("/*", requestLog);
+app.use("/*", proxyMisplacedWebHost);
 
 app.use(
   "/*",

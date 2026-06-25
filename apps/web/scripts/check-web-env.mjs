@@ -14,7 +14,7 @@ function fail(msg) {
 const allowHttp = process.env.WEB_ALLOW_HTTP === "1";
 
 /** Render Dashboard eski değer bıraktığında build'i kurtarır; runtime env yine düzeltilir. */
-const CANONICAL_PRODUCTION_SITE_URL = "https://benimogretmenim.com.tr";
+const CANONICAL_PRODUCTION_SITE_URL = "https://www.benimogretmenim.com.tr";
 
 const api = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 let site = process.env.NEXT_PUBLIC_SITE_URL?.trim();
@@ -39,7 +39,7 @@ if (!allowHttp && siteUrl.hostname.endsWith(".onrender.com")) {
   console.warn(
     `[web:env] NEXT_PUBLIC_SITE_URL Render host (${siteUrl.hostname}); ` +
       `build için ${CANONICAL_PRODUCTION_SITE_URL} kullanılıyor. ` +
-      "Kalıcı: Render Web → Environment → NEXT_PUBLIC_SITE_URL = https://benimogretmenim.com.tr",
+      "Kalıcı: Render Web → Environment → NEXT_PUBLIC_SITE_URL = https://www.benimogretmenim.com.tr",
   );
   site = CANONICAL_PRODUCTION_SITE_URL;
   siteUrl = new URL(site);
