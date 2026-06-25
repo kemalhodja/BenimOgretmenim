@@ -44,9 +44,13 @@ export const proxyMisplacedWebHost: MiddlewareHandler = async (c, next) => {
 
   const headers = new Headers();
   for (const [key, value] of c.req.raw.headers.entries()) {
-    if (HOP_BY_HOP.has(key.toLowerCase())) continue;
+    const lower = key.toLowerCase();
+    if (HOP_BY_HOP.has(lower)) continue;
+    // Upstream sıkıştırma + Node decompress → tarayıcıda bozuk body (beyaz sayfa).
+    if (lower === "accept-encoding") continue;
     headers.set(key, value);
   }
+  headers.set("host", new URL(upstreamWebOrigin()).host);
   headers.set("x-forwarded-host", host);
   headers.set("x-forwarded-proto", "https");
 
@@ -66,13 +70,16 @@ export const proxyMisplacedWebHost: MiddlewareHandler = async (c, next) => {
 
   const outHeaders = new Headers();
   resp.headers.forEach((value, key) => {
-    if (HOP_BY_HOP.has(key.toLowerCase())) return;
-    if (key.toLowerCase() === "location") {
+    const lower = key.toLowerCase();
+    if (HOP_BY_HOP.has(lower)) return;
+    if (lower === "content-encoding" || lower === "content-length") return;
+    if (lower === "location") {
       outHeaders.set(key, rewriteLocationHeader(value));
       return;
     }
     outHeaders.set(key, value);
   });
 
-  return new Response(resp.body, { status: resp.status, headers: outHeaders });
+  const body = await resp.arrayBuffer();
+  return new Response(body, { status: resp.status, headers: outHeaders });
 };
