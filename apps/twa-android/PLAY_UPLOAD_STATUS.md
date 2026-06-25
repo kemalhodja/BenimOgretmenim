@@ -1,12 +1,12 @@
 # Play yayın durumu
 
-Son güncelleme: 2026-06-23
+Son güncelleme: 2026-06-26
 
 ## Tamamlanan
 
 - [x] Upload keystore (`apps/twa-android/upload-keystore.jks`)
 - [x] GitHub Actions signing secret'ları
-- [x] Signed AAB — `apps/twa-android/dist/app-release.aab`
+- [x] Signed AAB — `apps/twa-android/dist/app-release.aab` (CI run [28205228227](https://github.com/kemalhodja/BenimOgretmenim/actions/runs/28205228227), ~3.5 MB)
 - [x] `assetlinks.json` — upload key SHA (Play SHA sonrası `-Append` ile ekle)
 - [x] Gizlilik ve kullanım koşulları sayfaları güncellendi
 - [x] `PLAY_DATA_SAFETY.md` — Data Safety form cevapları
