@@ -6,8 +6,15 @@ export function PwaRegister() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
-    // Avoid SW in dev; it can cause confusing caching during development.
     if (process.env.NODE_ENV !== "production") return;
+
+    void caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((k) => k.startsWith("benimogretmenim-pwa-") && k !== "benimogretmenim-pwa-v4")
+          .map((k) => caches.delete(k)),
+      ),
+    );
 
     const onLoad = () => {
       navigator.serviceWorker
